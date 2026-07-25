@@ -33,7 +33,7 @@ function App() {
   }
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/services')
+    fetch('/api/services')
       .then(res => res.json())
       .then(data => {
         const servicesWithIcons = data.map(item => ({
@@ -69,7 +69,7 @@ function App() {
   const handleVolunteerSubmit = (e) => {
     e.preventDefault()
     if (volunteerName && volunteerEmail) {
-      fetch('http://localhost:5000/api/volunteer', {
+      fetch('/api/volunteer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: volunteerName, email: volunteerEmail })
@@ -101,7 +101,7 @@ function App() {
   }
 
   const handleDonationSubmit = () => {
-    fetch('http://localhost:5000/api/donate', {
+    fetch('/api/donate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ amount: donationAmount })

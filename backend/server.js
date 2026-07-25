@@ -1,6 +1,8 @@
 import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
+import path from 'path'
+import { fileURLToPath } from 'url'
 
 // Load environment variables
 dotenv.config()
@@ -42,7 +44,7 @@ const servicesList = [
 
 // Middleware Configuration
 app.use(cors({
-  origin: 'http://localhost:5173', // Allow frontend Vite client
+  origin: 'http://localhost:5173', // Allow frontend Vite client during dev
   credentials: true
 }))
 app.use(express.json())
@@ -53,7 +55,7 @@ app.use((req, res, next) => {
   next()
 })
 
-// Endpoints
+// API Endpoints
 app.get('/api/services', (req, res) => {
   res.json(servicesList)
 })
@@ -105,8 +107,26 @@ app.post('/api/donate', (req, res) => {
   })
 })
 
-// Catch-all route
-app.use((req, res) => {
+// Resolve __dirname in ES Modules
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+// Serve frontend static assets in production
+const frontendDistPath = path.join(__dirname, '../frontend/dist')
+app.use(express.static(frontendDistPath))
+
+// Single Page Application (SPA) Routing Fallback
+app.get('*', (req, res, next) => {
+  // If request is for an API endpoint, let it pass to API handlers (will return 404 if not found)
+  if (req.path.startsWith('/api')) {
+    return next()
+  }
+  // Otherwise, serve the main index.html file
+  res.sendFile(path.join(frontendDistPath, 'index.html'))
+})
+
+// Catch-all API route fallback
+app.use('/api', (req, res) => {
   res.status(404).json({ error: 'API endpoint not found.' })
 })
 
