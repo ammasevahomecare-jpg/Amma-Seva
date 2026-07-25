@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { Menu, X, Phone, MessageCircle, Mail, MapPin, Facebook, Instagram } from "lucide-react";
-import logoAsset from "@/assets/amma-seva-logo.png.asset.json";
+import logoAsset from "@/assets/amma-seva-logo.png";
 
 const PHONE = "+91 90000 00000";
 const PHONE_TEL = "+919000000000";
@@ -24,7 +24,7 @@ function Header() {
     <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
         <Link to="/" className="flex items-center gap-3">
-          <img src={logoAsset.url} alt="Amma Seva" className="h-12 w-12 object-contain" width={48} height={48} />
+          <img src={logoAsset} alt="Amma Seva" className="h-12 w-12 object-contain" width={48} height={48} />
           <div className="leading-tight">
             <div className="font-display text-xl font-semibold text-primary">
               Amma <span className="text-gold">Seva</span>
@@ -98,7 +98,7 @@ function Footer() {
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-4 lg:px-8">
         <div>
           <div className="flex items-center gap-3">
-            <img src={logoAsset.url} alt="Amma Seva" className="h-12 w-12 object-contain" width={48} height={48} />
+            <img src={logoAsset} alt="Amma Seva" className="h-12 w-12 object-contain" width={48} height={48} />
             <div className="font-display text-xl font-semibold text-primary">
               Amma <span className="text-gold">Seva</span>
             </div>
