@@ -112,7 +112,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 // Serve frontend static assets in production
-const frontendDistPath = path.join(__dirname, '../frontend/dist')
+const frontendDistPath = path.join(__dirname, 'dist')
 app.use(express.static(frontendDistPath))
 
 // Single Page Application (SPA) Routing Fallback
