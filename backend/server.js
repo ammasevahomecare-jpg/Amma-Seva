@@ -26,6 +26,24 @@ app.use((req, res, next) => {
 
 // API Endpoints
 
+// POST admin login
+app.post('/api/admin/login', (req, res) => {
+  const { email, password } = req.body
+
+  if (email === 'ammasevahomecare@gmail.com' && password === 'Ammaseva@123') {
+    res.json({
+      success: true,
+      message: 'Login successful!',
+      token: 'mock-jwt-admin-token-ammaseva'
+    })
+  } else {
+    res.status(401).json({
+      success: false,
+      error: 'Invalid email or password.'
+    })
+  }
+})
+
 // GET all enquiries (Admin Panel)
 app.get('/api/enquiries', async (req, res) => {
   try {
@@ -70,12 +88,103 @@ app.delete('/api/enquiry/:id', async (req, res) => {
   }
 })
 
+// GET all bookings (Admin Panel)
+app.get('/api/bookings', async (req, res) => {
+  try {
+    const list = await db.getBookings()
+    res.json(list)
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve bookings list.' })
+  }
+})
+
+// POST create booking
+app.post('/api/booking', async (req, res) => {
+  const { name, phone, service, date, time, duration, address, amount } = req.body
+
+  if (!name || !phone || !service || !date || !time || !duration || !address) {
+    return res.status(400).json({ error: 'Missing required booking details.' })
+  }
+
+  try {
+    const newBooking = await db.addBooking({ name, phone, service, date, time, duration, address, amount })
+    res.status(201).json({
+      success: true,
+      message: 'Booking successfully created!',
+      data: newBooking
+    })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create booking.' })
+  }
+})
+
+// PUT update booking (Admin Panel: assign caregiver or change status)
+app.put('/api/booking/:id', async (req, res) => {
+  const { status, assignedStaff, paymentStatus } = req.body
+  try {
+    const updated = await db.updateBooking(req.params.id, status, assignedStaff, paymentStatus)
+    if (updated) {
+      res.json({ success: true, message: 'Booking successfully updated.' })
+    } else {
+      res.status(404).json({ error: 'Booking not found.' })
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update booking.' })
+  }
+})
+
+// GET all caregivers (Admin Panel)
+app.get('/api/caregivers', async (req, res) => {
+  try {
+    const list = await db.getCaregivers()
+    res.json(list)
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve caregivers list.' })
+  }
+})
+
+// POST register caregiver
+app.post('/api/caregiver', async (req, res) => {
+  const { name, phone, email, specialty, experience } = req.body
+  if (!name || !phone || !specialty) {
+    return res.status(400).json({ error: 'Name, phone, and specialty are required.' })
+  }
+  try {
+    const newCaregiver = await db.addCaregiver({ name, phone, email, specialty, experience })
+    res.status(201).json({
+      success: true,
+      message: 'Registration profile submitted!',
+      data: newCaregiver
+    })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to submit caregiver registration.' })
+  }
+})
+
+// PUT update caregiver verification status (Admin Panel: approve or reject)
+app.put('/api/caregiver/:id', async (req, res) => {
+  const { status } = req.body
+  if (!status) {
+    return res.status(400).json({ error: 'Status is required.' })
+  }
+  try {
+    const updated = await db.updateCaregiverStatus(req.params.id, status)
+    if (updated) {
+      res.json({ success: true, message: `Caregiver status updated to ${status}.` })
+    } else {
+      res.status(404).json({ error: 'Caregiver not found.' })
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update caregiver profile.' })
+  }
+})
+
 // Preserve old routes to avoid breaks
 app.get('/api/services', (req, res) => {
   res.json([
     {
       id: 'elderly',
-      title: 'Elderly Care & Companion',
+      title: 'Elderly Care at Home',
       category: 'care',
       description: 'Assisting senior citizens with daily essentials, healthcare companionship, and emotional support.'
     },

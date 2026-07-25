@@ -11,20 +11,114 @@ const JSON_DB_PATH = path.join(__dirname, 'db.json')
 let pool = null
 let useMySQL = false
 
+// Initial default data structure
+const DEFAULT_MOCK_DATA = {
+  volunteers: [],
+  donations: [],
+  enquiries: [
+    {
+      id: 1,
+      name: "Srinivas Rao",
+      phone: "+91 98765 43210",
+      email: "srinivas@example.com",
+      service: "Elderly Care at Home",
+      city: "Hyderabad",
+      message: "Looking for an experienced companion for my father who needs daily medication assistance.",
+      submittedAt: new Date(Date.now() - 3600000 * 2).toISOString()
+    },
+    {
+      id: 2,
+      name: "Anjali Sharma",
+      phone: "+91 91234 56789",
+      email: "anjali@example.com",
+      service: "Newborn Baby Care",
+      city: "Secunderabad",
+      message: "Need a certified caregiver for baby care shifts (12 hours night shifts).",
+      submittedAt: new Date(Date.now() - 3600000 * 24).toISOString()
+    }
+  ],
+  bookings: [
+    {
+      id: 1,
+      name: "K. Venkat Rao",
+      phone: "+91 94401 23456",
+      service: "Elderly Care at Home",
+      date: "2026-07-28",
+      time: "09:00",
+      duration: "Daily",
+      address: "Flat 402, Gachibowli Heights, Hyderabad",
+      status: "Pending",
+      assignedStaff: null,
+      amount: 1500,
+      paymentStatus: "Unpaid",
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 2,
+      name: "Kavitha Reddy",
+      phone: "+91 99887 76655",
+      service: "Mother & Baby Care",
+      date: "2026-07-29",
+      time: "08:00",
+      duration: "Weekly",
+      address: "Plot 89, Jubilee Hills Road No 10, Hyderabad",
+      status: "Confirmed",
+      assignedStaff: "Srilatha P.",
+      amount: 8500,
+      paymentStatus: "Paid",
+      createdAt: new Date(Date.now() - 3600000 * 12).toISOString()
+    }
+  ],
+  caregivers: [
+    {
+      id: 1,
+      name: "Ramesh Kumar",
+      phone: "+91 88877 66554",
+      email: "ramesh@example.com",
+      specialty: "Elderly Care",
+      experience: 8,
+      status: "Verified",
+      joinedAt: new Date(Date.now() - 3600000 * 48).toISOString()
+    },
+    {
+      id: 2,
+      name: "Srilatha P.",
+      phone: "+91 99443 32211",
+      email: "srilatha@example.com",
+      specialty: "Mother & Baby Care",
+      experience: 4,
+      status: "Verified",
+      joinedAt: new Date(Date.now() - 3600000 * 24).toISOString()
+    },
+    {
+      id: 3,
+      name: "Deepika Reddy",
+      phone: "+91 77766 55443",
+      email: "deepika@example.com",
+      specialty: "Home Nursing Services",
+      experience: 5,
+      status: "Pending",
+      joinedAt: new Date().toISOString()
+    }
+  ]
+}
+
 // Initialize JSON database with default template
 const initJSONDb = () => {
   if (!fs.existsSync(JSON_DB_PATH)) {
-    fs.writeFileSync(JSON_DB_PATH, JSON.stringify({ volunteers: [], donations: [], enquiries: [] }, null, 2))
+    fs.writeFileSync(JSON_DB_PATH, JSON.stringify(DEFAULT_MOCK_DATA, null, 2))
   } else {
-    // Migrate to ensure enquiries array exists in JSON
     try {
       const data = JSON.parse(fs.readFileSync(JSON_DB_PATH, 'utf-8'))
-      if (!data.enquiries) {
-        data.enquiries = []
+      let modified = false
+      if (!data.enquiries) { data.enquiries = DEFAULT_MOCK_DATA.enquiries; modified = true }
+      if (!data.bookings) { data.bookings = DEFAULT_MOCK_DATA.bookings; modified = true }
+      if (!data.caregivers) { data.caregivers = DEFAULT_MOCK_DATA.caregivers; modified = true }
+      if (modified) {
         fs.writeFileSync(JSON_DB_PATH, JSON.stringify(data, null, 2))
       }
     } catch (e) {
-      fs.writeFileSync(JSON_DB_PATH, JSON.stringify({ volunteers: [], donations: [], enquiries: [] }, null, 2))
+      fs.writeFileSync(JSON_DB_PATH, JSON.stringify(DEFAULT_MOCK_DATA, null, 2))
     }
   }
 }
@@ -44,7 +138,6 @@ const writeJSONDb = async (data) => {
 export const db = {
   // Initialize Database
   init: async () => {
-    // Check if MySQL environment variables are configured
     const host = process.env.DB_HOST
     const user = process.env.DB_USER
     const password = process.env.DB_PASSWORD
@@ -98,9 +191,74 @@ export const db = {
           )
         `)
 
+        await connection.query(`
+          CREATE TABLE IF NOT EXISTS bookings (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            phone VARCHAR(50) NOT NULL,
+            service VARCHAR(255) NOT NULL,
+            date VARCHAR(50) NOT NULL,
+            time VARCHAR(50) NOT NULL,
+            duration VARCHAR(50) NOT NULL,
+            address TEXT NOT NULL,
+            status VARCHAR(50) DEFAULT 'Pending',
+            assignedStaff VARCHAR(255),
+            amount DECIMAL(10,2) DEFAULT 0,
+            paymentStatus VARCHAR(50) DEFAULT 'Unpaid',
+            createdAt VARCHAR(255) NOT NULL
+          )
+        `)
+
+        await connection.query(`
+          CREATE TABLE IF NOT EXISTS caregivers (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            phone VARCHAR(50) NOT NULL,
+            email VARCHAR(255),
+            specialty VARCHAR(255) NOT NULL,
+            experience INT DEFAULT 0,
+            status VARCHAR(50) DEFAULT 'Pending',
+            joinedAt VARCHAR(255) NOT NULL
+          )
+        `)
+
+        // Insert initial values if MySQL database is fresh/empty
+        const [bookingsRows] = await connection.query('SELECT count(*) as count FROM bookings')
+        if (bookingsRows[0].count === 0) {
+          console.log('Inserting initial mock bookings into MySQL...')
+          for (const b of DEFAULT_MOCK_DATA.bookings) {
+            await connection.query(
+              'INSERT INTO bookings (name, phone, service, date, time, duration, address, status, assignedStaff, amount, paymentStatus, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+              [b.name, b.phone, b.service, b.date, b.time, b.duration, b.address, b.status, b.assignedStaff, b.amount, b.paymentStatus, b.createdAt]
+            )
+          }
+        }
+
+        const [caregiverRows] = await connection.query('SELECT count(*) as count FROM caregivers')
+        if (caregiverRows[0].count === 0) {
+          console.log('Inserting initial mock caregivers into MySQL...')
+          for (const c of DEFAULT_MOCK_DATA.caregivers) {
+            await connection.query(
+              'INSERT INTO caregivers (name, phone, email, specialty, experience, status, joinedAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
+              [c.name, c.phone, c.email, c.specialty, c.experience, c.status, c.joinedAt]
+            )
+          }
+        }
+
+        const [enquiryRows] = await connection.query('SELECT count(*) as count FROM enquiries')
+        if (enquiryRows[0].count === 0) {
+          console.log('Inserting initial mock enquiries into MySQL...')
+          for (const e of DEFAULT_MOCK_DATA.enquiries) {
+            await connection.query(
+              'INSERT INTO enquiries (name, phone, email, service, city, message, submittedAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
+              [e.name, e.phone, e.email, e.service, e.city, e.message, e.submittedAt]
+            )
+          }
+        }
+
         connection.release()
         useMySQL = true
-        console.log(`✅ MySQL Tables verified successfully!`)
+        console.log(`✅ MySQL Tables verified and seeded successfully!`)
       } catch (err) {
         console.error(`❌ Failed to connect to MySQL database:`, err.message)
         console.log(`⚠️ Falling back to local JSON database...`)
@@ -163,95 +321,127 @@ export const db = {
     }
   },
 
-  // Volunteers Operations
-  getVolunteers: async () => {
+  // Bookings Operations
+  getBookings: async () => {
     if (useMySQL) {
-      const [rows] = await pool.query('SELECT * FROM volunteers ORDER BY id DESC')
+      const [rows] = await pool.query('SELECT * FROM bookings ORDER BY id DESC')
       return rows
     } else {
       const data = await readJSONDb()
-      return [...data.volunteers].reverse()
+      return [...data.bookings].reverse()
     }
   },
 
-  addVolunteer: async (name, email) => {
-    const registeredAt = new Date().toISOString()
+  addBooking: async (bookingData) => {
+    const { name, phone, service, date, time, duration, address, amount = 1200 } = bookingData
+    const createdAt = new Date().toISOString()
     if (useMySQL) {
       const [result] = await pool.query(
-        'INSERT INTO volunteers (name, email, registeredAt) VALUES (?, ?, ?)',
-        [name, email, registeredAt]
+        'INSERT INTO bookings (name, phone, service, date, time, duration, address, amount, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [name, phone, service, date, time, duration, address, amount, createdAt]
       )
-      return { id: result.insertId, name, email, registeredAt }
+      return { id: result.insertId, name, phone, service, date, time, duration, address, status: 'Pending', assignedStaff: null, amount, paymentStatus: 'Unpaid', createdAt }
     } else {
       const data = await readJSONDb()
-      const newVolunteer = {
-        id: data.volunteers.length > 0 ? Math.max(...data.volunteers.map(v => v.id)) + 1 : 1,
+      const newBooking = {
+        id: data.bookings.length > 0 ? Math.max(...data.bookings.map(b => b.id)) + 1 : 1,
         name,
-        email,
-        registeredAt
+        phone,
+        service,
+        date,
+        time,
+        duration,
+        address,
+        status: 'Pending',
+        assignedStaff: null,
+        amount,
+        paymentStatus: 'Unpaid',
+        createdAt
       }
-      data.volunteers.push(newVolunteer)
+      data.bookings.push(newBooking)
       await writeJSONDb(data)
-      return newVolunteer
+      return newBooking
     }
   },
 
-  deleteVolunteer: async (id) => {
+  updateBooking: async (id, status, assignedStaff, paymentStatus) => {
     if (useMySQL) {
-      await pool.query('DELETE FROM volunteers WHERE id = ?', [id])
-      return true
+      const [result] = await pool.query(
+        'UPDATE bookings SET status = ?, assignedStaff = ?, paymentStatus = ? WHERE id = ?',
+        [status, assignedStaff, paymentStatus, id]
+      )
+      return result.affectedRows > 0
     } else {
       const data = await readJSONDb()
-      const initialLength = data.volunteers.length
-      data.volunteers = data.volunteers.filter(v => v.id !== Number(id))
-      await writeJSONDb(data)
-      return data.volunteers.length < initialLength
+      const bookingIdx = data.bookings.findIndex(b => b.id === Number(id))
+      if (bookingIdx > -1) {
+        data.bookings[bookingIdx] = {
+          ...data.bookings[bookingIdx],
+          status,
+          assignedStaff,
+          paymentStatus
+        }
+        await writeJSONDb(data)
+        return true
+      }
+      return false
     }
   },
 
-  // Donations Operations
-  getDonations: async () => {
+  // Caregivers Operations
+  getCaregivers: async () => {
     if (useMySQL) {
-      const [rows] = await pool.query('SELECT * FROM donations ORDER BY id DESC')
+      const [rows] = await pool.query('SELECT * FROM caregivers ORDER BY id DESC')
       return rows
     } else {
       const data = await readJSONDb()
-      return [...data.donations].reverse()
+      return [...data.caregivers].reverse()
     }
   },
 
-  addDonation: async (amount) => {
-    const donatedAt = new Date().toISOString()
-    const parsedAmount = Number(amount)
+  addCaregiver: async (caregiverData) => {
+    const { name, phone, email, specialty, experience } = caregiverData
+    const joinedAt = new Date().toISOString()
     if (useMySQL) {
       const [result] = await pool.query(
-        'INSERT INTO donations (amount, donatedAt) VALUES (?, ?)',
-        [parsedAmount, donatedAt]
+        'INSERT INTO caregivers (name, phone, email, specialty, experience, joinedAt) VALUES (?, ?, ?, ?, ?, ?)',
+        [name, phone, email, specialty, experience, joinedAt]
       )
-      return { id: result.insertId, amount: parsedAmount, donatedAt }
+      return { id: result.insertId, name, phone, email, specialty, experience, status: 'Pending', joinedAt }
     } else {
       const data = await readJSONDb()
-      const newDonation = {
-        id: data.donations.length > 0 ? Math.max(...data.donations.map(d => d.id)) + 1 : 1,
-        amount: parsedAmount,
-        donatedAt
+      const newCaregiver = {
+        id: data.caregivers.length > 0 ? Math.max(...data.caregivers.map(c => c.id)) + 1 : 1,
+        name,
+        phone,
+        email,
+        specialty,
+        experience,
+        status: 'Pending',
+        joinedAt
       }
-      data.donations.push(newDonation)
+      data.caregivers.push(newCaregiver)
       await writeJSONDb(data)
-      return newDonation
+      return newCaregiver
     }
   },
 
-  deleteDonation: async (id) => {
+  updateCaregiverStatus: async (id, status) => {
     if (useMySQL) {
-      await pool.query('DELETE FROM donations WHERE id = ?', [id])
-      return true
+      const [result] = await pool.query(
+        'UPDATE caregivers SET status = ? WHERE id = ?',
+        [status, id]
+      )
+      return result.affectedRows > 0
     } else {
       const data = await readJSONDb()
-      const initialLength = data.donations.length
-      data.donations = data.donations.filter(d => d.id !== Number(id))
-      await writeJSONDb(data)
-      return data.donations.length < initialLength
+      const caregiverIdx = data.caregivers.findIndex(c => c.id === Number(id))
+      if (caregiverIdx > -1) {
+        data.caregivers[caregiverIdx].status = status
+        await writeJSONDb(data)
+        return true
+      }
+      return false
     }
   }
 }

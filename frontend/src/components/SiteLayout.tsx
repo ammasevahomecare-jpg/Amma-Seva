@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { Menu, X, Phone, MessageCircle, Mail, MapPin, Facebook, Instagram } from "lucide-react";
 import logoAsset from "@/assets/amma-seva-logo.png";
 
@@ -20,6 +20,17 @@ const NAV = [
 
 function Header() {
   const [open, setOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    setIsAdmin(!!localStorage.getItem("ammaseva_admin_token"));
+    // Poll to keep it in sync in case of logout/login transitions
+    const interval = setInterval(() => {
+      setIsAdmin(!!localStorage.getItem("ammaseva_admin_token"));
+    }, 1500);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
@@ -39,11 +50,17 @@ function Header() {
             <Link
               key={n.to}
               to={n.to}
-              className="text-sm font-medium text-foreground/80 transition-colors hover:text-primary"
+              className="text-sm font-medium text-foreground/80 transition-colors hover:text-primary flex items-center gap-1"
               activeProps={{ className: "text-primary" }}
               activeOptions={{ exact: n.to === "/" }}
             >
               {n.label}
+              {n.label === "Admin" && (
+                <span 
+                  className={`h-1.5 w-1.5 rounded-full ${isAdmin ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} 
+                  title={isAdmin ? "Logged in" : "Lock secured"}
+                />
+              )}
             </Link>
           ))}
         </nav>
