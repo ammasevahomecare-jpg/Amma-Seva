@@ -14,7 +14,18 @@ let useMySQL = false
 // Initialize JSON database with default template
 const initJSONDb = () => {
   if (!fs.existsSync(JSON_DB_PATH)) {
-    fs.writeFileSync(JSON_DB_PATH, JSON.stringify({ volunteers: [], donations: [] }, null, 2))
+    fs.writeFileSync(JSON_DB_PATH, JSON.stringify({ volunteers: [], donations: [], enquiries: [] }, null, 2))
+  } else {
+    // Migrate to ensure enquiries array exists in JSON
+    try {
+      const data = JSON.parse(fs.readFileSync(JSON_DB_PATH, 'utf-8'))
+      if (!data.enquiries) {
+        data.enquiries = []
+        fs.writeFileSync(JSON_DB_PATH, JSON.stringify(data, null, 2))
+      }
+    } catch (e) {
+      fs.writeFileSync(JSON_DB_PATH, JSON.stringify({ volunteers: [], donations: [], enquiries: [] }, null, 2))
+    }
   }
 }
 
@@ -74,6 +85,19 @@ export const db = {
           )
         `)
 
+        await connection.query(`
+          CREATE TABLE IF NOT EXISTS enquiries (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            phone VARCHAR(50) NOT NULL,
+            email VARCHAR(255),
+            service VARCHAR(255),
+            city VARCHAR(255),
+            message TEXT,
+            submittedAt VARCHAR(255) NOT NULL
+          )
+        `)
+
         connection.release()
         useMySQL = true
         console.log(`✅ MySQL Tables verified successfully!`)
@@ -85,6 +109,57 @@ export const db = {
     } else {
       console.log(`ℹ️ MySQL env variables not set. Initializing local JSON database at backend/db.json...`)
       initJSONDb()
+    }
+  },
+
+  // Enquiries Operations
+  getEnquiries: async () => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM enquiries ORDER BY id DESC')
+      return rows
+    } else {
+      const data = await readJSONDb()
+      return [...data.enquiries].reverse()
+    }
+  },
+
+  addEnquiry: async (enquiryData) => {
+    const { name, phone, email = '', service = '', city = '', message = '' } = enquiryData
+    const submittedAt = new Date().toISOString()
+    if (useMySQL) {
+      const [result] = await pool.query(
+        'INSERT INTO enquiries (name, phone, email, service, city, message, submittedAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [name, phone, email, service, city, message, submittedAt]
+      )
+      return { id: result.insertId, name, phone, email, service, city, message, submittedAt }
+    } else {
+      const data = await readJSONDb()
+      const newEnquiry = {
+        id: data.enquiries.length > 0 ? Math.max(...data.enquiries.map(e => e.id)) + 1 : 1,
+        name,
+        phone,
+        email,
+        service,
+        city,
+        message,
+        submittedAt
+      }
+      data.enquiries.push(newEnquiry)
+      await writeJSONDb(data)
+      return newEnquiry
+    }
+  },
+
+  deleteEnquiry: async (id) => {
+    if (useMySQL) {
+      await pool.query('DELETE FROM enquiries WHERE id = ?', [id])
+      return true
+    } else {
+      const data = await readJSONDb()
+      const initialLength = data.enquiries.length
+      data.enquiries = data.enquiries.filter(e => e.id !== Number(id))
+      await writeJSONDb(data)
+      return data.enquiries.length < initialLength
     }
   },
 
