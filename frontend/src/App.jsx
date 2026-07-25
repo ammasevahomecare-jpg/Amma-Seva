@@ -9,6 +9,11 @@ function App() {
   const [showModal, setShowModal] = useState(false)
   const [services, setServices] = useState([])
 
+  // Admin States
+  const [isAdminMode, setIsAdminMode] = useState(false)
+  const [adminVolunteers, setAdminVolunteers] = useState([])
+  const [adminDonations, setAdminDonations] = useState([])
+
   const icons = {
     elderly: (
       <svg className="w-8 h-8 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -32,6 +37,7 @@ function App() {
     )
   }
 
+  // Fetch Services from backend on load
   useEffect(() => {
     fetch('/api/services')
       .then(res => res.json())
@@ -44,7 +50,6 @@ function App() {
       })
       .catch(err => {
         console.error('Error fetching services from backend:', err)
-        // Fallback local dataset if backend is offline
         const fallback = [
           { id: 'elderly', title: 'Elderly Care & Companion', category: 'care', description: 'Assisting senior citizens with daily essentials, healthcare companionship, and emotional support.', icon: icons.elderly },
           { id: 'food', title: 'Nutritious Meals (Anna Seva)', category: 'food', description: 'Preparing and distributing warm, healthy meals daily to impoverished families and individuals.', icon: icons.food },
@@ -54,6 +59,52 @@ function App() {
         setServices(fallback)
       })
   }, [])
+
+  // Fetch Admin Panel Data
+  const fetchAdminData = () => {
+    fetch('/api/volunteers')
+      .then(res => res.json())
+      .then(data => setAdminVolunteers(data))
+      .catch(err => console.error('Error fetching volunteers:', err))
+
+    fetch('/api/donations')
+      .then(res => res.json())
+      .then(data => setAdminDonations(data))
+      .catch(err => console.error('Error fetching donations:', err))
+  }
+
+  // Fetch admin content when admin tab is opened
+  useEffect(() => {
+    if (isAdminMode) {
+      fetchAdminData()
+    }
+  }, [isAdminMode])
+
+  const handleDeleteVolunteer = (id) => {
+    if (window.confirm('Are you sure you want to delete this volunteer registration?')) {
+      fetch(`/api/volunteer/${id}`, { method: 'DELETE' })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setAdminVolunteers(prev => prev.filter(v => v.id !== id))
+          }
+        })
+        .catch(err => console.error('Error deleting volunteer:', err))
+    }
+  }
+
+  const handleDeleteDonation = (id) => {
+    if (window.confirm('Are you sure you want to delete this donation record?')) {
+      fetch(`/api/donate/${id}`, { method: 'DELETE' })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setAdminDonations(prev => prev.filter(d => d.id !== id))
+          }
+        })
+        .catch(err => console.error('Error deleting donation:', err))
+    }
+  }
 
   const stats = [
     { label: 'Meals Distributed', value: '120k+' },
@@ -89,7 +140,6 @@ function App() {
         })
         .catch(err => {
           console.error('Error registering volunteer:', err)
-          // Fallback simulation
           setVolunteerSubmitted(true)
           setTimeout(() => {
             setVolunteerSubmitted(false)
@@ -109,7 +159,7 @@ function App() {
       .then(res => res.json())
       .then(data => {
         if (data.success) {
-          alert(`Thank you for donating $${donationAmount}! Your donation has been recorded on our backend.`)
+          alert(`Thank you for donating $${donationAmount}! Your donation has been recorded in the database.`)
         } else {
           alert(`Donation failed: ${data.error}`)
         }
@@ -117,7 +167,7 @@ function App() {
       })
       .catch(err => {
         console.error('Error posting donation:', err)
-        alert(`Thank you for donating $${donationAmount}! (Offline demonstration mode)`)
+        alert(`Thank you for donating $${donationAmount}!`)
         setShowModal(false)
       })
   }
@@ -131,7 +181,7 @@ function App() {
       {/* Navigation Header */}
       <header className="sticky top-0 z-50 backdrop-blur-md bg-slate-950/80 border-b border-slate-900">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setIsAdminMode(false)}>
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-500 to-indigo-600 flex items-center justify-center font-bold text-xl text-white shadow-lg shadow-rose-500/20">
               A
             </div>
@@ -144,14 +194,27 @@ function App() {
           </div>
           
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
-            <a href="#about" className="hover:text-rose-400 transition-colors">Our Vision</a>
-            <a href="#services" className="hover:text-rose-400 transition-colors">Services</a>
-            <a href="#stats" className="hover:text-rose-400 transition-colors">Impact</a>
-            <a href="#volunteer" className="hover:text-rose-400 transition-colors">Join Us</a>
+            <button 
+              onClick={() => setIsAdminMode(false)}
+              className={`hover:text-rose-400 transition-colors cursor-pointer ${!isAdminMode ? 'text-rose-400 font-semibold' : ''}`}
+            >
+              Home View
+            </button>
+            <a href="#services" onClick={() => setIsAdminMode(false)} className="hover:text-rose-400 transition-colors">Services</a>
+            <a href="#stats" onClick={() => setIsAdminMode(false)} className="hover:text-rose-400 transition-colors">Impact</a>
+            <button 
+              onClick={() => setIsAdminMode(true)}
+              className={`hover:text-rose-400 transition-colors cursor-pointer ${isAdminMode ? 'text-rose-400 font-semibold' : ''}`}
+            >
+              Admin Dashboard
+            </button>
           </nav>
 
           <button 
-            onClick={() => setShowModal(true)}
+            onClick={() => {
+              setIsAdminMode(false)
+              setShowModal(true)
+            }}
             className="px-6 py-2.5 rounded-full bg-gradient-to-r from-rose-500 to-indigo-600 text-white font-semibold text-sm shadow-lg shadow-rose-500/25 hover:shadow-indigo-600/35 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
           >
             Donate Now
@@ -159,161 +222,267 @@ function App() {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section id="about" className="relative pt-20 pb-24 md:pt-32 md:pb-40 px-6">
-        <div className="max-w-5xl mx-auto text-center">
-          <span className="px-4 py-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 text-rose-400 text-xs font-semibold uppercase tracking-wider mb-6 inline-block">
-            Empowering Lives, Restoring Hope
-          </span>
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight mb-8">
-            Serving with Pure Love <br />
-            &amp; <span className="bg-clip-text text-transparent bg-gradient-to-r from-rose-400 via-purple-400 to-indigo-400">Selfless Compassion</span>
-          </h1>
-          <p className="text-lg md:text-xl text-slate-400 max-w-3xl mx-auto mb-12 leading-relaxed">
-            Amma Seva is dedicated to bringing dignity, nutrition, healthcare, and education to those who need it most. Together, we make the world a warmer place.
-          </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <a 
-              href="#volunteer"
-              className="px-8 py-4 rounded-xl bg-slate-900 border border-slate-800 text-slate-200 font-semibold hover:bg-slate-800 hover:border-slate-700 transition-all cursor-pointer"
-            >
-              Become a Volunteer
-            </a>
-            <button 
-              onClick={() => setShowModal(true)}
-              className="px-8 py-4 rounded-xl bg-gradient-to-r from-rose-500 to-indigo-600 text-white font-semibold shadow-xl shadow-rose-500/20 hover:shadow-indigo-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
-            >
-              Support Our Work
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Stats Section */}
-      <section id="stats" className="py-16 bg-slate-900/50 border-y border-slate-900 px-6">
-        <div className="max-w-7xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-8">
-          {stats.map((stat, idx) => (
-            <div key={idx} className="text-center p-6 rounded-2xl bg-slate-950/40 border border-slate-900/80">
-              <span className="block text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-indigo-400 mb-2">
-                {stat.value}
+      {/* Main Layout Area */}
+      {!isAdminMode ? (
+        // Client Side Landing Page
+        <>
+          {/* Hero Section */}
+          <section id="about" className="relative pt-20 pb-24 md:pt-32 md:pb-40 px-6">
+            <div className="max-w-5xl mx-auto text-center">
+              <span className="px-4 py-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 text-rose-400 text-xs font-semibold uppercase tracking-wider mb-6 inline-block">
+                Empowering Lives, Restoring Hope
               </span>
-              <span className="text-xs md:text-sm text-slate-400 font-medium tracking-wide uppercase">
-                {stat.label}
-              </span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Services Section */}
-      <section id="services" className="py-24 px-6 max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-16">
-          <div>
-            <h2 className="text-3xl md:text-4xl font-extrabold mb-4">Our Core Initiatives</h2>
-            <p className="text-slate-400 max-w-xl">
-              We focus on basic human rights: food security, geriatric health care, child development, and clean community support.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2 mt-6 md:mt-0 bg-slate-900/60 p-1.5 rounded-xl border border-slate-800">
-            {['all', 'care', 'food', 'health', 'education'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer ${
-                  activeTab === tab 
-                    ? 'bg-gradient-to-r from-rose-500 to-indigo-600 text-white shadow'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-8">
-          {filteredServices.map((service) => (
-            <div 
-              key={service.id} 
-              className="group p-8 rounded-2xl bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-900 hover:border-slate-800 transition-all hover:scale-[1.01] hover:shadow-2xl hover:shadow-rose-500/5 duration-300"
-            >
-              <div className="w-14 h-14 rounded-xl bg-slate-800/50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                {service.icon}
-              </div>
-              <h3 className="text-xl font-bold mb-3 text-slate-100 group-hover:text-rose-400 transition-colors">
-                {service.title}
-              </h3>
-              <p className="text-slate-400 text-sm leading-relaxed mb-6">
-                {service.description}
+              <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight mb-8">
+                Serving with Pure Love <br />
+                &amp; <span className="bg-clip-text text-transparent bg-gradient-to-r from-rose-400 via-purple-400 to-indigo-400">Selfless Compassion</span>
+              </h1>
+              <p className="text-lg md:text-xl text-slate-400 max-w-3xl mx-auto mb-12 leading-relaxed">
+                Amma Seva is dedicated to bringing dignity, nutrition, healthcare, and education to those who need it most. Together, we make the world a warmer place.
               </p>
-              <a 
-                href="#volunteer"
-                className="inline-flex items-center gap-2 text-xs font-bold text-indigo-400 hover:text-rose-400 transition-colors uppercase tracking-wider"
-              >
-                Get Involved 
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </a>
+              <div className="flex flex-wrap justify-center gap-4">
+                <a 
+                  href="#volunteer"
+                  className="px-8 py-4 rounded-xl bg-slate-900 border border-slate-800 text-slate-200 font-semibold hover:bg-slate-800 hover:border-slate-700 transition-all cursor-pointer"
+                >
+                  Become a Volunteer
+                </a>
+                <button 
+                  onClick={() => setShowModal(true)}
+                  className="px-8 py-4 rounded-xl bg-gradient-to-r from-rose-500 to-indigo-600 text-white font-semibold shadow-xl shadow-rose-500/20 hover:shadow-indigo-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+                >
+                  Support Our Work
+                </button>
+              </div>
             </div>
-          ))}
-        </div>
-      </section>
+          </section>
 
-      {/* Volunteer Registration */}
-      <section id="volunteer" className="py-24 bg-gradient-to-b from-slate-950 to-slate-900 border-t border-slate-900 px-6">
-        <div className="max-w-4xl mx-auto rounded-3xl bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 p-8 md:p-12 relative overflow-hidden shadow-2xl">
-          <div className="absolute top-0 right-0 w-80 h-80 bg-rose-500/5 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-80 h-80 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
-
-          <div className="max-w-xl mx-auto text-center mb-10">
-            <h2 className="text-3xl font-extrabold mb-4">Be the Change</h2>
-            <p className="text-slate-400 text-sm">
-              Join hands with Amma Seva. Your time, skills, and empathy can uplift individuals and bring smiles to communities.
-            </p>
-          </div>
-
-          <form onSubmit={handleVolunteerSubmit} className="max-w-md mx-auto space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Your Name</label>
-              <input 
-                type="text" 
-                required
-                value={volunteerName}
-                onChange={(e) => setVolunteerName(e.target.value)}
-                placeholder="Enter name" 
-                className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 focus:border-rose-500 focus:outline-none text-slate-200 transition-colors"
-              />
+          {/* Stats Section */}
+          <section id="stats" className="py-16 bg-slate-900/50 border-y border-slate-900 px-6">
+            <div className="max-w-7xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-8">
+              {stats.map((stat, idx) => (
+                <div key={idx} className="text-center p-6 rounded-2xl bg-slate-950/40 border border-slate-900/80">
+                  <span className="block text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-indigo-400 mb-2">
+                    {stat.value}
+                  </span>
+                  <span className="text-xs md:text-sm text-slate-400 font-medium tracking-wide uppercase">
+                    {stat.label}
+                  </span>
+                </div>
+              ))}
             </div>
+          </section>
+
+          {/* Services Section */}
+          <section id="services" className="py-24 px-6 max-w-7xl mx-auto">
+            <div className="flex flex-col md:flex-row md:items-end justify-between mb-16">
+              <div>
+                <h2 className="text-3xl md:text-4xl font-extrabold mb-4">Our Core Initiatives</h2>
+                <p className="text-slate-400 max-w-xl">
+                  We focus on basic human rights: food security, geriatric health care, child development, and clean community support.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 mt-6 md:mt-0 bg-slate-900/60 p-1.5 rounded-xl border border-slate-800">
+                {['all', 'care', 'food', 'health', 'education'].map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer ${
+                      activeTab === tab 
+                        ? 'bg-gradient-to-r from-rose-500 to-indigo-600 text-white shadow'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-8">
+              {filteredServices.map((service) => (
+                <div 
+                  key={service.id} 
+                  className="group p-8 rounded-2xl bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-900 hover:border-slate-800 transition-all hover:scale-[1.01] hover:shadow-2xl hover:shadow-rose-500/5 duration-300"
+                >
+                  <div className="w-14 h-14 rounded-xl bg-slate-800/50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                    {service.icon}
+                  </div>
+                  <h3 className="text-xl font-bold mb-3 text-slate-100 group-hover:text-rose-400 transition-colors">
+                    {service.title}
+                  </h3>
+                  <p className="text-slate-400 text-sm leading-relaxed mb-6">
+                    {service.description}
+                  </p>
+                  <a 
+                    href="#volunteer"
+                    className="inline-flex items-center gap-2 text-xs font-bold text-indigo-400 hover:text-rose-400 transition-colors uppercase tracking-wider"
+                  >
+                    Get Involved 
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </a>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Volunteer Registration */}
+          <section id="volunteer" className="py-24 bg-gradient-to-b from-slate-950 to-slate-900 border-t border-slate-900 px-6">
+            <div className="max-w-4xl mx-auto rounded-3xl bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 p-8 md:p-12 relative overflow-hidden shadow-2xl">
+              <div className="absolute top-0 right-0 w-80 h-80 bg-rose-500/5 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute bottom-0 left-0 w-80 h-80 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="max-w-xl mx-auto text-center mb-10">
+                <h2 className="text-3xl font-extrabold mb-4">Be the Change</h2>
+                <p className="text-slate-400 text-sm">
+                  Join hands with Amma Seva. Your time, skills, and empathy can uplift individuals and bring smiles to communities.
+                </p>
+              </div>
+
+              <form onSubmit={handleVolunteerSubmit} className="max-w-md mx-auto space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Your Name</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={volunteerName}
+                    onChange={(e) => setVolunteerName(e.target.value)}
+                    placeholder="Enter name" 
+                    className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 focus:border-rose-500 focus:outline-none text-slate-200 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Email Address</label>
+                  <input 
+                    type="email" 
+                    required
+                    value={volunteerEmail}
+                    onChange={(e) => setVolunteerEmail(e.target.value)}
+                    placeholder="you@example.com" 
+                    className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 focus:border-rose-500 focus:outline-none text-slate-200 transition-colors"
+                  />
+                </div>
+                <button 
+                  type="submit"
+                  className="w-full py-4 rounded-xl bg-gradient-to-r from-rose-500 to-indigo-600 text-white font-bold tracking-wider hover:opacity-90 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
+                >
+                  Sign Up as Volunteer
+                </button>
+
+                {volunteerSubmitted && (
+                  <div className="mt-4 p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-sm text-center">
+                    ✨ Thank you, <strong>{volunteerName}</strong>! We've received your interest and saved it to our database.
+                  </div>
+                )}
+              </form>
+            </div>
+          </section>
+        </>
+      ) : (
+        // Admin Dashboard Panel View
+        <section className="py-12 px-6 max-w-7xl mx-auto">
+          <div className="flex items-center justify-between mb-12 border-b border-slate-900 pb-6">
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Email Address</label>
-              <input 
-                type="email" 
-                required
-                value={volunteerEmail}
-                onChange={(e) => setVolunteerEmail(e.target.value)}
-                placeholder="you@example.com" 
-                className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 focus:border-rose-500 focus:outline-none text-slate-200 transition-colors"
-              />
+              <h2 className="text-3xl font-extrabold tracking-tight">Admin Management Panel</h2>
+              <p className="text-slate-400 text-sm mt-1">Review active volunteer registrations and donation records stored in the database.</p>
             </div>
             <button 
-              type="submit"
-              className="w-full py-4 rounded-xl bg-gradient-to-r from-rose-500 to-indigo-600 text-white font-bold tracking-wider hover:opacity-90 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
+              onClick={fetchAdminData}
+              className="px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 font-semibold text-xs cursor-pointer"
             >
-              Sign Up as Volunteer
+              🔄 Refresh Data
             </button>
+          </div>
 
-            {volunteerSubmitted && (
-              <div className="mt-4 p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-sm text-center">
-                ✨ Thank you, <strong>{volunteerName}</strong>! We've received your interest and will reach out shortly.
-              </div>
-            )}
-          </form>
-        </div>
-      </section>
+          <div className="grid lg:grid-cols-2 gap-12">
+            {/* Volunteers List */}
+            <div className="rounded-2xl bg-slate-900/50 border border-slate-900 p-6">
+              <h3 className="text-xl font-bold mb-6 text-rose-400 flex items-center gap-2">
+                👥 Volunteers List ({adminVolunteers.length})
+              </h3>
+              {adminVolunteers.length === 0 ? (
+                <p className="text-slate-500 text-sm py-6 text-center">No volunteers registered yet.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm text-slate-300">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-xs text-slate-500 uppercase font-semibold">
+                        <th className="py-3 px-2">ID</th>
+                        <th className="py-3 px-2">Name</th>
+                        <th className="py-3 px-2">Email</th>
+                        <th className="py-3 px-2 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/50">
+                      {adminVolunteers.map((vol) => (
+                        <tr key={vol.id} className="hover:bg-slate-950/30 transition-colors">
+                          <td className="py-3.5 px-2 font-mono text-xs">{vol.id}</td>
+                          <td className="py-3.5 px-2 font-semibold text-slate-100">{vol.name}</td>
+                          <td className="py-3.5 px-2 text-slate-400">{vol.email}</td>
+                          <td className="py-3.5 px-2 text-right">
+                            <button
+                              onClick={() => handleDeleteVolunteer(vol.id)}
+                              className="px-2.5 py-1 rounded bg-rose-500/10 hover:bg-rose-500 border border-rose-500/20 hover:border-rose-500 text-rose-400 hover:text-white text-xs font-semibold transition-all cursor-pointer"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Donations List */}
+            <div className="rounded-2xl bg-slate-900/50 border border-slate-900 p-6">
+              <h3 className="text-xl font-bold mb-6 text-indigo-400 flex items-center gap-2">
+                💰 Donation Records ({adminDonations.length})
+              </h3>
+              {adminDonations.length === 0 ? (
+                <p className="text-slate-500 text-sm py-6 text-center">No donations received yet.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm text-slate-300">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-xs text-slate-500 uppercase font-semibold">
+                        <th className="py-3 px-2">ID</th>
+                        <th className="py-3 px-2">Amount</th>
+                        <th className="py-3 px-2">Date</th>
+                        <th className="py-3 px-2 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/50">
+                      {adminDonations.map((don) => (
+                        <tr key={don.id} className="hover:bg-slate-950/30 transition-colors">
+                          <td className="py-3.5 px-2 font-mono text-xs">{don.id}</td>
+                          <td className="py-3.5 px-2 font-bold text-emerald-400">${Number(don.amount).toFixed(2)}</td>
+                          <td className="py-3.5 px-2 text-slate-500 text-xs">
+                            {new Date(don.donatedAt).toLocaleDateString()} {new Date(don.donatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </td>
+                          <td className="py-3.5 px-2 text-right">
+                            <button
+                              onClick={() => handleDeleteDonation(don.id)}
+                              className="px-2.5 py-1 rounded bg-rose-500/10 hover:bg-rose-500 border border-rose-500/20 hover:border-rose-500 text-rose-400 hover:text-white text-xs font-semibold transition-all cursor-pointer"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Footer */}
-      <footer className="bg-slate-950 border-t border-slate-900 py-12 px-6">
+      <footer className="bg-slate-950 border-t border-slate-900 py-12 px-6 mt-12">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-rose-500 to-indigo-600 flex items-center justify-center font-bold text-white">

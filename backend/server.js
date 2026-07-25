@@ -3,16 +3,13 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { db } from './db.js'
 
 // Load environment variables
 dotenv.config()
 
 const app = express()
 const PORT = process.env.PORT || 5000
-
-// In-memory data store (acting as a mock database)
-const volunteersList = []
-const donationsList = []
 
 // Core Initiatives Data
 const servicesList = [
@@ -49,62 +46,105 @@ app.use(cors({
 }))
 app.use(express.json())
 
-// HTTP request logger placeholder
+// HTTP request logger
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`)
   next()
 })
 
 // API Endpoints
+
+// GET core services
 app.get('/api/services', (req, res) => {
   res.json(servicesList)
 })
 
-app.post('/api/volunteer', (req, res) => {
+// GET all volunteers (Admin Panel)
+app.get('/api/volunteers', async (req, res) => {
+  try {
+    const list = await db.getVolunteers()
+    res.json(list)
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve volunteers list.' })
+  }
+})
+
+// POST register volunteer
+app.post('/api/volunteer', async (req, res) => {
   const { name, email } = req.body
 
   if (!name || !email) {
     return res.status(400).json({ error: 'Name and email are required fields.' })
   }
 
-  const newVolunteer = {
-    id: volunteersList.length + 1,
-    name,
-    email,
-    registeredAt: new Date().toISOString()
+  try {
+    const newVolunteer = await db.addVolunteer(name, email)
+    res.status(201).json({
+      success: true,
+      message: 'Volunteer successfully registered!',
+      data: newVolunteer
+    })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to register volunteer.' })
   }
-
-  volunteersList.push(newVolunteer)
-  console.log(`✨ New volunteer registered:`, newVolunteer)
-
-  res.status(201).json({
-    success: true,
-    message: 'Volunteer successfully registered!',
-    data: newVolunteer
-  })
 })
 
-app.post('/api/donate', (req, res) => {
+// DELETE volunteer (Admin Panel)
+app.delete('/api/volunteer/:id', async (req, res) => {
+  try {
+    const deleted = await db.deleteVolunteer(req.params.id)
+    if (deleted) {
+      res.json({ success: true, message: 'Volunteer entry successfully deleted.' })
+    } else {
+      res.status(404).json({ error: 'Volunteer entry not found.' })
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete volunteer.' })
+  }
+})
+
+// GET all donations (Admin Panel)
+app.get('/api/donations', async (req, res) => {
+  try {
+    const list = await db.getDonations()
+    res.json(list)
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve donations list.' })
+  }
+})
+
+// POST record donation
+app.post('/api/donate', async (req, res) => {
   const { amount } = req.body
 
   if (!amount || isNaN(amount) || amount <= 0) {
     return res.status(400).json({ error: 'A valid donation amount greater than 0 is required.' })
   }
 
-  const newDonation = {
-    id: donationsList.length + 1,
-    amount: Number(amount),
-    donatedAt: new Date().toISOString()
+  try {
+    const newDonation = await db.addDonation(amount)
+    res.status(201).json({
+      success: true,
+      message: 'Donation successfully registered!',
+      data: newDonation
+    })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to record donation.' })
   }
+})
 
-  donationsList.push(newDonation)
-  console.log(`💖 New donation received: $${amount}`, newDonation)
-
-  res.status(201).json({
-    success: true,
-    message: 'Donation successfully registered!',
-    data: newDonation
-  })
+// DELETE donation (Admin Panel)
+app.delete('/api/donate/:id', async (req, res) => {
+  try {
+    const deleted = await db.deleteDonation(req.params.id)
+    if (deleted) {
+      res.json({ success: true, message: 'Donation record successfully deleted.' })
+    } else {
+      res.status(404).json({ error: 'Donation record not found.' })
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete donation record.' })
+  }
 })
 
 // Resolve __dirname in ES Modules
@@ -117,11 +157,9 @@ app.use(express.static(frontendDistPath))
 
 // Single Page Application (SPA) Routing Fallback
 app.get('*', (req, res, next) => {
-  // If request is for an API endpoint, let it pass to API handlers (will return 404 if not found)
   if (req.path.startsWith('/api')) {
     return next()
   }
-  // Otherwise, serve the main index.html file
   res.sendFile(path.join(frontendDistPath, 'index.html'))
 })
 
@@ -130,7 +168,12 @@ app.use('/api', (req, res) => {
   res.status(404).json({ error: 'API endpoint not found.' })
 })
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Amma Seva Backend running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`)
-})
+// Initialize DB and start server
+const startServer = async () => {
+  await db.init()
+  app.listen(PORT, () => {
+    console.log(`🚀 Amma Seva Backend running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`)
+  })
+}
+
+startServer()
