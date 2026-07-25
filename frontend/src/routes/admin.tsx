@@ -4,13 +4,15 @@ import { SiteLayout } from "@/components/SiteLayout";
 import { 
   Trash2, RefreshCw, Mail, Phone, MapPin, ClipboardList, 
   Users, Calendar, DollarSign, ShieldAlert, LogOut, CheckCircle2, 
-  XCircle, Edit3, Save, Check, UserCheck
+  XCircle, Edit3, Save, Check, LayoutDashboard, CalendarDays,
+  UserCheck, MessageSquare, Sliders, Bell, Search, Settings as SettingsIcon,
+  ChevronRight, TrendingDown, ArrowUpRight
 } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "Admin Portal — Amma Seva" },
+      { title: "Admin Control Center — Amma Seva" },
       { name: "robots", content: "noindex, nofollow" }
     ],
   }),
@@ -62,8 +64,11 @@ function AdminPage() {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
 
-  // Dashboard state
+  // Dashboard layout/navigation state
   const [activeTab, setActiveTab] = useState<"overview" | "bookings" | "caregivers" | "enquiries" | "services">("overview");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Database states
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [caregivers, setCaregivers] = useState<Caregiver[]>([]);
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
@@ -105,7 +110,6 @@ function AdminPage() {
     }
   };
 
-  // Trigger fetch when logged in
   useEffect(() => {
     if (isLoggedIn) {
       fetchDashboardData();
@@ -145,12 +149,9 @@ function AdminPage() {
   const handleLogout = () => {
     localStorage.removeItem("ammaseva_admin_token");
     setIsLoggedIn(false);
-    setBookings([]);
-    setCaregivers([]);
-    setEnquiries([]);
   };
 
-  // Handle caregiver approval
+  // Handle caregiver status change
   const handleUpdateCaregiver = (id: number, status: "Verified" | "Rejected") => {
     fetch(`/api/caregiver/${id}`, {
       method: "PUT",
@@ -163,8 +164,6 @@ function AdminPage() {
           setCaregivers(prev => 
             prev.map(c => c.id === id ? { ...c, status } : c)
           );
-        } else {
-          alert(data.error || "Failed to update profile.");
         }
       })
       .catch(err => console.error(err));
@@ -201,8 +200,6 @@ function AdminPage() {
             } : b)
           );
           setEditingBookingId(null);
-        } else {
-          alert(data.error || "Failed to update booking.");
         }
       })
       .catch(err => console.error(err));
@@ -222,7 +219,6 @@ function AdminPage() {
     }
   };
 
-  // Services Catalog list
   const servicesCatalog = [
     { title: "Elderly Care at Home", description: "Assisting seniors with daily tasks and medication routine", price: "₹1,200/day" },
     { title: "Mother & Baby Care", description: "Postnatal care for new moms and newborn health checks", price: "₹2,500/day" },
@@ -231,7 +227,7 @@ function AdminPage() {
     { title: "ICU/Home Recovery Support", description: "Critical home support with specialized medical staff", price: "₹4,500/day" }
   ];
 
-  // Calculated values for stats overview
+  // Calculated overview stats
   const totalRevenue = bookings
     .filter(b => b.paymentStatus === "Paid" && b.status !== "Cancelled")
     .reduce((sum, b) => sum + Number(b.amount), 0);
@@ -239,12 +235,30 @@ function AdminPage() {
   const pendingBookingsCount = bookings.filter(b => b.status === "Pending").length;
   const verifiedCaregiversCount = caregivers.filter(c => c.status === "Verified").length;
 
+  // Search filtering logic
+  const filteredBookings = bookings.filter(b => 
+    b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    b.phone.includes(searchQuery) ||
+    b.service.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredCaregivers = caregivers.filter(c => 
+    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.phone.includes(searchQuery) ||
+    c.specialty.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredEnquiries = enquiries.filter(e => 
+    e.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    e.phone.includes(searchQuery) ||
+    (e.service && e.service.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
   if (!isLoggedIn) {
-    // Render Login Page Card
     return (
       <SiteLayout>
-        <div className="flex min-h-[75vh] items-center justify-center bg-cream/20 px-4 py-16">
-          <div className="w-full max-w-md rounded-2xl border border-border bg-background p-8 shadow-md">
+        <div className="flex min-h-[75vh] items-center justify-center bg-slate-50 px-4 py-16">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200/60 bg-white p-8 shadow-sm">
             <div className="text-center mb-8">
               <span className="gold-rule text-xs font-semibold uppercase tracking-[0.2em] text-gold">Secure Gateway</span>
               <h2 className="mt-3 text-3xl font-semibold text-primary font-display">Admin Authentication</h2>
@@ -252,7 +266,7 @@ function AdminPage() {
             </div>
 
             {loginError && (
-              <div className="mb-6 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-destructive text-sm flex gap-2 items-center">
+              <div className="mb-6 rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-destructive text-sm flex gap-2 items-center">
                 <ShieldAlert className="h-4 w-4 shrink-0" />
                 <span>{loginError}</span>
               </div>
@@ -267,7 +281,7 @@ function AdminPage() {
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
                   placeholder="ammasevahomecare@gmail.com"
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full rounded-md border border-slate-200 bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold"
                 />
               </div>
 
@@ -279,7 +293,7 @@ function AdminPage() {
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full rounded-md border border-slate-200 bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold"
                 />
               </div>
 
@@ -293,172 +307,325 @@ function AdminPage() {
     );
   }
 
-  // Render Logged-in Dashboard
   return (
-    <SiteLayout>
-      {/* Dashboard Top Area */}
-      <section className="border-b border-border bg-cream/40 py-8 px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div>
-            <div className="flex items-center gap-3">
-              <span className="gold-rule text-xs font-semibold uppercase tracking-[0.2em] text-gold">Systems management</span>
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[10px] uppercase font-bold text-emerald-600 tracking-wider">Live</span>
-            </div>
-            <h1 className="mt-3 text-3xl font-semibold text-primary sm:text-4xl">Amma Seva Control Center</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Logged in as: <strong className="text-primary">ammasevahomecare@gmail.com</strong></p>
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col lg:flex-row">
+      
+      {/* LEFT SIDEBAR Layout (White base, grey border) */}
+      <aside className="w-full lg:w-72 bg-white border-b lg:border-b-0 lg:border-r border-slate-200/60 flex flex-col shrink-0">
+        
+        {/* Brand Header */}
+        <div className="px-6 py-6 border-b border-slate-100 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-500 to-indigo-600 flex items-center justify-center font-bold text-xl text-white shadow-md">
+            A
           </div>
-          
-          <div className="flex gap-3">
-            <button
-              onClick={fetchDashboardData}
-              disabled={isLoading}
-              className="btn-outline flex items-center gap-2 text-xs py-2"
-            >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
-              Sync DB
-            </button>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2.5 rounded-md border border-destructive/20 bg-destructive/10 hover:bg-destructive hover:text-white text-destructive text-xs font-bold flex items-center gap-2 transition-all cursor-pointer"
-            >
-              <LogOut className="h-4 w-4" />
-              Sign Out
-            </button>
+          <div>
+            <span className="font-extrabold text-xl tracking-tight text-primary">
+              Amma Seva
+            </span>
+            <p className="text-[9px] text-slate-400 tracking-widest uppercase font-semibold">Systems admin</p>
           </div>
         </div>
-      </section>
 
-      {/* Tabs Switcher Navigation */}
-      <section className="bg-background border-b border-border">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex overflow-x-auto gap-8 py-4 scrollbar-none">
-            {[
-              { id: "overview", label: "System Stats" },
-              { id: "bookings", label: `Bookings (${bookings.length})` },
-              { id: "caregivers", label: `Nurses/Staff (${caregivers.length})` },
-              { id: "enquiries", label: `Customer Leads (${enquiries.length})` },
-              { id: "services", label: "Catalog & Pricing" }
-            ].map((tab) => (
+        {/* Sidebar Nav Items */}
+        <nav className="p-4 space-y-1.5 flex-1">
+          {[
+            { id: "overview", label: "Dashboard", icon: LayoutDashboard },
+            { id: "bookings", label: "Manage Bookings", icon: CalendarDays },
+            { id: "caregivers", label: "Staff Approvals", icon: UserCheck },
+            { id: "enquiries", label: "Customer Leads", icon: MessageSquare },
+            { id: "services", label: "Catalog & Pricing", icon: Sliders }
+          ].map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`text-sm font-semibold tracking-wide border-b-2 pb-2 transition-all shrink-0 cursor-pointer ${
-                  activeTab === tab.id
-                    ? "border-gold text-primary font-bold"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
+                key={item.id}
+                onClick={() => setActiveTab(item.id as any)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+                  isActive
+                    ? "bg-slate-100 text-primary"
+                    : "text-slate-600 hover:bg-slate-55 hover:text-slate-900"
                 }`}
               >
-                {tab.label}
+                <Icon className={`h-4.5 w-4.5 ${isActive ? "text-primary" : "text-slate-400"}`} />
+                {item.label}
               </button>
-            ))}
+            );
+          })}
+        </nav>
+
+        {/* Status Indicators & Sign Out bottom */}
+        <div className="p-4 border-t border-slate-100 space-y-4">
+          <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100 text-xs space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400">MySQL Database</span>
+              <span className="text-emerald-600 font-bold flex items-center gap-1">
+                <Check className="h-3 w-3" /> Live
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400">Environment</span>
+              <span className="font-semibold text-slate-700">Production</span>
+            </div>
           </div>
+          
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-destructive/20 bg-destructive/5 hover:bg-destructive hover:text-white text-destructive text-xs font-bold transition-all cursor-pointer"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign Out Session
+          </button>
         </div>
-      </section>
+      </aside>
 
-      {/* Main Tab Panel Display */}
-      <section className="py-10 bg-background min-h-[50vh] px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          {error && (
-            <div className="mb-6 rounded-xl border border-destructive/20 bg-destructive/10 p-4 text-destructive text-sm">
-              ⚠️ {error}
+      {/* RIGHT MAIN PANEL Layout */}
+      <div className="flex-1 flex flex-col min-w-0">
+        
+        {/* Top Header Bar */}
+        <header className="h-20 bg-white border-b border-slate-200/60 px-6 sm:px-8 flex items-center justify-between gap-4 shrink-0">
+          
+          {/* Search box (Metoxi style) */}
+          <div className="relative max-w-md w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search bookings, caregivers or enquiries..."
+              className="w-full pl-10 pr-4 py-2 text-sm bg-slate-50 border border-slate-200/60 rounded-xl outline-none focus:bg-white focus:border-gold transition-colors text-slate-700"
+            />
+          </div>
+
+          {/* User profile / notification buttons */}
+          <div className="flex items-center gap-4 shrink-0">
+            <button 
+              onClick={fetchDashboardData}
+              className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 relative"
+              title="Sync Database"
+            >
+              <RefreshCw className={`h-5 w-5 ${isLoading ? "animate-spin" : ""}`} />
+            </button>
+            
+            <button className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 relative">
+              <Bell className="h-5 w-5" />
+              <span className="absolute top-1 right-1.5 h-2 w-2 rounded-full bg-rose-500" />
+            </button>
+            
+            <div className="h-9 w-9 rounded-full bg-slate-900 border border-slate-200 flex items-center justify-center text-sm font-bold text-white uppercase select-none">
+              A
             </div>
-          )}
+          </div>
+        </header>
 
-          {/* Overview statistics Tab */}
+        {/* Dashboard Main Content Area */}
+        <main className="p-6 sm:p-8 flex-1 overflow-y-auto">
+          
+          {/* Dashboard Overview tab */}
           {activeTab === "overview" && (
-            <div className="space-y-10">
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                <StatCard icon={DollarSign} color="emerald" label="Total Sales/Revenue" value={`₹${totalRevenue.toLocaleString()}`} desc="From all fully paid invoices" />
-                <StatCard icon={Calendar} color="gold" label="Pending Requests" value={pendingBookingsCount.toString()} desc="Needs staff assignment" />
-                <StatCard icon={Users} color="indigo" label="Active Caregivers" value={verifiedCaregiversCount.toString()} desc="Verified active profiles" />
-                <StatCard icon={ClipboardList} color="rose" label="Client Inquiries" value={enquiries.length.toString()} desc="Pending customer contacts" />
-              </div>
-
-              <div className="grid lg:grid-cols-3 gap-8">
-                {/* Quick actions box */}
-                <div className="rounded-2xl border border-border bg-background p-6 shadow-sm col-span-2 space-y-4">
-                  <h3 className="text-lg font-semibold text-primary font-display border-b border-border pb-3">Systems health & Operations</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center text-sm p-3 rounded-lg bg-cream/10 border border-border/40">
-                      <span className="text-muted-foreground">MySQL Production Connection</span>
-                      <span className="text-emerald-600 font-semibold flex items-center gap-1"><Check className="h-4 w-4" /> Active</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm p-3 rounded-lg bg-cream/10 border border-border/40">
-                      <span className="text-muted-foreground">Database Storage Size</span>
-                      <span className="text-primary font-medium">Automatic (Hostinger Managed)</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm p-3 rounded-lg bg-cream/10 border border-border/40">
-                      <span className="text-muted-foreground">Verification Gateway status</span>
-                      <span className="text-primary font-medium">Auto-seeding verified staff list</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-border bg-background p-6 shadow-sm flex flex-col justify-between">
+            <div className="space-y-6">
+              
+              {/* Row 1: Weekly bookings line chart & Metric widgets */}
+              <div className="grid gap-6 lg:grid-cols-3">
+                
+                {/* Weekly bookings line chart Card */}
+                <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm col-span-1 lg:col-span-1 flex flex-col justify-between">
                   <div>
-                    <h3 className="text-lg font-semibold text-primary font-display border-b border-border pb-3">Latest Activity Log</h3>
-                    <div className="mt-4 space-y-3 text-xs text-muted-foreground">
-                      <p>• Database verified & auto-populated.</p>
-                      <p>• System synchronized successfully.</p>
-                      <p>• Admin logged in from Hyderabad office.</p>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="block text-3xl font-bold font-display text-slate-900">₹{totalRevenue.toLocaleString()}</span>
+                        <span className="text-xs text-slate-400 mt-1 block">Average Weekly Sales</span>
+                      </div>
+                      <span className="inline-flex items-center gap-0.5 text-xs font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
+                        <TrendingDown className="h-3.5 w-3.5" /> 8.6%
+                      </span>
                     </div>
                   </div>
-                  <button 
-                    onClick={() => setActiveTab("bookings")}
-                    className="btn-primary w-full text-center mt-6 py-2"
-                  >
-                    View All Bookings
-                  </button>
+                  
+                  {/* SVG line chart representation */}
+                  <div className="h-28 mt-6">
+                    <svg className="w-full h-full" viewBox="0 0 300 100" preserveAspectRatio="none">
+                      <defs>
+                        <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#10b981" stopOpacity="0.2"/>
+                          <stop offset="100%" stopColor="#10b981" stopOpacity="0"/>
+                        </linearGradient>
+                      </defs>
+                      <path
+                        d="M 0 80 Q 50 20 100 60 T 200 30 T 300 50"
+                        fill="none"
+                        stroke="#10b981"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M 0 80 Q 50 20 100 60 T 200 30 T 300 50 L 300 100 L 0 100 Z"
+                        fill="url(#chartGradient)"
+                      />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Grid of 4 horizontal cards (Metoxi style) */}
+                <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm col-span-1 lg:col-span-2 grid grid-cols-2 gap-y-8 gap-x-6">
+                  <HorizontalMetric icon={Calendar} iconColor="text-indigo-500 bg-indigo-50" label="Bookings" value={bookings.length.toString()} />
+                  <HorizontalMetric icon={DollarSign} iconColor="text-emerald-500 bg-emerald-50" label="Revenue" value={`₹${totalRevenue.toLocaleString()}`} />
+                  <HorizontalMetric icon={Users} iconColor="text-rose-500 bg-rose-50" label="Nurses" value={caregivers.length.toString()} />
+                  <HorizontalMetric icon={ClipboardList} iconColor="text-amber-500 bg-amber-50" label="Inquiries" value={enquiries.length.toString()} />
                 </div>
               </div>
+
+              {/* Row 2: Sales comparison double bar chart & progress circles */}
+              <div className="grid gap-6 lg:grid-cols-3">
+                
+                {/* Users progress cards */}
+                <div className="grid gap-6 col-span-1">
+                  
+                  {/* Total Users bar chart widget */}
+                  <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm">
+                    <div className="flex justify-between items-center mb-4">
+                      <div>
+                        <span className="block text-2xl font-bold font-display text-slate-900">{caregivers.length} Staff</span>
+                        <span className="text-xs text-slate-400">Total Caregivers</span>
+                      </div>
+                      <span className="text-xs text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">+12.5%</span>
+                    </div>
+                    {/* SVG mini bar chart */}
+                    <div className="h-16 flex items-end justify-between gap-1.5 pt-2">
+                      {[15, 30, 45, 20, 35, 50, 40, 25, 45, 60, 55, 65].map((val, idx) => (
+                        <div key={idx} className="bg-rose-500 rounded-t-sm w-full" style={{ height: `${val}%` }} />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Active Users progress gauge */}
+                  <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm flex items-center justify-between gap-4">
+                    <div>
+                      <span className="block text-2xl font-bold font-display text-slate-900">78%</span>
+                      <span className="text-xs text-slate-400">Caregiver Utilization</span>
+                      <p className="text-[10px] text-slate-400 mt-2">Active nurses assigned to active shifts</p>
+                    </div>
+                    {/* SVG circular progress */}
+                    <div className="relative w-18 h-18 shrink-0">
+                      <svg className="w-full h-full" viewBox="0 0 36 36">
+                        <path
+                          className="text-slate-100"
+                          strokeWidth="3.5"
+                          stroke="currentColor"
+                          fill="none"
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                        />
+                        <path
+                          className="text-indigo-600"
+                          strokeWidth="3.5"
+                          strokeDasharray="78, 100"
+                          strokeLinecap="round"
+                          stroke="currentColor"
+                          fill="none"
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sales & Views Double Bar Chart Card (Metoxi style) */}
+                <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm col-span-1 lg:col-span-2 flex flex-col justify-between">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">Sales &amp; Leads</h3>
+                    <div className="flex gap-4 text-xs">
+                      <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded bg-indigo-600" /> Bookings</span>
+                      <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded bg-purple-400" /> Enquiries</span>
+                    </div>
+                  </div>
+
+                  {/* SVG Double Bar Chart */}
+                  <div className="h-44 flex items-end justify-between gap-6 px-2">
+                    {[
+                      { b: 40, e: 30, m: "Jan" },
+                      { b: 20, e: 45, m: "Feb" },
+                      { b: 85, e: 60, m: "Mar" },
+                      { b: 30, e: 40, m: "Apr" },
+                      { b: 50, e: 45, m: "May" },
+                      { b: 40, e: 30, m: "Jun" },
+                      { b: 60, e: 55, m: "Jul" },
+                      { b: 30, e: 25, m: "Aug" }
+                    ].map((item, idx) => (
+                      <div key={idx} className="flex-1 flex flex-col items-center gap-2">
+                        <div className="w-full flex items-end justify-center gap-1 h-32">
+                          <div className="bg-indigo-600 rounded-t-sm w-3.5" style={{ height: `${item.b}%` }} />
+                          <div className="bg-purple-400 rounded-t-sm w-3.5" style={{ height: `${item.e}%` }} />
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-semibold">{item.m}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 3: Target Goal Progress Card */}
+              <div className="grid gap-6 md:grid-cols-3">
+                <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm col-span-1 md:col-span-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="space-y-1">
+                    <span className="text-lg font-bold text-slate-900 font-display">₹65,129 Goal Progress</span>
+                    <p className="text-xs text-slate-400">Total platform revenue target set for Q3 2026</p>
+                  </div>
+                  
+                  <div className="flex-1 max-w-md w-full">
+                    <div className="flex justify-between items-center text-xs font-semibold text-slate-500 mb-1.5">
+                      <span>78% completed</span>
+                      <span>₹65,129 Goal</span>
+                    </div>
+                    <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-indigo-600 rounded-full" style={{ width: "78%" }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             </div>
           )}
 
-          {/* Bookings Management Tab */}
+          {/* Bookings View panel */}
           {activeTab === "bookings" && (
-            <div className="rounded-2xl border border-border bg-background overflow-hidden shadow-sm">
+            <div className="bg-white border border-slate-200/60 rounded-2xl overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-foreground">
+                <table className="w-full text-left text-sm text-slate-700">
                   <thead>
-                    <tr className="border-b border-border bg-cream/10 text-xs text-muted-foreground uppercase font-semibold">
-                      <th className="py-3 px-4">Patient details</th>
-                      <th className="py-3 px-4">Service &amp; Shift</th>
-                      <th className="py-3 px-4">Date &amp; Time</th>
-                      <th className="py-3 px-4">Assigned Nurse</th>
-                      <th className="py-3 px-4">Status</th>
-                      <th className="py-3 px-4">Payment</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
+                    <tr className="border-b border-slate-200 bg-slate-50/55 text-xs text-slate-400 uppercase font-bold tracking-wider">
+                      <th className="py-4 px-6">Patient details</th>
+                      <th className="py-4 px-6">Service &amp; Shift</th>
+                      <th className="py-4 px-6">Date &amp; Time</th>
+                      <th className="py-4 px-6">Assigned Nurse</th>
+                      <th className="py-4 px-6">Status</th>
+                      <th className="py-4 px-6">Payment</th>
+                      <th className="py-4 px-6 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border/60">
-                    {bookings.map((b) => {
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredBookings.map((b) => {
                       const isEditing = editingBookingId === b.id;
                       return (
-                        <tr key={b.id} className="hover:bg-cream/5 transition-colors">
-                          {/* Patient details */}
-                          <td className="py-4 px-4">
-                            <div className="font-semibold text-primary font-display">{b.name}</div>
-                            <div className="text-xs text-muted-foreground mt-0.5">{b.phone}</div>
-                            <div className="text-xs text-muted-foreground italic mt-0.5 truncate max-w-xs">{b.address}</div>
+                        <tr key={b.id} className="hover:bg-slate-50/30 transition-colors">
+                          <td className="py-4 px-6">
+                            <div className="font-semibold text-primary font-display text-base">{b.name}</div>
+                            <div className="text-xs text-slate-400 mt-0.5">{b.phone}</div>
+                            <div className="text-xs text-slate-400 italic mt-0.5 truncate max-w-xs">{b.address}</div>
                           </td>
-                          {/* Service */}
-                          <td className="py-4 px-4">
+                          <td className="py-4 px-6">
                             <div className="font-medium text-slate-800">{b.service}</div>
-                            <div className="text-xs text-gold font-bold uppercase tracking-wider mt-0.5">{b.duration}</div>
+                            <div className="text-[10px] text-gold font-extrabold uppercase tracking-wider mt-0.5">{b.duration}</div>
                           </td>
-                          {/* Date & Time */}
-                          <td className="py-4 px-4 text-xs text-muted-foreground">
+                          <td className="py-4 px-6 text-xs text-slate-500">
                             <div>{b.date}</div>
                             <div className="mt-0.5">{b.time} AM/PM</div>
                           </td>
-                          {/* Assigned Nurse */}
-                          <td className="py-4 px-4">
+                          <td className="py-4 px-6">
                             {isEditing ? (
                               <select
                                 value={editAssignedStaff}
                                 onChange={(e) => setEditAssignedStaff(e.target.value)}
-                                className="text-xs rounded border border-border p-1 outline-none bg-background focus:ring-1 focus:ring-gold"
+                                className="text-xs rounded border border-slate-200 p-1.5 outline-none bg-background focus:ring-1 focus:ring-gold"
                               >
                                 <option value="">-- Unassigned --</option>
                                 {caregivers
@@ -473,13 +640,12 @@ function AdminPage() {
                               </div>
                             )}
                           </td>
-                          {/* Status */}
-                          <td className="py-4 px-4">
+                          <td className="py-4 px-6">
                             {isEditing ? (
                               <select
                                 value={editStatus}
                                 onChange={(e) => setEditStatus(e.target.value)}
-                                className="text-xs rounded border border-border p-1 outline-none bg-background focus:ring-1 focus:ring-gold"
+                                className="text-xs rounded border border-slate-200 p-1.5 outline-none bg-background focus:ring-1 focus:ring-gold"
                               >
                                 <option value="Pending">Pending</option>
                                 <option value="Confirmed">Confirmed</option>
@@ -487,23 +653,22 @@ function AdminPage() {
                               </select>
                             ) : (
                               <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded ${
-                                b.status === "Confirmed" ? "bg-emerald-100 text-emerald-800 border border-emerald-200" :
-                                b.status === "Cancelled" ? "bg-rose-100 text-rose-800 border border-rose-200" :
-                                "bg-amber-100 text-amber-800 border border-amber-200"
+                                b.status === "Confirmed" ? "bg-emerald-50 text-emerald-800 border border-emerald-100" :
+                                b.status === "Cancelled" ? "bg-rose-50 text-rose-800 border border-rose-100" :
+                                "bg-amber-50 text-amber-800 border border-amber-100"
                               }`}>
                                 {b.status}
                               </span>
                             )}
                           </td>
-                          {/* Payment */}
-                          <td className="py-4 px-4">
+                          <td className="py-4 px-6">
                             {isEditing ? (
                               <div className="space-y-1">
                                 <div className="text-xs font-bold">₹{b.amount}</div>
                                 <select
                                   value={editPaymentStatus}
                                   onChange={(e) => setEditPaymentStatus(e.target.value)}
-                                  className="text-[10px] rounded border border-border p-1 outline-none bg-background"
+                                  className="text-[10px] rounded border border-slate-200 p-1 bg-background"
                                 >
                                   <option value="Unpaid">Unpaid</option>
                                   <option value="Paid">Paid</option>
@@ -520,20 +685,19 @@ function AdminPage() {
                               </div>
                             )}
                           </td>
-                          {/* Actions */}
-                          <td className="py-4 px-4 text-right">
+                          <td className="py-4 px-6 text-right">
                             {isEditing ? (
-                              <div className="flex gap-1 justify-end">
+                              <div className="flex gap-1.5 justify-end">
                                 <button
                                   onClick={() => saveBookingEdit(b.id)}
-                                  className="p-1 rounded bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm cursor-pointer"
-                                  title="Save Changes"
+                                  className="p-1.5 rounded bg-emerald-500 hover:bg-emerald-600 text-white cursor-pointer"
+                                  title="Save"
                                 >
                                   <Save className="h-4 w-4" />
                                 </button>
                                 <button
                                   onClick={() => setEditingBookingId(null)}
-                                  className="p-1 rounded bg-slate-200 hover:bg-slate-300 text-slate-700 cursor-pointer"
+                                  className="p-1.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer"
                                   title="Cancel"
                                 >
                                   <XCircle className="h-4 w-4" />
@@ -542,9 +706,9 @@ function AdminPage() {
                             ) : (
                               <button
                                 onClick={() => startEditBooking(b)}
-                                className="px-2.5 py-1 rounded bg-accent hover:bg-gold hover:text-white border border-border text-gold text-xs font-semibold flex items-center gap-1 ml-auto cursor-pointer"
+                                className="px-3 py-1 rounded-xl bg-slate-50 hover:bg-gold hover:text-white border border-slate-200 text-gold text-xs font-semibold flex items-center gap-1.5 ml-auto cursor-pointer transition-colors"
                               >
-                                <Edit3 className="h-3 w-3" />
+                                <Edit3 className="h-3.5 w-3.5" />
                                 Manage
                               </button>
                             )}
@@ -558,61 +722,61 @@ function AdminPage() {
             </div>
           )}
 
-          {/* Staff Verification Portal Tab */}
+          {/* Caregivers approvals panel */}
           {activeTab === "caregivers" && (
-            <div className="rounded-2xl border border-border bg-background overflow-hidden shadow-sm">
+            <div className="bg-white border border-slate-200/60 rounded-2xl overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-foreground">
+                <table className="w-full text-left text-sm text-slate-700">
                   <thead>
-                    <tr className="border-b border-border bg-cream/10 text-xs text-muted-foreground uppercase font-semibold">
-                      <th className="py-3 px-4">Staff details</th>
-                      <th className="py-3 px-4">Specialty &amp; Experience</th>
-                      <th className="py-3 px-4">Timings / Details</th>
-                      <th className="py-3 px-4">Verification</th>
-                      <th className="py-3 px-4 text-right">Approve / Actions</th>
+                    <tr className="border-b border-slate-200 bg-slate-50/55 text-xs text-slate-400 uppercase font-bold tracking-wider">
+                      <th className="py-4 px-6">Staff details</th>
+                      <th className="py-4 px-6">Specialty &amp; Experience</th>
+                      <th className="py-4 px-6">Timings / Details</th>
+                      <th className="py-4 px-6">Verification</th>
+                      <th className="py-4 px-6 text-right">Approve / Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border/60">
-                    {caregivers.map((c) => (
-                      <tr key={c.id} className="hover:bg-cream/5 transition-colors">
-                        <td className="py-4 px-4">
-                          <div className="font-semibold text-primary font-display">{c.name}</div>
-                          <div className="text-xs text-muted-foreground mt-0.5">{c.phone}</div>
-                          <div className="text-xs text-muted-foreground mt-0.5">{c.email}</div>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredCaregivers.map((c) => (
+                      <tr key={c.id} className="hover:bg-slate-50/30 transition-colors">
+                        <td className="py-4 px-6">
+                          <div className="font-semibold text-primary font-display text-base">{c.name}</div>
+                          <div className="text-xs text-slate-400 mt-0.5">{c.phone}</div>
+                          <div className="text-xs text-slate-400 mt-0.5">{c.email}</div>
                         </td>
-                        <td className="py-4 px-4">
+                        <td className="py-4 px-6">
                           <div className="font-medium text-slate-800">{c.specialty}</div>
-                          <div className="text-xs text-muted-foreground mt-0.5">{c.experience} years experience</div>
+                          <div className="text-xs text-slate-400 mt-0.5">{c.experience} years experience</div>
                         </td>
-                        <td className="py-4 px-4 text-xs text-muted-foreground">
+                        <td className="py-4 px-6 text-xs text-slate-500">
                           <div>Documents: Aadhaar, PAN Uploaded</div>
                           <div className="mt-0.5 text-[10px] text-indigo-500 font-bold uppercase">Background check: Pending</div>
                         </td>
-                        <td className="py-4 px-4">
+                        <td className="py-4 px-6">
                           <span className={`text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded ${
-                            c.status === "Verified" ? "bg-emerald-100 text-emerald-800 border border-emerald-200" :
-                            c.status === "Rejected" ? "bg-rose-100 text-rose-800 border border-rose-200" :
-                            "bg-amber-100 text-amber-800 border border-amber-200"
+                            c.status === "Verified" ? "bg-emerald-50 text-emerald-800 border border-emerald-100" :
+                            c.status === "Rejected" ? "bg-rose-50 text-rose-800 border border-rose-100" :
+                            "bg-amber-50 text-amber-800 border border-amber-100"
                           }`}>
                             {c.status}
                           </span>
                         </td>
-                        <td className="py-4 px-4 text-right">
+                        <td className="py-4 px-6 text-right">
                           <div className="flex gap-2 justify-end">
                             {c.status !== "Verified" && (
                               <button
                                 onClick={() => handleUpdateCaregiver(c.id, "Verified")}
-                                className="px-2.5 py-1 rounded bg-emerald-500/10 hover:bg-emerald-500 border border-emerald-500/20 hover:border-emerald-500 text-emerald-600 hover:text-white text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                                className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-500 border border-slate-200 text-emerald-600 hover:text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
                               >
-                                <Check className="h-3 w-3" /> Verify
+                                <Check className="h-4.5 w-4.5" /> Verify
                               </button>
                             )}
                             {c.status !== "Rejected" && (
                               <button
                                 onClick={() => handleUpdateCaregiver(c.id, "Rejected")}
-                                className="px-2.5 py-1 rounded bg-rose-500/10 hover:bg-rose-500 border border-rose-500/20 hover:border-rose-500 text-rose-600 hover:text-white text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                                className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-500 border border-slate-200 text-rose-600 hover:text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
                               >
-                                <XCircle className="h-3 w-3" /> Reject
+                                <XCircle className="h-4.5 w-4.5" /> Reject
                               </button>
                             )}
                           </div>
@@ -625,17 +789,17 @@ function AdminPage() {
             </div>
           )}
 
-          {/* Customer Leads Tab */}
+          {/* Enquiries Leads panel */}
           {activeTab === "enquiries" && (
             <div className="grid gap-6">
-              {enquiries.map((enq) => (
+              {filteredEnquiries.map((enq) => (
                 <div
                   key={enq.id}
-                  className="rounded-2xl border border-border bg-background p-6 shadow-sm hover:shadow-md transition-shadow duration-300 flex flex-col md:flex-row justify-between gap-6"
+                  className="rounded-2xl border border-slate-200/60 bg-white p-6 shadow-sm hover:shadow-md transition-shadow duration-300 flex flex-col md:flex-row justify-between gap-6"
                 >
                   <div className="space-y-4 flex-1">
                     <div className="flex flex-wrap items-center gap-3">
-                      <span className="text-xs font-mono font-bold text-muted-foreground bg-accent px-2 py-0.5 rounded">
+                      <span className="text-xs font-mono font-bold text-slate-400 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded">
                         ID: {enq.id}
                       </span>
                       {enq.service && (
@@ -643,14 +807,14 @@ function AdminPage() {
                           {enq.service}
                         </span>
                       )}
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-slate-400">
                         {new Date(enq.submittedAt).toLocaleString()}
                       </span>
                     </div>
 
                     <div>
                       <h3 className="text-lg font-semibold text-primary font-display">{enq.name}</h3>
-                      <div className="mt-2 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
+                      <div className="mt-2 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-500">
                         <span className="flex items-center gap-1.5">
                           <Phone className="h-4 w-4 text-gold shrink-0" />
                           {enq.phone}
@@ -671,7 +835,7 @@ function AdminPage() {
                     </div>
 
                     {enq.message && (
-                      <div className="rounded-xl bg-cream/15 p-4 border border-border/60 text-sm text-foreground italic leading-relaxed">
+                      <div className="rounded-xl bg-slate-50 p-4 border border-slate-100 text-sm text-slate-600 italic leading-relaxed">
                         &ldquo;{enq.message}&rdquo;
                       </div>
                     )}
@@ -691,28 +855,28 @@ function AdminPage() {
             </div>
           )}
 
-          {/* Service Management Tab */}
+          {/* Services Tab panel */}
           {activeTab === "services" && (
             <div className="space-y-6">
-              <div className="flex justify-between items-center border-b border-border pb-4">
+              <div className="flex justify-between items-center border-b border-slate-200/60 pb-4">
                 <h3 className="text-xl font-bold text-primary font-display">Active Service Catalog</h3>
-                <span className="text-xs text-muted-foreground">Configure standard prices below.</span>
+                <span className="text-xs text-slate-400">Configure standard prices below.</span>
               </div>
 
               <div className="grid gap-6 md:grid-cols-2">
                 {servicesCatalog.map((service, idx) => (
-                  <div key={idx} className="rounded-2xl border border-border bg-background p-6 shadow-sm flex flex-col justify-between">
+                  <div key={idx} className="rounded-2xl border border-slate-200/60 bg-white p-6 shadow-sm flex flex-col justify-between">
                     <div>
                       <div className="flex justify-between items-start gap-4">
                         <h4 className="text-lg font-semibold text-primary font-display">{service.title}</h4>
                         <span className="text-sm font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-100">{service.price}</span>
                       </div>
-                      <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{service.description}</p>
+                      <p className="mt-2 text-sm text-slate-400 leading-relaxed">{service.description}</p>
                     </div>
                     <div className="mt-6 flex justify-end">
                       <button 
                         onClick={() => alert(`Pricing updates are locked in preview mode.`)}
-                        className="px-3 py-1.5 rounded border border-border hover:bg-accent text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                        className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
                       >
                         <Edit3 className="h-3.5 w-3.5" /> Adjust pricing
                       </button>
@@ -722,29 +886,23 @@ function AdminPage() {
               </div>
             </div>
           )}
-        </div>
-      </section>
-    </SiteLayout>
+
+        </main>
+      </div>
+    </div>
   );
 }
 
-function StatCard({ icon: Icon, color, label, value, desc }: { icon: any; color: string; label: string; value: string; desc: string }) {
-  const colorMap: Record<string, string> = {
-    emerald: "text-emerald-500 bg-emerald-50",
-    gold: "text-amber-500 bg-amber-50",
-    indigo: "text-indigo-500 bg-indigo-50",
-    rose: "text-rose-500 bg-rose-50"
-  };
-
+// Side widget helper for Metric grids
+function HorizontalMetric({ icon: Icon, iconColor, label, value }: { icon: any; iconColor: string; label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-border bg-background p-6 shadow-sm flex items-start gap-4">
-      <div className={`p-3 rounded-xl shrink-0 ${colorMap[color] || ""}`}>
-        <Icon className="h-6 w-6" />
+    <div className="flex items-center gap-4">
+      <div className={`p-3 rounded-full shrink-0 ${iconColor}`}>
+        <Icon className="h-5 w-5" />
       </div>
       <div>
-        <span className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
-        <span className="block text-2xl font-bold text-primary mt-1 font-display">{value}</span>
-        <span className="block text-[11px] text-muted-foreground mt-0.5 leading-tight">{desc}</span>
+        <span className="block text-2xl font-bold font-display text-slate-900 leading-none">{value}</span>
+        <span className="block text-xs text-slate-400 mt-1 font-semibold uppercase tracking-wider">{label}</span>
       </div>
     </div>
   );
