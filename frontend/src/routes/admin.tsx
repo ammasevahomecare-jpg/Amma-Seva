@@ -8,6 +8,7 @@ import {
   UserCheck, MessageSquare, Sliders, Bell, Search, Settings as SettingsIcon,
   ChevronRight, TrendingDown, ArrowUpRight
 } from "lucide-react";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -61,8 +62,20 @@ function AdminPage() {
   // Auth state
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
+  const [loginOtp, setLoginOtp] = useState("");
+  const [authStep, setAuthStep] = useState<"email" | "otp">("email");
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [otpSentMessage, setOtpSentMessage] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState(0);
   const [loginError, setLoginError] = useState<string | null>(null);
+
+  // Countdown effect
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [countdown]);
 
   // Dashboard layout/navigation state
   const [activeTab, setActiveTab] = useState<"overview" | "bookings" | "caregivers" | "enquiries" | "services">("overview");
@@ -116,32 +129,78 @@ function AdminPage() {
     }
   }, [isLoggedIn]);
 
-  // Handle login submit
+  // Handle OTP request submit
+  const handleRequestOtp = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!loginEmail) {
+      setLoginError("Please enter your admin email address.");
+      return;
+    }
+
+    setLoginError(null);
+    setIsSendingOtp(true);
+    setOtpSentMessage(null);
+
+    fetch("/api/admin/send-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: loginEmail })
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to dispatch verification email.");
+        }
+        return data;
+      })
+      .then((data) => {
+        if (data.success) {
+          setAuthStep("otp");
+          setOtpSentMessage("Verification code has been sent to " + loginEmail);
+          setCountdown(30);
+          setLoginError(null);
+        }
+      })
+      .catch((err) => {
+        setLoginError(err.message || "Failed to connect to backend service.");
+      })
+      .finally(() => {
+        setIsSendingOtp(false);
+      });
+  };
+
+  // Handle login submit (verify OTP)
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!loginOtp || loginOtp.length < 6) {
+      setLoginError("Please enter the complete 6-digit OTP code.");
+      return;
+    }
     setLoginError(null);
 
     fetch("/api/admin/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: loginEmail, password: loginPassword })
+      body: JSON.stringify({ email: loginEmail, otp: loginOtp })
     })
-      .then((res) => {
+      .then(async (res) => {
+        const data = await res.json();
         if (!res.ok) {
-          throw new Error("Invalid username or password credentials.");
+          throw new Error(data.error || "Invalid verification OTP code.");
         }
-        return res.json();
+        return data;
       })
       .then((data) => {
         if (data.success) {
           localStorage.setItem("ammaseva_admin_token", data.token);
           setIsLoggedIn(true);
-          setLoginPassword("");
+          setLoginOtp("");
           setLoginError(null);
+          setOtpSentMessage(null);
         }
       })
       .catch((err) => {
-        setLoginError(err.message || "Failed to establish admin session.");
+        setLoginError(err.message || "Failed to verify admin credentials.");
       });
   };
 
@@ -272,35 +331,88 @@ function AdminPage() {
               </div>
             )}
 
-            <form onSubmit={handleLoginSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Email address</label>
-                <input
-                  type="email"
-                  required
-                  value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
-                  placeholder="ammasevahomecare@gmail.com"
-                  className="w-full rounded-md border border-slate-200 bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold"
-                />
+            {otpSentMessage && (
+              <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-emerald-800 text-sm flex gap-2 items-center">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                <span>{otpSentMessage}</span>
               </div>
+            )}
 
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Secret password</label>
-                <input
-                  type="password"
-                  required
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full rounded-md border border-slate-200 bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold"
-                />
-              </div>
+            {authStep === "email" ? (
+              <form onSubmit={handleRequestOtp} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Email address</label>
+                  <input
+                    type="email"
+                    required
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    placeholder="ammasevahomecare@gmail.com"
+                    className="w-full rounded-md border border-slate-200 bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold"
+                  />
+                </div>
 
-              <button type="submit" className="btn-primary w-full py-2.5 mt-2">
-                Log In Securely
-              </button>
-            </form>
+                <button type="submit" disabled={isSendingOtp} className="btn-primary w-full py-2.5 mt-2 flex items-center justify-center gap-2 cursor-pointer">
+                  {isSendingOtp && <RefreshCw className="h-4 w-4 animate-spin" />}
+                  {isSendingOtp ? "Sending verification OTP..." : "Send Verification Code"}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleLoginSubmit} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">
+                    Verification Code (OTP)
+                  </label>
+                  <div className="flex justify-center py-2 animate-in fade-in zoom-in duration-300">
+                    <InputOTP
+                      maxLength={6}
+                      value={loginOtp}
+                      onChange={setLoginOtp}
+                      containerClassName="justify-center"
+                    >
+                      <InputOTPGroup>
+                        <InputOTPSlot index={0} />
+                        <InputOTPSlot index={1} />
+                        <InputOTPSlot index={2} />
+                        <InputOTPSlot index={3} />
+                        <InputOTPSlot index={4} />
+                        <InputOTPSlot index={5} />
+                      </InputOTPGroup>
+                    </InputOTP>
+                  </div>
+                </div>
+
+                <button type="submit" className="btn-primary w-full py-2.5 cursor-pointer">
+                  Verify &amp; Log In
+                </button>
+
+                <div className="flex items-center justify-between text-xs pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthStep("email");
+                      setLoginOtp("");
+                      setLoginError(null);
+                      setOtpSentMessage(null);
+                    }}
+                    className="text-gold font-semibold hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    Change email
+                  </button>
+                  <button
+                    type="button"
+                    disabled={countdown > 0 || isSendingOtp}
+                    onClick={() => handleRequestOtp()}
+                    className={`font-semibold hover:underline flex items-center gap-1 cursor-pointer ${
+                      countdown > 0 ? "text-slate-400 cursor-not-allowed" : "text-indigo-600"
+                    }`}
+                  >
+                    {isSendingOtp && <RefreshCw className="h-3 w-3 animate-spin" />}
+                    {countdown > 0 ? `Resend Code in ${countdown}s` : "Resend Code"}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       </SiteLayout>

@@ -3,10 +3,23 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import nodemailer from 'nodemailer'
 import { db } from './db.js'
 
 // Load environment variables
 dotenv.config()
+
+// Nodemailer config
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.SMTP_EMAIL || 'ammasevahomecare@gmail.com',
+    pass: process.env.SMTP_PASSWORD || 'fden ytee hbvl driu'
+  }
+})
+
+// Store OTPs in-memory: email -> { otp, expiresAt }
+const otpStore = new Map()
 
 const app = express()
 const PORT = process.env.PORT || 5000
@@ -26,22 +39,91 @@ app.use((req, res, next) => {
 
 // API Endpoints
 
-// POST admin login
-app.post('/api/admin/login', (req, res) => {
-  const { email, password } = req.body
+// POST request admin OTP
+app.post('/api/admin/send-otp', async (req, res) => {
+  const { email } = req.body
 
-  if (email === 'ammasevahomecare@gmail.com' && password === 'Ammaseva@123') {
-    res.json({
-      success: true,
-      message: 'Login successful!',
-      token: 'mock-jwt-admin-token-ammaseva'
-    })
-  } else {
-    res.status(401).json({
-      success: false,
-      error: 'Invalid email or password.'
-    })
+  if (!email) {
+    return res.status(400).json({ success: false, error: 'Email address is required.' })
   }
+
+  const normalizedEmail = email.toLowerCase().trim()
+
+  if (normalizedEmail !== 'ammasevahomecare@gmail.com') {
+    return res.status(401).json({ success: false, error: 'Unauthorized email address.' })
+  }
+
+  // Generate 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString()
+  // Expire in 5 minutes
+  const expiresAt = Date.now() + 5 * 60 * 1000
+
+  otpStore.set(normalizedEmail, { otp, expiresAt })
+
+  // Send Email
+  const mailOptions = {
+    from: `"Amma Seva Admin" <${process.env.SMTP_EMAIL || 'ammasevahomecare@gmail.com'}>`,
+    to: normalizedEmail,
+    subject: 'Amma Seva - Admin Login Verification OTP Code',
+    html: `
+      <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 16px;">
+        <h2 style="color: #0f172a; margin-bottom: 8px;">Admin OTP Code</h2>
+        <p style="color: #64748b; font-size: 14px; margin-top: 0;">Use the following One-Time Password to access your admin control center:</p>
+        <div style="font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #4f46e5; text-align: center; padding: 16px; margin: 24px 0; background-color: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+          ${otp}
+        </div>
+        <p style="color: #94a3b8; font-size: 12px; text-align: center;">This code is active for 5 minutes and can only be used once.</p>
+      </div>
+    `
+  }
+
+  try {
+    await transporter.sendMail(mailOptions)
+    console.log(`[OTP] Sent OTP ${otp} successfully to ${normalizedEmail}`)
+    res.json({ success: true, message: 'OTP verification code has been dispatched to your email.' })
+  } catch (err) {
+    console.error('Failed to send OTP email:', err)
+    res.status(500).json({ success: false, error: 'Could not deliver verification email. Please check server logs.' })
+  }
+})
+
+// POST admin login (verifies OTP)
+app.post('/api/admin/login', (req, res) => {
+  const { email, otp } = req.body
+
+  if (!email || !otp) {
+    return res.status(400).json({ success: false, error: 'Email and OTP code are required.' })
+  }
+
+  const normalizedEmail = email.toLowerCase().trim()
+
+  if (normalizedEmail !== 'ammasevahomecare@gmail.com') {
+    return res.status(401).json({ success: false, error: 'Unauthorized access.' })
+  }
+
+  const storedData = otpStore.get(normalizedEmail)
+
+  if (!storedData) {
+    return res.status(401).json({ success: false, error: 'No OTP requested for this email address.' })
+  }
+
+  if (Date.now() > storedData.expiresAt) {
+    otpStore.delete(normalizedEmail)
+    return res.status(401).json({ success: false, error: 'OTP verification code has expired.' })
+  }
+
+  if (storedData.otp !== otp.trim()) {
+    return res.status(401).json({ success: false, error: 'Invalid verification OTP code.' })
+  }
+
+  // Clear OTP on success
+  otpStore.delete(normalizedEmail)
+
+  res.json({
+    success: true,
+    message: 'Login successful!',
+    token: 'mock-jwt-admin-token-ammaseva'
+  })
 })
 
 // GET all enquiries (Admin Panel)
