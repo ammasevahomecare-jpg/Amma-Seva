@@ -8,28 +8,35 @@ const PHONE_TEL = "+919000000000";
 const WHATSAPP = "919000000000";
 const EMAIL = "care@ammaseva.in";
 
-const NAV = [
-  { to: "/", label: "Home" },
-  { to: "/services", label: "Services" },
-  { to: "/about", label: "About" },
-  { to: "/blog", label: "Blog" },
-  { to: "/careers", label: "Careers" },
-  { to: "/contact", label: "Contact" },
-  { to: "/admin", label: "Admin" },
-] as const;
-
 function Header() {
   const [open, setOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isUser, setIsUser] = useState(false);
+  const [isCaretaker, setIsCaretaker] = useState(false);
 
   useEffect(() => {
-    setIsAdmin(!!localStorage.getItem("ammaseva_admin_token"));
-    // Poll to keep it in sync in case of logout/login transitions
-    const interval = setInterval(() => {
+    const checkAuth = () => {
       setIsAdmin(!!localStorage.getItem("ammaseva_admin_token"));
-    }, 1500);
+      setIsUser(!!localStorage.getItem("ammaseva_user_token"));
+      setIsCaretaker(!!localStorage.getItem("ammaseva_caretaker_token"));
+    };
+    checkAuth();
+    const interval = setInterval(checkAuth, 1500);
     return () => clearInterval(interval);
   }, []);
+
+  const dynamicNav = [
+    { to: "/", label: "Home" },
+    { to: "/services", label: "Services" },
+    { to: "/about", label: "About" },
+    { to: "/blog", label: "Blog" },
+    { to: "/careers", label: "Careers" },
+    { to: "/contact", label: "Contact" },
+    ...(isUser ? [{ to: "/dashboard", label: "Dashboard" }] : []),
+    ...(isCaretaker ? [{ to: "/login", label: "Portal" }] : []),
+    ...(!isUser && !isCaretaker && !isAdmin ? [{ to: "/login", label: "Login" }] : []),
+    { to: "/admin", label: "Admin" },
+  ];
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur">
@@ -46,9 +53,9 @@ function Header() {
           </div>
         </Link>
         <nav className="hidden items-center gap-7 lg:flex">
-          {NAV.map((n) => (
+          {dynamicNav.map((n) => (
             <Link
-              key={n.to}
+              key={n.label + n.to}
               to={n.to}
               className="text-sm font-medium text-foreground/80 transition-colors hover:text-primary flex items-center gap-1"
               activeProps={{ className: "text-primary" }}
@@ -68,9 +75,15 @@ function Header() {
           <a href={`tel:${PHONE_TEL}`} className="btn-outline text-sm">
             <Phone className="h-4 w-4" /> Call Now
           </a>
-          <Link to="/contact" className="btn-primary text-sm">
-            Book a Service
-          </Link>
+          {isUser ? (
+            <Link to="/dashboard" className="btn-primary text-sm">
+              My Dashboard
+            </Link>
+          ) : (
+            <Link to="/login" className="btn-primary text-sm">
+              Book &amp; Login
+            </Link>
+          )}
         </div>
         <button
           type="button"
@@ -84,9 +97,9 @@ function Header() {
       {open && (
         <div className="border-t border-border bg-background lg:hidden">
           <div className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3">
-            {NAV.map((n) => (
+            {dynamicNav.map((n) => (
               <Link
-                key={n.to}
+                key={n.label + n.to}
                 to={n.to}
                 onClick={() => setOpen(false)}
                 className="rounded-md px-2 py-2 text-sm font-medium text-foreground/80 hover:bg-secondary"
@@ -98,9 +111,15 @@ function Header() {
               <a href={`tel:${PHONE_TEL}`} className="btn-outline flex-1 text-sm">
                 <Phone className="h-4 w-4" /> Call
               </a>
-              <Link to="/contact" onClick={() => setOpen(false)} className="btn-primary flex-1 text-sm">
-                Book
-              </Link>
+              {isUser ? (
+                <Link to="/dashboard" onClick={() => setOpen(false)} className="btn-primary flex-1 text-sm text-center">
+                  Dashboard
+                </Link>
+              ) : (
+                <Link to="/login" onClick={() => setOpen(false)} className="btn-primary flex-1 text-sm text-center">
+                  Login / Book
+                </Link>
+              )}
             </div>
           </div>
         </div>

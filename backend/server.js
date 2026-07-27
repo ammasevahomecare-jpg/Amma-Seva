@@ -126,6 +126,174 @@ app.post('/api/admin/login', (req, res) => {
   })
 })
 
+// Authentication Middleware for Customer/Caretaker Roles
+const authenticateUser = (req, res, next) => {
+  const authHeader = req.headers.authorization
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authorization token is missing or invalid.' })
+  }
+  const token = authHeader.split(' ')[1]
+  if (token.startsWith('mock-jwt-user-token-')) {
+    req.userId = Number(token.replace('mock-jwt-user-token-', ''))
+    next()
+  } else {
+    res.status(401).json({ error: 'Access denied. Invalid credentials.' })
+  }
+}
+
+// POST register user
+app.post('/api/user/register', async (req, res) => {
+  const { name, email, phone, password } = req.body
+  if (!name || !email || !phone || !password) {
+    return res.status(400).json({ error: 'All registration fields are required.' })
+  }
+  try {
+    const existingUser = await db.getUserByEmail(email)
+    if (existingUser) {
+      return res.status(409).json({ error: 'An account with this email address already exists.' })
+    }
+    const newUser = await db.addUser({ name, email, phone, password })
+    
+    // Optional welcome email
+    const mailOptions = {
+      from: `"Amma Seva" <${process.env.SMTP_EMAIL || 'ammasevahomecare@gmail.com'}>`,
+      to: email,
+      subject: 'Welcome to Amma Seva!',
+      html: `
+        <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 16px;">
+          <h2 style="color: #0f172a; margin-bottom: 8px;">Account Created!</h2>
+          <p style="color: #64748b; font-size: 14px;">Hi ${name},</p>
+          <p style="color: #64748b; font-size: 14px;">Welcome to Amma Seva! Your user account has been registered with email: <strong>${email}</strong>.</p>
+          <p style="color: #64748b; font-size: 14px;">You can now book homecare services, track status, and view invoices in your dashboard.</p>
+        </div>
+      `
+    }
+    try {
+      await transporter.sendMail(mailOptions)
+    } catch (e) {
+      console.error('Welcome email failed:', e.message)
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Account successfully registered!',
+      token: `mock-jwt-user-token-${newUser.id}`,
+      user: { id: newUser.id, name: newUser.name, email: newUser.email, phone: newUser.phone }
+    })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to register account.' })
+  }
+})
+
+// POST user login
+app.post('/api/user/login', async (req, res) => {
+  const { email, password } = req.body
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required.' })
+  }
+  try {
+    const user = await db.getUserByEmail(email)
+    if (!user || user.password !== password) {
+      return res.status(401).json({ error: 'Invalid email or password.' })
+    }
+    res.json({
+      success: true,
+      token: `mock-jwt-user-token-${user.id}`,
+      user: { id: user.id, name: user.name, email: user.email, phone: user.phone }
+    })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to authenticate user.' })
+  }
+})
+
+// POST register caretaker
+app.post('/api/caretaker/register', async (req, res) => {
+  const { name, phone, email, specialty, experience, password } = req.body
+  if (!name || !phone || !specialty || !password) {
+    return res.status(400).json({ error: 'Name, phone, specialty and password are required.' })
+  }
+  try {
+    if (email) {
+      const existing = await db.getCaregiverByEmail(email)
+      if (existing) {
+        return res.status(409).json({ error: 'A caretaker profile with this email already exists.' })
+      }
+    }
+    const newCaregiver = await db.addCaregiverWithPassword({ name, phone, email, specialty, experience, password })
+    res.status(201).json({
+      success: true,
+      message: 'Caregiver application submitted! Verification is pending.',
+      token: `mock-jwt-caretaker-token-${newCaregiver.id}`,
+      caretaker: { id: newCaregiver.id, name: newCaregiver.name }
+    })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to submit caretaker registration.' })
+  }
+})
+
+// POST caretaker login
+app.post('/api/caretaker/login', async (req, res) => {
+  const { email, password } = req.body
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required.' })
+  }
+  try {
+    const caretaker = await db.getCaregiverByEmail(email)
+    if (!caretaker || caretaker.password !== password) {
+      return res.status(401).json({ error: 'Invalid email or password.' })
+    }
+    res.json({
+      success: true,
+      token: `mock-jwt-caretaker-token-${caretaker.id}`,
+      caretaker: { id: caretaker.id, name: caretaker.name, status: caretaker.status }
+    })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to authenticate caretaker.' })
+  }
+})
+
+// GET all bookings for current user
+app.get('/api/user/bookings', authenticateUser, async (req, res) => {
+  try {
+    const list = await db.getBookingsByUserId(req.userId)
+    res.json(list)
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve bookings list.' })
+  }
+})
+
+// PUT reschedule a booking
+app.put('/api/booking/:id/reschedule', authenticateUser, async (req, res) => {
+  const { date, time } = req.body
+  if (!date || !time) {
+    return res.status(400).json({ error: 'Date and time are required.' })
+  }
+  try {
+    const updated = await db.rescheduleBooking(req.params.id, date, time)
+    if (updated) {
+      res.json({ success: true, message: 'Booking successfully rescheduled.' })
+    } else {
+      res.status(404).json({ error: 'Booking not found.' })
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to reschedule booking.' })
+  }
+})
+
+// PUT cancel a booking
+app.put('/api/booking/:id/cancel', authenticateUser, async (req, res) => {
+  try {
+    const updated = await db.cancelBooking(req.params.id)
+    if (updated) {
+      res.json({ success: true, message: 'Booking successfully cancelled.' })
+    } else {
+      res.status(404).json({ error: 'Booking not found.' })
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to cancel booking.' })
+  }
+})
+
 // GET all enquiries (Admin Panel)
 app.get('/api/enquiries', async (req, res) => {
   try {
@@ -182,14 +350,69 @@ app.get('/api/bookings', async (req, res) => {
 
 // POST create booking
 app.post('/api/booking', async (req, res) => {
-  const { name, phone, service, date, time, duration, address, amount } = req.body
+  const { name, phone, service, date, time, duration, address, amount, userId, patientName, patientAge, patientNeeds, paymentMethod, email } = req.body
 
   if (!name || !phone || !service || !date || !time || !duration || !address) {
     return res.status(400).json({ error: 'Missing required booking details.' })
   }
 
+  // Parse authorization header if present
+  let authUserId = userId
+  const authHeader = req.headers.authorization
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1]
+    if (token.startsWith('mock-jwt-user-token-')) {
+      authUserId = Number(token.replace('mock-jwt-user-token-', ''))
+    }
+  }
+
   try {
-    const newBooking = await db.addBooking({ name, phone, service, date, time, duration, address, amount })
+    const newBooking = await db.addBookingForUser({ 
+      name, 
+      phone, 
+      service, 
+      date, 
+      time, 
+      duration, 
+      address, 
+      amount: amount || 1200, 
+      userId: authUserId 
+    })
+
+    // Prepare notification mock logs
+    console.log(`[SMS/WhatsApp Notification] Booking confirmation alert sent to ${phone} for patient ${patientName || name}.`)
+
+    // Send email confirmation using nodemailer if email is provided
+    if (email) {
+      const mailOptions = {
+        from: `"Amma Seva Bookings" <${process.env.SMTP_EMAIL || 'ammasevahomecare@gmail.com'}>`,
+        to: email,
+        subject: 'Booking Confirmation - Amma Seva',
+        html: `
+          <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 16px;">
+            <h2 style="color: #10b981; margin-bottom: 8px;">Booking Confirmed!</h2>
+            <p style="color: #64748b; font-size: 14px;">Hi ${name},</p>
+            <p style="color: #64748b; font-size: 14px;">Your service booking has been successfully recorded. Here are the details:</p>
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #334155; margin-top: 16px;">
+              <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; font-weight: bold;">Service</td><td style="padding: 8px 0; text-align: right;">${service}</td></tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; font-weight: bold;">Date &amp; Time</td><td style="padding: 8px 0; text-align: right;">${date} at ${time}</td></tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; font-weight: bold;">Duration</td><td style="padding: 8px 0; text-align: right;">${duration}</td></tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; font-weight: bold;">Patient</td><td style="padding: 8px 0; text-align: right;">${patientName || name} (Age: ${patientAge || 'N/A'})</td></tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; font-weight: bold;">Address</td><td style="padding: 8px 0; text-align: right;">${address}</td></tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; font-weight: bold;">Amount</td><td style="padding: 8px 0; text-align: right; font-weight: bold; color: #0f172a;">₹${amount || 1200} (${paymentMethod || 'Pay Later'})</td></tr>
+            </table>
+            <p style="color: #94a3b8; font-size: 12px; margin-top: 24px; text-align: center;">We will assign a caregiver shortly. Thank you for choosing Amma Seva.</p>
+          </div>
+        `
+      }
+      try {
+        await transporter.sendMail(mailOptions)
+        console.log(`[Email Notification] Dispatch confirmed to ${email} for booking ID: ${newBooking.id}`)
+      } catch (err) {
+        console.error('Failed to send booking confirmation email:', err.message)
+      }
+    }
+
     res.status(201).json({
       success: true,
       message: 'Booking successfully created!',

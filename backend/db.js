@@ -13,6 +13,7 @@ let useMySQL = false
 
 // Initial default data structure
 const DEFAULT_MOCK_DATA = {
+  users: [],
   volunteers: [],
   donations: [],
   enquiries: [
@@ -111,6 +112,7 @@ const initJSONDb = () => {
     try {
       const data = JSON.parse(fs.readFileSync(JSON_DB_PATH, 'utf-8'))
       let modified = false
+      if (!data.users) { data.users = DEFAULT_MOCK_DATA.users; modified = true }
       if (!data.enquiries) { data.enquiries = DEFAULT_MOCK_DATA.enquiries; modified = true }
       if (!data.bookings) { data.bookings = DEFAULT_MOCK_DATA.bookings; modified = true }
       if (!data.caregivers) { data.caregivers = DEFAULT_MOCK_DATA.caregivers; modified = true }
@@ -221,6 +223,29 @@ export const db = {
             joinedAt VARCHAR(255) NOT NULL
           )
         `)
+
+        await connection.query(`
+          CREATE TABLE IF NOT EXISTS users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            email VARCHAR(255) NOT NULL UNIQUE,
+            phone VARCHAR(50) NOT NULL,
+            password VARCHAR(255) NOT NULL,
+            createdAt VARCHAR(255) NOT NULL
+          )
+        `)
+
+        // Add columns to existing tables if missing
+        try {
+          await connection.query(`ALTER TABLE caregivers ADD COLUMN password VARCHAR(255)`)
+        } catch (e) {
+          // ignore column already exists error
+        }
+        try {
+          await connection.query(`ALTER TABLE bookings ADD COLUMN userId INT`)
+        } catch (e) {
+          // ignore column already exists error
+        }
 
         // Insert initial values if MySQL database is fresh/empty
         const [bookingsRows] = await connection.query('SELECT count(*) as count FROM bookings')
@@ -438,6 +463,161 @@ export const db = {
       const caregiverIdx = data.caregivers.findIndex(c => c.id === Number(id))
       if (caregiverIdx > -1) {
         data.caregivers[caregiverIdx].status = status
+        await writeJSONDb(data)
+        return true
+      }
+      return false
+    }
+  },
+
+  // Users Auth & Management
+  addUser: async (userData) => {
+    const { name, email, phone, password } = userData
+    const createdAt = new Date().toISOString()
+    if (useMySQL) {
+      const [result] = await pool.query(
+        'INSERT INTO users (name, email, phone, password, createdAt) VALUES (?, ?, ?, ?, ?)',
+        [name, email.toLowerCase().trim(), phone, password, createdAt]
+      )
+      return { id: result.insertId, name, email, phone, createdAt }
+    } else {
+      const data = await readJSONDb()
+      if (!data.users) data.users = []
+      const newUser = {
+        id: data.users.length > 0 ? Math.max(...data.users.map(u => u.id)) + 1 : 1,
+        name,
+        email: email.toLowerCase().trim(),
+        phone,
+        password,
+        createdAt
+      }
+      data.users.push(newUser)
+      await writeJSONDb(data)
+      return newUser
+    }
+  },
+
+  getUserByEmail: async (email) => {
+    const normalized = email.toLowerCase().trim()
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM users WHERE email = ?', [normalized])
+      return rows[0] || null
+    } else {
+      const data = await readJSONDb()
+      if (!data.users) data.users = []
+      return data.users.find(u => u.email === normalized) || null
+    }
+  },
+
+  getCaregiverByEmail: async (email) => {
+    const normalized = email.toLowerCase().trim()
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM caregivers WHERE email = ?', [normalized])
+      return rows[0] || null
+    } else {
+      const data = await readJSONDb()
+      return data.caregivers.find(c => c.email && c.email.toLowerCase().trim() === normalized) || null
+    }
+  },
+
+  addCaregiverWithPassword: async (caregiverData) => {
+    const { name, phone, email, specialty, experience, password } = caregiverData
+    const joinedAt = new Date().toISOString()
+    if (useMySQL) {
+      const [result] = await pool.query(
+        'INSERT INTO caregivers (name, phone, email, specialty, experience, password, joinedAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [name, phone, email, specialty, experience, password, joinedAt]
+      )
+      return { id: result.insertId, name, phone, email, specialty, experience, status: 'Pending', joinedAt }
+    } else {
+      const data = await readJSONDb()
+      const newCaregiver = {
+        id: data.caregivers.length > 0 ? Math.max(...data.caregivers.map(c => c.id)) + 1 : 1,
+        name,
+        phone,
+        email,
+        specialty,
+        experience,
+        password,
+        status: 'Pending',
+        joinedAt
+      }
+      data.caregivers.push(newCaregiver)
+      await writeJSONDb(data)
+      return newCaregiver
+    }
+  },
+
+  // User Bookings Operations
+  addBookingForUser: async (bookingData) => {
+    const { name, phone, service, date, time, duration, address, amount = 1200, userId = null } = bookingData
+    const createdAt = new Date().toISOString()
+    if (useMySQL) {
+      const [result] = await pool.query(
+        'INSERT INTO bookings (name, phone, service, date, time, duration, address, amount, userId, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [name, phone, service, date, time, duration, address, amount, userId, createdAt]
+      )
+      return { id: result.insertId, name, phone, service, date, time, duration, address, status: 'Pending', assignedStaff: null, amount, paymentStatus: 'Unpaid', userId, createdAt }
+    } else {
+      const data = await readJSONDb()
+      const newBooking = {
+        id: data.bookings.length > 0 ? Math.max(...data.bookings.map(b => b.id)) + 1 : 1,
+        name,
+        phone,
+        service,
+        date,
+        time,
+        duration,
+        address,
+        status: 'Pending',
+        assignedStaff: null,
+        amount,
+        paymentStatus: 'Unpaid',
+        userId: userId ? Number(userId) : null,
+        createdAt
+      }
+      data.bookings.push(newBooking)
+      await writeJSONDb(data)
+      return newBooking
+    }
+  },
+
+  getBookingsByUserId: async (userId) => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM bookings WHERE userId = ? ORDER BY id DESC', [userId])
+      return rows
+    } else {
+      const data = await readJSONDb()
+      return data.bookings.filter(b => b.userId === Number(userId)).reverse()
+    }
+  },
+
+  rescheduleBooking: async (id, date, time) => {
+    if (useMySQL) {
+      const [result] = await pool.query('UPDATE bookings SET date = ?, time = ? WHERE id = ?', [date, time, id])
+      return result.affectedRows > 0
+    } else {
+      const data = await readJSONDb()
+      const idx = data.bookings.findIndex(b => b.id === Number(id))
+      if (idx > -1) {
+        data.bookings[idx].date = date
+        data.bookings[idx].time = time
+        await writeJSONDb(data)
+        return true
+      }
+      return false
+    }
+  },
+
+  cancelBooking: async (id) => {
+    if (useMySQL) {
+      const [result] = await pool.query("UPDATE bookings SET status = 'Cancelled' WHERE id = ?", [id])
+      return result.affectedRows > 0
+    } else {
+      const data = await readJSONDb()
+      const idx = data.bookings.findIndex(b => b.id === Number(id))
+      if (idx > -1) {
+        data.bookings[idx].status = 'Cancelled'
         await writeJSONDb(data)
         return true
       }
