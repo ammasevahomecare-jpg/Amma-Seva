@@ -559,6 +559,78 @@ export const db = {
     }
   },
 
+  getCaregiverById: async (id) => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM caregivers WHERE id = ?', [id])
+      return rows[0] || null
+    } else {
+      const data = await readJSONDb()
+      return data.caregivers.find(c => c.id === Number(id)) || null
+    }
+  },
+
+  updateCaregiverProfile: async (id, profileData) => {
+    const { 
+      name, phone, specialty, experience, 
+      aadhaar, pan, certificates, profilePhoto, 
+      experienceDetails, workingLocations, availableTimings 
+    } = profileData
+    if (useMySQL) {
+      const [result] = await pool.query(
+        `UPDATE caregivers SET 
+          name = COALESCE(?, name), 
+          phone = COALESCE(?, phone), 
+          specialty = COALESCE(?, specialty), 
+          experience = COALESCE(?, experience), 
+          aadhaar = COALESCE(?, aadhaar), 
+          pan = COALESCE(?, pan), 
+          certificates = COALESCE(?, certificates), 
+          profilePhoto = COALESCE(?, profilePhoto), 
+          experienceDetails = COALESCE(?, experienceDetails), 
+          workingLocations = COALESCE(?, workingLocations), 
+          availableTimings = COALESCE(?, availableTimings) 
+        WHERE id = ?`,
+        [
+          name !== undefined ? name : null, 
+          phone !== undefined ? phone : null, 
+          specialty !== undefined ? specialty : null, 
+          experience !== undefined ? Number(experience) : null, 
+          aadhaar !== undefined ? aadhaar : null, 
+          pan !== undefined ? pan : null, 
+          certificates !== undefined ? certificates : null, 
+          profilePhoto !== undefined ? profilePhoto : null, 
+          experienceDetails !== undefined ? experienceDetails : null, 
+          workingLocations !== undefined ? workingLocations : null, 
+          availableTimings !== undefined ? availableTimings : null, 
+          id
+        ]
+      )
+      return result.affectedRows > 0
+    } else {
+      const data = await readJSONDb()
+      const idx = data.caregivers.findIndex(c => c.id === Number(id))
+      if (idx > -1) {
+        data.caregivers[idx] = {
+          ...data.caregivers[idx],
+          name: name !== undefined ? name : data.caregivers[idx].name,
+          phone: phone !== undefined ? phone : data.caregivers[idx].phone,
+          specialty: specialty !== undefined ? specialty : data.caregivers[idx].specialty,
+          experience: experience !== undefined ? Number(experience) : data.caregivers[idx].experience,
+          aadhaar: aadhaar !== undefined ? aadhaar : data.caregivers[idx].aadhaar,
+          pan: pan !== undefined ? pan : data.caregivers[idx].pan,
+          certificates: certificates !== undefined ? certificates : data.caregivers[idx].certificates,
+          profilePhoto: profilePhoto !== undefined ? profilePhoto : data.caregivers[idx].profilePhoto,
+          experienceDetails: experienceDetails !== undefined ? experienceDetails : data.caregivers[idx].experienceDetails,
+          workingLocations: workingLocations !== undefined ? workingLocations : data.caregivers[idx].workingLocations,
+          availableTimings: availableTimings !== undefined ? availableTimings : data.caregivers[idx].availableTimings
+        }
+        await writeJSONDb(data)
+        return true
+      }
+      return false
+    }
+  },
+
   updateUserPassword: async (id, hashedPassword) => {
     if (useMySQL) {
       await pool.query('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, id])

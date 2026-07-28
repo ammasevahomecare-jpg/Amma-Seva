@@ -84,7 +84,7 @@ function LoginPage() {
 
   // Check redirects if already logged in
   useEffect(() => {
-    if (localStorage.getItem("ammaseva_user_token")) {
+    if (localStorage.getItem("ammaseva_user_token") || localStorage.getItem("ammaseva_caretaker_token")) {
       navigate({ to: "/dashboard" });
     } else if (localStorage.getItem("ammaseva_admin_token")) {
       navigate({ to: "/admin" });
@@ -197,6 +197,9 @@ function LoginPage() {
                 localStorage.setItem("ammaseva_caretaker_token", data.token);
                 localStorage.setItem("ammaseva_caretaker_details", JSON.stringify(data.caretaker));
                 setSuccessMsg(`Welcome, caregiver ${data.caretaker.name}!`);
+                setTimeout(() => {
+                  navigate({ to: "/dashboard" });
+                }, 1000);
               } else if (data.role === "customer") {
                 localStorage.setItem("ammaseva_user_token", data.token);
                 localStorage.setItem("ammaseva_user_details", JSON.stringify(data.user));

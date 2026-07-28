@@ -51,6 +51,117 @@ const SERVICES_CATALOG = [
 function CustomerDashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState<UserDetails | null>(null);
+  
+  // Role selection
+  const [isCaretaker, setIsCaretaker] = useState(false);
+  const [caretaker, setCaretaker] = useState<any | null>(null);
+
+  // Caretaker form states
+  const [caretakerName, setCaretakerName] = useState("");
+  const [caretakerPhone, setCaretakerPhone] = useState("");
+  const [caretakerSpecialty, setCaretakerSpecialty] = useState("Elderly Care");
+  const [caretakerExperience, setCaretakerExperience] = useState("3");
+  const [caretakerExperienceDetails, setCaretakerExperienceDetails] = useState("");
+  const [caretakerWorkingLocations, setCaretakerWorkingLocations] = useState("");
+  const [caretakerAvailableTimings, setCaretakerAvailableTimings] = useState("");
+  const [caretakerAadhaar, setCaretakerAadhaar] = useState("");
+  const [caretakerPan, setCaretakerPan] = useState("");
+  const [caretakerCertificates, setCaretakerCertificates] = useState("");
+  const [caretakerProfilePhoto, setCaretakerProfilePhoto] = useState("");
+  
+  const [isCaretakerSaving, setIsCaretakerSaving] = useState(false);
+  const [caretakerError, setCaretakerError] = useState<string | null>(null);
+  const [caretakerSuccess, setCaretakerSuccess] = useState<string | null>(null);
+
+  // Caretaker file upload helper
+  const handleCaretakerFileChange = (e: React.ChangeEvent<HTMLInputElement>, setFileState: (val: string) => void) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFileState(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Fetch caretaker profile
+  const fetchCaretakerProfile = async () => {
+    const token = localStorage.getItem("ammaseva_caretaker_token");
+    if (!token) return;
+    setIsLoading(true);
+    setCaretakerError(null);
+    try {
+      const res = await fetch("/api/caretaker/profile", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to load profile.");
+      }
+      const details = data.details;
+      setCaretaker(details);
+      setCaretakerName(details.name || "");
+      setCaretakerPhone(details.phone || "");
+      setCaretakerSpecialty(details.specialty || "Elderly Care");
+      setCaretakerExperience(String(details.experience || "3"));
+      setCaretakerExperienceDetails(details.experienceDetails || "");
+      setCaretakerWorkingLocations(details.workingLocations || "");
+      setCaretakerAvailableTimings(details.availableTimings || "");
+      setCaretakerAadhaar(details.aadhaar || "");
+      setCaretakerPan(details.pan || "");
+      setCaretakerCertificates(details.certificates || "");
+      setCaretakerProfilePhoto(details.profilePhoto || "");
+    } catch (err: any) {
+      setCaretakerError(err.message || "Failed to load profile.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Save caretaker details
+  const handleCaretakerSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCaretakerSaving(true);
+    setCaretakerError(null);
+    setCaretakerSuccess(null);
+    try {
+      const token = localStorage.getItem("ammaseva_caretaker_token");
+      const res = await fetch("/api/caretaker/profile", {
+        method: "PUT",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: caretakerName,
+          phone: caretakerPhone,
+          specialty: caretakerSpecialty,
+          experience: Number(caretakerExperience),
+          experienceDetails: caretakerExperienceDetails,
+          workingLocations: caretakerWorkingLocations,
+          availableTimings: caretakerAvailableTimings,
+          aadhaar: caretakerAadhaar,
+          pan: caretakerPan,
+          certificates: caretakerCertificates,
+          profilePhoto: caretakerProfilePhoto
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update profile.");
+      }
+      setCaretakerSuccess("Profile successfully updated!");
+      setCaretaker(data.details);
+      // Update local storage too so headers display correct name
+      localStorage.setItem("ammaseva_caretaker_details", JSON.stringify(data.details));
+      setTimeout(() => setCaretakerSuccess(null), 3000);
+    } catch (err: any) {
+      setCaretakerError(err.message || "Failed to save profile.");
+    } finally {
+      setIsCaretakerSaving(false);
+    }
+  };
 
   // View states
   const [activeView, setActiveView] = useState<"bookings" | "new-booking">("bookings");
@@ -89,12 +200,20 @@ function CustomerDashboard() {
 
   // Check login on mount
   useEffect(() => {
-    const token = localStorage.getItem("ammaseva_user_token");
-    const details = localStorage.getItem("ammaseva_user_details");
-    if (!token || !details) {
-      navigate({ to: "/login" });
+    const userToken = localStorage.getItem("ammaseva_user_token");
+    const userDetails = localStorage.getItem("ammaseva_user_details");
+    const caretakerToken = localStorage.getItem("ammaseva_caretaker_token");
+    const caretakerDetails = localStorage.getItem("ammaseva_caretaker_details");
+
+    if (caretakerToken && caretakerDetails) {
+      setIsCaretaker(true);
+      setCaretaker(JSON.parse(caretakerDetails));
+      fetchCaretakerProfile();
+    } else if (userToken && userDetails) {
+      setIsCaretaker(false);
+      setUser(JSON.parse(userDetails));
     } else {
-      setUser(JSON.parse(details));
+      navigate({ to: "/login" });
     }
   }, [navigate]);
 
@@ -246,8 +365,308 @@ function CustomerDashboard() {
   const handleLogout = () => {
     localStorage.removeItem("ammaseva_user_token");
     localStorage.removeItem("ammaseva_user_details");
+    localStorage.removeItem("ammaseva_caretaker_token");
+    localStorage.removeItem("ammaseva_caretaker_details");
     navigate({ to: "/login" });
   };
+
+  if (isCaretaker) {
+    return (
+      <SiteLayout>
+        <div className="min-h-screen bg-slate-50 py-10 px-4 sm:px-6 lg:px-8 animate-in fade-in duration-300">
+          <div className="mx-auto max-w-4xl space-y-6">
+            
+            {/* Header Card */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm">
+              <div className="flex items-center gap-4">
+                <div className="h-16 w-16 rounded-full bg-indigo-50 border border-slate-100 flex items-center justify-center text-indigo-600 shadow-inner shrink-0 overflow-hidden">
+                  {caretakerProfilePhoto ? (
+                    <img src={caretakerProfilePhoto} alt={caretakerName} className="h-full w-full object-cover" />
+                  ) : (
+                    <User className="h-8 w-8" />
+                  )}
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-primary font-display">Caregiver Portal</h1>
+                  <p className="text-sm text-slate-500">Welcome back, <span className="font-semibold text-slate-800">{caretakerName || caretaker?.name || "Caregiver"}</span></p>
+                </div>
+              </div>
+              
+              <button
+                onClick={handleLogout}
+                className="btn-outline px-4 py-2 text-xs font-semibold flex items-center gap-1.5 cursor-pointer rounded-lg text-slate-600"
+              >
+                Sign Out
+              </button>
+            </div>
+
+            {/* Application Status Banner */}
+            {caretaker?.status === "Verified" ? (
+              <div className="rounded-3xl border border-emerald-200 bg-emerald-50/50 p-6 flex gap-4 items-start shadow-sm">
+                <div className="h-12 w-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="h-6 w-6" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-bold text-emerald-900 font-display">Profile Approved & Active</h3>
+                  <p className="text-sm text-emerald-800 leading-relaxed">
+                    Your caretaker profile is fully verified by the administrator. Your profile is visible in the care network, and you can now be assigned to customer booking shifts.
+                  </p>
+                </div>
+              </div>
+            ) : caretaker?.status === "Rejected" ? (
+              <div className="rounded-3xl border border-rose-200 bg-rose-50/50 p-6 flex gap-4 items-start shadow-sm">
+                <div className="h-12 w-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="h-6 w-6" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-bold text-rose-900 font-display">Application Rejected</h3>
+                  <p className="text-sm text-rose-800 leading-relaxed">
+                    Your caregiver profile has been rejected by the administrator. Please update and fill your details accurately below, re-upload clear copies of all required documents, and submit for re-verification.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-3xl border border-amber-200 bg-amber-50/50 p-6 flex gap-4 items-start shadow-sm">
+                <div className="h-12 w-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                  <Clock className="h-6 w-6" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-bold text-amber-900 font-display">Verification Pending</h3>
+                  <p className="text-sm text-amber-800 leading-relaxed">
+                    Your caretaker registration is currently undergoing administrative background checks. To speed up verification, make sure all your profile details and required documents are complete and up-to-date below.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Profile Form Card */}
+            <div className="bg-white p-8 sm:p-10 rounded-3xl border border-slate-200/60 shadow-sm space-y-6">
+              <div>
+                <h2 className="text-xl font-bold text-primary font-display">Complete & Update Profile Details</h2>
+                <p className="text-xs text-slate-400 mt-0.5">Keep your details up-to-date to receive relevant shift opportunities.</p>
+              </div>
+
+              {caretakerError && (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-rose-800 text-sm flex gap-2 items-center">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600" />
+                  <span>{caretakerError}</span>
+                </div>
+              )}
+
+              {caretakerSuccess && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-emerald-800 text-sm flex gap-2 items-center">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                  <span>{caretakerSuccess}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleCaretakerSubmit} className="space-y-6">
+                
+                {/* Profile Photo Upload and Preview */}
+                <div className="flex flex-col sm:flex-row items-center gap-6 bg-slate-50/50 p-6 rounded-2xl border border-slate-100">
+                  <div className="h-24 w-24 rounded-full border-2 border-dashed border-slate-300 bg-white flex items-center justify-center text-slate-400 overflow-hidden relative group shrink-0">
+                    {caretakerProfilePhoto ? (
+                      <img src={caretakerProfilePhoto} alt="Profile preview" className="h-full w-full object-cover" />
+                    ) : (
+                      <User className="h-10 w-10 text-slate-300" />
+                    )}
+                  </div>
+                  <div className="space-y-2 text-center sm:text-left">
+                    <span className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Profile Photo</span>
+                    <p className="text-[11px] text-slate-400">Upload a professional face photo for patient trust.</p>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleCaretakerFileChange(e, setCaretakerProfilePhoto)}
+                      className="text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Full Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={caretakerName}
+                      onChange={(e) => setCaretakerName(e.target.value)}
+                      placeholder="e.g. Pandu R."
+                      className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Phone Number</label>
+                    <input
+                      type="tel"
+                      required
+                      value={caretakerPhone}
+                      onChange={(e) => setCaretakerPhone(e.target.value)}
+                      placeholder="+91 XXXXX XXXXX"
+                      className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Specialty / Role Category</label>
+                    <select
+                      value={caretakerSpecialty}
+                      onChange={(e) => setCaretakerSpecialty(e.target.value)}
+                      className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                    >
+                      <option value="Elderly Care">Elderly Care</option>
+                      <option value="Mother & Baby Care">Mother & Baby Care</option>
+                      <option value="Home Nursing Services">Home Nursing Services</option>
+                      <option value="ICU/Home Recovery Support">ICU/Home Recovery Support</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Years of Experience</label>
+                    <select
+                      value={caretakerExperience}
+                      onChange={(e) => setCaretakerExperience(e.target.value)}
+                      className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                    >
+                      <option value="1">1-2 years</option>
+                      <option value="3">3-5 years</option>
+                      <option value="6">6-9 years</option>
+                      <option value="10">10+ years</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Working Locations (Areas)</label>
+                    <input
+                      type="text"
+                      value={caretakerWorkingLocations}
+                      onChange={(e) => setCaretakerWorkingLocations(e.target.value)}
+                      placeholder="e.g. Kukatpally, Gachibowli"
+                      className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Available Timings / Shifts</label>
+                    <input
+                      type="text"
+                      value={caretakerAvailableTimings}
+                      onChange={(e) => setCaretakerAvailableTimings(e.target.value)}
+                      placeholder="e.g. Day Shift, Night Shift, 24/7 Live-in"
+                      className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Detailed Experience & Skills Summary</label>
+                  <textarea
+                    value={caretakerExperienceDetails}
+                    onChange={(e) => setCaretakerExperienceDetails(e.target.value)}
+                    placeholder="Describe your qualifications, hospital training, types of patients managed, special clinical equipment handled (e.g. Ryles tube, catheter, IV line, oxygen)..."
+                    rows={4}
+                    className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                  />
+                </div>
+
+                {/* Documents Upload Section */}
+                <div className="border border-slate-200/60 rounded-3xl p-6 bg-slate-50/50 space-y-4">
+                  <div className="flex items-center gap-2 pb-2 border-b border-slate-200">
+                    <FileText className="h-5 w-5 text-indigo-600" />
+                    <span className="text-sm font-bold text-slate-800 uppercase tracking-wider">Verification Documents</span>
+                  </div>
+
+                  <div className="grid gap-6 md:grid-cols-3">
+                    
+                    {/* Aadhaar */}
+                    <div className="space-y-2">
+                      <label className="block text-[11px] font-bold text-slate-600">Aadhaar Card (PDF / Image)</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          onChange={(e) => handleCaretakerFileChange(e, setCaretakerAadhaar)}
+                          className="w-full text-[11px] text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+                        />
+                      </div>
+                      {caretakerAadhaar ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full">
+                          ✓ Document Uploaded
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-rose-500 font-semibold bg-rose-50 px-2 py-0.5 rounded-full">
+                          ⚠ Missing Document
+                        </span>
+                      )}
+                    </div>
+
+                    {/* PAN Card */}
+                    <div className="space-y-2">
+                      <label className="block text-[11px] font-bold text-slate-600">PAN Card (PDF / Image)</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          onChange={(e) => handleCaretakerFileChange(e, setCaretakerPan)}
+                          className="w-full text-[11px] text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+                        />
+                      </div>
+                      {caretakerPan ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full">
+                          ✓ Document Uploaded
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-rose-500 font-semibold bg-rose-50 px-2 py-0.5 rounded-full">
+                          ⚠ Missing Document
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Certificates */}
+                    <div className="space-y-2">
+                      <label className="block text-[11px] font-bold text-slate-600">Nursing / Care Certificates</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          onChange={(e) => handleCaretakerFileChange(e, setCaretakerCertificates)}
+                          className="w-full text-[11px] text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+                        />
+                      </div>
+                      {caretakerCertificates ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full">
+                          ✓ Document Uploaded
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-rose-500 font-semibold bg-rose-50 px-2 py-0.5 rounded-full">
+                          ⚠ Missing Document
+                        </span>
+                      )}
+                    </div>
+
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-4 border-t border-slate-100">
+                  <button
+                    type="submit"
+                    disabled={isCaretakerSaving}
+                    className="btn-primary py-2.5 px-8 font-semibold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 w-full sm:w-auto"
+                  >
+                    {isCaretakerSaving && <RefreshCw className="h-4 w-4 animate-spin" />}
+                    {isCaretakerSaving ? "Saving profile details..." : "Save Profile Details"}
+                  </button>
+                </div>
+
+              </form>
+            </div>
+
+          </div>
+        </div>
+      </SiteLayout>
+    );
+  }
 
   return (
     <SiteLayout>

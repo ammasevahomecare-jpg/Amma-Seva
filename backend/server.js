@@ -234,15 +234,27 @@ app.post('/api/auth/login', async (req, res) => {
     if (!caretaker) {
       return res.status(404).json({ success: false, error: 'Caretaker account record not found.' })
     }
-    if (caretaker.status !== 'Verified') {
-      return res.status(403).json({ success: false, error: 'Your caretaker profile is pending admin verification. Access is disabled until approved.' })
-    }
     const token = jwt.sign({ id: caretaker.id, role: 'caretaker', email: caretaker.email }, JWT_SECRET, { expiresIn: '7d' })
     return res.json({
       success: true,
       role: 'caretaker',
       token,
-      caretaker: { id: caretaker.id, name: caretaker.name, status: caretaker.status }
+      caretaker: { 
+        id: caretaker.id, 
+        name: caretaker.name, 
+        email: caretaker.email, 
+        phone: caretaker.phone,
+        status: caretaker.status,
+        specialty: caretaker.specialty,
+        experience: caretaker.experience,
+        aadhaar: caretaker.aadhaar,
+        pan: caretaker.pan,
+        certificates: caretaker.certificates,
+        profilePhoto: caretaker.profilePhoto,
+        experienceDetails: caretaker.experienceDetails,
+        workingLocations: caretaker.workingLocations,
+        availableTimings: caretaker.availableTimings
+      }
     })
   } else if (role === 'customer') {
     const user = await db.getUserByEmail(normalizedEmail)
@@ -317,6 +329,42 @@ const authenticateAdmin = (req, res, next) => {
     return res.status(401).json({ error: 'Access denied. Invalid or expired token.' })
   }
 }
+
+// GET caretaker profile details
+app.get('/api/caretaker/profile', authenticateUser, async (req, res) => {
+  if (req.role !== 'caretaker') {
+    return res.status(403).json({ error: 'Access forbidden. Caretaker profile only.' })
+  }
+  try {
+    const caretaker = await db.getCaregiverById(req.userId)
+    if (!caretaker) {
+      return res.status(404).json({ error: 'Caretaker profile not found.' })
+    }
+    const { password, ...details } = caretaker
+    res.json({ success: true, details })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve profile details.' })
+  }
+})
+
+// PUT update caretaker profile details (fill details)
+app.put('/api/caretaker/profile', authenticateUser, async (req, res) => {
+  if (req.role !== 'caretaker') {
+    return res.status(403).json({ error: 'Access forbidden. Caretaker profile only.' })
+  }
+  try {
+    const updated = await db.updateCaregiverProfile(req.userId, req.body)
+    if (updated) {
+      const caretaker = await db.getCaregiverById(req.userId)
+      const { password, ...details } = caretaker
+      res.json({ success: true, message: 'Profile details successfully updated.', details })
+    } else {
+      res.status(404).json({ error: 'Caretaker profile not found.' })
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update profile details.' })
+  }
+})
 
 // POST register user
 app.post('/api/user/register', async (req, res) => {
@@ -485,7 +533,22 @@ app.post('/api/caretaker/login', async (req, res) => {
     res.json({
       success: true,
       token,
-      caretaker: { id: caretaker.id, name: caretaker.name, email: caretaker.email, status: caretaker.status }
+      caretaker: { 
+        id: caretaker.id, 
+        name: caretaker.name, 
+        email: caretaker.email, 
+        phone: caretaker.phone,
+        status: caretaker.status,
+        specialty: caretaker.specialty,
+        experience: caretaker.experience,
+        aadhaar: caretaker.aadhaar,
+        pan: caretaker.pan,
+        certificates: caretaker.certificates,
+        profilePhoto: caretaker.profilePhoto,
+        experienceDetails: caretaker.experienceDetails,
+        workingLocations: caretaker.workingLocations,
+        availableTimings: caretaker.availableTimings
+      }
     })
   } catch (err) {
     res.status(500).json({ error: 'Failed to authenticate caretaker.' })
