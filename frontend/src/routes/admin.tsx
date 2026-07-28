@@ -88,7 +88,7 @@ function AdminPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem("ammaseva_admin_token"));
 
   // Navigation and Search
-  const [activeTab, setActiveTab] = useState<"overview" | "bookings" | "caregivers" | "enquiries" | "services" | "users" | "notifications">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "bookings" | "caregivers" | "enquiries" | "services" | "users" | "notifications" | "payments">("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -529,6 +529,7 @@ function AdminPage() {
             { id: "caregivers", label: "Employees & Staff", icon: UserCheck },
             { id: "users", label: "Customer Base", icon: Users },
             { id: "services", label: "Services", icon: Sliders },
+            { id: "payments", label: "Payment Status", icon: DollarSign },
             { id: "notifications", label: "Alert Notifications", icon: Bell },
             { id: "enquiries", label: "Customer Leads", icon: MessageSquare }
           ].map((item) => {
@@ -1008,6 +1009,137 @@ function AdminPage() {
           )}
 
           {/* Service Catalog & Pricing panel */}
+          {/* Payments & Transaction tracking panel */}
+          {activeTab === "payments" && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center bg-white border border-slate-200/60 rounded-2xl p-4 sm:p-6 shadow-sm gap-4">
+                <div>
+                  <h3 className="text-lg font-bold text-primary font-display">Payment Status & Invoices</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Track and record payments for all customer bookings.</p>
+                </div>
+                <div className="flex gap-1.5 bg-slate-100 p-1 rounded-xl w-fit self-start sm:self-auto">
+                  {["all", "Paid", "Unpaid"].map((filter) => {
+                    const count = bookings.filter(b => filter === "all" ? true : b.paymentStatus === filter).length;
+                    return (
+                      <button
+                        key={filter}
+                        onClick={() => setSearchQuery(filter === "all" ? "" : filter)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-white hover:shadow-sm text-slate-600 hover:text-slate-900 transition-all cursor-pointer capitalize"
+                      >
+                        {filter} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Payments Stats Summary Cards */}
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+                <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm">
+                  <span className="text-xs text-slate-400 font-medium uppercase tracking-wider block">Total Booked Value</span>
+                  <span className="text-2xl font-bold font-display text-slate-950 mt-1 block">
+                    ₹{bookings.reduce((sum, b) => sum + (Number(b.amount) || 0), 0).toLocaleString()}
+                  </span>
+                </div>
+                <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm">
+                  <span className="text-xs text-slate-400 font-medium uppercase tracking-wider block">Total Paid (Collected)</span>
+                  <span className="text-2xl font-bold font-display text-emerald-600 mt-1 block">
+                    ₹{bookings.filter(b => b.paymentStatus === "Paid").reduce((sum, b) => sum + (Number(b.amount) || 0), 0).toLocaleString()}
+                  </span>
+                </div>
+                <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm">
+                  <span className="text-xs text-slate-400 font-medium uppercase tracking-wider block">Total Outstanding (Unpaid)</span>
+                  <span className="text-2xl font-bold font-display text-amber-600 mt-1 block">
+                    ₹{bookings.filter(b => b.paymentStatus !== "Paid").reduce((sum, b) => sum + (Number(b.amount) || 0), 0).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Payments Table */}
+              <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-sm">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-100 text-slate-400 text-xs font-bold uppercase tracking-wider">
+                        <th className="py-4 px-6">Customer Details</th>
+                        <th className="py-4 px-6">Service Details</th>
+                        <th className="py-4 px-6">Billable Amount</th>
+                        <th className="py-4 px-6">Payment Status</th>
+                        <th className="py-4 px-6">Transaction Details</th>
+                        <th className="py-4 px-6 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {bookings
+                        .filter(b => {
+                          if (!searchQuery) return true;
+                          const q = searchQuery.toLowerCase();
+                          if (q === "paid" || q === "unpaid") {
+                            return b.paymentStatus.toLowerCase() === q;
+                          }
+                          return (
+                            b.name.toLowerCase().includes(q) ||
+                            b.phone.includes(q) ||
+                            b.service.toLowerCase().includes(q)
+                          );
+                        })
+                        .map((b) => (
+                          <tr key={b.id} className="hover:bg-slate-50/30 transition-colors">
+                            <td className="py-4 px-6">
+                              <div className="font-semibold text-primary font-display">{b.name}</div>
+                              <div className="text-xs text-slate-400 mt-0.5">{b.phone}</div>
+                            </td>
+                            <td className="py-4 px-6">
+                              <div className="font-medium text-slate-800">{b.service}</div>
+                              <div className="text-[10px] text-slate-400 mt-0.5">{b.date} • {b.time}</div>
+                            </td>
+                            <td className="py-4 px-6 font-bold text-slate-800">
+                              ₹{Number(b.amount).toLocaleString()}
+                            </td>
+                            <td className="py-4 px-6">
+                              <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded ${
+                                b.paymentStatus === "Paid" 
+                                  ? "bg-emerald-50 text-emerald-800 border border-emerald-100" 
+                                  : "bg-amber-50 text-amber-800 border border-amber-100"
+                              }`}>
+                                {b.paymentStatus}
+                              </span>
+                            </td>
+                            <td className="py-4 px-6">
+                              {b.paymentStatus === "Paid" ? (
+                                <div className="space-y-0.5">
+                                  <div className="text-xs font-semibold text-slate-700">Method: <span className="font-bold text-slate-900">{b.paymentMethod || "N/A"}</span></div>
+                                  {b.transactionId && <div className="text-[10px] font-mono text-slate-500">Ref: {b.transactionId}</div>}
+                                  {b.paymentDate && <div className="text-[10px] text-slate-400">Date: {b.paymentDate}</div>}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-slate-400 italic">No transaction recorded</span>
+                              )}
+                            </td>
+                            <td className="py-4 px-6 text-right">
+                              <button
+                                onClick={() => openEditModal("booking", b)}
+                                className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-gold/15 text-gold hover:text-gold text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors inline-block"
+                              >
+                                <Edit3 className="h-3.5 w-3.5" /> Record Payment
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      {bookings.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="py-8 text-center text-slate-400 text-sm">
+                            No bookings found to display payment logs.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === "services" && (
             <div className="space-y-4">
               <div className="flex justify-between items-center bg-white border border-slate-200/60 rounded-2xl p-4 sm:p-6 shadow-sm">
