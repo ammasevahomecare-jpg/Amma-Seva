@@ -606,22 +606,194 @@ app.put('/api/caregiver/:id', async (req, res) => {
   }
 })
 
-// Preserve old routes to avoid breaks
-app.get('/api/services', (req, res) => {
-  res.json([
-    {
-      id: 'elderly',
-      title: 'Elderly Care at Home',
-      category: 'care',
-      description: 'Assisting senior citizens with daily essentials, healthcare companionship, and emotional support.'
-    },
-    {
-      id: 'food',
-      title: 'Nutritious Meals (Anna Seva)',
-      category: 'food',
-      description: 'Preparing and distributing warm, healthy meals daily to impoverished families and individuals.'
+// GET all users (Admin Panel)
+app.get('/api/admin/users', async (req, res) => {
+  try {
+    const list = await db.getUsers()
+    res.json(list)
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve users list.' })
+  }
+})
+
+// DELETE user (Admin Panel)
+app.delete('/api/admin/user/:id', async (req, res) => {
+  try {
+    const deleted = await db.deleteUser(req.params.id)
+    if (deleted) {
+      res.json({ success: true, message: 'User account successfully deleted.' })
+    } else {
+      res.status(404).json({ error: 'User account not found.' })
     }
-  ])
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete user account.' })
+  }
+})
+
+// POST create booking directly as admin (Admin Panel)
+app.post('/api/admin/booking', async (req, res) => {
+  const { name, phone, service, date, time, duration, address, amount } = req.body
+  if (!name || !phone || !service || !date || !time || !duration || !address) {
+    return res.status(400).json({ error: 'Missing required booking details.' })
+  }
+  try {
+    const newBooking = await db.addBooking({ name, phone, service, date, time, duration, address, amount: Number(amount) })
+    res.status(201).json({ success: true, message: 'Booking successfully created.', data: newBooking })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create booking.' })
+  }
+})
+
+// PUT full update booking details (Admin Panel)
+app.put('/api/admin/booking/:id', async (req, res) => {
+  try {
+    const updated = await db.adminUpdateBooking(req.params.id, req.body)
+    if (updated) {
+      res.json({ success: true, message: 'Booking details successfully updated.' })
+    } else {
+      res.status(404).json({ error: 'Booking not found.' })
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update booking details.' })
+  }
+})
+
+// DELETE booking (Admin Panel)
+app.delete('/api/booking/:id', async (req, res) => {
+  try {
+    const deleted = await db.deleteBooking(req.params.id)
+    if (deleted) {
+      res.json({ success: true, message: 'Booking record successfully deleted.' })
+    } else {
+      res.status(404).json({ error: 'Booking record not found.' })
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete booking record.' })
+  }
+})
+
+// PUT full update caregiver details (Admin Panel)
+app.put('/api/admin/caregiver/:id', async (req, res) => {
+  try {
+    const updated = await db.adminUpdateCaregiver(req.params.id, req.body)
+    if (updated) {
+      res.json({ success: true, message: 'Caregiver details successfully updated.' })
+    } else {
+      res.status(404).json({ error: 'Caregiver not found.' })
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update caregiver details.' })
+  }
+})
+
+// DELETE caregiver (Admin Panel)
+app.delete('/api/caregiver/:id', async (req, res) => {
+  try {
+    const deleted = await db.deleteCaregiver(req.params.id)
+    if (deleted) {
+      res.json({ success: true, message: 'Caregiver record successfully deleted.' })
+    } else {
+      res.status(404).json({ error: 'Caregiver record not found.' })
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete caregiver record.' })
+  }
+})
+
+// GET all services (Dynamic)
+app.get('/api/services', async (req, res) => {
+  try {
+    const list = await db.getServices()
+    res.json(list)
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve services list.' })
+  }
+})
+
+// POST add service (Admin Panel)
+app.post('/api/services', async (req, res) => {
+  const { title, description, price, category } = req.body
+  if (!title || !price) {
+    return res.status(400).json({ error: 'Title and price are required fields.' })
+  }
+  try {
+    const newService = await db.addService({ title, description, price, category })
+    res.status(201).json({ success: true, message: 'Service successfully created.', data: newService })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create service.' })
+  }
+})
+
+// PUT update service (Admin Panel)
+app.put('/api/services/:id', async (req, res) => {
+  try {
+    const updated = await db.updateService(req.params.id, req.body)
+    if (updated) {
+      res.json({ success: true, message: 'Service successfully updated.' })
+    } else {
+      res.status(404).json({ error: 'Service not found.' })
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update service.' })
+  }
+})
+
+// DELETE service (Admin Panel)
+app.delete('/api/services/:id', async (req, res) => {
+  try {
+    const deleted = await db.deleteService(req.params.id)
+    if (deleted) {
+      res.json({ success: true, message: 'Service successfully deleted.' })
+    } else {
+      res.status(404).json({ error: 'Service not found.' })
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete service.' })
+  }
+})
+
+// GET notification logs (Admin Panel)
+app.get('/api/notifications', async (req, res) => {
+  try {
+    const list = await db.getNotifications()
+    res.json(list)
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve notifications log.' })
+  }
+})
+
+// POST send notification (Admin Panel)
+app.post('/api/notifications', async (req, res) => {
+  const { recipient, message, type } = req.body
+  if (!recipient || !message || !type) {
+    return res.status(400).json({ error: 'Recipient, message, and delivery method are required.' })
+  }
+  try {
+    const log = await db.addNotification({ recipient, message, type })
+
+    // If recipient has email formatting, attempt to send real email alert in background
+    if (recipient.includes('@')) {
+      const mailOptions = {
+        from: `"Amma Seva Notifications" <${process.env.SMTP_EMAIL || 'ammasevahomecare@gmail.com'}>`,
+        to: recipient.trim(),
+        subject: 'Alert Notification from Amma Seva',
+        html: `
+          <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 16px;">
+            <h3 style="color: #4f46e5; margin-top: 0;">Care Notification Alert</h3>
+            <p style="color: #334155; font-size: 14px; line-height: 1.5;">${message}</p>
+            <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <p style="color: #94a3b8; font-size: 11px; text-align: center;">This is a system alert message from Amma Seva. Please do not reply directly to this mail.</p>
+          </div>
+        `
+      }
+      transporter.sendMail(mailOptions).catch(e => console.error('Failed system broadcast:', e.message))
+    }
+
+    console.log(`[Notification Alert Logged] Type: ${type} to ${recipient}: ${message}`)
+    res.status(201).json({ success: true, message: 'Notification successfully dispatched!', data: log })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to send notification.' })
+  }
 })
 
 // Resolve __dirname in ES Modules

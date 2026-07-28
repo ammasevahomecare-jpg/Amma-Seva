@@ -5,10 +5,8 @@ import {
   Trash2, RefreshCw, Mail, Phone, MapPin, ClipboardList, 
   Users, Calendar, DollarSign, ShieldAlert, LogOut, CheckCircle2, 
   XCircle, Edit3, Save, Check, LayoutDashboard, CalendarDays,
-  UserCheck, MessageSquare, Sliders, Bell, Search, Settings as SettingsIcon,
-  ChevronRight, TrendingDown, ArrowUpRight
+  UserCheck, MessageSquare, Sliders, Bell, Search, Plus, Send, TrendingDown
 } from "lucide-react";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -58,43 +56,86 @@ interface Enquiry {
   submittedAt: string;
 }
 
+interface UserRecord {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  createdAt: string;
+}
+
+interface ServiceRecord {
+  id: number;
+  title: string;
+  description: string;
+  price: string;
+  category: string;
+}
+
+interface NotificationRecord {
+  id: number;
+  recipient: string;
+  message: string;
+  type: string;
+  sentAt: string;
+}
+
 function AdminPage() {
   const navigate = useNavigate();
 
   // Auth state
   const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem("ammaseva_admin_token"));
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginOtp, setLoginOtp] = useState("");
-  const [authStep, setAuthStep] = useState<"email" | "otp">("email");
-  const [isSendingOtp, setIsSendingOtp] = useState(false);
-  const [otpSentMessage, setOtpSentMessage] = useState<string | null>(null);
-  const [countdown, setCountdown] = useState(0);
-  const [loginError, setLoginError] = useState<string | null>(null);
 
-  // Countdown effect
-  useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [countdown]);
-
-  // Dashboard layout/navigation state
-  const [activeTab, setActiveTab] = useState<"overview" | "bookings" | "caregivers" | "enquiries" | "services">("overview");
+  // Navigation and Search
+  const [activeTab, setActiveTab] = useState<"overview" | "bookings" | "caregivers" | "enquiries" | "services" | "users" | "notifications">("overview");
   const [searchQuery, setSearchQuery] = useState("");
-
-  // Database states
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [caregivers, setCaregivers] = useState<Caregiver[]>([]);
-  const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Edit states
-  const [editingBookingId, setEditingBookingId] = useState<number | null>(null);
-  const [editStatus, setEditStatus] = useState("");
-  const [editAssignedStaff, setEditAssignedStaff] = useState("");
-  const [editPaymentStatus, setEditPaymentStatus] = useState("");
+  // Database lists
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [caregivers, setCaregivers] = useState<Caregiver[]>([]);
+  const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
+  const [users, setUsers] = useState<UserRecord[]>([]);
+  const [services, setServices] = useState<ServiceRecord[]>([]);
+  const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
+
+  // Modal Control
+  const [modalType, setModalType] = useState<"booking" | "caregiver" | "service" | "notification" | null>(null);
+  const [modalMode, setModalMode] = useState<"add" | "edit">("add");
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+
+  // Form states - Booking
+  const [bookingName, setBookingName] = useState("");
+  const [bookingPhone, setBookingPhone] = useState("");
+  const [bookingService, setBookingService] = useState("");
+  const [bookingDate, setBookingDate] = useState("");
+  const [bookingTime, setBookingTime] = useState("");
+  const [bookingDuration, setBookingDuration] = useState("Daily");
+  const [bookingAddress, setBookingAddress] = useState("");
+  const [bookingAmount, setBookingAmount] = useState("");
+  const [bookingStatus, setBookingStatus] = useState("Pending");
+  const [bookingAssignedStaff, setBookingAssignedStaff] = useState("");
+  const [bookingPaymentStatus, setBookingPaymentStatus] = useState("Unpaid");
+
+  // Form states - Caregiver
+  const [caregiverName, setCaregiverName] = useState("");
+  const [caregiverPhone, setCaregiverPhone] = useState("");
+  const [caregiverEmail, setCaregiverEmail] = useState("");
+  const [caregiverSpecialty, setCaregiverSpecialty] = useState("Elderly Care");
+  const [caregiverExperience, setCaregiverExperience] = useState("");
+  const [caregiverStatus, setCaregiverStatus] = useState("Pending");
+
+  // Form states - Service
+  const [serviceTitle, setServiceTitle] = useState("");
+  const [serviceDescription, setServiceDescription] = useState("");
+  const [servicePrice, setServicePrice] = useState("");
+  const [serviceCategory, setServiceCategory] = useState("care");
+
+  // Form states - Notification
+  const [notifRecipient, setNotifRecipient] = useState("All Users");
+  const [notifMessage, setNotifMessage] = useState("");
+  const [notifType, setNotifType] = useState("Email");
 
   // Check login status on mount
   useEffect(() => {
@@ -109,14 +150,20 @@ function AdminPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const [bookingsRes, caregiversRes, enquiriesRes] = await Promise.all([
+      const [bookingsRes, caregiversRes, enquiriesRes, usersRes, servicesRes, notificationsRes] = await Promise.all([
         fetch("/api/bookings").then(res => res.json()),
         fetch("/api/caregivers").then(res => res.json()),
-        fetch("/api/enquiries").then(res => res.json())
+        fetch("/api/enquiries").then(res => res.json()),
+        fetch("/api/admin/users").then(res => res.json()),
+        fetch("/api/services").then(res => res.json()),
+        fetch("/api/notifications").then(res => res.json())
       ]);
       setBookings(bookingsRes);
       setCaregivers(caregiversRes);
       setEnquiries(enquiriesRes);
+      setUsers(usersRes);
+      setServices(servicesRes);
+      setNotifications(notificationsRes);
     } catch (err) {
       console.error(err);
       setError("Failed to sync database logs. Please verify backend state.");
@@ -131,81 +178,6 @@ function AdminPage() {
     }
   }, [isLoggedIn]);
 
-  // Handle OTP request submit
-  const handleRequestOtp = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!loginEmail) {
-      setLoginError("Please enter your admin email address.");
-      return;
-    }
-
-    setLoginError(null);
-    setIsSendingOtp(true);
-    setOtpSentMessage(null);
-
-    fetch("/api/admin/send-otp", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: loginEmail })
-    })
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.error || "Failed to dispatch verification email.");
-        }
-        return data;
-      })
-      .then((data) => {
-        if (data.success) {
-          setAuthStep("otp");
-          setOtpSentMessage("Verification code has been sent to " + loginEmail);
-          setCountdown(30);
-          setLoginError(null);
-        }
-      })
-      .catch((err) => {
-        setLoginError(err.message || "Failed to connect to backend service.");
-      })
-      .finally(() => {
-        setIsSendingOtp(false);
-      });
-  };
-
-  // Handle login submit (verify OTP)
-  const handleLoginSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!loginOtp || loginOtp.length < 6) {
-      setLoginError("Please enter the complete 6-digit OTP code.");
-      return;
-    }
-    setLoginError(null);
-
-    fetch("/api/admin/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: loginEmail, otp: loginOtp })
-    })
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.error || "Invalid verification OTP code.");
-        }
-        return data;
-      })
-      .then((data) => {
-        if (data.success) {
-          localStorage.setItem("ammaseva_admin_token", data.token);
-          setIsLoggedIn(true);
-          setLoginOtp("");
-          setLoginError(null);
-          setOtpSentMessage(null);
-        }
-      })
-      .catch((err) => {
-        setLoginError(err.message || "Failed to verify admin credentials.");
-      });
-  };
-
   // Handle Logout
   const handleLogout = () => {
     localStorage.removeItem("ammaseva_admin_token");
@@ -213,8 +185,8 @@ function AdminPage() {
     navigate({ to: "/login" });
   };
 
-  // Handle caregiver status change
-  const handleUpdateCaregiver = (id: number, status: "Verified" | "Rejected") => {
+  // Quick verify/reject for caregivers
+  const handleUpdateCaregiverStatus = (id: number, status: "Verified" | "Rejected") => {
     fetch(`/api/caregiver/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -231,48 +203,64 @@ function AdminPage() {
       .catch(err => console.error(err));
   };
 
-  // Start editing a booking
-  const startEditBooking = (b: Booking) => {
-    setEditingBookingId(b.id);
-    setEditStatus(b.status);
-    setEditAssignedStaff(b.assignedStaff || "");
-    setEditPaymentStatus(b.paymentStatus);
+  // DELETE actions
+  const handleDeleteBooking = (id: number) => {
+    if (window.confirm("Are you sure you want to permanently delete this booking record?")) {
+      fetch(`/api/booking/${id}`, { method: "DELETE" })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setBookings(prev => prev.filter(b => b.id !== id));
+          }
+        })
+        .catch(err => console.error(err));
+    }
   };
 
-  // Save edited booking details
-  const saveBookingEdit = (id: number) => {
-    fetch(`/api/booking/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        status: editStatus,
-        assignedStaff: editAssignedStaff || null,
-        paymentStatus: editPaymentStatus
-      })
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          setBookings(prev => 
-            prev.map(b => b.id === id ? { 
-              ...b, 
-              status: editStatus, 
-              assignedStaff: editAssignedStaff || null, 
-              paymentStatus: editPaymentStatus 
-            } : b)
-          );
-          setEditingBookingId(null);
-        }
-      })
-      .catch(err => console.error(err));
+  const handleDeleteCaregiver = (id: number) => {
+    if (window.confirm("Are you sure you want to permanently delete this caregiver/staff employee record?")) {
+      fetch(`/api/caregiver/${id}`, { method: "DELETE" })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setCaregivers(prev => prev.filter(c => c.id !== id));
+          }
+        })
+        .catch(err => console.error(err));
+    }
   };
 
-  // Delete enquiry
+  const handleDeleteUser = (id: number) => {
+    if (window.confirm("Are you sure you want to permanently delete this user customer account?")) {
+      fetch(`/api/admin/user/${id}`, { method: "DELETE" })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setUsers(prev => prev.filter(u => u.id !== id));
+          }
+        })
+        .catch(err => console.error(err));
+    }
+  };
+
+  const handleDeleteService = (id: number) => {
+    if (window.confirm("Are you sure you want to permanently delete this service catalog item?")) {
+      fetch(`/api/services/${id}`, { method: "DELETE" })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setServices(prev => prev.filter(s => s.id !== id));
+          }
+        })
+        .catch(err => console.error(err));
+    }
+  };
+
   const handleDeleteEnquiry = (id: number) => {
-    if (window.confirm("Are you sure you want to delete this customer inquiry?")) {
+    if (window.confirm("Are you sure you want to delete this customer inquiry lead?")) {
       fetch(`/api/enquiry/${id}`, { method: "DELETE" })
-        .then((res) => res.json())
-        .then((data) => {
+        .then(res => res.json())
+        .then(data => {
           if (data.success) {
             setEnquiries(prev => prev.filter(e => e.id !== id));
           }
@@ -281,23 +269,164 @@ function AdminPage() {
     }
   };
 
-  const servicesCatalog = [
-    { title: "Elderly Care at Home", description: "Assisting seniors with daily tasks and medication routine", price: "₹1,200/day" },
-    { title: "Mother & Baby Care", description: "Postnatal care for new moms and newborn health checks", price: "₹2,500/day" },
-    { title: "Home Nursing Services", description: "Post-surgery care, wound dressing, vitals tracking", price: "₹1,500/visit" },
-    { title: "Injection Services", description: "IV, IM, and subcutaneous drug administrations", price: "₹300/visit" },
-    { title: "ICU/Home Recovery Support", description: "Critical home support with specialized medical staff", price: "₹4,500/day" }
-  ];
+  // Open modal forms
+  const openAddModal = (type: "booking" | "caregiver" | "service" | "notification") => {
+    setModalType(type);
+    setModalMode("add");
+    setSelectedId(null);
 
-  // Calculated overview stats
+    // Reset forms
+    if (type === "booking") {
+      setBookingName("");
+      setBookingPhone("");
+      setBookingService(services[0]?.title || "Elderly Care at Home");
+      setBookingDate("");
+      setBookingTime("");
+      setBookingDuration("Daily");
+      setBookingAddress("");
+      setBookingAmount("1200");
+      setBookingStatus("Pending");
+      setBookingAssignedStaff("");
+      setBookingPaymentStatus("Unpaid");
+    } else if (type === "caregiver") {
+      setCaregiverName("");
+      setCaregiverPhone("");
+      setCaregiverEmail("");
+      setCaregiverSpecialty("Elderly Care");
+      setCaregiverExperience("3");
+      setCaregiverStatus("Pending");
+    } else if (type === "service") {
+      setServiceTitle("");
+      setServiceDescription("");
+      setServicePrice("₹1,200/day");
+      setServiceCategory("care");
+    } else if (type === "notification") {
+      setNotifRecipient("All Users");
+      setNotifMessage("");
+      setNotifType("Email");
+    }
+  };
+
+  const openEditModal = (type: "booking" | "caregiver" | "service", record: any) => {
+    setModalType(type);
+    setModalMode("edit");
+    setSelectedId(record.id);
+
+    if (type === "booking") {
+      setBookingName(record.name);
+      setBookingPhone(record.phone);
+      setBookingService(record.service);
+      setBookingDate(record.date);
+      setBookingTime(record.time);
+      setBookingDuration(record.duration);
+      setBookingAddress(record.address);
+      setBookingAmount(record.amount.toString());
+      setBookingStatus(record.status);
+      setBookingAssignedStaff(record.assignedStaff || "");
+      setBookingPaymentStatus(record.paymentStatus);
+    } else if (type === "caregiver") {
+      setCaregiverName(record.name);
+      setCaregiverPhone(record.phone);
+      setCaregiverEmail(record.email || "");
+      setCaregiverSpecialty(record.specialty);
+      setCaregiverExperience(record.experience.toString());
+      setCaregiverStatus(record.status);
+    } else if (type === "service") {
+      setServiceTitle(record.title);
+      setServiceDescription(record.description || "");
+      setServicePrice(record.price);
+      setServiceCategory(record.category || "care");
+    }
+  };
+
+  // Submit forms
+  const handleModalSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    let url = "";
+    let method = "POST";
+    let bodyData: any = {};
+
+    if (modalType === "booking") {
+      url = modalMode === "add" ? "/api/admin/booking" : `/api/admin/booking/${selectedId}`;
+      method = modalMode === "add" ? "POST" : "PUT";
+      bodyData = {
+        name: bookingName,
+        phone: bookingPhone,
+        service: bookingService,
+        date: bookingDate,
+        time: bookingTime,
+        duration: bookingDuration,
+        address: bookingAddress,
+        amount: Number(bookingAmount) || 1200,
+        status: bookingStatus,
+        assignedStaff: bookingAssignedStaff || null,
+        paymentStatus: bookingPaymentStatus
+      };
+    } else if (modalType === "caregiver") {
+      url = modalMode === "add" ? "/api/caregiver" : `/api/admin/caregiver/${selectedId}`;
+      method = modalMode === "add" ? "POST" : "PUT";
+      bodyData = {
+        name: caregiverName,
+        phone: caregiverPhone,
+        email: caregiverEmail,
+        specialty: caregiverSpecialty,
+        experience: Number(caregiverExperience) || 1,
+        status: caregiverStatus
+      };
+      if (modalMode === "add") {
+        bodyData.password = "123456"; // Default password
+      }
+    } else if (modalType === "service") {
+      url = modalMode === "add" ? "/api/services" : `/api/services/${selectedId}`;
+      method = modalMode === "add" ? "POST" : "PUT";
+      bodyData = {
+        title: serviceTitle,
+        description: serviceDescription,
+        price: servicePrice,
+        category: serviceCategory
+      };
+    } else if (modalType === "notification") {
+      url = "/api/notifications";
+      method = "POST";
+      bodyData = {
+        recipient: notifRecipient,
+        message: notifMessage,
+        type: notifType
+      };
+    }
+
+    fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(bodyData)
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          fetchDashboardData();
+          setModalType(null);
+        } else {
+          alert(data.error || "Failed to update record.");
+        }
+      })
+      .catch(err => console.error(err))
+      .finally(() => setIsLoading(false));
+  };
+
+  // Calculations for Reports / Overview
   const totalRevenue = bookings
     .filter(b => b.paymentStatus === "Paid" && b.status !== "Cancelled")
     .reduce((sum, b) => sum + Number(b.amount), 0);
 
   const pendingBookingsCount = bookings.filter(b => b.status === "Pending").length;
   const verifiedCaregiversCount = caregivers.filter(c => c.status === "Verified").length;
+  const caregiverUtilizationRate = caregivers.length > 0 
+    ? Math.round((bookings.filter(b => b.status === "Confirmed" && b.assignedStaff).length / caregivers.length) * 100)
+    : 0;
 
-  // Search filtering logic
+  // Search logic
   const filteredBookings = bookings.filter(b => 
     b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     b.phone.includes(searchQuery) ||
@@ -316,6 +445,22 @@ function AdminPage() {
     (e.service && e.service.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  const filteredUsers = users.filter(u => 
+    u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    u.phone.includes(searchQuery) ||
+    u.email.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredServices = services.filter(s => 
+    s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (s.description && s.description.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const filteredNotifications = notifications.filter(n => 
+    n.recipient.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    n.message.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (!isLoggedIn) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
@@ -330,7 +475,7 @@ function AdminPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col lg:flex-row">
       
-      {/* LEFT SIDEBAR Layout (White base, grey border) */}
+      {/* LEFT SIDEBAR Layout */}
       <aside className="w-full lg:w-72 bg-white border-b lg:border-b-0 lg:border-r border-slate-200/60 flex flex-col shrink-0">
         
         {/* Brand Header */}
@@ -351,9 +496,11 @@ function AdminPage() {
           {[
             { id: "overview", label: "Dashboard", icon: LayoutDashboard },
             { id: "bookings", label: "Manage Bookings", icon: CalendarDays },
-            { id: "caregivers", label: "Staff Approvals", icon: UserCheck },
-            { id: "enquiries", label: "Customer Leads", icon: MessageSquare },
-            { id: "services", label: "Catalog & Pricing", icon: Sliders }
+            { id: "caregivers", label: "Employees & Staff", icon: UserCheck },
+            { id: "users", label: "Customer Base", icon: Users },
+            { id: "services", label: "Catalog & Pricing", icon: Sliders },
+            { id: "notifications", label: "Alert Notifications", icon: Bell },
+            { id: "enquiries", label: "Customer Leads", icon: MessageSquare }
           ].map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -364,7 +511,7 @@ function AdminPage() {
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
                   isActive
                     ? "bg-slate-100 text-primary"
-                    : "text-slate-600 hover:bg-slate-55 hover:text-slate-900"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 }`}
               >
                 <Icon className={`h-4.5 w-4.5 ${isActive ? "text-primary" : "text-slate-400"}`} />
@@ -405,14 +552,14 @@ function AdminPage() {
         {/* Top Header Bar */}
         <header className="h-20 bg-white border-b border-slate-200/60 px-6 sm:px-8 flex items-center justify-between gap-4 shrink-0">
           
-          {/* Search box (Metoxi style) */}
+          {/* Search box */}
           <div className="relative max-w-md w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search bookings, caregivers or enquiries..."
+              placeholder="Search..."
               className="w-full pl-10 pr-4 py-2 text-sm bg-slate-50 border border-slate-200/60 rounded-xl outline-none focus:bg-white focus:border-gold transition-colors text-slate-700"
             />
           </div>
@@ -425,11 +572,6 @@ function AdminPage() {
               title="Sync Database"
             >
               <RefreshCw className={`h-5 w-5 ${isLoading ? "animate-spin" : ""}`} />
-            </button>
-            
-            <button className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-1 right-1.5 h-2 w-2 rounded-full bg-rose-500" />
             </button>
             
             <div className="h-9 w-9 rounded-full bg-slate-900 border border-slate-200 flex items-center justify-center text-sm font-bold text-white uppercase select-none">
@@ -448,16 +590,16 @@ function AdminPage() {
               {/* Row 1: Weekly bookings line chart & Metric widgets */}
               <div className="grid gap-6 lg:grid-cols-3">
                 
-                {/* Weekly bookings line chart Card */}
+                {/* Revenue Sales Card */}
                 <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm col-span-1 lg:col-span-1 flex flex-col justify-between">
                   <div>
                     <div className="flex justify-between items-start">
                       <div>
                         <span className="block text-3xl font-bold font-display text-slate-900">₹{totalRevenue.toLocaleString()}</span>
-                        <span className="text-xs text-slate-400 mt-1 block">Average Weekly Sales</span>
+                        <span className="text-xs text-slate-400 mt-1 block">Total Platform Revenue</span>
                       </div>
-                      <span className="inline-flex items-center gap-0.5 text-xs font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
-                        <TrendingDown className="h-3.5 w-3.5" /> 8.6%
+                      <span className="inline-flex items-center gap-0.5 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                        <ArrowUpRight className="h-3.5 w-3.5" /> 14.2%
                       </span>
                     </div>
                   </div>
@@ -472,26 +614,26 @@ function AdminPage() {
                         </linearGradient>
                       </defs>
                       <path
-                        d="M 0 80 Q 50 20 100 60 T 200 30 T 300 50"
+                        d="M 0 80 Q 50 20 100 60 T 200 30 T 300 10"
                         fill="none"
                         stroke="#10b981"
                         strokeWidth="3"
                         strokeLinecap="round"
                       />
                       <path
-                        d="M 0 80 Q 50 20 100 60 T 200 30 T 300 50 L 300 100 L 0 100 Z"
+                        d="M 0 80 Q 50 20 100 60 T 200 30 T 300 10 L 300 100 L 0 100 Z"
                         fill="url(#chartGradient)"
                       />
                     </svg>
                   </div>
                 </div>
 
-                {/* Grid of 4 horizontal cards (Metoxi style) */}
+                {/* Grid of 4 horizontal cards */}
                 <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm col-span-1 lg:col-span-2 grid grid-cols-2 gap-y-8 gap-x-6">
-                  <HorizontalMetric icon={Calendar} iconColor="text-indigo-500 bg-indigo-50" label="Bookings" value={bookings.length.toString()} />
+                  <HorizontalMetric icon={CalendarDays} iconColor="text-indigo-500 bg-indigo-50" label="Bookings" value={bookings.length.toString()} />
                   <HorizontalMetric icon={DollarSign} iconColor="text-emerald-500 bg-emerald-50" label="Revenue" value={`₹${totalRevenue.toLocaleString()}`} />
-                  <HorizontalMetric icon={Users} iconColor="text-rose-500 bg-rose-50" label="Nurses" value={caregivers.length.toString()} />
-                  <HorizontalMetric icon={ClipboardList} iconColor="text-amber-500 bg-amber-50" label="Inquiries" value={enquiries.length.toString()} />
+                  <HorizontalMetric icon={Users} iconColor="text-rose-500 bg-rose-50" label="Customers" value={users.length.toString()} />
+                  <HorizontalMetric icon={UserCheck} iconColor="text-amber-500 bg-amber-50" label="Nurses/Staff" value={caregivers.length.toString()} />
                 </div>
               </div>
 
@@ -506,7 +648,7 @@ function AdminPage() {
                     <div className="flex justify-between items-center mb-4">
                       <div>
                         <span className="block text-2xl font-bold font-display text-slate-900">{caregivers.length} Staff</span>
-                        <span className="text-xs text-slate-400">Total Caregivers</span>
+                        <span className="text-xs text-slate-400">Total Employees</span>
                       </div>
                       <span className="text-xs text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">+12.5%</span>
                     </div>
@@ -518,12 +660,12 @@ function AdminPage() {
                     </div>
                   </div>
 
-                  {/* Active Users progress gauge */}
+                  {/* Active Users utilization rate */}
                   <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm flex items-center justify-between gap-4">
                     <div>
-                      <span className="block text-2xl font-bold font-display text-slate-900">78%</span>
+                      <span className="block text-2xl font-bold font-display text-slate-900">{caregiverUtilizationRate}%</span>
                       <span className="text-xs text-slate-400">Caregiver Utilization</span>
-                      <p className="text-[10px] text-slate-400 mt-2">Active nurses assigned to active shifts</p>
+                      <p className="text-[10px] text-slate-400 mt-2">Active staff assigned to confirmed bookings</p>
                     </div>
                     {/* SVG circular progress */}
                     <div className="relative w-18 h-18 shrink-0">
@@ -538,7 +680,7 @@ function AdminPage() {
                         <path
                           className="text-indigo-600"
                           strokeWidth="3.5"
-                          strokeDasharray="78, 100"
+                          strokeDasharray={`${caregiverUtilizationRate}, 100`}
                           strokeLinecap="round"
                           stroke="currentColor"
                           fill="none"
@@ -549,14 +691,16 @@ function AdminPage() {
                   </div>
                 </div>
 
-                {/* Sales & Views Double Bar Chart Card (Metoxi style) */}
+                {/* Sales & Views Chart */}
                 <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm col-span-1 lg:col-span-2 flex flex-col justify-between">
                   <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">Sales &amp; Leads</h3>
-                    <div className="flex gap-4 text-xs">
-                      <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded bg-indigo-600" /> Bookings</span>
-                      <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded bg-purple-400" /> Enquiries</span>
-                    </div>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">Platform Analytics</h3>
+                    <button 
+                      onClick={() => window.print()}
+                      className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                    >
+                      Generate Report PDF
+                    </button>
                   </div>
 
                   {/* SVG Double Bar Chart */}
@@ -569,7 +713,7 @@ function AdminPage() {
                       { b: 50, e: 45, m: "May" },
                       { b: 40, e: 30, m: "Jun" },
                       { b: 60, e: 55, m: "Jul" },
-                      { b: 30, e: 25, m: "Aug" }
+                      { b: 80, e: 40, m: "Aug" }
                     ].map((item, idx) => (
                       <div key={idx} className="flex-1 flex flex-col items-center gap-2">
                         <div className="w-full flex items-end justify-center gap-1 h-32">
@@ -582,50 +726,41 @@ function AdminPage() {
                   </div>
                 </div>
               </div>
-
-              {/* Row 3: Target Goal Progress Card */}
-              <div className="grid gap-6 md:grid-cols-3">
-                <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm col-span-1 md:col-span-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div className="space-y-1">
-                    <span className="text-lg font-bold text-slate-900 font-display">₹65,129 Goal Progress</span>
-                    <p className="text-xs text-slate-400">Total platform revenue target set for Q3 2026</p>
-                  </div>
-                  
-                  <div className="flex-1 max-w-md w-full">
-                    <div className="flex justify-between items-center text-xs font-semibold text-slate-500 mb-1.5">
-                      <span>78% completed</span>
-                      <span>₹65,129 Goal</span>
-                    </div>
-                    <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-indigo-600 rounded-full" style={{ width: "78%" }} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
             </div>
           )}
 
           {/* Bookings View panel */}
           {activeTab === "bookings" && (
-            <div className="bg-white border border-slate-200/60 rounded-2xl overflow-hidden shadow-sm">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-slate-700">
-                  <thead>
-                    <tr className="border-b border-slate-200 bg-slate-50/55 text-xs text-slate-400 uppercase font-bold tracking-wider">
-                      <th className="py-4 px-6">Patient details</th>
-                      <th className="py-4 px-6">Service &amp; Shift</th>
-                      <th className="py-4 px-6">Date &amp; Time</th>
-                      <th className="py-4 px-6">Assigned Nurse</th>
-                      <th className="py-4 px-6">Status</th>
-                      <th className="py-4 px-6">Payment</th>
-                      <th className="py-4 px-6 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredBookings.map((b) => {
-                      const isEditing = editingBookingId === b.id;
-                      return (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center bg-white border border-slate-200/60 rounded-2xl p-4 sm:p-6 shadow-sm">
+                <div>
+                  <h3 className="text-lg font-bold text-primary font-display">Manage Bookings</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Total: {filteredBookings.length} booking records</p>
+                </div>
+                <button
+                  onClick={() => openAddModal("booking")}
+                  className="btn-primary py-2 px-4 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Plus className="h-4 w-4" /> Add New Booking
+                </button>
+              </div>
+
+              <div className="bg-white border border-slate-200/60 rounded-2xl overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm text-slate-700">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-slate-50/55 text-xs text-slate-400 uppercase font-bold tracking-wider">
+                        <th className="py-4 px-6">Patient details</th>
+                        <th className="py-4 px-6">Service &amp; Shift</th>
+                        <th className="py-4 px-6">Date &amp; Time</th>
+                        <th className="py-4 px-6">Assigned Nurse</th>
+                        <th className="py-4 px-6">Status</th>
+                        <th className="py-4 px-6">Payment</th>
+                        <th className="py-4 px-6 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredBookings.map((b) => (
                         <tr key={b.id} className="hover:bg-slate-50/30 transition-colors">
                           <td className="py-4 px-6">
                             <div className="font-semibold text-primary font-display text-base">{b.name}</div>
@@ -641,170 +776,326 @@ function AdminPage() {
                             <div className="mt-0.5">{b.time} AM/PM</div>
                           </td>
                           <td className="py-4 px-6">
-                            {isEditing ? (
-                              <select
-                                value={editAssignedStaff}
-                                onChange={(e) => setEditAssignedStaff(e.target.value)}
-                                className="text-xs rounded border border-slate-200 p-1.5 outline-none bg-background focus:ring-1 focus:ring-gold"
-                              >
-                                <option value="">-- Unassigned --</option>
-                                {caregivers
-                                  .filter(c => c.status === "Verified")
-                                  .map(c => (
-                                    <option key={c.id} value={c.name}>{c.name}</option>
-                                  ))}
-                              </select>
-                            ) : (
-                              <div className="text-xs font-semibold text-indigo-600">
-                                {b.assignedStaff || "🚫 Unassigned"}
-                              </div>
-                            )}
+                            <div className="text-xs font-semibold text-indigo-600">
+                              {b.assignedStaff || "🚫 Unassigned"}
+                            </div>
                           </td>
                           <td className="py-4 px-6">
-                            {isEditing ? (
-                              <select
-                                value={editStatus}
-                                onChange={(e) => setEditStatus(e.target.value)}
-                                className="text-xs rounded border border-slate-200 p-1.5 outline-none bg-background focus:ring-1 focus:ring-gold"
-                              >
-                                <option value="Pending">Pending</option>
-                                <option value="Confirmed">Confirmed</option>
-                                <option value="Cancelled">Cancelled</option>
-                              </select>
-                            ) : (
-                              <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded ${
-                                b.status === "Confirmed" ? "bg-emerald-50 text-emerald-800 border border-emerald-100" :
-                                b.status === "Cancelled" ? "bg-rose-50 text-rose-800 border border-rose-100" :
-                                "bg-amber-50 text-amber-800 border border-amber-100"
+                            <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded ${
+                              b.status === "Confirmed" ? "bg-emerald-50 text-emerald-800 border border-emerald-100" :
+                              b.status === "Cancelled" ? "bg-rose-50 text-rose-800 border border-rose-100" :
+                              "bg-amber-50 text-amber-800 border border-amber-100"
+                            }`}>
+                              {b.status}
+                            </span>
+                          </td>
+                          <td className="py-4 px-6">
+                            <div>
+                              <div className="text-xs font-bold text-slate-800">₹{b.amount}</div>
+                              <span className={`text-[9px] font-bold ${
+                                b.paymentStatus === "Paid" ? "text-emerald-600" : "text-amber-600"
                               }`}>
-                                {b.status}
+                                {b.paymentStatus}
                               </span>
-                            )}
-                          </td>
-                          <td className="py-4 px-6">
-                            {isEditing ? (
-                              <div className="space-y-1">
-                                <div className="text-xs font-bold">₹{b.amount}</div>
-                                <select
-                                  value={editPaymentStatus}
-                                  onChange={(e) => setEditPaymentStatus(e.target.value)}
-                                  className="text-[10px] rounded border border-slate-200 p-1 bg-background"
-                                >
-                                  <option value="Unpaid">Unpaid</option>
-                                  <option value="Paid">Paid</option>
-                                </select>
-                              </div>
-                            ) : (
-                              <div>
-                                <div className="text-xs font-bold text-slate-800">₹{b.amount}</div>
-                                <span className={`text-[9px] font-bold ${
-                                  b.paymentStatus === "Paid" ? "text-emerald-600" : "text-amber-600"
-                                }`}>
-                                  {b.paymentStatus}
-                                </span>
-                              </div>
-                            )}
+                            </div>
                           </td>
                           <td className="py-4 px-6 text-right">
-                            {isEditing ? (
-                              <div className="flex gap-1.5 justify-end">
-                                <button
-                                  onClick={() => saveBookingEdit(b.id)}
-                                  className="p-1.5 rounded bg-emerald-500 hover:bg-emerald-600 text-white cursor-pointer"
-                                  title="Save"
-                                >
-                                  <Save className="h-4 w-4" />
-                                </button>
-                                <button
-                                  onClick={() => setEditingBookingId(null)}
-                                  className="p-1.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer"
-                                  title="Cancel"
-                                >
-                                  <XCircle className="h-4 w-4" />
-                                </button>
-                              </div>
-                            ) : (
+                            <div className="flex gap-2 justify-end">
                               <button
-                                onClick={() => startEditBooking(b)}
-                                className="px-3 py-1 rounded-xl bg-slate-50 hover:bg-gold hover:text-white border border-slate-200 text-gold text-xs font-semibold flex items-center gap-1.5 ml-auto cursor-pointer transition-colors"
+                                onClick={() => openEditModal("booking", b)}
+                                className="p-2 rounded-xl bg-slate-50 hover:bg-gold/15 text-gold border border-slate-200 hover:border-gold/30 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
                               >
-                                <Edit3 className="h-3.5 w-3.5" />
-                                Manage
+                                <Edit3 className="h-3.5 w-3.5" /> Edit
                               </button>
-                            )}
+                              <button
+                                onClick={() => handleDeleteBooking(b.id)}
+                                className="p-2 rounded-xl bg-rose-50 hover:bg-rose-500 hover:text-white border border-slate-200 text-rose-500 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Caregivers approvals panel */}
+          {/* Employees & Staff panel */}
           {activeTab === "caregivers" && (
-            <div className="bg-white border border-slate-200/60 rounded-2xl overflow-hidden shadow-sm">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-slate-700">
-                  <thead>
-                    <tr className="border-b border-slate-200 bg-slate-50/55 text-xs text-slate-400 uppercase font-bold tracking-wider">
-                      <th className="py-4 px-6">Staff details</th>
-                      <th className="py-4 px-6">Specialty &amp; Experience</th>
-                      <th className="py-4 px-6">Timings / Details</th>
-                      <th className="py-4 px-6">Verification</th>
-                      <th className="py-4 px-6 text-right">Approve / Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredCaregivers.map((c) => (
-                      <tr key={c.id} className="hover:bg-slate-50/30 transition-colors">
-                        <td className="py-4 px-6">
-                          <div className="font-semibold text-primary font-display text-base">{c.name}</div>
-                          <div className="text-xs text-slate-400 mt-0.5">{c.phone}</div>
-                          <div className="text-xs text-slate-400 mt-0.5">{c.email}</div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="font-medium text-slate-800">{c.specialty}</div>
-                          <div className="text-xs text-slate-400 mt-0.5">{c.experience} years experience</div>
-                        </td>
-                        <td className="py-4 px-6 text-xs text-slate-500">
-                          <div>Documents: Aadhaar, PAN Uploaded</div>
-                          <div className="mt-0.5 text-[10px] text-indigo-500 font-bold uppercase">Background check: Pending</div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <span className={`text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded ${
-                            c.status === "Verified" ? "bg-emerald-50 text-emerald-800 border border-emerald-100" :
-                            c.status === "Rejected" ? "bg-rose-50 text-rose-800 border border-rose-100" :
-                            "bg-amber-50 text-amber-800 border border-amber-100"
-                          }`}>
-                            {c.status}
-                          </span>
-                        </td>
-                        <td className="py-4 px-6 text-right">
-                          <div className="flex gap-2 justify-end">
-                            {c.status !== "Verified" && (
-                              <button
-                                onClick={() => handleUpdateCaregiver(c.id, "Verified")}
-                                className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-500 border border-slate-200 text-emerald-600 hover:text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
-                              >
-                                <Check className="h-4.5 w-4.5" /> Verify
-                              </button>
-                            )}
-                            {c.status !== "Rejected" && (
-                              <button
-                                onClick={() => handleUpdateCaregiver(c.id, "Rejected")}
-                                className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-500 border border-slate-200 text-rose-600 hover:text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
-                              >
-                                <XCircle className="h-4.5 w-4.5" /> Reject
-                              </button>
-                            )}
-                          </div>
-                        </td>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center bg-white border border-slate-200/60 rounded-2xl p-4 sm:p-6 shadow-sm">
+                <div>
+                  <h3 className="text-lg font-bold text-primary font-display">Employees &amp; Staff</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Total: {filteredCaregivers.length} employees</p>
+                </div>
+                <button
+                  onClick={() => openAddModal("caregiver")}
+                  className="btn-primary py-2 px-4 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Plus className="h-4 w-4" /> Add New Staff
+                </button>
+              </div>
+
+              <div className="bg-white border border-slate-200/60 rounded-2xl overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm text-slate-700">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-slate-50/55 text-xs text-slate-400 uppercase font-bold tracking-wider">
+                        <th className="py-4 px-6">Staff details</th>
+                        <th className="py-4 px-6">Specialty &amp; Experience</th>
+                        <th className="py-4 px-6">Verification</th>
+                        <th className="py-4 px-6 text-right">Verification &amp; Actions</th>
                       </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredCaregivers.map((c) => (
+                        <tr key={c.id} className="hover:bg-slate-50/30 transition-colors">
+                          <td className="py-4 px-6">
+                            <div className="font-semibold text-primary font-display text-base">{c.name}</div>
+                            <div className="text-xs text-slate-400 mt-0.5">{c.phone}</div>
+                            <div className="text-xs text-slate-400 mt-0.5">{c.email}</div>
+                          </td>
+                          <td className="py-4 px-6">
+                            <div className="font-medium text-slate-800">{c.specialty}</div>
+                            <div className="text-xs text-slate-400 mt-0.5">{c.experience} years experience</div>
+                          </td>
+                          <td className="py-4 px-6">
+                            <span className={`text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded ${
+                              c.status === "Verified" ? "bg-emerald-50 text-emerald-800 border border-emerald-100" :
+                              c.status === "Rejected" ? "bg-rose-50 text-rose-800 border border-rose-100" :
+                              "bg-amber-50 text-amber-800 border border-amber-100"
+                            }`}>
+                              {c.status}
+                            </span>
+                          </td>
+                          <td className="py-4 px-6 text-right">
+                            <div className="flex gap-2 justify-end">
+                              {c.status !== "Verified" && (
+                                <button
+                                  onClick={() => handleUpdateCaregiverStatus(c.id, "Verified")}
+                                  className="px-2 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-500 border border-slate-200 text-emerald-600 hover:text-white text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                                  title="Approve / Verify"
+                                >
+                                  <Check className="h-4 w-4" />
+                                </button>
+                              )}
+                              {c.status !== "Rejected" && (
+                                <button
+                                  onClick={() => handleUpdateCaregiverStatus(c.id, "Rejected")}
+                                  className="px-2 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-500 border border-slate-200 text-rose-600 hover:text-white text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                                  title="Reject"
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                </button>
+                              )}
+                              <button
+                                onClick={() => openEditModal("caregiver", c)}
+                                className="px-2.5 py-1.5 rounded-xl bg-slate-50 hover:bg-gold/15 text-gold border border-slate-200 hover:border-gold/30 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                                title="Edit"
+                              >
+                                <Edit3 className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteCaregiver(c.id)}
+                                className="px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-500 hover:text-white border border-slate-200 text-rose-500 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Customer Base panel */}
+          {activeTab === "users" && (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center bg-white border border-slate-200/60 rounded-2xl p-4 sm:p-6 shadow-sm">
+                <div>
+                  <h3 className="text-lg font-bold text-primary font-display">Customer Base</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Total: {filteredUsers.length} registered customers</p>
+                </div>
+              </div>
+
+              <div className="bg-white border border-slate-200/60 rounded-2xl overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm text-slate-700">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-slate-50/55 text-xs text-slate-400 uppercase font-bold tracking-wider">
+                        <th className="py-4 px-6">Customer Name</th>
+                        <th className="py-4 px-6">Email Address</th>
+                        <th className="py-4 px-6">Phone Number</th>
+                        <th className="py-4 px-6">Registration Date</th>
+                        <th className="py-4 px-6 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredUsers.map((u) => (
+                        <tr key={u.id} className="hover:bg-slate-50/30 transition-colors">
+                          <td className="py-4 px-6 font-semibold text-primary font-display text-base">
+                            {u.name}
+                          </td>
+                          <td className="py-4 px-6 text-slate-600">
+                            {u.email}
+                          </td>
+                          <td className="py-4 px-6 text-slate-600">
+                            {u.phone}
+                          </td>
+                          <td className="py-4 px-6 text-xs text-slate-500">
+                            {new Date(u.createdAt).toLocaleDateString()}
+                          </td>
+                          <td className="py-4 px-6 text-right">
+                            <button
+                              onClick={() => handleDeleteUser(u.id)}
+                              className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-500 hover:text-white border border-slate-200 text-rose-500 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors ml-auto"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" /> Remove Account
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Service Catalog & Pricing panel */}
+          {activeTab === "services" && (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center bg-white border border-slate-200/60 rounded-2xl p-4 sm:p-6 shadow-sm">
+                <div>
+                  <h3 className="text-lg font-bold text-primary font-display">Active Service Catalog</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Total: {filteredServices.length} service offerings</p>
+                </div>
+                <button
+                  onClick={() => openAddModal("service")}
+                  className="btn-primary py-2 px-4 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Plus className="h-4 w-4" /> Add New Service
+                </button>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                {filteredServices.map((service) => (
+                  <div key={service.id} className="rounded-2xl border border-slate-200/60 bg-white p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                    <div>
+                      <div className="flex justify-between items-start gap-4">
+                        <h4 className="text-lg font-semibold text-primary font-display">{service.title}</h4>
+                        <span className="text-sm font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-100">{service.price}</span>
+                      </div>
+                      <p className="mt-2 text-sm text-slate-400 leading-relaxed">{service.description}</p>
+                    </div>
+                    <div className="mt-6 flex justify-end gap-2">
+                      <button 
+                        onClick={() => openEditModal("service", service)}
+                        className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-gold/15 text-gold hover:text-gold text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
+                      >
+                        <Edit3 className="h-3.5 w-3.5" /> Adjust pricing
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteService(service.id)}
+                        className="px-3 py-1.5 rounded-xl border border-destructive/20 hover:bg-rose-500 hover:text-white text-rose-500 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> Remove
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Alert Notifications panel */}
+          {activeTab === "notifications" && (
+            <div className="space-y-6">
+              <div className="grid gap-6 md:grid-cols-3">
+                
+                {/* Notification dispatcher form */}
+                <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm md:col-span-1 h-fit">
+                  <h3 className="text-lg font-bold text-primary font-display mb-4">Send Alert Notification</h3>
+                  
+                  <form onSubmit={handleModalSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Recipient Target</label>
+                      <input 
+                        type="text"
+                        required
+                        value={notifRecipient}
+                        onChange={(e) => setNotifRecipient(e.target.value)}
+                        placeholder="e.g. All Users, email@test.com"
+                        className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Delivery Method</label>
+                      <select
+                        value={notifType}
+                        onChange={(e) => setNotifType(e.target.value)}
+                        className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                      >
+                        <option value="Email">Email Message</option>
+                        <option value="SMS">SMS / WhatsApp Alert</option>
+                        <option value="Broadcast">Broadcast Dashboard Alert</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Alert Message</label>
+                      <textarea
+                        required
+                        rows={4}
+                        value={notifMessage}
+                        onChange={(e) => setNotifMessage(e.target.value)}
+                        placeholder="Type alert notification details here..."
+                        className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      onClick={() => setModalType("notification")}
+                      className="btn-primary w-full py-2.5 flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Send className="h-4 w-4" /> Send Dispatch
+                    </button>
+                  </form>
+                </div>
+
+                {/* Notifications Dispatch Logs */}
+                <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm md:col-span-2">
+                  <h3 className="text-lg font-bold text-primary font-display mb-4">Dispatched Alerts Log</h3>
+                  
+                  <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1">
+                    {filteredNotifications.map((notif) => (
+                      <div key={notif.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                        <div className="flex justify-between items-center gap-2 text-xs font-bold text-slate-400 mb-2">
+                          <span className="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded uppercase tracking-wider">{notif.type}</span>
+                          <span>{new Date(notif.sentAt).toLocaleString()}</span>
+                        </div>
+                        <div className="text-sm font-semibold text-primary mb-1">To: {notif.recipient}</div>
+                        <p className="text-xs text-slate-600 leading-relaxed font-sans">{notif.message}</p>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
+                    {filteredNotifications.length === 0 && (
+                      <p className="text-center text-xs text-slate-400 py-10 font-semibold">No notification logs recorded.</p>
+                    )}
+                  </div>
+                </div>
+
               </div>
             </div>
           )}
@@ -875,40 +1166,269 @@ function AdminPage() {
             </div>
           )}
 
-          {/* Services Tab panel */}
-          {activeTab === "services" && (
-            <div className="space-y-6">
-              <div className="flex justify-between items-center border-b border-slate-200/60 pb-4">
-                <h3 className="text-xl font-bold text-primary font-display">Active Service Catalog</h3>
-                <span className="text-xs text-slate-400">Configure standard prices below.</span>
-              </div>
-
-              <div className="grid gap-6 md:grid-cols-2">
-                {servicesCatalog.map((service, idx) => (
-                  <div key={idx} className="rounded-2xl border border-slate-200/60 bg-white p-6 shadow-sm flex flex-col justify-between">
-                    <div>
-                      <div className="flex justify-between items-start gap-4">
-                        <h4 className="text-lg font-semibold text-primary font-display">{service.title}</h4>
-                        <span className="text-sm font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-100">{service.price}</span>
-                      </div>
-                      <p className="mt-2 text-sm text-slate-400 leading-relaxed">{service.description}</p>
-                    </div>
-                    <div className="mt-6 flex justify-end">
-                      <button 
-                        onClick={() => alert(`Pricing updates are locked in preview mode.`)}
-                        className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
-                      >
-                        <Edit3 className="h-3.5 w-3.5" /> Adjust pricing
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
         </main>
       </div>
+
+      {/* DYNAMIC FORMS EDITING MODALS */}
+      {modalType && modalType !== "notification" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-xl max-w-lg w-full overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h3 className="text-lg font-bold text-primary font-display uppercase tracking-wide">
+                {modalMode === "add" ? "Create New" : "Edit Details"} {modalType}
+              </h3>
+              <button 
+                onClick={() => setModalType(null)} 
+                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 cursor-pointer"
+              >
+                <XCircle className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleModalSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto text-sm">
+              
+              {/* Form elements for Booking */}
+              {modalType === "booking" && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Customer Name</label>
+                      <input 
+                        type="text" required value={bookingName} onChange={e => setBookingName(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Phone Number</label>
+                      <input 
+                        type="text" required value={bookingPhone} onChange={e => setBookingPhone(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Select Service</label>
+                    <select 
+                      value={bookingService} onChange={e => setBookingService(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                    >
+                      {services.map(s => (
+                        <option key={s.id} value={s.title}>{s.title} ({s.price})</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Date</label>
+                      <input 
+                        type="date" required value={bookingDate} onChange={e => setBookingDate(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Time</label>
+                      <input 
+                        type="text" required placeholder="e.g. 09:00" value={bookingTime} onChange={e => setBookingTime(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Duration</label>
+                      <select 
+                        value={bookingDuration} onChange={e => setBookingDuration(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                      >
+                        <option value="Hourly">Hourly visit</option>
+                        <option value="Daily">Daily shift</option>
+                        <option value="Weekly">Weekly log</option>
+                        <option value="Monthly">Monthly companion</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Booking Amount (₹)</label>
+                      <input 
+                        type="number" required value={bookingAmount} onChange={e => setBookingAmount(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Caretaker Location Address</label>
+                    <textarea 
+                      required rows={3} value={bookingAddress} onChange={e => setBookingAddress(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Status</label>
+                      <select 
+                        value={bookingStatus} onChange={e => setBookingStatus(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                      >
+                        <option value="Pending">Pending</option>
+                        <option value="Confirmed">Confirmed</option>
+                        <option value="Cancelled">Cancelled</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Assign Staff</label>
+                      <select 
+                        value={bookingAssignedStaff} onChange={e => setBookingAssignedStaff(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                      >
+                        <option value="">-- None --</option>
+                        {caregivers
+                          .filter(c => c.status === "Verified")
+                          .map(c => (
+                            <option key={c.id} value={c.name}>{c.name} ({c.specialty})</option>
+                          ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Payment Status</label>
+                      <select 
+                        value={bookingPaymentStatus} onChange={e => setBookingPaymentStatus(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                      >
+                        <option value="Unpaid">Unpaid</option>
+                        <option value="Paid">Paid</option>
+                      </select>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Form elements for Caregiver */}
+              {modalType === "caregiver" && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Staff Name</label>
+                      <input 
+                        type="text" required value={caregiverName} onChange={e => setCaregiverName(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Phone Number</label>
+                      <input 
+                        type="text" required value={caregiverPhone} onChange={e => setCaregiverPhone(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Email Address</label>
+                      <input 
+                        type="email" required value={caregiverEmail} onChange={e => setCaregiverEmail(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Experience (Years)</label>
+                      <input 
+                        type="number" required value={caregiverExperience} onChange={e => setCaregiverExperience(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Specialty Option</label>
+                      <select 
+                        value={caregiverSpecialty} onChange={e => setCaregiverSpecialty(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                      >
+                        <option value="Elderly Care">Elderly Care</option>
+                        <option value="Mother & Baby Care">Mother & Baby Care</option>
+                        <option value="Home Nursing Services">Home Nursing</option>
+                        <option value="ICU/Home Recovery Support">ICU Support</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Verification Status</label>
+                      <select 
+                        value={caregiverStatus} onChange={e => setCaregiverStatus(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                      >
+                        <option value="Pending">Pending</option>
+                        <option value="Verified">Verified</option>
+                        <option value="Rejected">Rejected</option>
+                      </select>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Form elements for Service */}
+              {modalType === "service" && (
+                <>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Service Title</label>
+                    <input 
+                      type="text" required value={serviceTitle} onChange={e => setServiceTitle(e.target.value)}
+                      placeholder="e.g. Newborn Care shift"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Pricing Package</label>
+                      <input 
+                        type="text" required value={servicePrice} onChange={e => setServicePrice(e.target.value)}
+                        placeholder="e.g. ₹1,200/day"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Service Category</label>
+                      <select 
+                        value={serviceCategory} onChange={e => setServiceCategory(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                      >
+                        <option value="care">Homecare & nursing</option>
+                        <option value="food">Meals & distribution</option>
+                        <option value="other">General utilities</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Service description</label>
+                    <textarea 
+                      required rows={4} value={serviceDescription} onChange={e => setServiceDescription(e.target.value)}
+                      placeholder="Describe what tasks are covered in this caregiver shift..."
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                    />
+                  </div>
+                </>
+              )}
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="btn-primary w-full py-2.5 mt-6 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {isLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                {isLoading ? "Saving changes..." : "Save Record"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -98,9 +98,17 @@ const DEFAULT_MOCK_DATA = {
       email: "deepika@example.com",
       specialty: "Home Nursing Services",
       experience: 5,
-      status: "Pending",
-      joinedAt: new Date().toISOString()
     }
+  ],
+  services: [
+    { id: 1, title: "Elderly Care at Home", description: "Assisting seniors with daily tasks and medication routine", price: "₹1,200/day", category: "care" },
+    { id: 2, title: "Mother & Baby Care", description: "Postnatal care for new moms and newborn health checks", price: "₹2,500/day", category: "care" },
+    { id: 3, title: "Home Nursing Services", description: "Post-surgery care, wound dressing, vitals tracking", price: "₹1,500/visit", category: "care" },
+    { id: 4, title: "Injection Services", description: "IV, IM, and subcutaneous drug administrations", price: "₹300/visit", category: "care" },
+    { id: 5, title: "ICU/Home Recovery Support", description: "Critical home support with specialized medical staff", price: "₹4,500/day", category: "care" }
+  ],
+  notifications: [
+    { id: 1, recipient: "All Users", message: "Welcome to Amma Seva! Our portal is fully upgraded.", type: "Broadcast", sentAt: new Date().toISOString() }
   ]
 }
 
@@ -116,6 +124,8 @@ const initJSONDb = () => {
       if (!data.enquiries) { data.enquiries = DEFAULT_MOCK_DATA.enquiries; modified = true }
       if (!data.bookings) { data.bookings = DEFAULT_MOCK_DATA.bookings; modified = true }
       if (!data.caregivers) { data.caregivers = DEFAULT_MOCK_DATA.caregivers; modified = true }
+      if (!data.services) { data.services = DEFAULT_MOCK_DATA.services; modified = true }
+      if (!data.notifications) { data.notifications = DEFAULT_MOCK_DATA.notifications; modified = true }
       if (modified) {
         fs.writeFileSync(JSON_DB_PATH, JSON.stringify(data, null, 2))
       }
@@ -235,6 +245,26 @@ export const db = {
           )
         `)
 
+        await connection.query(`
+          CREATE TABLE IF NOT EXISTS services (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            title VARCHAR(255) NOT NULL,
+            description TEXT,
+            price VARCHAR(50) NOT NULL,
+            category VARCHAR(50)
+          )
+        `)
+
+        await connection.query(`
+          CREATE TABLE IF NOT EXISTS notifications (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            recipient VARCHAR(255) NOT NULL,
+            message TEXT NOT NULL,
+            type VARCHAR(50) NOT NULL,
+            sentAt VARCHAR(255) NOT NULL
+          )
+        `)
+
         // Add columns to existing tables if missing
         try {
           await connection.query(`ALTER TABLE caregivers ADD COLUMN password VARCHAR(255)`)
@@ -277,6 +307,28 @@ export const db = {
             await connection.query(
               'INSERT INTO enquiries (name, phone, email, service, city, message, submittedAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
               [e.name, e.phone, e.email, e.service, e.city, e.message, e.submittedAt]
+            )
+          }
+        }
+
+        const [servicesRows] = await connection.query('SELECT count(*) as count FROM services')
+        if (servicesRows[0].count === 0) {
+          console.log('Inserting initial mock services into MySQL...')
+          for (const s of DEFAULT_MOCK_DATA.services) {
+            await connection.query(
+              'INSERT INTO services (title, description, price, category) VALUES (?, ?, ?, ?)',
+              [s.title, s.description, s.price, s.category]
+            )
+          }
+        }
+
+        const [notificationsRows] = await connection.query('SELECT count(*) as count FROM notifications')
+        if (notificationsRows[0].count === 0) {
+          console.log('Inserting initial mock notifications into MySQL...')
+          for (const n of DEFAULT_MOCK_DATA.notifications) {
+            await connection.query(
+              'INSERT INTO notifications (recipient, message, type, sentAt) VALUES (?, ?, ?, ?)',
+              [n.recipient, n.message, n.type, n.sentAt]
             )
           }
         }
@@ -622,6 +674,232 @@ export const db = {
         return true
       }
       return false
+    }
+  },
+
+  // Admin CRUD operations: Users
+  getUsers: async () => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT id, name, email, phone, createdAt FROM users ORDER BY id DESC')
+      return rows
+    } else {
+      const data = await readJSONDb()
+      if (!data.users) data.users = []
+      return data.users.map(({ password, ...u }) => u).reverse()
+    }
+  },
+
+  deleteUser: async (id) => {
+    if (useMySQL) {
+      const [result] = await pool.query('DELETE FROM users WHERE id = ?', [id])
+      return result.affectedRows > 0
+    } else {
+      const data = await readJSONDb()
+      const initialLength = data.users.length
+      data.users = data.users.filter(u => u.id !== Number(id))
+      await writeJSONDb(data)
+      return data.users.length < initialLength
+    }
+  },
+
+  // Admin CRUD operations: Bookings (Full Edit & Delete)
+  adminUpdateBooking: async (id, bookingData) => {
+    const { name, phone, service, date, time, duration, address, status, assignedStaff, amount, paymentStatus } = bookingData
+    if (useMySQL) {
+      const [result] = await pool.query(
+        'UPDATE bookings SET name = ?, phone = ?, service = ?, date = ?, time = ?, duration = ?, address = ?, status = ?, assignedStaff = ?, amount = ?, paymentStatus = ? WHERE id = ?',
+        [name, phone, service, date, time, duration, address, status, assignedStaff || null, amount, paymentStatus, id]
+      )
+      return result.affectedRows > 0
+    } else {
+      const data = await readJSONDb()
+      const idx = data.bookings.findIndex(b => b.id === Number(id))
+      if (idx > -1) {
+        data.bookings[idx] = {
+          ...data.bookings[idx],
+          name,
+          phone,
+          service,
+          date,
+          time,
+          duration,
+          address,
+          status,
+          assignedStaff: assignedStaff || null,
+          amount: Number(amount),
+          paymentStatus
+        }
+        await writeJSONDb(data)
+        return true
+      }
+      return false
+    }
+  },
+
+  deleteBooking: async (id) => {
+    if (useMySQL) {
+      const [result] = await pool.query('DELETE FROM bookings WHERE id = ?', [id])
+      return result.affectedRows > 0
+    } else {
+      const data = await readJSONDb()
+      const initialLength = data.bookings.length
+      data.bookings = data.bookings.filter(b => b.id !== Number(id))
+      await writeJSONDb(data)
+      return data.bookings.length < initialLength
+    }
+  },
+
+  // Admin CRUD operations: Caregivers (Full Edit & Delete)
+  adminUpdateCaregiver: async (id, caregiverData) => {
+    const { name, phone, email, specialty, experience, status } = caregiverData
+    if (useMySQL) {
+      const [result] = await pool.query(
+        'UPDATE caregivers SET name = ?, phone = ?, email = ?, specialty = ?, experience = ?, status = ? WHERE id = ?',
+        [name, phone, email, specialty, experience, status, id]
+      )
+      return result.affectedRows > 0
+    } else {
+      const data = await readJSONDb()
+      const idx = data.caregivers.findIndex(c => c.id === Number(id))
+      if (idx > -1) {
+        data.caregivers[idx] = {
+          ...data.caregivers[idx],
+          name,
+          phone,
+          email,
+          specialty,
+          experience: Number(experience),
+          status
+        }
+        await writeJSONDb(data)
+        return true
+      }
+      return false
+    }
+  },
+
+  deleteCaregiver: async (id) => {
+    if (useMySQL) {
+      const [result] = await pool.query('DELETE FROM caregivers WHERE id = ?', [id])
+      return result.affectedRows > 0
+    } else {
+      const data = await readJSONDb()
+      const initialLength = data.caregivers.length
+      data.caregivers = data.caregivers.filter(c => c.id !== Number(id))
+      await writeJSONDb(data)
+      return data.caregivers.length < initialLength
+    }
+  },
+
+  // Admin CRUD operations: Services
+  getServices: async () => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM services ORDER BY id DESC')
+      return rows
+    } else {
+      const data = await readJSONDb()
+      if (!data.services) data.services = []
+      return [...data.services].reverse()
+    }
+  },
+
+  addService: async (serviceData) => {
+    const { title, description, price, category } = serviceData
+    if (useMySQL) {
+      const [result] = await pool.query(
+        'INSERT INTO services (title, description, price, category) VALUES (?, ?, ?, ?)',
+        [title, description, price, category]
+      )
+      return { id: result.insertId, title, description, price, category }
+    } else {
+      const data = await readJSONDb()
+      if (!data.services) data.services = []
+      const newService = {
+        id: data.services.length > 0 ? Math.max(...data.services.map(s => s.id)) + 1 : 1,
+        title,
+        description,
+        price,
+        category
+      }
+      data.services.push(newService)
+      await writeJSONDb(data)
+      return newService
+    }
+  },
+
+  updateService: async (id, serviceData) => {
+    const { title, description, price, category } = serviceData
+    if (useMySQL) {
+      const [result] = await pool.query(
+        'UPDATE services SET title = ?, description = ?, price = ?, category = ? WHERE id = ?',
+        [title, description, price, category, id]
+      )
+      return result.affectedRows > 0
+    } else {
+      const data = await readJSONDb()
+      const idx = data.services.findIndex(s => s.id === Number(id))
+      if (idx > -1) {
+        data.services[idx] = {
+          ...data.services[idx],
+          title,
+          description,
+          price,
+          category
+        }
+        await writeJSONDb(data)
+        return true
+      }
+      return false
+    }
+  },
+
+  deleteService: async (id) => {
+    if (useMySQL) {
+      const [result] = await pool.query('DELETE FROM services WHERE id = ?', [id])
+      return result.affectedRows > 0
+    } else {
+      const data = await readJSONDb()
+      const initialLength = data.services.length
+      data.services = data.services.filter(s => s.id !== Number(id))
+      await writeJSONDb(data)
+      return data.services.length < initialLength
+    }
+  },
+
+  // Admin CRUD operations: Notifications
+  getNotifications: async () => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM notifications ORDER BY id DESC')
+      return rows
+    } else {
+      const data = await readJSONDb()
+      if (!data.notifications) data.notifications = []
+      return [...data.notifications].reverse()
+    }
+  },
+
+  addNotification: async (notificationData) => {
+    const { recipient, message, type } = notificationData
+    const sentAt = new Date().toISOString()
+    if (useMySQL) {
+      const [result] = await pool.query(
+        'INSERT INTO notifications (recipient, message, type, sentAt) VALUES (?, ?, ?, ?)',
+        [recipient, message, type, sentAt]
+      )
+      return { id: result.insertId, recipient, message, type, sentAt }
+    } else {
+      const data = await readJSONDb()
+      if (!data.notifications) data.notifications = []
+      const newNotification = {
+        id: data.notifications.length > 0 ? Math.max(...data.notifications.map(n => n.id)) + 1 : 1,
+        recipient,
+        message,
+        type,
+        sentAt
+      }
+      data.notifications.push(newNotification)
+      await writeJSONDb(data)
+      return newNotification
     }
   }
 }
