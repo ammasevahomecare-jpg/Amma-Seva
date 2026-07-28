@@ -192,6 +192,15 @@ export const db = {
           )
         `)
 
+        await connection.query(`
+          CREATE TABLE IF NOT EXISTS otp_verifications (
+            email VARCHAR(255) PRIMARY KEY,
+            otp VARCHAR(10) NOT NULL,
+            role VARCHAR(50) NOT NULL,
+            expiresAt BIGINT NOT NULL
+          )
+        `)
+
         // Add columns to existing tables if missing
         try {
           await connection.query(`ALTER TABLE caregivers ADD COLUMN password VARCHAR(255)`)
@@ -818,6 +827,50 @@ export const db = {
       data.caregivers = data.caregivers.filter(c => c.id !== Number(id))
       await writeJSONDb(data)
       return data.caregivers.length < initialLength
+    }
+  },
+
+  // Persistent OTP methods
+  saveOTP: async (email, otp, role, expiresAt) => {
+    if (useMySQL) {
+      await pool.query(
+        'INSERT INTO otp_verifications (email, otp, role, expiresAt) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE otp = ?, role = ?, expiresAt = ?',
+        [email, otp, role, expiresAt, otp, role, expiresAt]
+      )
+    } else {
+      const data = await readJSONDb()
+      if (!data.otps) data.otps = []
+      const idx = data.otps.findIndex(o => o.email === email)
+      const otpObj = { email, otp, role, expiresAt }
+      if (idx > -1) {
+        data.otps[idx] = otpObj
+      } else {
+        data.otps.push(otpObj)
+      }
+      await writeJSONDb(data)
+    }
+  },
+
+  getOTP: async (email) => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM otp_verifications WHERE email = ?', [email])
+      return rows[0] || null
+    } else {
+      const data = await readJSONDb()
+      if (!data.otps) return null
+      return data.otps.find(o => o.email === email) || null
+    }
+  },
+
+  deleteOTP: async (email) => {
+    if (useMySQL) {
+      await pool.query('DELETE FROM otp_verifications WHERE email = ?', [email])
+    } else {
+      const data = await readJSONDb()
+      if (data.otps) {
+        data.otps = data.otps.filter(o => o.email !== email)
+        await writeJSONDb(data)
+      }
     }
   },
 

@@ -20,8 +20,7 @@ const transporter = nodemailer.createTransport({
   }
 })
 
-// Store OTPs in-memory: email -> { otp, expiresAt }
-const otpStore = new Map()
+
 
 const app = express()
 const PORT = process.env.PORT || 5000
@@ -60,7 +59,7 @@ app.post('/api/admin/send-otp', async (req, res) => {
   // Expire in 5 minutes
   const expiresAt = Date.now() + 5 * 60 * 1000
 
-  otpStore.set(normalizedEmail, { otp, expiresAt })
+  await db.saveOTP(normalizedEmail, otp, 'admin', expiresAt)
 
   // Send Email
   const mailOptions = {
@@ -103,14 +102,14 @@ app.post('/api/admin/login', (req, res) => {
     return res.status(401).json({ success: false, error: 'Unauthorized access.' })
   }
 
-  const storedData = otpStore.get(normalizedEmail)
+  const storedData = await db.getOTP(normalizedEmail)
 
   if (!storedData) {
     return res.status(401).json({ success: false, error: 'No OTP requested for this email address.' })
   }
 
-  if (Date.now() > storedData.expiresAt) {
-    otpStore.delete(normalizedEmail)
+  if (Date.now() > Number(storedData.expiresAt)) {
+    await db.deleteOTP(normalizedEmail)
     return res.status(401).json({ success: false, error: 'OTP verification code has expired.' })
   }
 
@@ -119,7 +118,7 @@ app.post('/api/admin/login', (req, res) => {
   }
 
   // Clear OTP on success
-  otpStore.delete(normalizedEmail)
+  await db.deleteOTP(normalizedEmail)
 
   const token = jwt.sign({ role: 'admin', email: normalizedEmail }, JWT_SECRET, { expiresIn: '7d' })
   res.json({
@@ -165,8 +164,8 @@ app.post('/api/auth/send-otp', async (req, res) => {
   // Expire in 5 minutes
   const expiresAt = Date.now() + 5 * 60 * 1000
 
-  // Store in otpStore
-  otpStore.set(normalizedEmail, { otp, expiresAt, role })
+  // Store in persistent database
+  await db.saveOTP(normalizedEmail, otp, role, expiresAt)
 
   // Send Email
   const mailOptions = {
@@ -204,14 +203,14 @@ app.post('/api/auth/login', async (req, res) => {
   }
 
   const normalizedEmail = email.toLowerCase().trim()
-  const storedData = otpStore.get(normalizedEmail)
+  const storedData = await db.getOTP(normalizedEmail)
 
   if (!storedData) {
     return res.status(401).json({ success: false, error: 'No OTP requested for this email address.' })
   }
 
-  if (Date.now() > storedData.expiresAt) {
-    otpStore.delete(normalizedEmail)
+  if (Date.now() > Number(storedData.expiresAt)) {
+    await db.deleteOTP(normalizedEmail)
     return res.status(401).json({ success: false, error: 'OTP verification code has expired.' })
   }
 
@@ -221,7 +220,7 @@ app.post('/api/auth/login', async (req, res) => {
 
   const role = storedData.role
   // Clear OTP on success
-  otpStore.delete(normalizedEmail)
+  await db.deleteOTP(normalizedEmail)
 
   if (role === 'admin') {
     const token = jwt.sign({ role: 'admin', email: normalizedEmail }, JWT_SECRET, { expiresIn: '7d' })
