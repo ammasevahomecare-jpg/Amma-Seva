@@ -8,8 +8,36 @@ import { db } from './db.js'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 
+import { v2 as cloudinary } from 'cloudinary'
+
 // Load environment variables
 dotenv.config()
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'kpqbe9f0',
+  api_key: process.env.CLOUDINARY_API_KEY || '155635232837293',
+  api_secret: process.env.CLOUDINARY_API_SECRET || 'K3tj1620CF13M8bUZA09zzmc890'
+})
+
+// Cloudinary upload helper
+const uploadToCloudinary = async (base64Str) => {
+  if (!base64Str) return ''
+  // If it's already a URL, return it as-is
+  if (base64Str.startsWith('http://') || base64Str.startsWith('https://')) {
+    return base64Str
+  }
+  try {
+    const uploadResponse = await cloudinary.uploader.upload(base64Str, {
+      resource_type: 'auto', // Auto-detect image, pdf, raw, etc.
+      folder: 'ammaseva_verification'
+    })
+    return uploadResponse.secure_url
+  } catch (error) {
+    console.error('Cloudinary upload error:', error)
+    throw new Error('Failed to upload document to cloud storage.')
+  }
+}
 
 // Nodemailer config
 const transporter = nodemailer.createTransport({
@@ -354,7 +382,25 @@ app.put('/api/caretaker/profile', authenticateUser, async (req, res) => {
     return res.status(403).json({ error: 'Access forbidden. Caretaker profile only.' })
   }
   try {
-    const updated = await db.updateCaregiverProfile(req.userId, req.body)
+    const { 
+      name, phone, specialty, experience, 
+      aadhaar, pan, certificates, profilePhoto, 
+      experienceDetails, workingLocations, availableTimings 
+    } = req.body
+
+    const uploadedProfilePhoto = profilePhoto ? await uploadToCloudinary(profilePhoto) : undefined
+    const uploadedAadhaar = aadhaar ? await uploadToCloudinary(aadhaar) : undefined
+    const uploadedPan = pan ? await uploadToCloudinary(pan) : undefined
+    const uploadedCertificates = certificates ? await uploadToCloudinary(certificates) : undefined
+
+    const updated = await db.updateCaregiverProfile(req.userId, {
+      name, phone, specialty, experience,
+      aadhaar: uploadedAadhaar,
+      pan: uploadedPan,
+      certificates: uploadedCertificates,
+      profilePhoto: uploadedProfilePhoto,
+      experienceDetails, workingLocations, availableTimings
+    })
     if (updated) {
       const caretaker = await db.getCaregiverById(req.userId)
       const { password, ...details } = caretaker
@@ -475,12 +521,17 @@ app.post('/api/caretaker/register', async (req, res) => {
       }
     }
 
+    const uploadedProfilePhoto = await uploadToCloudinary(profilePhoto)
+    const uploadedAadhaar = await uploadToCloudinary(aadhaar)
+    const uploadedPan = await uploadToCloudinary(pan)
+    const uploadedCertificates = await uploadToCloudinary(certificates)
+
     const newCaregiver = await db.addCaregiverWithPassword({ 
       name, phone, email, specialty, experience, 
-      aadhaar: aadhaar || '',
-      pan: pan || '',
-      certificates: certificates || '',
-      profilePhoto: profilePhoto || '',
+      aadhaar: uploadedAadhaar,
+      pan: uploadedPan,
+      certificates: uploadedCertificates,
+      profilePhoto: uploadedProfilePhoto,
       experienceDetails: experienceDetails || '',
       workingLocations: workingLocations || '',
       availableTimings: availableTimings || ''
@@ -870,7 +921,25 @@ app.delete('/api/booking/:id', authenticateAdmin, async (req, res) => {
 // PUT full update caregiver details (Admin Panel)
 app.put('/api/admin/caregiver/:id', authenticateAdmin, async (req, res) => {
   try {
-    const updated = await db.adminUpdateCaregiver(req.params.id, req.body)
+    const { 
+      name, phone, email, specialty, experience, status, 
+      aadhaar, pan, certificates, profilePhoto, 
+      experienceDetails, workingLocations, availableTimings 
+    } = req.body
+
+    const uploadedProfilePhoto = profilePhoto ? await uploadToCloudinary(profilePhoto) : undefined
+    const uploadedAadhaar = aadhaar ? await uploadToCloudinary(aadhaar) : undefined
+    const uploadedPan = pan ? await uploadToCloudinary(pan) : undefined
+    const uploadedCertificates = certificates ? await uploadToCloudinary(certificates) : undefined
+
+    const updated = await db.adminUpdateCaregiver(req.params.id, {
+      name, phone, email, specialty, experience, status,
+      aadhaar: uploadedAadhaar,
+      pan: uploadedPan,
+      certificates: uploadedCertificates,
+      profilePhoto: uploadedProfilePhoto,
+      experienceDetails, workingLocations, availableTimings
+    })
     if (updated) {
       res.json({ success: true, message: 'Caregiver details successfully updated.' })
     } else {
