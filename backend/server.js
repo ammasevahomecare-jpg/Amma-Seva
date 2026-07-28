@@ -5,6 +5,8 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import nodemailer from 'nodemailer'
 import { db } from './db.js'
+import jwt from 'jsonwebtoken'
+import bcrypt from 'bcryptjs'
 
 // Load environment variables
 dotenv.config()
@@ -119,10 +121,11 @@ app.post('/api/admin/login', (req, res) => {
   // Clear OTP on success
   otpStore.delete(normalizedEmail)
 
+  const token = jwt.sign({ role: 'admin', email: normalizedEmail }, JWT_SECRET, { expiresIn: '7d' })
   res.json({
     success: true,
     message: 'Login successful!',
-    token: 'mock-jwt-admin-token-ammaseva'
+    token
   })
 })
 
@@ -221,25 +224,28 @@ app.post('/api/auth/login', async (req, res) => {
   otpStore.delete(normalizedEmail)
 
   if (role === 'admin') {
+    const token = jwt.sign({ role: 'admin', email: normalizedEmail }, JWT_SECRET, { expiresIn: '7d' })
     return res.json({
       success: true,
       role: 'admin',
-      token: 'mock-jwt-admin-token-ammaseva'
+      token
     })
   } else if (role === 'caretaker') {
     const caretaker = await db.getCaregiverByEmail(normalizedEmail)
+    const token = jwt.sign({ id: caretaker.id, role: 'caretaker', email: caretaker.email }, JWT_SECRET, { expiresIn: '7d' })
     return res.json({
       success: true,
       role: 'caretaker',
-      token: `mock-jwt-caretaker-token-${caretaker.id}`,
+      token,
       caretaker: { id: caretaker.id, name: caretaker.name, status: caretaker.status }
     })
   } else if (role === 'customer') {
     const user = await db.getUserByEmail(normalizedEmail)
+    const token = jwt.sign({ id: user.id, role: 'user', email: user.email }, JWT_SECRET, { expiresIn: '7d' })
     return res.json({
       success: true,
       role: 'customer',
-      token: `mock-jwt-user-token-${user.id}`,
+      token,
       user: { id: user.id, name: user.name, email: user.email, phone: user.phone }
     })
   }
@@ -248,6 +254,9 @@ app.post('/api/auth/login', async (req, res) => {
 })
 
 
+// Load JWT Secret
+const JWT_SECRET = process.env.JWT_SECRET || 'amma_seva_super_secure_jwt_token_secret_key_2026'
+
 // Authentication Middleware for Customer/Caretaker Roles
 const authenticateUser = (req, res, next) => {
   const authHeader = req.headers.authorization
@@ -255,11 +264,52 @@ const authenticateUser = (req, res, next) => {
     return res.status(401).json({ error: 'Authorization token is missing or invalid.' })
   }
   const token = authHeader.split(' ')[1]
+
+  // Legacy local fallback/mock bypass (for zero-downtime development transition)
   if (token.startsWith('mock-jwt-user-token-')) {
     req.userId = Number(token.replace('mock-jwt-user-token-', ''))
+    req.role = 'user'
+    return next()
+  }
+  if (token.startsWith('mock-jwt-caretaker-token-')) {
+    req.userId = Number(token.replace('mock-jwt-caretaker-token-', ''))
+    req.role = 'caretaker'
+    return next()
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET)
+    req.userId = decoded.id
+    req.role = decoded.role
     next()
-  } else {
-    res.status(401).json({ error: 'Access denied. Invalid credentials.' })
+  } catch (err) {
+    return res.status(401).json({ error: 'Access denied. Invalid or expired token.' })
+  }
+}
+
+// Authentication Middleware for Admin Role (Protects Administrative APIs)
+const authenticateAdmin = (req, res, next) => {
+  const authHeader = req.headers.authorization
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Admin authorization token is missing or invalid.' })
+  }
+  const token = authHeader.split(' ')[1]
+
+  // Allow static system mock admin token transition
+  if (token === 'mock-jwt-admin-token-ammaseva' || token === 'mock-jwt-admin-token') {
+    req.admin = true
+    return next()
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET)
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ error: 'Access forbidden. Administrative privileges required.' })
+    }
+    req.admin = true
+    next()
+  } catch (err) {
+    return res.status(401).json({ error: 'Access denied. Invalid or expired token.' })
   }
 }
 
@@ -296,10 +346,11 @@ app.post('/api/user/register', async (req, res) => {
       console.error('Welcome email failed:', e.message)
     }
 
+    const token = jwt.sign({ id: newUser.id, role: 'user', email: newUser.email }, JWT_SECRET, { expiresIn: '7d' })
     res.status(201).json({
       success: true,
       message: 'Account successfully registered!',
-      token: `mock-jwt-user-token-${newUser.id}`,
+      token,
       user: { id: newUser.id, name: newUser.name, email: newUser.email, phone: newUser.phone }
     })
   } catch (err) {
@@ -315,12 +366,34 @@ app.post('/api/user/login', async (req, res) => {
   }
   try {
     const user = await db.getUserByEmail(email)
-    if (!user || user.password !== password) {
+    if (!user) {
       return res.status(401).json({ error: 'Invalid email or password.' })
     }
+
+    // Verify hashed password
+    let isValid = false
+    try {
+      isValid = await bcrypt.compare(password, user.password)
+    } catch (e) {
+      isValid = false
+    }
+
+    // Automatic migration for legacy plaintext passwords
+    if (!isValid && user.password === password) {
+      isValid = true
+      const newHash = await bcrypt.hash(password, 10)
+      await db.updateUserPassword(user.id, newHash)
+      console.log(`[Security migration] Plaintext password for user ID ${user.id} has been securely hashed.`)
+    }
+
+    if (!isValid) {
+      return res.status(401).json({ error: 'Invalid email or password.' })
+    }
+
+    const token = jwt.sign({ id: user.id, role: 'user', email: user.email }, JWT_SECRET, { expiresIn: '7d' })
     res.json({
       success: true,
-      token: `mock-jwt-user-token-${user.id}`,
+      token,
       user: { id: user.id, name: user.name, email: user.email, phone: user.phone }
     })
   } catch (err) {
@@ -342,10 +415,11 @@ app.post('/api/caretaker/register', async (req, res) => {
       }
     }
     const newCaregiver = await db.addCaregiverWithPassword({ name, phone, email, specialty, experience, password })
+    const token = jwt.sign({ id: newCaregiver.id, role: 'caretaker', email: newCaregiver.email }, JWT_SECRET, { expiresIn: '7d' })
     res.status(201).json({
       success: true,
       message: 'Caregiver application submitted! Verification is pending.',
-      token: `mock-jwt-caretaker-token-${newCaregiver.id}`,
+      token,
       caretaker: { id: newCaregiver.id, name: newCaregiver.name }
     })
   } catch (err) {
@@ -361,13 +435,35 @@ app.post('/api/caretaker/login', async (req, res) => {
   }
   try {
     const caretaker = await db.getCaregiverByEmail(email)
-    if (!caretaker || caretaker.password !== password) {
+    if (!caretaker) {
       return res.status(401).json({ error: 'Invalid email or password.' })
     }
+
+    // Verify hashed password
+    let isValid = false
+    try {
+      isValid = await bcrypt.compare(password, caretaker.password)
+    } catch (e) {
+      isValid = false
+    }
+
+    // Automatic migration for legacy plaintext passwords
+    if (!isValid && caretaker.password === password) {
+      isValid = true
+      const newHash = await bcrypt.hash(password, 10)
+      await db.updateCaregiverPassword(caretaker.id, newHash)
+      console.log(`[Security migration] Plaintext password for caretaker ID ${caretaker.id} has been securely hashed.`)
+    }
+
+    if (!isValid) {
+      return res.status(401).json({ error: 'Invalid email or password.' })
+    }
+
+    const token = jwt.sign({ id: caretaker.id, role: 'caretaker', email: caretaker.email }, JWT_SECRET, { expiresIn: '7d' })
     res.json({
       success: true,
-      token: `mock-jwt-caretaker-token-${caretaker.id}`,
-      caretaker: { id: caretaker.id, name: caretaker.name, status: caretaker.status }
+      token,
+      caretaker: { id: caretaker.id, name: caretaker.name, email: caretaker.email, status: caretaker.status }
     })
   } catch (err) {
     res.status(500).json({ error: 'Failed to authenticate caretaker.' })
@@ -417,7 +513,7 @@ app.put('/api/booking/:id/cancel', authenticateUser, async (req, res) => {
 })
 
 // GET all enquiries (Admin Panel)
-app.get('/api/enquiries', async (req, res) => {
+app.get('/api/enquiries', authenticateAdmin, async (req, res) => {
   try {
     const list = await db.getEnquiries()
     res.json(list)
@@ -447,7 +543,7 @@ app.post('/api/enquiry', async (req, res) => {
 })
 
 // DELETE enquiry (Admin Panel)
-app.delete('/api/enquiry/:id', async (req, res) => {
+app.delete('/api/enquiry/:id', authenticateAdmin, async (req, res) => {
   try {
     const deleted = await db.deleteEnquiry(req.params.id)
     if (deleted) {
@@ -461,7 +557,7 @@ app.delete('/api/enquiry/:id', async (req, res) => {
 })
 
 // GET all bookings (Admin Panel)
-app.get('/api/bookings', async (req, res) => {
+app.get('/api/bookings', authenticateAdmin, async (req, res) => {
   try {
     const list = await db.getBookings()
     res.json(list)
@@ -546,7 +642,7 @@ app.post('/api/booking', async (req, res) => {
 })
 
 // PUT update booking (Admin Panel: assign caregiver or change status)
-app.put('/api/booking/:id', async (req, res) => {
+app.put('/api/booking/:id', authenticateAdmin, async (req, res) => {
   const { status, assignedStaff, paymentStatus } = req.body
   try {
     const updated = await db.updateBooking(req.params.id, status, assignedStaff, paymentStatus)
@@ -561,7 +657,7 @@ app.put('/api/booking/:id', async (req, res) => {
 })
 
 // GET all caregivers (Admin Panel)
-app.get('/api/caregivers', async (req, res) => {
+app.get('/api/caregivers', authenticateAdmin, async (req, res) => {
   try {
     const list = await db.getCaregivers()
     res.json(list)
@@ -589,7 +685,7 @@ app.post('/api/caregiver', async (req, res) => {
 })
 
 // PUT update caregiver verification status (Admin Panel: approve or reject)
-app.put('/api/caregiver/:id', async (req, res) => {
+app.put('/api/caregiver/:id', authenticateAdmin, async (req, res) => {
   const { status } = req.body
   if (!status) {
     return res.status(400).json({ error: 'Status is required.' })
@@ -607,7 +703,7 @@ app.put('/api/caregiver/:id', async (req, res) => {
 })
 
 // GET all users (Admin Panel)
-app.get('/api/admin/users', async (req, res) => {
+app.get('/api/admin/users', authenticateAdmin, async (req, res) => {
   try {
     const list = await db.getUsers()
     res.json(list)
@@ -617,7 +713,7 @@ app.get('/api/admin/users', async (req, res) => {
 })
 
 // DELETE user (Admin Panel)
-app.delete('/api/admin/user/:id', async (req, res) => {
+app.delete('/api/admin/user/:id', authenticateAdmin, async (req, res) => {
   try {
     const deleted = await db.deleteUser(req.params.id)
     if (deleted) {
@@ -631,7 +727,7 @@ app.delete('/api/admin/user/:id', async (req, res) => {
 })
 
 // POST create booking directly as admin (Admin Panel)
-app.post('/api/admin/booking', async (req, res) => {
+app.post('/api/admin/booking', authenticateAdmin, async (req, res) => {
   const { name, phone, service, date, time, duration, address, amount, paymentStatus, paymentMethod, transactionId, paymentDate } = req.body
   if (!name || !phone || !service || !date || !time || !duration || !address) {
     return res.status(400).json({ error: 'Missing required booking details.' })
@@ -658,7 +754,7 @@ app.post('/api/admin/booking', async (req, res) => {
 })
 
 // PUT full update booking details (Admin Panel)
-app.put('/api/admin/booking/:id', async (req, res) => {
+app.put('/api/admin/booking/:id', authenticateAdmin, async (req, res) => {
   try {
     const updated = await db.adminUpdateBooking(req.params.id, req.body)
     if (updated) {
@@ -672,7 +768,7 @@ app.put('/api/admin/booking/:id', async (req, res) => {
 })
 
 // DELETE booking (Admin Panel)
-app.delete('/api/booking/:id', async (req, res) => {
+app.delete('/api/booking/:id', authenticateAdmin, async (req, res) => {
   try {
     const deleted = await db.deleteBooking(req.params.id)
     if (deleted) {
@@ -686,7 +782,7 @@ app.delete('/api/booking/:id', async (req, res) => {
 })
 
 // PUT full update caregiver details (Admin Panel)
-app.put('/api/admin/caregiver/:id', async (req, res) => {
+app.put('/api/admin/caregiver/:id', authenticateAdmin, async (req, res) => {
   try {
     const updated = await db.adminUpdateCaregiver(req.params.id, req.body)
     if (updated) {
@@ -700,7 +796,7 @@ app.put('/api/admin/caregiver/:id', async (req, res) => {
 })
 
 // DELETE caregiver (Admin Panel)
-app.delete('/api/caregiver/:id', async (req, res) => {
+app.delete('/api/caregiver/:id', authenticateAdmin, async (req, res) => {
   try {
     const deleted = await db.deleteCaregiver(req.params.id)
     if (deleted) {
@@ -724,7 +820,7 @@ app.get('/api/services', async (req, res) => {
 })
 
 // POST add service (Admin Panel)
-app.post('/api/services', async (req, res) => {
+app.post('/api/services', authenticateAdmin, async (req, res) => {
   const { title, slug, short, description, benefits, duration, price, category, comingSoon } = req.body
   if (!title || !price) {
     return res.status(400).json({ error: 'Title and price are required fields.' })
@@ -749,7 +845,7 @@ app.post('/api/services', async (req, res) => {
 })
 
 // PUT update service (Admin Panel)
-app.put('/api/services/:id', async (req, res) => {
+app.put('/api/services/:id', authenticateAdmin, async (req, res) => {
   const { title, slug, short, description, benefits, duration, price, category, comingSoon } = req.body
   if (!title || !price) {
     return res.status(400).json({ error: 'Title and price are required fields.' })
@@ -778,7 +874,7 @@ app.put('/api/services/:id', async (req, res) => {
 })
 
 // DELETE service (Admin Panel)
-app.delete('/api/services/:id', async (req, res) => {
+app.delete('/api/services/:id', authenticateAdmin, async (req, res) => {
   try {
     const deleted = await db.deleteService(req.params.id)
     if (deleted) {
@@ -792,7 +888,7 @@ app.delete('/api/services/:id', async (req, res) => {
 })
 
 // GET notification logs (Admin Panel)
-app.get('/api/notifications', async (req, res) => {
+app.get('/api/notifications', authenticateAdmin, async (req, res) => {
   try {
     const list = await db.getNotifications()
     res.json(list)
@@ -802,7 +898,7 @@ app.get('/api/notifications', async (req, res) => {
 })
 
 // POST send notification (Admin Panel)
-app.post('/api/notifications', async (req, res) => {
+app.post('/api/notifications', authenticateAdmin, async (req, res) => {
   const { recipient, message, type } = req.body
   if (!recipient || !message || !type) {
     return res.status(400).json({ error: 'Recipient, message, and delivery method are required.' })

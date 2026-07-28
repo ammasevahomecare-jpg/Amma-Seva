@@ -2,6 +2,7 @@ import mysql from 'mysql2/promise'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import bcrypt from 'bcryptjs'
 
 // Resolve dirname
 const __filename = fileURLToPath(import.meta.url)
@@ -474,10 +475,11 @@ export const db = {
   addUser: async (userData) => {
     const { name, email, phone, password } = userData
     const createdAt = new Date().toISOString()
+    const hashedPassword = await bcrypt.hash(password, 10)
     if (useMySQL) {
       const [result] = await pool.query(
         'INSERT INTO users (name, email, phone, password, createdAt) VALUES (?, ?, ?, ?, ?)',
-        [name, email.toLowerCase().trim(), phone, password, createdAt]
+        [name, email.toLowerCase().trim(), phone, hashedPassword, createdAt]
       )
       return { id: result.insertId, name, email, phone, createdAt }
     } else {
@@ -488,7 +490,7 @@ export const db = {
         name,
         email: email.toLowerCase().trim(),
         phone,
-        password,
+        password: hashedPassword,
         createdAt
       }
       data.users.push(newUser)
@@ -520,13 +522,40 @@ export const db = {
     }
   },
 
+  updateUserPassword: async (id, hashedPassword) => {
+    if (useMySQL) {
+      await pool.query('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, id])
+    } else {
+      const data = await readJSONDb()
+      const idx = data.users.findIndex(u => u.id === Number(id))
+      if (idx > -1) {
+        data.users[idx].password = hashedPassword
+        await writeJSONDb(data)
+      }
+    }
+  },
+
+  updateCaregiverPassword: async (id, hashedPassword) => {
+    if (useMySQL) {
+      await pool.query('UPDATE caregivers SET password = ? WHERE id = ?', [hashedPassword, id])
+    } else {
+      const data = await readJSONDb()
+      const idx = data.caregivers.findIndex(c => c.id === Number(id))
+      if (idx > -1) {
+        data.caregivers[idx].password = hashedPassword
+        await writeJSONDb(data)
+      }
+    }
+  },
+
   addCaregiverWithPassword: async (caregiverData) => {
     const { name, phone, email, specialty, experience, password } = caregiverData
     const joinedAt = new Date().toISOString()
+    const hashedPassword = await bcrypt.hash(password, 10)
     if (useMySQL) {
       const [result] = await pool.query(
         'INSERT INTO caregivers (name, phone, email, specialty, experience, password, joinedAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [name, phone, email, specialty, experience, password, joinedAt]
+        [name, phone, email, specialty, experience, hashedPassword, joinedAt]
       )
       return { id: result.insertId, name, phone, email, specialty, experience, status: 'Pending', joinedAt }
     } else {
@@ -538,7 +567,7 @@ export const db = {
         email,
         specialty,
         experience,
-        password,
+        password: hashedPassword,
         status: 'Pending',
         joinedAt
       }
