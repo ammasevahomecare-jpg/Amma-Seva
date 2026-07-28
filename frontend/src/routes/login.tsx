@@ -197,9 +197,7 @@ function LoginPage() {
                 localStorage.setItem("ammaseva_caretaker_token", data.token);
                 localStorage.setItem("ammaseva_caretaker_details", JSON.stringify(data.caretaker));
                 setSuccessMsg(`Welcome, caregiver ${data.caretaker.name}!`);
-                setTimeout(() => {
-                  navigate({ to: "/dashboard" });
-                }, 1000);
+                navigate({ to: "/dashboard" });
               } else if (data.role === "customer") {
                 localStorage.setItem("ammaseva_user_token", data.token);
                 localStorage.setItem("ammaseva_user_details", JSON.stringify(data.user));
