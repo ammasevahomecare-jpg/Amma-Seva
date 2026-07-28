@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { 
   Lock, Mail, User, Phone, ShieldAlert, CheckCircle2, 
-  ArrowRight, HeartHandshake, Eye, EyeOff, Briefcase, Star, Sparkles
+  ArrowRight, HeartHandshake, Eye, EyeOff, Briefcase, Star, Sparkles, RefreshCw
 } from "lucide-react";
 
 export const Route = createFileRoute("/login")({
@@ -19,7 +19,7 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const navigate = useNavigate();
   
-  // Tab states
+  // Tabs and mode
   const [role, setRole] = useState<"customer" | "caretaker">("customer");
   const [mode, setMode] = useState<"login" | "register">("login");
 
@@ -31,26 +31,43 @@ function LoginPage() {
   const [specialty, setSpecialty] = useState("Elderly Care");
   const [experience, setExperience] = useState("3");
   
+  // OTP flow states
+  const [authStep, setAuthStep] = useState<"email" | "otp">("email");
+  const [otp, setOtp] = useState("");
+  const [countdown, setCountdown] = useState(0);
+
   // UI states
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Clear states on tab changes
+  // Resend countdown timer
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [countdown]);
+
+  // Clear states on mode changes
   useEffect(() => {
     setName("");
     setEmail("");
     setPhone("");
     setPassword("");
+    setOtp("");
+    setAuthStep("email");
     setError(null);
     setSuccessMsg(null);
-  }, [role, mode]);
+  }, [mode]);
 
   // Check redirects if already logged in
   useEffect(() => {
     if (localStorage.getItem("ammaseva_user_token")) {
       navigate({ to: "/dashboard" });
+    } else if (localStorage.getItem("ammaseva_admin_token")) {
+      navigate({ to: "/admin" });
     }
   }, [navigate]);
 
@@ -60,54 +77,139 @@ function LoginPage() {
     setSuccessMsg(null);
     setIsLoading(true);
 
-    const isRegister = mode === "register";
-    const endpoint = `/api/${role}/${isRegister ? "register" : "login"}`;
-
-    const bodyData: any = { email: email.toLowerCase().trim(), password };
-    if (isRegister) {
+    if (mode === "register") {
+      const endpoint = `/api/${role}/register`;
+      const bodyData: any = { email: email.toLowerCase().trim(), password };
       bodyData.name = name;
       bodyData.phone = phone;
       if (role === "caretaker") {
         bodyData.specialty = specialty;
         bodyData.experience = Number(experience);
       }
-    }
 
-    fetch(endpoint, {
+      fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bodyData)
+      })
+        .then(async (res) => {
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error || "Registration failed.");
+          }
+          return data;
+        })
+        .then((data) => {
+          if (data.success) {
+            setSuccessMsg(data.message || "Account registered successfully!");
+            setTimeout(() => {
+              setMode("login");
+              setAuthStep("email");
+              setSuccessMsg(null);
+            }, 1800);
+          }
+        })
+        .catch((err) => {
+          setError(err.message || "Unable to complete registration.");
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+
+    } else {
+      // Login mode - Step 1: Send OTP
+      if (authStep === "email") {
+        fetch("/api/auth/send-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.toLowerCase().trim() })
+        })
+          .then(async (res) => {
+            const data = await res.json();
+            if (!res.ok) {
+              throw new Error(data.error || "Failed to dispatch verification code.");
+            }
+            return data;
+          })
+          .then((data) => {
+            if (data.success) {
+              setAuthStep("otp");
+              setSuccessMsg("Verification OTP code has been sent to " + email);
+              setCountdown(30);
+            }
+          })
+          .catch((err) => {
+            setError(err.message || "Unable to reach database service.");
+          })
+          .finally(() => {
+            setIsLoading(false);
+          });
+      } else {
+        // Login mode - Step 2: Verify OTP
+        fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.toLowerCase().trim(), otp: otp.trim() })
+        })
+          .then(async (res) => {
+            const data = await res.json();
+            if (!res.ok) {
+              throw new Error(data.error || "Verification failed.");
+            }
+            return data;
+          })
+          .then((data) => {
+            if (data.success) {
+              if (data.role === "admin") {
+                localStorage.setItem("ammaseva_admin_token", data.token);
+                navigate({ to: "/admin" });
+              } else if (data.role === "caretaker") {
+                localStorage.setItem("ammaseva_caretaker_token", data.token);
+                localStorage.setItem("ammaseva_caretaker_details", JSON.stringify(data.caretaker));
+                setSuccessMsg(`Welcome, caregiver ${data.caretaker.name}!`);
+              } else if (data.role === "customer") {
+                localStorage.setItem("ammaseva_user_token", data.token);
+                localStorage.setItem("ammaseva_user_details", JSON.stringify(data.user));
+                navigate({ to: "/dashboard" });
+              }
+            }
+          })
+          .catch((err) => {
+            setError(err.message || "Invalid or expired verification code.");
+          })
+          .finally(() => {
+            setIsLoading(false);
+          });
+      }
+    }
+  };
+
+  const handleResendOtp = () => {
+    if (countdown > 0 || isLoading) return;
+    setError(null);
+    setSuccessMsg(null);
+    setIsLoading(true);
+
+    fetch("/api/auth/send-otp", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(bodyData)
+      body: JSON.stringify({ email: email.toLowerCase().trim() })
     })
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data.error || "Authentication failed.");
+          throw new Error(data.error || "Failed to resend code.");
         }
         return data;
       })
       .then((data) => {
         if (data.success) {
-          if (isRegister) {
-            setSuccessMsg(data.message || "Account registered successfully!");
-            setTimeout(() => {
-              setMode("login");
-              setSuccessMsg(null);
-            }, 1800);
-          } else {
-            if (role === "customer") {
-              localStorage.setItem("ammaseva_user_token", data.token);
-              localStorage.setItem("ammaseva_user_details", JSON.stringify(data.user));
-              navigate({ to: "/dashboard" });
-            } else {
-              localStorage.setItem("ammaseva_caretaker_token", data.token);
-              localStorage.setItem("ammaseva_caretaker_details", JSON.stringify(data.caretaker));
-              setSuccessMsg(`Welcome, caregiver ${data.caretaker.name}!`);
-            }
-          }
+          setSuccessMsg("A new verification code has been sent to " + email);
+          setCountdown(30);
         }
       })
       .catch((err) => {
-        setError(err.message || "Unable to reach database service.");
+        setError(err.message || "Failed to resend verification code.");
       })
       .finally(() => {
         setIsLoading(false);
@@ -163,34 +265,40 @@ function LoginPage() {
             {/* Header */}
             <div className="text-center mb-8">
               <h2 className="text-3xl font-bold text-primary font-display">Authentication Portal</h2>
-              <p className="mt-2 text-sm text-muted-foreground">Sign in or register to access the care network.</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {mode === "login" 
+                  ? "Sign in with your email address to receive an OTP code." 
+                  : "Register a new profile to access the care network."}
+              </p>
             </div>
 
-            {/* Role Selectors Tabs */}
-            <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-xl mb-6">
-              <button
-                type="button"
-                onClick={() => setRole("customer")}
-                className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  role === "customer" 
-                    ? "bg-white text-primary shadow-sm" 
-                    : "text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                Customer / Patient
-              </button>
-              <button
-                type="button"
-                onClick={() => setRole("caretaker")}
-                className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  role === "caretaker" 
-                    ? "bg-white text-primary shadow-sm" 
-                    : "text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                Caregiver / Staff
-              </button>
-            </div>
+            {/* Role Selectors Tabs - Only visible during registration */}
+            {mode === "register" && (
+              <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-xl mb-6">
+                <button
+                  type="button"
+                  onClick={() => setRole("customer")}
+                  className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    role === "customer" 
+                      ? "bg-white text-primary shadow-sm" 
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  Customer / Patient
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRole("caretaker")}
+                  className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    role === "caretaker" 
+                      ? "bg-white text-primary shadow-sm" 
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  Caregiver / Staff
+                </button>
+              </div>
+            )}
 
             {/* Success and Error alerts */}
             {error && (
@@ -226,20 +334,23 @@ function LoginPage() {
                 </div>
               )}
 
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Email address</label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@example.com"
-                    className="w-full pl-10 pr-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
-                  />
+              {/* Email Address (Step 1 or Registration) */}
+              {(mode === "register" || authStep === "email") && (
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Email address</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="name@example.com"
+                      className="w-full pl-10 pr-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               {mode === "register" && (
                 <div>
@@ -290,34 +401,91 @@ function LoginPage() {
                 </div>
               )}
 
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full pl-10 pr-10 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+              {mode === "register" && (
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full pl-10 pr-10 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* OTP Code (Step 2 of login) */}
+              {mode === "login" && authStep === "otp" && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5 text-center">
+                      Verification Code (OTP)
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <input
+                        type="text"
+                        required
+                        maxLength={6}
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                        placeholder="Enter 6-digit OTP"
+                        className="w-full pl-10 pr-3 py-3 text-center text-lg font-bold tracking-[0.5em] rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthStep("email");
+                        setOtp("");
+                        setError(null);
+                        setSuccessMsg(null);
+                      }}
+                      className="text-gold font-semibold hover:underline cursor-pointer"
+                    >
+                      Change email
+                    </button>
+                    <button
+                      type="button"
+                      disabled={countdown > 0 || isLoading}
+                      onClick={handleResendOtp}
+                      className={`font-semibold hover:underline flex items-center gap-1 cursor-pointer ${
+                        countdown > 0 ? "text-slate-400 cursor-not-allowed" : "text-indigo-600"
+                      }`}
+                    >
+                      {isLoading && <RefreshCw className="h-3 w-3 animate-spin" />}
+                      {countdown > 0 ? `Resend Code in ${countdown}s` : "Resend Code"}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <button
                 type="submit"
                 disabled={isLoading}
                 className="btn-primary w-full py-2.5 mt-4 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                {isLoading ? "Authenticating..." : mode === "login" ? "Sign In Securely" : "Register Account"}
+                {isLoading 
+                  ? "Authenticating..." 
+                  : mode === "register" 
+                    ? "Register Account" 
+                    : authStep === "email" 
+                      ? "Send Verification Code" 
+                      : "Verify & Log In"}
                 {!isLoading && <ArrowRight className="h-4 w-4" />}
               </button>
             </form>
@@ -347,16 +515,6 @@ function LoginPage() {
                   </button>
                 </p>
               )}
-            </div>
-
-            {/* Link to secure admin gateway */}
-            <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-              <Link
-                to="/admin"
-                className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-gold transition-colors font-medium"
-              >
-                <Star className="h-3 w-3" /> Secure Admin Gateway
-              </Link>
             </div>
 
           </div>

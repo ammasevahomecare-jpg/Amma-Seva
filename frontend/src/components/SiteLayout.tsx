@@ -34,8 +34,8 @@ function Header() {
     { to: "/contact", label: "Contact" },
     ...(isUser ? [{ to: "/dashboard", label: "Dashboard" }] : []),
     ...(isCaretaker ? [{ to: "/login", label: "Portal" }] : []),
+    ...(isAdmin ? [{ to: "/admin", label: "Admin Panel" }] : []),
     ...(!isUser && !isCaretaker && !isAdmin ? [{ to: "/login", label: "Login" }] : []),
-    { to: "/admin", label: "Admin" },
   ];
 
   return (
@@ -62,7 +62,7 @@ function Header() {
               activeOptions={{ exact: n.to === "/" }}
             >
               {n.label}
-              {n.label === "Admin" && (
+              {n.label === "Admin Panel" && (
                 <span 
                   className={`h-1.5 w-1.5 rounded-full ${isAdmin ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} 
                   title={isAdmin ? "Logged in" : "Lock secured"}
@@ -78,6 +78,10 @@ function Header() {
           {isUser ? (
             <Link to="/dashboard" className="btn-primary text-sm">
               My Dashboard
+            </Link>
+          ) : isAdmin ? (
+            <Link to="/admin" className="btn-primary text-sm">
+              Admin Panel
             </Link>
           ) : (
             <Link to="/login" className="btn-primary text-sm">
@@ -114,6 +118,10 @@ function Header() {
               {isUser ? (
                 <Link to="/dashboard" onClick={() => setOpen(false)} className="btn-primary flex-1 text-sm text-center">
                   Dashboard
+                </Link>
+              ) : isAdmin ? (
+                <Link to="/admin" onClick={() => setOpen(false)} className="btn-primary flex-1 text-sm text-center">
+                  Admin Panel
                 </Link>
               ) : (
                 <Link to="/login" onClick={() => setOpen(false)} className="btn-primary flex-1 text-sm text-center">

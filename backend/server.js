@@ -126,6 +126,128 @@ app.post('/api/admin/login', (req, res) => {
   })
 })
 
+// POST unified send OTP
+app.post('/api/auth/send-otp', async (req, res) => {
+  const { email } = req.body
+
+  if (!email) {
+    return res.status(400).json({ success: false, error: 'Email address is required.' })
+  }
+
+  const normalizedEmail = email.toLowerCase().trim()
+
+  // Determine user role
+  let role = null
+  if (normalizedEmail === 'ammasevahomecare@gmail.com') {
+    role = 'admin'
+  } else {
+    // Check in database for caregivers and users
+    const caretaker = await db.getCaregiverByEmail(normalizedEmail)
+    if (caretaker) {
+      role = 'caretaker'
+    } else {
+      const user = await db.getUserByEmail(normalizedEmail)
+      if (user) {
+        role = 'customer'
+      }
+    }
+  }
+
+  if (!role) {
+    return res.status(404).json({ success: false, error: 'This email address is not registered. Please register first.' })
+  }
+
+  // Generate 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString()
+  // Expire in 5 minutes
+  const expiresAt = Date.now() + 5 * 60 * 1000
+
+  // Store in otpStore
+  otpStore.set(normalizedEmail, { otp, expiresAt, role })
+
+  // Send Email
+  const mailOptions = {
+    from: `"Amma Seva Portal" <${process.env.SMTP_EMAIL || 'ammasevahomecare@gmail.com'}>`,
+    to: normalizedEmail,
+    subject: 'Amma Seva - Login Verification OTP Code',
+    html: `
+      <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 16px;">
+        <h2 style="color: #0f172a; margin-bottom: 8px;">Login Verification Code</h2>
+        <p style="color: #64748b; font-size: 14px; margin-top: 0;">Use the following One-Time Password to verify your identity and log in to your Amma Seva account:</p>
+        <div style="font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #4f46e5; text-align: center; padding: 16px; margin: 24px 0; background-color: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+          ${otp}
+        </div>
+        <p style="color: #94a3b8; font-size: 12px; text-align: center;">This code is active for 5 minutes and can only be used once.</p>
+      </div>
+    `
+  }
+
+  try {
+    await transporter.sendMail(mailOptions)
+    console.log(`[OTP] Sent OTP ${otp} successfully to ${normalizedEmail} (Role: ${role})`)
+    res.json({ success: true, message: 'Verification code has been dispatched to your email.' })
+  } catch (err) {
+    console.error('Failed to send OTP email:', err)
+    res.status(500).json({ success: false, error: 'Could not deliver verification email. Please check server logs.' })
+  }
+})
+
+// POST unified login verification
+app.post('/api/auth/login', async (req, res) => {
+  const { email, otp } = req.body
+
+  if (!email || !otp) {
+    return res.status(400).json({ success: false, error: 'Email and OTP code are required.' })
+  }
+
+  const normalizedEmail = email.toLowerCase().trim()
+  const storedData = otpStore.get(normalizedEmail)
+
+  if (!storedData) {
+    return res.status(401).json({ success: false, error: 'No OTP requested for this email address.' })
+  }
+
+  if (Date.now() > storedData.expiresAt) {
+    otpStore.delete(normalizedEmail)
+    return res.status(401).json({ success: false, error: 'OTP verification code has expired.' })
+  }
+
+  if (storedData.otp !== otp.trim()) {
+    return res.status(401).json({ success: false, error: 'Invalid verification OTP code.' })
+  }
+
+  const role = storedData.role
+  // Clear OTP on success
+  otpStore.delete(normalizedEmail)
+
+  if (role === 'admin') {
+    return res.json({
+      success: true,
+      role: 'admin',
+      token: 'mock-jwt-admin-token-ammaseva'
+    })
+  } else if (role === 'caretaker') {
+    const caretaker = await db.getCaregiverByEmail(normalizedEmail)
+    return res.json({
+      success: true,
+      role: 'caretaker',
+      token: `mock-jwt-caretaker-token-${caretaker.id}`,
+      caretaker: { id: caretaker.id, name: caretaker.name, status: caretaker.status }
+    })
+  } else if (role === 'customer') {
+    const user = await db.getUserByEmail(normalizedEmail)
+    return res.json({
+      success: true,
+      role: 'customer',
+      token: `mock-jwt-user-token-${user.id}`,
+      user: { id: user.id, name: user.name, email: user.email, phone: user.phone }
+    })
+  }
+
+  res.status(500).json({ success: false, error: 'Unknown role or authentication error.' })
+})
+
+
 // Authentication Middleware for Customer/Caretaker Roles
 const authenticateUser = (req, res, next) => {
   const authHeader = req.headers.authorization
