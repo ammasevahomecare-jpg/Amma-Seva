@@ -157,21 +157,22 @@ function AdminPage() {
   const fetchDashboardData = async () => {
     setIsLoading(true);
     setError(null);
+    const token = localStorage.getItem("ammaseva_admin_token");
     try {
       const [bookingsRes, caregiversRes, enquiriesRes, usersRes, servicesRes, notificationsRes] = await Promise.all([
-        fetch("/api/bookings").then(res => res.json()),
-        fetch("/api/caregivers").then(res => res.json()),
-        fetch("/api/enquiries").then(res => res.json()),
-        fetch("/api/admin/users").then(res => res.json()),
-        fetch("/api/services").then(res => res.json()),
-        fetch("/api/notifications").then(res => res.json())
+        fetch("/api/bookings", { headers: { "Authorization": `Bearer ${token}` } }).then(res => res.json()),
+        fetch("/api/caregivers", { headers: { "Authorization": `Bearer ${token}` } }).then(res => res.json()),
+        fetch("/api/enquiries", { headers: { "Authorization": `Bearer ${token}` } }).then(res => res.json()),
+        fetch("/api/admin/users", { headers: { "Authorization": `Bearer ${token}` } }).then(res => res.json()),
+        fetch("/api/services", { headers: { "Authorization": `Bearer ${token}` } }).then(res => res.json()),
+        fetch("/api/notifications", { headers: { "Authorization": `Bearer ${token}` } }).then(res => res.json())
       ]);
-      setBookings(bookingsRes);
-      setCaregivers(caregiversRes);
-      setEnquiries(enquiriesRes);
-      setUsers(usersRes);
-      setServices(servicesRes);
-      setNotifications(notificationsRes);
+      setBookings(Array.isArray(bookingsRes) ? bookingsRes : []);
+      setCaregivers(Array.isArray(caregiversRes) ? caregiversRes : []);
+      setEnquiries(Array.isArray(enquiriesRes) ? enquiriesRes : []);
+      setUsers(Array.isArray(usersRes) ? usersRes : []);
+      setServices(Array.isArray(servicesRes) ? servicesRes : []);
+      setNotifications(Array.isArray(notificationsRes) ? notificationsRes : []);
     } catch (err) {
       console.error(err);
       setError("Failed to sync database logs. Please verify backend state.");
@@ -195,9 +196,13 @@ function AdminPage() {
 
   // Quick verify/reject for caregivers
   const handleUpdateCaregiverStatus = (id: number, status: "Verified" | "Rejected") => {
+    const token = localStorage.getItem("ammaseva_admin_token");
     fetch(`/api/caregiver/${id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
       body: JSON.stringify({ status })
     })
       .then((res) => res.json())
@@ -214,7 +219,11 @@ function AdminPage() {
   // DELETE actions
   const handleDeleteBooking = (id: number) => {
     if (window.confirm("Are you sure you want to permanently delete this booking record?")) {
-      fetch(`/api/booking/${id}`, { method: "DELETE" })
+      const token = localStorage.getItem("ammaseva_admin_token");
+      fetch(`/api/booking/${id}`, { 
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      })
         .then(res => res.json())
         .then(data => {
           if (data.success) {
@@ -227,7 +236,11 @@ function AdminPage() {
 
   const handleDeleteCaregiver = (id: number) => {
     if (window.confirm("Are you sure you want to permanently delete this caregiver/staff employee record?")) {
-      fetch(`/api/caregiver/${id}`, { method: "DELETE" })
+      const token = localStorage.getItem("ammaseva_admin_token");
+      fetch(`/api/caregiver/${id}`, { 
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      })
         .then(res => res.json())
         .then(data => {
           if (data.success) {
@@ -240,7 +253,11 @@ function AdminPage() {
 
   const handleDeleteUser = (id: number) => {
     if (window.confirm("Are you sure you want to permanently delete this user customer account?")) {
-      fetch(`/api/admin/user/${id}`, { method: "DELETE" })
+      const token = localStorage.getItem("ammaseva_admin_token");
+      fetch(`/api/admin/user/${id}`, { 
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      })
         .then(res => res.json())
         .then(data => {
           if (data.success) {
@@ -253,7 +270,11 @@ function AdminPage() {
 
   const handleDeleteService = (id: number) => {
     if (window.confirm("Are you sure you want to permanently delete this service?")) {
-      fetch(`/api/services/${id}`, { method: "DELETE" })
+      const token = localStorage.getItem("ammaseva_admin_token");
+      fetch(`/api/services/${id}`, { 
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      })
         .then(res => res.json())
         .then(data => {
           if (data.success) {
@@ -266,7 +287,11 @@ function AdminPage() {
 
   const handleDeleteEnquiry = (id: number) => {
     if (window.confirm("Are you sure you want to delete this customer inquiry lead?")) {
-      fetch(`/api/enquiry/${id}`, { method: "DELETE" })
+      const token = localStorage.getItem("ammaseva_admin_token");
+      fetch(`/api/enquiry/${id}`, { 
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      })
         .then(res => res.json())
         .then(data => {
           if (data.success) {
@@ -427,9 +452,13 @@ function AdminPage() {
       };
     }
 
+    const token = localStorage.getItem("ammaseva_admin_token");
     fetch(url, {
       method,
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
       body: JSON.stringify(bodyData)
     })
       .then(res => res.json())
