@@ -128,6 +128,9 @@ export const db = {
             assignedStaff VARCHAR(255),
             amount DECIMAL(10,2) DEFAULT 0,
             paymentStatus VARCHAR(50) DEFAULT 'Unpaid',
+            paymentMethod VARCHAR(100),
+            transactionId VARCHAR(255),
+            paymentDate VARCHAR(100),
             createdAt VARCHAR(255) NOT NULL
           )
         `)
@@ -192,6 +195,15 @@ export const db = {
         } catch (e) {
           // ignore column already exists error
         }
+        try {
+          await connection.query(`ALTER TABLE bookings ADD COLUMN paymentMethod VARCHAR(100)`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE bookings ADD COLUMN transactionId VARCHAR(255)`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE bookings ADD COLUMN paymentDate VARCHAR(100)`)
+        } catch (e) {}
 
         // Migration queries for services table
         try {
@@ -343,14 +355,14 @@ export const db = {
   },
 
   addBooking: async (bookingData) => {
-    const { name, phone, service, date, time, duration, address, amount = 1200 } = bookingData
+    const { name, phone, service, date, time, duration, address, amount = 1200, paymentStatus = 'Unpaid', paymentMethod = '', transactionId = '', paymentDate = '' } = bookingData
     const createdAt = new Date().toISOString()
     if (useMySQL) {
       const [result] = await pool.query(
-        'INSERT INTO bookings (name, phone, service, date, time, duration, address, amount, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [name, phone, service, date, time, duration, address, amount, createdAt]
+        'INSERT INTO bookings (name, phone, service, date, time, duration, address, amount, paymentStatus, paymentMethod, transactionId, paymentDate, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [name, phone, service, date, time, duration, address, amount, paymentStatus, paymentMethod, transactionId, paymentDate, createdAt]
       )
-      return { id: result.insertId, name, phone, service, date, time, duration, address, status: 'Pending', assignedStaff: null, amount, paymentStatus: 'Unpaid', createdAt }
+      return { id: result.insertId, name, phone, service, date, time, duration, address, status: 'Pending', assignedStaff: null, amount, paymentStatus, paymentMethod, transactionId, paymentDate, createdAt }
     } else {
       const data = await readJSONDb()
       const newBooking = {
@@ -365,7 +377,10 @@ export const db = {
         status: 'Pending',
         assignedStaff: null,
         amount,
-        paymentStatus: 'Unpaid',
+        paymentStatus,
+        paymentMethod,
+        transactionId,
+        paymentDate,
         createdAt
       }
       data.bookings.push(newBooking)
@@ -637,11 +652,11 @@ export const db = {
 
   // Admin CRUD operations: Bookings (Full Edit & Delete)
   adminUpdateBooking: async (id, bookingData) => {
-    const { name, phone, service, date, time, duration, address, status, assignedStaff, amount, paymentStatus } = bookingData
+    const { name, phone, service, date, time, duration, address, status, assignedStaff, amount, paymentStatus, paymentMethod = '', transactionId = '', paymentDate = '' } = bookingData
     if (useMySQL) {
       const [result] = await pool.query(
-        'UPDATE bookings SET name = ?, phone = ?, service = ?, date = ?, time = ?, duration = ?, address = ?, status = ?, assignedStaff = ?, amount = ?, paymentStatus = ? WHERE id = ?',
-        [name, phone, service, date, time, duration, address, status, assignedStaff || null, amount, paymentStatus, id]
+        'UPDATE bookings SET name = ?, phone = ?, service = ?, date = ?, time = ?, duration = ?, address = ?, status = ?, assignedStaff = ?, amount = ?, paymentStatus = ?, paymentMethod = ?, transactionId = ?, paymentDate = ? WHERE id = ?',
+        [name, phone, service, date, time, duration, address, status, assignedStaff || null, amount, paymentStatus, paymentMethod, transactionId, paymentDate, id]
       )
       return result.affectedRows > 0
     } else {
@@ -660,7 +675,10 @@ export const db = {
           status,
           assignedStaff: assignedStaff || null,
           amount: Number(amount),
-          paymentStatus
+          paymentStatus,
+          paymentMethod,
+          transactionId,
+          paymentDate
         }
         await writeJSONDb(data)
         return true

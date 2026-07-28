@@ -118,6 +118,9 @@ function AdminPage() {
   const [bookingStatus, setBookingStatus] = useState("Pending");
   const [bookingAssignedStaff, setBookingAssignedStaff] = useState("");
   const [bookingPaymentStatus, setBookingPaymentStatus] = useState("Unpaid");
+  const [bookingPaymentMethod, setBookingPaymentMethod] = useState("UPI");
+  const [bookingTransactionId, setBookingTransactionId] = useState("");
+  const [bookingPaymentDate, setBookingPaymentDate] = useState("");
 
   // Form states - Caregiver
   const [caregiverName, setCaregiverName] = useState("");
@@ -293,6 +296,9 @@ function AdminPage() {
       setBookingStatus("Pending");
       setBookingAssignedStaff("");
       setBookingPaymentStatus("Unpaid");
+      setBookingPaymentMethod("UPI");
+      setBookingTransactionId("");
+      setBookingPaymentDate("");
     } else if (type === "caregiver") {
       setCaregiverName("");
       setCaregiverPhone("");
@@ -333,6 +339,9 @@ function AdminPage() {
       setBookingStatus(record.status);
       setBookingAssignedStaff(record.assignedStaff || "");
       setBookingPaymentStatus(record.paymentStatus);
+      setBookingPaymentMethod(record.paymentMethod || "UPI");
+      setBookingTransactionId(record.transactionId || "");
+      setBookingPaymentDate(record.paymentDate || "");
     } else if (type === "caregiver") {
       setCaregiverName(record.name);
       setCaregiverPhone(record.phone);
@@ -375,7 +384,10 @@ function AdminPage() {
         amount: Number(bookingAmount) || 1200,
         status: bookingStatus,
         assignedStaff: bookingAssignedStaff || null,
-        paymentStatus: bookingPaymentStatus
+        paymentStatus: bookingPaymentStatus,
+        paymentMethod: bookingPaymentMethod,
+        transactionId: bookingTransactionId,
+        paymentDate: bookingPaymentDate
       };
     } else if (modalType === "caregiver") {
       url = modalMode === "add" ? "/api/caregiver" : `/api/admin/caregiver/${selectedId}`;
@@ -815,6 +827,12 @@ function AdminPage() {
                               }`}>
                                 {b.paymentStatus}
                               </span>
+                              {b.paymentStatus === "Paid" && b.paymentMethod && (
+                                <div className="text-[10px] text-slate-400 mt-1 font-medium">
+                                  <span>{b.paymentMethod}</span>
+                                  {b.transactionId && <span className="block text-[9px] font-mono text-slate-400 font-normal">{b.transactionId}</span>}
+                                </div>
+                              )}
                             </div>
                           </td>
                           <td className="py-4 px-6 text-right">
@@ -1321,6 +1339,39 @@ function AdminPage() {
                       </select>
                     </div>
                   </div>
+
+                  {bookingPaymentStatus === "Paid" && (
+                    <div className="grid grid-cols-3 gap-4 p-4 rounded-2xl bg-emerald-50/30 border border-emerald-100/50">
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-emerald-800 mb-1">Payment Method</label>
+                        <select 
+                          value={bookingPaymentMethod} onChange={e => setBookingPaymentMethod(e.target.value)}
+                          className="w-full px-3 py-2 border border-emerald-200 rounded-lg outline-none bg-white text-emerald-950"
+                        >
+                          <option value="UPI">UPI / GPay</option>
+                          <option value="Cash">Cash</option>
+                          <option value="Bank Transfer">Bank Transfer</option>
+                          <option value="Card">Credit/Debit Card</option>
+                          <option value="Razorpay">Razorpay</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-emerald-800 mb-1">Transaction ID / Ref</label>
+                        <input 
+                          type="text" value={bookingTransactionId} onChange={e => setBookingTransactionId(e.target.value)}
+                          placeholder="e.g. TXN98765"
+                          className="w-full px-3 py-2 border border-emerald-200 rounded-lg outline-none bg-white text-emerald-950 animate-in fade-in slide-in-from-top-1 duration-150"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-emerald-800 mb-1">Payment Date</label>
+                        <input 
+                          type="date" value={bookingPaymentDate} onChange={e => setBookingPaymentDate(e.target.value)}
+                          className="w-full px-3 py-2 border border-emerald-200 rounded-lg outline-none bg-white text-emerald-950"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
 

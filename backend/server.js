@@ -632,12 +632,25 @@ app.delete('/api/admin/user/:id', async (req, res) => {
 
 // POST create booking directly as admin (Admin Panel)
 app.post('/api/admin/booking', async (req, res) => {
-  const { name, phone, service, date, time, duration, address, amount } = req.body
+  const { name, phone, service, date, time, duration, address, amount, paymentStatus, paymentMethod, transactionId, paymentDate } = req.body
   if (!name || !phone || !service || !date || !time || !duration || !address) {
     return res.status(400).json({ error: 'Missing required booking details.' })
   }
   try {
-    const newBooking = await db.addBooking({ name, phone, service, date, time, duration, address, amount: Number(amount) })
+    const newBooking = await db.addBooking({
+      name,
+      phone,
+      service,
+      date,
+      time,
+      duration,
+      address,
+      amount: Number(amount),
+      paymentStatus: paymentStatus || 'Unpaid',
+      paymentMethod: paymentMethod || '',
+      transactionId: transactionId || '',
+      paymentDate: paymentDate || ''
+    })
     res.status(201).json({ success: true, message: 'Booking successfully created.', data: newBooking })
   } catch (err) {
     res.status(500).json({ error: 'Failed to create booking.' })
