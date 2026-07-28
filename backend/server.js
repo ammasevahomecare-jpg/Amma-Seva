@@ -416,15 +416,16 @@ app.put('/api/caretaker/profile', authenticateUser, async (req, res) => {
 // POST register user
 app.post('/api/user/register', async (req, res) => {
   const { name, email, phone, password } = req.body
-  if (!name || !email || !phone || !password) {
-    return res.status(400).json({ error: 'All registration fields are required.' })
+  if (!name || !email || !phone) {
+    return res.status(400).json({ error: 'Name, email, and phone are required.' })
   }
+  const regPassword = password || (Math.random().toString(36).slice(-8) + 'A1!')
   try {
     const existingUser = await db.getUserByEmail(email)
     if (existingUser) {
       return res.status(409).json({ error: 'An account with this email address already exists.' })
     }
-    const newUser = await db.addUser({ name, email, phone, password })
+    const newUser = await db.addUser({ name, email, phone, password: regPassword })
     
     // Optional welcome email
     const mailOptions = {
@@ -718,6 +719,13 @@ app.post('/api/booking', async (req, res) => {
     const token = authHeader.split(' ')[1]
     if (token.startsWith('mock-jwt-user-token-')) {
       authUserId = Number(token.replace('mock-jwt-user-token-', ''))
+    } else {
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET)
+        authUserId = decoded.id
+      } catch (err) {
+        // Ignore invalid token
+      }
     }
   }
 

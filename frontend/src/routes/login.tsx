@@ -110,13 +110,13 @@ function LoginPage() {
     setIsLoading(true);
 
     if (mode === "register") {
-      const endpoint = `/api/${role}/register`;
-      const bodyData: any = { email: email.toLowerCase().trim() };
-      bodyData.name = name;
-      bodyData.phone = phone;
-      if (role === "customer") {
-        bodyData.password = password;
-      }
+      const apiRole = role === "customer" ? "user" : role;
+      const endpoint = `/api/${apiRole}/register`;
+      const bodyData: any = { 
+        email: email.toLowerCase().trim(),
+        name,
+        phone
+      };
       if (role === "caretaker") {
         bodyData.specialty = specialty;
         bodyData.experience = Number(experience);
@@ -532,29 +532,7 @@ function LoginPage() {
                 </div>
               )}
 
-              {mode === "register" && role === "customer" && (
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Password</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full pl-10 pr-10 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-              )}
+
 
               {/* OTP Code (Step 2 of login) */}
               {mode === "login" && authStep === "otp" && (
