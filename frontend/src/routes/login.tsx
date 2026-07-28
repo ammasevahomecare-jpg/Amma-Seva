@@ -42,6 +42,26 @@ function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  // Caregiver registration documents & profile states
+  const [aadhaarFile, setAadhaarFile] = useState("");
+  const [panFile, setPanFile] = useState("");
+  const [certificateFile, setCertificateFile] = useState("");
+  const [profilePhotoFile, setProfilePhotoFile] = useState("");
+  const [experienceDetails, setExperienceDetails] = useState("");
+  const [workingLocations, setWorkingLocations] = useState("");
+  const [availableTimings, setAvailableTimings] = useState("");
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setFileState: (val: string) => void) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFileState(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   // Resend countdown timer
   useEffect(() => {
     if (countdown > 0) {
@@ -79,12 +99,22 @@ function LoginPage() {
 
     if (mode === "register") {
       const endpoint = `/api/${role}/register`;
-      const bodyData: any = { email: email.toLowerCase().trim(), password };
+      const bodyData: any = { email: email.toLowerCase().trim() };
       bodyData.name = name;
       bodyData.phone = phone;
+      if (role === "customer") {
+        bodyData.password = password;
+      }
       if (role === "caretaker") {
         bodyData.specialty = specialty;
         bodyData.experience = Number(experience);
+        bodyData.aadhaar = aadhaarFile;
+        bodyData.pan = panFile;
+        bodyData.certificates = certificateFile;
+        bodyData.profilePhoto = profilePhotoFile;
+        bodyData.experienceDetails = experienceDetails;
+        bodyData.workingLocations = workingLocations;
+        bodyData.availableTimings = availableTimings;
       }
 
       fetch(endpoint, {
@@ -371,37 +401,123 @@ function LoginPage() {
 
               {/* Caregiver specific registration questions */}
               {role === "caretaker" && mode === "register" && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Specialty</label>
-                    <select
-                      value={specialty}
-                      onChange={(e) => setSpecialty(e.target.value)}
-                      className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
-                    >
-                      <option value="Elderly Care">Elderly Care</option>
-                      <option value="Mother & Baby Care">Mother & Baby Care</option>
-                      <option value="Home Nursing Services">Home Nursing</option>
-                      <option value="ICU/Home Recovery Support">ICU Support</option>
-                    </select>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Specialty</label>
+                      <select
+                        value={specialty}
+                        onChange={(e) => setSpecialty(e.target.value)}
+                        className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                      >
+                        <option value="Elderly Care">Elderly Care</option>
+                        <option value="Mother & Baby Care">Mother & Baby Care</option>
+                        <option value="Home Nursing Services">Home Nursing</option>
+                        <option value="ICU/Home Recovery Support">ICU Support</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Experience</label>
+                      <select
+                        value={experience}
+                        onChange={(e) => setExperience(e.target.value)}
+                        className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                      >
+                        <option value="1">1-2 years</option>
+                        <option value="3">3-5 years</option>
+                        <option value="6">6-9 years</option>
+                        <option value="10">10+ years</option>
+                      </select>
+                    </div>
                   </div>
+
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Experience</label>
-                    <select
-                      value={experience}
-                      onChange={(e) => setExperience(e.target.value)}
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Detailed Experience / Skills Summary</label>
+                    <textarea
+                      value={experienceDetails}
+                      onChange={(e) => setExperienceDetails(e.target.value)}
+                      placeholder="List your previous homecare experience, certifications, hospital workings, or specific care skills..."
+                      rows={3}
                       className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
-                    >
-                      <option value="1">1-2 years</option>
-                      <option value="3">3-5 years</option>
-                      <option value="6">6-9 years</option>
-                      <option value="10">10+ years</option>
-                    </select>
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Preferred Locations</label>
+                      <input
+                        type="text"
+                        value={workingLocations}
+                        onChange={(e) => setWorkingLocations(e.target.value)}
+                        placeholder="e.g. Hyderabad, Secunderabad"
+                        className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Available Timings</label>
+                      <input
+                        type="text"
+                        value={availableTimings}
+                        onChange={(e) => setAvailableTimings(e.target.value)}
+                        placeholder="e.g. Day Shift, 24/7 Live-in"
+                        className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Documents & Photo uploads */}
+                  <div className="border border-slate-100 rounded-2xl p-4 bg-slate-50/50 space-y-3">
+                    <div className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-1.5">
+                      Required Verification Documents
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Profile Photo</label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          required
+                          onChange={(e) => handleFileChange(e, setProfilePhotoFile)}
+                          className="w-full text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Aadhaar Card (PDF/Image)</label>
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          required
+                          onChange={(e) => handleFileChange(e, setAadhaarFile)}
+                          className="w-full text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">PAN Card (PDF/Image)</label>
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          required
+                          onChange={(e) => handleFileChange(e, setPanFile)}
+                          className="w-full text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Nursing Certificates</label>
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          required
+                          onChange={(e) => handleFileChange(e, setCertificateFile)}
+                          className="w-full text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
 
-              {mode === "register" && (
+              {mode === "register" && role === "customer" && (
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Password</label>
                   <div className="relative">

@@ -145,6 +145,13 @@ export const db = {
             specialty VARCHAR(255) NOT NULL,
             experience INT DEFAULT 0,
             status VARCHAR(50) DEFAULT 'Pending',
+            aadhaar LONGTEXT,
+            pan LONGTEXT,
+            certificates LONGTEXT,
+            profilePhoto LONGTEXT,
+            experienceDetails TEXT,
+            workingLocations TEXT,
+            availableTimings TEXT,
             joinedAt VARCHAR(255) NOT NULL
           )
         `)
@@ -191,6 +198,27 @@ export const db = {
         } catch (e) {
           // ignore column already exists error
         }
+        try {
+          await connection.query(`ALTER TABLE caregivers ADD COLUMN aadhaar LONGTEXT`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE caregivers ADD COLUMN pan LONGTEXT`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE caregivers ADD COLUMN certificates LONGTEXT`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE caregivers ADD COLUMN profilePhoto LONGTEXT`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE caregivers ADD COLUMN experienceDetails TEXT`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE caregivers ADD COLUMN workingLocations TEXT`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE caregivers ADD COLUMN availableTimings TEXT`)
+        } catch (e) {}
         try {
           await connection.query(`ALTER TABLE bookings ADD COLUMN userId INT`)
         } catch (e) {
@@ -549,13 +577,17 @@ export const db = {
   },
 
   addCaregiverWithPassword: async (caregiverData) => {
-    const { name, phone, email, specialty, experience, password } = caregiverData
+    const { 
+      name, phone, email, specialty, experience, 
+      aadhaar = '', pan = '', certificates = '', profilePhoto = '', 
+      experienceDetails = '', workingLocations = '', availableTimings = '' 
+    } = caregiverData
     const joinedAt = new Date().toISOString()
-    const hashedPassword = await bcrypt.hash(password, 10)
+    const dummyPassword = ''
     if (useMySQL) {
       const [result] = await pool.query(
-        'INSERT INTO caregivers (name, phone, email, specialty, experience, password, joinedAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [name, phone, email, specialty, experience, hashedPassword, joinedAt]
+        'INSERT INTO caregivers (name, phone, email, specialty, experience, password, joinedAt, aadhaar, pan, certificates, profilePhoto, experienceDetails, workingLocations, availableTimings) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [name, phone, email, specialty, experience, dummyPassword, joinedAt, aadhaar, pan, certificates, profilePhoto, experienceDetails, workingLocations, availableTimings]
       )
       return { id: result.insertId, name, phone, email, specialty, experience, status: 'Pending', joinedAt }
     } else {
@@ -567,9 +599,16 @@ export const db = {
         email,
         specialty,
         experience,
-        password: hashedPassword,
+        password: dummyPassword,
         status: 'Pending',
-        joinedAt
+        joinedAt,
+        aadhaar,
+        pan,
+        certificates,
+        profilePhoto,
+        experienceDetails,
+        workingLocations,
+        availableTimings
       }
       data.caregivers.push(newCaregiver)
       await writeJSONDb(data)
@@ -731,11 +770,15 @@ export const db = {
 
   // Admin CRUD operations: Caregivers (Full Edit & Delete)
   adminUpdateCaregiver: async (id, caregiverData) => {
-    const { name, phone, email, specialty, experience, status } = caregiverData
+    const { 
+      name, phone, email, specialty, experience, status, 
+      aadhaar, pan, certificates, profilePhoto, 
+      experienceDetails, workingLocations, availableTimings 
+    } = caregiverData
     if (useMySQL) {
       const [result] = await pool.query(
-        'UPDATE caregivers SET name = ?, phone = ?, email = ?, specialty = ?, experience = ?, status = ? WHERE id = ?',
-        [name, phone, email, specialty, experience, status, id]
+        'UPDATE caregivers SET name = ?, phone = ?, email = ?, specialty = ?, experience = ?, status = ?, aadhaar = COALESCE(?, aadhaar), pan = COALESCE(?, pan), certificates = COALESCE(?, certificates), profilePhoto = COALESCE(?, profilePhoto), experienceDetails = COALESCE(?, experienceDetails), workingLocations = COALESCE(?, workingLocations), availableTimings = COALESCE(?, availableTimings) WHERE id = ?',
+        [name, phone, email, specialty, experience, status, aadhaar, pan, certificates, profilePhoto, experienceDetails, workingLocations, availableTimings, id]
       )
       return result.affectedRows > 0
     } else {
@@ -749,7 +792,14 @@ export const db = {
           email,
           specialty,
           experience: Number(experience),
-          status
+          status,
+          aadhaar: aadhaar !== undefined ? aadhaar : data.caregivers[idx].aadhaar,
+          pan: pan !== undefined ? pan : data.caregivers[idx].pan,
+          certificates: certificates !== undefined ? certificates : data.caregivers[idx].certificates,
+          profilePhoto: profilePhoto !== undefined ? profilePhoto : data.caregivers[idx].profilePhoto,
+          experienceDetails: experienceDetails !== undefined ? experienceDetails : data.caregivers[idx].experienceDetails,
+          workingLocations: workingLocations !== undefined ? workingLocations : data.caregivers[idx].workingLocations,
+          availableTimings: availableTimings !== undefined ? availableTimings : data.caregivers[idx].availableTimings
         }
         await writeJSONDb(data)
         return true

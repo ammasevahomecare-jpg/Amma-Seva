@@ -127,8 +127,15 @@ function AdminPage() {
   const [caregiverPhone, setCaregiverPhone] = useState("");
   const [caregiverEmail, setCaregiverEmail] = useState("");
   const [caregiverSpecialty, setCaregiverSpecialty] = useState("Elderly Care");
-  const [caregiverExperience, setCaregiverExperience] = useState("");
+  const [caregiverExperience, setCaregiverExperience] = useState("3");
   const [caregiverStatus, setCaregiverStatus] = useState("Pending");
+  const [caregiverAadhaar, setCaregiverAadhaar] = useState("");
+  const [caregiverPan, setCaregiverPan] = useState("");
+  const [caregiverCertificates, setCaregiverCertificates] = useState("");
+  const [caregiverProfilePhoto, setCaregiverProfilePhoto] = useState("");
+  const [caregiverExperienceDetails, setCaregiverExperienceDetails] = useState("");
+  const [caregiverWorkingLocations, setCaregiverWorkingLocations] = useState("");
+  const [caregiverAvailableTimings, setCaregiverAvailableTimings] = useState("");
 
   // Form states - Service
   const [serviceTitle, setServiceTitle] = useState("");
@@ -331,6 +338,13 @@ function AdminPage() {
       setCaregiverSpecialty("Elderly Care");
       setCaregiverExperience("3");
       setCaregiverStatus("Pending");
+      setCaregiverAadhaar("");
+      setCaregiverPan("");
+      setCaregiverCertificates("");
+      setCaregiverProfilePhoto("");
+      setCaregiverExperienceDetails("");
+      setCaregiverWorkingLocations("");
+      setCaregiverAvailableTimings("");
     } else if (type === "service") {
       setServiceTitle("");
       setServiceShort("");
@@ -374,6 +388,13 @@ function AdminPage() {
       setCaregiverSpecialty(record.specialty);
       setCaregiverExperience(record.experience.toString());
       setCaregiverStatus(record.status);
+      setCaregiverAadhaar(record.aadhaar || "");
+      setCaregiverPan(record.pan || "");
+      setCaregiverCertificates(record.certificates || "");
+      setCaregiverProfilePhoto(record.profilePhoto || "");
+      setCaregiverExperienceDetails(record.experienceDetails || "");
+      setCaregiverWorkingLocations(record.workingLocations || "");
+      setCaregiverAvailableTimings(record.availableTimings || "");
     } else if (type === "service") {
       setServiceTitle(record.title);
       setServiceShort(record.short || "");
@@ -423,7 +444,14 @@ function AdminPage() {
         email: caregiverEmail,
         specialty: caregiverSpecialty,
         experience: Number(caregiverExperience) || 1,
-        status: caregiverStatus
+        status: caregiverStatus,
+        aadhaar: caregiverAadhaar,
+        pan: caregiverPan,
+        certificates: caregiverCertificates,
+        profilePhoto: caregiverProfilePhoto,
+        experienceDetails: caregiverExperienceDetails,
+        workingLocations: caregiverWorkingLocations,
+        availableTimings: caregiverAvailableTimings
       };
       if (modalMode === "add") {
         bodyData.password = "123456"; // Default password
@@ -912,8 +940,9 @@ function AdminPage() {
                     <thead>
                       <tr className="border-b border-slate-200 bg-slate-50/55 text-xs text-slate-400 uppercase font-bold tracking-wider">
                         <th className="py-4 px-6">Staff details</th>
-                        <th className="py-4 px-6">Specialty &amp; Experience</th>
-                        <th className="py-4 px-6">Verification</th>
+                        <th className="py-4 px-6">Specialty &amp; Locations</th>
+                        <th className="py-4 px-6">Verification Documents</th>
+                        <th className="py-4 px-6">Status</th>
                         <th className="py-4 px-6 text-right">Verification &amp; Actions</th>
                       </tr>
                     </thead>
@@ -921,13 +950,47 @@ function AdminPage() {
                       {filteredCaregivers.map((c) => (
                         <tr key={c.id} className="hover:bg-slate-50/30 transition-colors">
                           <td className="py-4 px-6">
-                            <div className="font-semibold text-primary font-display text-base">{c.name}</div>
-                            <div className="text-xs text-slate-400 mt-0.5">{c.phone}</div>
-                            <div className="text-xs text-slate-400 mt-0.5">{c.email}</div>
+                            <div className="flex items-center gap-3">
+                              {c.profilePhoto ? (
+                                <img src={c.profilePhoto} className="h-10 w-10 rounded-full object-cover border border-slate-200" alt="profile" />
+                              ) : (
+                                <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-primary font-bold">
+                                  {c.name.charAt(0)}
+                                </div>
+                              )}
+                              <div>
+                                <div className="font-semibold text-primary font-display text-base">{c.name}</div>
+                                <div className="text-xs text-slate-400 mt-0.5">{c.phone}</div>
+                                <div className="text-xs text-slate-400 mt-0.5">{c.email}</div>
+                              </div>
+                            </div>
                           </td>
                           <td className="py-4 px-6">
                             <div className="font-medium text-slate-800">{c.specialty}</div>
                             <div className="text-xs text-slate-400 mt-0.5">{c.experience} years experience</div>
+                            {c.workingLocations && <div className="text-[10px] text-indigo-600 mt-1 font-semibold">📍 {c.workingLocations}</div>}
+                            {c.availableTimings && <div className="text-[10px] text-slate-500 mt-0.5 font-medium">🕒 {c.availableTimings}</div>}
+                          </td>
+                          <td className="py-4 px-6 text-xs">
+                            <div className="space-y-1">
+                              {c.aadhaar ? (
+                                <a href={c.aadhaar} download={`Aadhaar_${c.name.replace(/\s+/g, '_')}`} className="text-gold font-semibold hover:underline block">
+                                  📄 Aadhaar Card
+                                </a>
+                              ) : <span className="text-slate-300 block">❌ Aadhaar</span>}
+                              
+                              {c.pan ? (
+                                <a href={c.pan} download={`PAN_${c.name.replace(/\s+/g, '_')}`} className="text-gold font-semibold hover:underline block">
+                                  📄 PAN Card
+                                </a>
+                              ) : <span className="text-slate-300 block">❌ PAN</span>}
+                              
+                              {c.certificates ? (
+                                <a href={c.certificates} download={`Certificates_${c.name.replace(/\s+/g, '_')}`} className="text-gold font-semibold hover:underline block">
+                                  📄 Certificates
+                                </a>
+                              ) : <span className="text-slate-300 block">❌ Certificates</span>}
+                            </div>
                           </td>
                           <td className="py-4 px-6">
                             <span className={`text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded ${
@@ -1596,6 +1659,81 @@ function AdminPage() {
                         <option value="Verified">Verified</option>
                         <option value="Rejected">Rejected</option>
                       </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Experience Details / Skills Summary</label>
+                    <textarea 
+                      value={caregiverExperienceDetails} onChange={e => setCaregiverExperienceDetails(e.target.value)}
+                      rows={2}
+                      placeholder="List previous nursing / caregiver postings..."
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Preferred Locations</label>
+                      <input 
+                        type="text" value={caregiverWorkingLocations} onChange={e => setCaregiverWorkingLocations(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Available Timings</label>
+                      <input 
+                        type="text" value={caregiverAvailableTimings} onChange={e => setCaregiverAvailableTimings(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Documents Display */}
+                  <div className="border border-slate-100 rounded-2xl p-4 bg-slate-50/50 space-y-3">
+                    <div className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                      Verification Files
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <span className="block font-bold text-slate-500 mb-1">Profile Photo</span>
+                        {caregiverProfilePhoto ? (
+                          <div className="space-y-1">
+                            <img src={caregiverProfilePhoto} className="h-16 w-16 rounded-lg object-cover border border-slate-200" alt="profile" />
+                            <a href={caregiverProfilePhoto} download={`Photo_${caregiverName}`} className="text-gold font-semibold hover:underline block text-[10px]">Download</a>
+                          </div>
+                        ) : <span className="text-slate-400 italic">No photo uploaded</span>}
+                      </div>
+                      
+                      <div>
+                        <span className="block font-bold text-slate-500 mb-1">Aadhaar Card</span>
+                        {caregiverAadhaar ? (
+                          <div className="space-y-1">
+                            <div className="text-[10px] text-slate-500 truncate max-w-[150px]">Base64 Data Available</div>
+                            <a href={caregiverAadhaar} download={`Aadhaar_${caregiverName}`} className="text-gold font-semibold hover:underline block text-[10px]">Download File</a>
+                          </div>
+                        ) : <span className="text-slate-400 italic">No Aadhaar uploaded</span>}
+                      </div>
+
+                      <div>
+                        <span className="block font-bold text-slate-500 mb-1">PAN Card</span>
+                        {caregiverPan ? (
+                          <div className="space-y-1">
+                            <div className="text-[10px] text-slate-500 truncate max-w-[150px]">Base64 Data Available</div>
+                            <a href={caregiverPan} download={`PAN_${caregiverName}`} className="text-gold font-semibold hover:underline block text-[10px]">Download File</a>
+                          </div>
+                        ) : <span className="text-slate-400 italic">No PAN uploaded</span>}
+                      </div>
+
+                      <div>
+                        <span className="block font-bold text-slate-500 mb-1">Nursing Certificates</span>
+                        {caregiverCertificates ? (
+                          <div className="space-y-1">
+                            <div className="text-[10px] text-slate-500 truncate max-w-[150px]">Base64 Data Available</div>
+                            <a href={caregiverCertificates} download={`Certificates_${caregiverName}`} className="text-gold font-semibold hover:underline block text-[10px]">Download File</a>
+                          </div>
+                        ) : <span className="text-slate-400 italic">No certificates uploaded</span>}
+                      </div>
                     </div>
                   </div>
                 </>

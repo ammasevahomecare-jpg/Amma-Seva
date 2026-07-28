@@ -232,6 +232,12 @@ app.post('/api/auth/login', async (req, res) => {
     })
   } else if (role === 'caretaker') {
     const caretaker = await db.getCaregiverByEmail(normalizedEmail)
+    if (!caretaker) {
+      return res.status(404).json({ success: false, error: 'Caretaker account record not found.' })
+    }
+    if (caretaker.status !== 'Verified') {
+      return res.status(403).json({ success: false, error: 'Your caretaker profile is pending admin verification. Access is disabled until approved.' })
+    }
     const token = jwt.sign({ id: caretaker.id, role: 'caretaker', email: caretaker.email }, JWT_SECRET, { expiresIn: '7d' })
     return res.json({
       success: true,
@@ -403,10 +409,16 @@ app.post('/api/user/login', async (req, res) => {
 
 // POST register caretaker
 app.post('/api/caretaker/register', async (req, res) => {
-  const { name, phone, email, specialty, experience, password } = req.body
-  if (!name || !phone || !specialty || !password) {
-    return res.status(400).json({ error: 'Name, phone, specialty and password are required.' })
+  const { 
+    name, phone, email, specialty, experience,
+    aadhaar, pan, certificates, profilePhoto, 
+    experienceDetails, workingLocations, availableTimings 
+  } = req.body
+
+  if (!name || !phone || !specialty) {
+    return res.status(400).json({ error: 'Name, phone, and specialty are required.' })
   }
+
   try {
     if (email) {
       const existing = await db.getCaregiverByEmail(email)
@@ -414,7 +426,18 @@ app.post('/api/caretaker/register', async (req, res) => {
         return res.status(409).json({ error: 'A caretaker profile with this email already exists.' })
       }
     }
-    const newCaregiver = await db.addCaregiverWithPassword({ name, phone, email, specialty, experience, password })
+
+    const newCaregiver = await db.addCaregiverWithPassword({ 
+      name, phone, email, specialty, experience, 
+      aadhaar: aadhaar || '',
+      pan: pan || '',
+      certificates: certificates || '',
+      profilePhoto: profilePhoto || '',
+      experienceDetails: experienceDetails || '',
+      workingLocations: workingLocations || '',
+      availableTimings: availableTimings || ''
+    })
+
     const token = jwt.sign({ id: newCaregiver.id, role: 'caretaker', email: newCaregiver.email }, JWT_SECRET, { expiresIn: '7d' })
     res.status(201).json({
       success: true,
