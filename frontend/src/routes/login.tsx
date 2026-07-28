@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { SiteLayout } from "@/components/SiteLayout";
+import { fetchServices, type Service } from "../lib/services";
 import { 
   Lock, Mail, User, Phone, ShieldAlert, CheckCircle2, 
   ArrowRight, HeartHandshake, Eye, EyeOff, Briefcase, Star, Sparkles, RefreshCw
@@ -30,6 +31,7 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [specialty, setSpecialty] = useState("Elderly Care");
   const [experience, setExperience] = useState("3");
+  const [servicesList, setServicesList] = useState<Service[]>([]);
   
   // OTP flow states
   const [authStep, setAuthStep] = useState<"email" | "otp">("email");
@@ -69,6 +71,16 @@ function LoginPage() {
       return () => clearTimeout(timer);
     }
   }, [countdown]);
+
+  // Load dynamic services for specialty dropdown
+  useEffect(() => {
+    fetchServices().then((list) => {
+      setServicesList(list);
+      if (list.length > 0) {
+        setSpecialty(list[0].title);
+      }
+    });
+  }, []);
 
   // Clear states on mode changes
   useEffect(() => {
@@ -411,10 +423,11 @@ function LoginPage() {
                         onChange={(e) => setSpecialty(e.target.value)}
                         className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
                       >
-                        <option value="Elderly Care">Elderly Care</option>
-                        <option value="Mother & Baby Care">Mother & Baby Care</option>
-                        <option value="Home Nursing Services">Home Nursing</option>
-                        <option value="ICU/Home Recovery Support">ICU Support</option>
+                        {servicesList.map((s) => (
+                          <option key={s.title} value={s.title}>
+                            {s.title}
+                          </option>
+                        ))}
                       </select>
                     </div>
                     <div>
@@ -424,6 +437,7 @@ function LoginPage() {
                         onChange={(e) => setExperience(e.target.value)}
                         className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
                       >
+                        <option value="0">0-1 years</option>
                         <option value="1">1-2 years</option>
                         <option value="3">3-5 years</option>
                         <option value="6">6-9 years</option>

@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { SiteLayout } from "@/components/SiteLayout";
+import { fetchServices, type Service } from "../lib/services";
 import { 
   Calendar, Clock, MapPin, User, FileText, CheckCircle2, 
   AlertTriangle, RefreshCw, XCircle, Download, CreditCard, 
@@ -61,6 +62,7 @@ function CustomerDashboard() {
   const [caretakerPhone, setCaretakerPhone] = useState("");
   const [caretakerSpecialty, setCaretakerSpecialty] = useState("Elderly Care");
   const [caretakerExperience, setCaretakerExperience] = useState("3");
+  const [servicesList, setServicesList] = useState<Service[]>([]);
   const [caretakerExperienceDetails, setCaretakerExperienceDetails] = useState("");
   const [caretakerWorkingLocations, setCaretakerWorkingLocations] = useState("");
   const [caretakerAvailableTimings, setCaretakerAvailableTimings] = useState("");
@@ -216,6 +218,13 @@ function CustomerDashboard() {
       navigate({ to: "/login" });
     }
   }, [navigate]);
+
+  // Load dynamic services for specialty dropdown
+  useEffect(() => {
+    fetchServices().then((list) => {
+      setServicesList(list);
+    });
+  }, []);
 
   // Fetch customer bookings
   const fetchBookings = async () => {
@@ -515,10 +524,9 @@ function CustomerDashboard() {
                       onChange={(e) => setCaretakerSpecialty(e.target.value)}
                       className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
                     >
-                      <option value="Elderly Care">Elderly Care</option>
-                      <option value="Mother & Baby Care">Mother & Baby Care</option>
-                      <option value="Home Nursing Services">Home Nursing Services</option>
-                      <option value="ICU/Home Recovery Support">ICU/Home Recovery Support</option>
+                      {servicesList.map((s) => (
+                        <option key={s.title} value={s.title}>{s.title}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -529,6 +537,7 @@ function CustomerDashboard() {
                       onChange={(e) => setCaretakerExperience(e.target.value)}
                       className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
                     >
+                      <option value="0">0-1 years</option>
                       <option value="1">1-2 years</option>
                       <option value="3">3-5 years</option>
                       <option value="6">6-9 years</option>
