@@ -5,7 +5,8 @@ import {
   Trash2, RefreshCw, Mail, Phone, MapPin, ClipboardList, 
   Users, Calendar, DollarSign, ShieldAlert, LogOut, CheckCircle2, 
   XCircle, Edit3, Save, Check, LayoutDashboard, CalendarDays,
-  UserCheck, MessageSquare, Sliders, Bell, Search, Plus, Send, TrendingDown
+  UserCheck, MessageSquare, Sliders, Bell, Search, Plus, Send, TrendingDown,
+  ArrowUpRight
 } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
