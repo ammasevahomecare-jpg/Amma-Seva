@@ -249,7 +249,7 @@ function AdminPage() {
   };
 
   const handleDeleteService = (id: number) => {
-    if (window.confirm("Are you sure you want to permanently delete this service catalog item?")) {
+    if (window.confirm("Are you sure you want to permanently delete this service?")) {
       fetch(`/api/services/${id}`, { method: "DELETE" })
         .then(res => res.json())
         .then(data => {
@@ -516,7 +516,7 @@ function AdminPage() {
             { id: "bookings", label: "Manage Bookings", icon: CalendarDays },
             { id: "caregivers", label: "Employees & Staff", icon: UserCheck },
             { id: "users", label: "Customer Base", icon: Users },
-            { id: "services", label: "Catalog & Pricing", icon: Sliders },
+            { id: "services", label: "Services", icon: Sliders },
             { id: "notifications", label: "Alert Notifications", icon: Bell },
             { id: "enquiries", label: "Customer Leads", icon: MessageSquare }
           ].map((item) => {
@@ -994,7 +994,7 @@ function AdminPage() {
             <div className="space-y-4">
               <div className="flex justify-between items-center bg-white border border-slate-200/60 rounded-2xl p-4 sm:p-6 shadow-sm">
                 <div>
-                  <h3 className="text-lg font-bold text-primary font-display">Active Service Catalog</h3>
+                  <h3 className="text-lg font-bold text-primary font-display">Active Services</h3>
                   <p className="text-xs text-slate-400 mt-0.5">Total: {filteredServices.length} service offerings</p>
                 </div>
                 <button
@@ -1020,7 +1020,7 @@ function AdminPage() {
                         onClick={() => openEditModal("service", service)}
                         className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-gold/15 text-gold hover:text-gold text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
                       >
-                        <Edit3 className="h-3.5 w-3.5" /> Adjust pricing
+                        <Edit3 className="h-3.5 w-3.5" /> Edit details
                       </button>
                       <button 
                         onClick={() => handleDeleteService(service.id)}
