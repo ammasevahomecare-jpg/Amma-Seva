@@ -44,6 +44,13 @@ interface Caregiver {
   experience: number;
   status: string;
   joinedAt: string;
+  aadhaar?: string;
+  pan?: string;
+  certificates?: string;
+  profilePhoto?: string;
+  experienceDetails?: string;
+  workingLocations?: string;
+  availableTimings?: string;
 }
 
 interface Enquiry {
@@ -974,19 +981,19 @@ function AdminPage() {
                           <td className="py-4 px-6 text-xs">
                             <div className="space-y-1">
                               {c.aadhaar ? (
-                                <a href={c.aadhaar} download={`Aadhaar_${c.name.replace(/\s+/g, '_')}`} className="text-gold font-semibold hover:underline block">
+                                <a href={c.aadhaar} target="_blank" rel="noopener noreferrer" className="text-gold font-semibold hover:underline block">
                                   📄 Aadhaar Card
                                 </a>
                               ) : <span className="text-slate-300 block">❌ Aadhaar</span>}
                               
                               {c.pan ? (
-                                <a href={c.pan} download={`PAN_${c.name.replace(/\s+/g, '_')}`} className="text-gold font-semibold hover:underline block">
+                                <a href={c.pan} target="_blank" rel="noopener noreferrer" className="text-gold font-semibold hover:underline block">
                                   📄 PAN Card
                                 </a>
                               ) : <span className="text-slate-300 block">❌ PAN</span>}
                               
                               {c.certificates ? (
-                                <a href={c.certificates} download={`Certificates_${c.name.replace(/\s+/g, '_')}`} className="text-gold font-semibold hover:underline block">
+                                <a href={c.certificates} target="_blank" rel="noopener noreferrer" className="text-gold font-semibold hover:underline block">
                                   📄 Certificates
                                 </a>
                               ) : <span className="text-slate-300 block">❌ Certificates</span>}
