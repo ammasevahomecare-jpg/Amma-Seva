@@ -102,7 +102,7 @@ function AdminPage() {
     if (!token) {
       navigate({ to: "/login" });
     }
-  }, [navigate]);
+  }, [navigate, isLoggedIn]);
 
   // Fetch all dashboard data
   const fetchDashboardData = async () => {
@@ -210,6 +210,7 @@ function AdminPage() {
   const handleLogout = () => {
     localStorage.removeItem("ammaseva_admin_token");
     setIsLoggedIn(false);
+    navigate({ to: "/login" });
   };
 
   // Handle caregiver status change
