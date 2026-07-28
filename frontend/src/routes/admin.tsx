@@ -132,6 +132,10 @@ function AdminPage() {
   const [serviceDescription, setServiceDescription] = useState("");
   const [servicePrice, setServicePrice] = useState("");
   const [serviceCategory, setServiceCategory] = useState("care");
+  const [serviceShort, setServiceShort] = useState("");
+  const [serviceBenefits, setServiceBenefits] = useState("");
+  const [serviceDuration, setServiceDuration] = useState("");
+  const [serviceComingSoon, setServiceComingSoon] = useState(false);
 
   // Form states - Notification
   const [notifRecipient, setNotifRecipient] = useState("All Users");
@@ -298,9 +302,13 @@ function AdminPage() {
       setCaregiverStatus("Pending");
     } else if (type === "service") {
       setServiceTitle("");
+      setServiceShort("");
       setServiceDescription("");
+      setServiceBenefits("");
+      setServiceDuration("");
       setServicePrice("₹1,200/day");
       setServiceCategory("care");
+      setServiceComingSoon(false);
     } else if (type === "notification") {
       setNotifRecipient("All Users");
       setNotifMessage("");
@@ -334,9 +342,13 @@ function AdminPage() {
       setCaregiverStatus(record.status);
     } else if (type === "service") {
       setServiceTitle(record.title);
+      setServiceShort(record.short || "");
       setServiceDescription(record.description || "");
+      setServiceBenefits(Array.isArray(record.benefits) ? record.benefits.join("\n") : "");
+      setServiceDuration(record.duration || "");
       setServicePrice(record.price);
       setServiceCategory(record.category || "care");
+      setServiceComingSoon(!!record.comingSoon);
     }
   };
 
@@ -384,9 +396,14 @@ function AdminPage() {
       method = modalMode === "add" ? "POST" : "PUT";
       bodyData = {
         title: serviceTitle,
+        slug: serviceTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''),
+        short: serviceShort,
         description: serviceDescription,
+        benefits: serviceBenefits.split("\n").map(b => b.trim()).filter(Boolean),
+        duration: serviceDuration,
         price: servicePrice,
-        category: serviceCategory
+        category: serviceCategory,
+        comingSoon: serviceComingSoon
       };
     } else if (modalType === "notification") {
       url = "/api/notifications";
@@ -1384,6 +1401,15 @@ function AdminPage() {
                     />
                   </div>
 
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Short Description (Summary)</label>
+                    <input 
+                      type="text" required value={serviceShort} onChange={e => setServiceShort(e.target.value)}
+                      placeholder="e.g. Compassionate postnatal care for mothers and newborns."
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
+                    />
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Pricing Package</label>
@@ -1393,6 +1419,17 @@ function AdminPage() {
                         className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
                       />
                     </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Duration Options</label>
+                      <input 
+                        type="text" required value={serviceDuration} onChange={e => setServiceDuration(e.target.value)}
+                        placeholder="e.g. Hourly, Daily, or Live-in"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Service Category</label>
                       <select 
@@ -1404,14 +1441,33 @@ function AdminPage() {
                         <option value="other">General utilities</option>
                       </select>
                     </div>
+                    <div className="flex items-center gap-2 mt-6">
+                      <input 
+                        type="checkbox" id="serviceComingSoon" checked={serviceComingSoon} onChange={e => setServiceComingSoon(e.target.checked)}
+                        className="h-4 w-4 rounded border-slate-300 text-gold focus:ring-gold"
+                      />
+                      <label htmlFor="serviceComingSoon" className="text-sm font-medium text-slate-700 select-none">Coming Soon / Launching Later</label>
+                    </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Service description</label>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Service description (Full details)</label>
                     <textarea 
                       required rows={4} value={serviceDescription} onChange={e => setServiceDescription(e.target.value)}
                       placeholder="Describe what tasks are covered in this caregiver shift..."
                       className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Key Benefits / Tasks Included</label>
+                      <span className="text-[10px] text-slate-400 font-medium">Enter one benefit per line</span>
+                    </div>
+                    <textarea 
+                      rows={4} value={serviceBenefits} onChange={e => setServiceBenefits(e.target.value)}
+                      placeholder="e.g.&#10;Personal hygiene & grooming&#10;Medication reminders&#10;Meal preparation"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 font-mono text-xs"
                     />
                   </div>
                 </>

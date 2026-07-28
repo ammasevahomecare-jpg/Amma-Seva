@@ -101,11 +101,150 @@ const DEFAULT_MOCK_DATA = {
     }
   ],
   services: [
-    { id: 1, title: "Elderly Care at Home", description: "Assisting seniors with daily tasks and medication routine", price: "₹1,200/day", category: "care" },
-    { id: 2, title: "Mother & Baby Care", description: "Postnatal care for new moms and newborn health checks", price: "₹2,500/day", category: "care" },
-    { id: 3, title: "Home Nursing Services", description: "Post-surgery care, wound dressing, vitals tracking", price: "₹1,500/visit", category: "care" },
-    { id: 4, title: "Injection Services", description: "IV, IM, and subcutaneous drug administrations", price: "₹300/visit", category: "care" },
-    { id: 5, title: "ICU/Home Recovery Support", description: "Critical home support with specialized medical staff", price: "₹4,500/day", category: "care" }
+    {
+      id: 1,
+      slug: "elderly-care",
+      title: "Elderly Care at Home",
+      short: "Compassionate, respectful care for seniors in the comfort of home.",
+      description: "Trained caregivers assist your elderly loved ones with daily activities, mobility, medication reminders, meals, and companionship — always with dignity and warmth.",
+      benefits: ["Personal hygiene & grooming", "Medication reminders", "Meal preparation", "Mobility assistance", "Companionship"],
+      duration: "Hourly, Daily, or Live-in",
+      price: "Starting ₹500 / visit",
+      category: "care",
+      comingSoon: false
+    },
+    {
+      id: 2,
+      slug: "mother-baby-care",
+      title: "Mother & Baby Care",
+      short: "Postnatal support for new mothers and their newborns.",
+      description: "Experienced maternity attendants and nurses help new mothers with recovery, feeding guidance, baby bathing, and round-the-clock newborn care.",
+      benefits: ["Postnatal recovery support", "Breastfeeding guidance", "Baby bathing & massage", "Sleep scheduling", "Emotional wellness"],
+      duration: "Daily, Weekly, or Monthly",
+      price: "Starting ₹18,000 / month",
+      category: "care",
+      comingSoon: false
+    },
+    {
+      id: 3,
+      slug: "pregnancy-care",
+      title: "Pregnancy Care",
+      short: "Attentive prenatal support for expectant mothers at home.",
+      description: "Qualified nurses provide antenatal check-ins, wellness monitoring, and comforting care throughout pregnancy — so you can rest, recover and prepare in peace.",
+      benefits: ["Vitals monitoring", "Diet & nutrition guidance", "Wellness check-ins", "Mobility support", "Doctor coordination"],
+      duration: "Hourly, Daily, or Monthly",
+      price: "Starting ₹700 / visit",
+      category: "care",
+      comingSoon: false
+    },
+    {
+      id: 4,
+      slug: "newborn-baby-care",
+      title: "Newborn Baby Care",
+      short: "Specialist care for babies in their most delicate first weeks.",
+      description: "Trained newborn caregivers handle feeding, sleep routines, bathing, and gentle massages so parents can rest while their little one is in expert hands.",
+      benefits: ["Feeding & burping", "Bathing & massage", "Sleep routines", "Vaccination reminders", "Overnight care"],
+      duration: "Daily, Weekly, or Monthly",
+      price: "Starting ₹20,000 / month",
+      category: "care",
+      comingSoon: false
+    },
+    {
+      id: 5,
+      slug: "home-nursing",
+      title: "Home Nursing Services",
+      short: "Qualified nurses delivering hospital-grade care at home.",
+      description: "Registered nurses provide wound care, IV therapy, catheter care, tracheostomy care, and general nursing tailored to your medical needs.",
+      benefits: ["Wound dressing", "IV / injection therapy", "Catheter & tube care", "Vitals monitoring", "Doctor coordination"],
+      duration: "Hourly, 12-hour, or 24-hour",
+      price: "Starting ₹800 / visit",
+      category: "care",
+      comingSoon: false
+    },
+    {
+      id: 6,
+      slug: "injection-services",
+      title: "Injection Services",
+      short: "Safe, sterile injections administered by trained nurses at home.",
+      description: "On-demand injection service for insulin, antibiotics, vitamin shots, and prescribed medication — quick, hygienic, and pain-conscious.",
+      benefits: ["Sterile procedure", "Trained nurses only", "Same-day availability", "Safe disposal", "Doctor prescription verified"],
+      duration: "Per visit",
+      price: "Starting ₹299 / visit",
+      category: "care",
+      comingSoon: false
+    },
+    {
+      id: 7,
+      slug: "post-surgery-care",
+      title: "Post-Surgery Care",
+      short: "Guided recovery care after hospital discharge.",
+      description: "Nurses and attendants support post-operative healing with wound care, medication schedules, mobility help, and gentle physical support.",
+      benefits: ["Wound & suture care", "Pain management support", "Mobility assistance", "Diet planning", "Progress reporting"],
+      duration: "Daily or 24-hour",
+      price: "Starting ₹1,500 / day",
+      category: "care",
+      comingSoon: false
+    },
+    {
+      id: 8,
+      slug: "patient-care-attendant",
+      title: "Patient Care Attendant",
+      short: "Dedicated attendants for personal and daily patient needs.",
+      description: "Trained attendants assist with feeding, hygiene, positioning and companionship so families can focus on being together.",
+      benefits: ["Feeding assistance", "Personal hygiene", "Turning & positioning", "Household support", "Emotional companionship"],
+      duration: "12-hour or 24-hour",
+      price: "Starting ₹900 / day",
+      category: "care",
+      comingSoon: false
+    },
+    {
+      id: 9,
+      slug: "bedridden-patient-care",
+      title: "Bedridden Patient Care",
+      short: "Specialist care for patients confined to bed.",
+      description: "Attendants and nurses trained in bedsore prevention, position changes, sponge baths, catheter care, and full daily support for bedridden patients.",
+      benefits: ["Bedsore prevention", "Sponge bath & hygiene", "Position changes", "Diaper care", "Catheter care"],
+      duration: "12-hour or 24-hour",
+      price: "Starting ₹1,200 / day",
+      category: "care",
+      comingSoon: false
+    },
+    {
+      id: 10,
+      slug: "icu-home-recovery",
+      title: "ICU / Home Recovery Support",
+      short: "ICU-level home support for critical recovery.",
+      description: "Critical-care trained nurses handle ventilator monitoring, tracheostomy care, and intensive recovery routines under doctor guidance.",
+      benefits: ["Critical-care nurses", "Ventilator monitoring", "Tracheostomy care", "24/7 vitals tracking", "Doctor coordination"],
+      duration: "24-hour",
+      price: "Starting ₹2,500 / day",
+      category: "care",
+      comingSoon: false
+    },
+    {
+      id: 11,
+      slug: "physiotherapy",
+      title: "Physiotherapy",
+      short: "Home physiotherapy sessions for recovery and mobility.",
+      description: "Professional physiotherapists visit your home for orthopaedic, neurological and post-surgery rehabilitation programs.",
+      benefits: ["Custom rehab plans", "Orthopaedic care", "Neuro rehab", "Post-surgery recovery", "Progress reviews"],
+      duration: "Per session",
+      price: "Starting ₹600 / session",
+      category: "care",
+      comingSoon: true
+    },
+    {
+      id: 12,
+      slug: "doctor-consultation",
+      title: "Doctor Consultation",
+      short: "Home visit and online consultations with trusted doctors.",
+      description: "Consult experienced general physicians and specialists from the comfort of your home — with follow-ups and prescriptions.",
+      benefits: ["Home visits", "Online consults", "Follow-ups", "e-Prescriptions", "Specialist referrals"],
+      duration: "Per consultation",
+      price: "Starting ₹800 / consult",
+      category: "care",
+      comingSoon: true
+    }
   ],
   notifications: [
     { id: 1, recipient: "All Users", message: "Welcome to Amma Seva! Our portal is fully upgraded.", type: "Broadcast", sentAt: new Date().toISOString() }
@@ -249,9 +388,14 @@ export const db = {
           CREATE TABLE IF NOT EXISTS services (
             id INT AUTO_INCREMENT PRIMARY KEY,
             title VARCHAR(255) NOT NULL,
+            slug VARCHAR(255) NOT NULL UNIQUE,
+            short TEXT,
             description TEXT,
+            benefits TEXT,
+            duration VARCHAR(100),
             price VARCHAR(50) NOT NULL,
-            category VARCHAR(50)
+            category VARCHAR(50),
+            comingSoon TINYINT DEFAULT 0
           )
         `)
 
@@ -276,6 +420,23 @@ export const db = {
         } catch (e) {
           // ignore column already exists error
         }
+
+        // Migration queries for services table
+        try {
+          await connection.query(`ALTER TABLE services ADD COLUMN slug VARCHAR(255)`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE services ADD COLUMN short TEXT`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE services ADD COLUMN benefits TEXT`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE services ADD COLUMN duration VARCHAR(100)`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE services ADD COLUMN comingSoon TINYINT DEFAULT 0`)
+        } catch (e) {}
 
         // Insert initial values if MySQL database is fresh/empty
         const [bookingsRows] = await connection.query('SELECT count(*) as count FROM bookings')
@@ -316,8 +477,8 @@ export const db = {
           console.log('Inserting initial mock services into MySQL...')
           for (const s of DEFAULT_MOCK_DATA.services) {
             await connection.query(
-              'INSERT INTO services (title, description, price, category) VALUES (?, ?, ?, ?)',
-              [s.title, s.description, s.price, s.category]
+              'INSERT INTO services (title, slug, short, description, benefits, duration, price, category, comingSoon) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+              [s.title, s.slug, s.short, s.description, JSON.stringify(s.benefits), s.duration, s.price, s.category, s.comingSoon ? 1 : 0]
             )
           }
         }
@@ -795,7 +956,11 @@ export const db = {
   getServices: async () => {
     if (useMySQL) {
       const [rows] = await pool.query('SELECT * FROM services ORDER BY id DESC')
-      return rows
+      return rows.map(row => ({
+        ...row,
+        benefits: row.benefits ? JSON.parse(row.benefits) : [],
+        comingSoon: !!row.comingSoon
+      }))
     } else {
       const data = await readJSONDb()
       if (!data.services) data.services = []
@@ -804,22 +969,29 @@ export const db = {
   },
 
   addService: async (serviceData) => {
-    const { title, description, price, category } = serviceData
+    const { title, slug, short, description, benefits, duration, price, category, comingSoon = false } = serviceData
+    const benefitsStr = Array.isArray(benefits) ? JSON.stringify(benefits) : JSON.stringify([])
+    const comingSoonVal = comingSoon ? 1 : 0
     if (useMySQL) {
       const [result] = await pool.query(
-        'INSERT INTO services (title, description, price, category) VALUES (?, ?, ?, ?)',
-        [title, description, price, category]
+        'INSERT INTO services (title, slug, short, description, benefits, duration, price, category, comingSoon) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [title, slug, short, description, benefitsStr, duration, price, category, comingSoonVal]
       )
-      return { id: result.insertId, title, description, price, category }
+      return { id: result.insertId, title, slug, short, description, benefits, duration, price, category, comingSoon }
     } else {
       const data = await readJSONDb()
       if (!data.services) data.services = []
       const newService = {
         id: data.services.length > 0 ? Math.max(...data.services.map(s => s.id)) + 1 : 1,
         title,
+        slug,
+        short,
         description,
+        benefits: Array.isArray(benefits) ? benefits : [],
+        duration,
         price,
-        category
+        category,
+        comingSoon: !!comingSoon
       }
       data.services.push(newService)
       await writeJSONDb(data)
@@ -828,11 +1000,13 @@ export const db = {
   },
 
   updateService: async (id, serviceData) => {
-    const { title, description, price, category } = serviceData
+    const { title, slug, short, description, benefits, duration, price, category, comingSoon = false } = serviceData
+    const benefitsStr = Array.isArray(benefits) ? JSON.stringify(benefits) : JSON.stringify([])
+    const comingSoonVal = comingSoon ? 1 : 0
     if (useMySQL) {
       const [result] = await pool.query(
-        'UPDATE services SET title = ?, description = ?, price = ?, category = ? WHERE id = ?',
-        [title, description, price, category, id]
+        'UPDATE services SET title = ?, slug = ?, short = ?, description = ?, benefits = ?, duration = ?, price = ?, category = ?, comingSoon = ? WHERE id = ?',
+        [title, slug, short, description, benefitsStr, duration, price, category, comingSoonVal, id]
       )
       return result.affectedRows > 0
     } else {
@@ -842,9 +1016,14 @@ export const db = {
         data.services[idx] = {
           ...data.services[idx],
           title,
+          slug,
+          short,
           description,
+          benefits: Array.isArray(benefits) ? benefits : [],
+          duration,
           price,
-          category
+          category,
+          comingSoon: !!comingSoon
         }
         await writeJSONDb(data)
         return true

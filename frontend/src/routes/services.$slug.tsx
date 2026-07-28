@@ -1,13 +1,14 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { Check, Phone, Clock, IndianRupee } from "lucide-react";
 import { SiteLayout, contact } from "@/components/SiteLayout";
-import { getService, services } from "@/lib/services";
+import { fetchServices } from "@/lib/services";
 
 export const Route = createFileRoute("/services/$slug")({
-  loader: ({ params }) => {
-    const service = getService(params.slug);
+  loader: async ({ params }) => {
+    const list = await fetchServices();
+    const service = list.find((s) => s.slug === params.slug);
     if (!service) throw notFound();
-    return { service };
+    return { service, allServices: list };
   },
   head: ({ loaderData, params }) => {
     if (!loaderData) {
@@ -29,8 +30,8 @@ export const Route = createFileRoute("/services/$slug")({
 });
 
 function ServicePage() {
-  const { service } = Route.useLoaderData();
-  const others = services.filter((s) => s.slug !== service.slug).slice(0, 3);
+  const { service, allServices } = Route.useLoaderData();
+  const others = allServices.filter((s) => s.slug !== service.slug).slice(0, 3);
   return (
     <SiteLayout>
       <section className="border-b border-border bg-cream/40">

@@ -1,9 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import { SiteLayout } from "@/components/SiteLayout";
-import { services } from "@/lib/services";
+import { fetchServices } from "@/lib/services";
 
 export const Route = createFileRoute("/services")({
+  loader: async () => {
+    const list = await fetchServices();
+    return { services: list };
+  },
   head: () => ({
     meta: [
       { title: "Our Services — Amma Seva Home Healthcare" },
@@ -18,6 +22,7 @@ export const Route = createFileRoute("/services")({
 });
 
 function ServicesPage() {
+  const { services } = Route.useLoaderData();
   return (
     <SiteLayout>
       <section className="border-b border-border bg-cream/40">

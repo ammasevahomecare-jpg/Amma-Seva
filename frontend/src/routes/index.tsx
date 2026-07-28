@@ -1,13 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Phone, Calendar, ShieldCheck, HeartHandshake, Clock, BadgeCheck, Star, ChevronRight } from "lucide-react";
 import { SiteLayout, contact } from "@/components/SiteLayout";
-import { services } from "@/lib/services";
+import { fetchServices } from "@/lib/services";
 import hero from "@/assets/hero-care.jpg";
 import motherBaby from "@/assets/service-mother-baby.jpg";
 import nursing from "@/assets/service-nursing.jpg";
 import elderly from "@/assets/service-elderly.jpg";
 
 export const Route = createFileRoute("/")({
+  loader: async () => {
+    const list = await fetchServices();
+    return { services: list };
+  },
   head: () => ({
     meta: [
       { title: "Amma Seva — Trusted Home Healthcare & Caregiving" },
@@ -71,6 +75,7 @@ const FAQ = [
 ];
 
 function Home() {
+  const { services } = Route.useLoaderData();
   return (
     <SiteLayout>
       {/* Hero */}

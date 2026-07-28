@@ -712,12 +712,23 @@ app.get('/api/services', async (req, res) => {
 
 // POST add service (Admin Panel)
 app.post('/api/services', async (req, res) => {
-  const { title, description, price, category } = req.body
+  const { title, slug, short, description, benefits, duration, price, category, comingSoon } = req.body
   if (!title || !price) {
     return res.status(400).json({ error: 'Title and price are required fields.' })
   }
+  const slugVal = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
   try {
-    const newService = await db.addService({ title, description, price, category })
+    const newService = await db.addService({
+      title,
+      slug: slugVal,
+      short: short || '',
+      description: description || '',
+      benefits: Array.isArray(benefits) ? benefits : [],
+      duration: duration || 'Hourly',
+      price,
+      category: category || 'care',
+      comingSoon: !!comingSoon
+    })
     res.status(201).json({ success: true, message: 'Service successfully created.', data: newService })
   } catch (err) {
     res.status(500).json({ error: 'Failed to create service.' })
@@ -726,8 +737,23 @@ app.post('/api/services', async (req, res) => {
 
 // PUT update service (Admin Panel)
 app.put('/api/services/:id', async (req, res) => {
+  const { title, slug, short, description, benefits, duration, price, category, comingSoon } = req.body
+  if (!title || !price) {
+    return res.status(400).json({ error: 'Title and price are required fields.' })
+  }
+  const slugVal = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
   try {
-    const updated = await db.updateService(req.params.id, req.body)
+    const updated = await db.updateService(req.params.id, {
+      title,
+      slug: slugVal,
+      short: short || '',
+      description: description || '',
+      benefits: Array.isArray(benefits) ? benefits : [],
+      duration: duration || 'Hourly',
+      price,
+      category: category || 'care',
+      comingSoon: !!comingSoon
+    })
     if (updated) {
       res.json({ success: true, message: 'Service successfully updated.' })
     } else {

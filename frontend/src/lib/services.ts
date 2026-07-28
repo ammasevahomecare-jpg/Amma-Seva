@@ -135,3 +135,37 @@ export const services: Service[] = [
 export function getService(slug: string) {
   return services.find((s) => s.slug === slug);
 }
+
+export async function fetchServices(): Promise<Service[]> {
+  try {
+    const res = await fetch("/api/services");
+    if (!res.ok) throw new Error("Failed to fetch services");
+    const data = await res.json();
+    if (Array.isArray(data) && data.length > 0) {
+      return data.map((item: any) => ({
+        slug: item.slug || item.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''),
+        title: item.title,
+        short: item.short || item.description?.substring(0, 80) + "..." || "",
+        description: item.description || "",
+        benefits: Array.isArray(item.benefits) ? item.benefits : [],
+        duration: item.duration || "Hourly",
+        pricing: item.price || item.pricing,
+        comingSoon: !!item.comingSoon
+      }));
+    }
+  } catch (err) {
+    console.error("Failed to load services from API, using local fallback", err);
+  }
+  return services;
+}
+
+export async function fetchServiceBySlug(slug: string): Promise<Service | null> {
+  try {
+    const list = await fetchServices();
+    const service = list.find((s) => s.slug === slug);
+    if (service) return service;
+  } catch (err) {
+    console.error("Error looking up service by slug", err);
+  }
+  return getService(slug) || null;
+}
