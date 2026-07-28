@@ -33,7 +33,7 @@ function Header() {
     { to: "/careers", label: "Careers" },
     { to: "/contact", label: "Contact" },
     ...(isUser ? [{ to: "/dashboard", label: "Dashboard" }] : []),
-    ...(isCaretaker ? [{ to: "/login", label: "Portal" }] : []),
+    ...(isCaretaker ? [{ to: "/dashboard", label: "Profile" }] : []),
     ...(isAdmin ? [{ to: "/admin", label: "Admin Panel" }] : []),
     ...(!isUser && !isCaretaker && !isAdmin ? [{ to: "/login", label: "Login" }] : []),
   ];
@@ -79,6 +79,10 @@ function Header() {
             <Link to="/dashboard" className="btn-primary text-sm">
               My Dashboard
             </Link>
+          ) : isCaretaker ? (
+            <Link to="/dashboard" className="btn-primary text-sm">
+              My Profile
+            </Link>
           ) : isAdmin ? (
             <Link to="/admin" className="btn-primary text-sm">
               Admin Panel
@@ -118,6 +122,10 @@ function Header() {
               {isUser ? (
                 <Link to="/dashboard" onClick={() => setOpen(false)} className="btn-primary flex-1 text-sm text-center">
                   Dashboard
+                </Link>
+              ) : isCaretaker ? (
+                <Link to="/dashboard" onClick={() => setOpen(false)} className="btn-primary flex-1 text-sm text-center">
+                  Profile
                 </Link>
               ) : isAdmin ? (
                 <Link to="/admin" onClick={() => setOpen(false)} className="btn-primary flex-1 text-sm text-center">
