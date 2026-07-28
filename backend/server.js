@@ -89,7 +89,7 @@ app.post('/api/admin/send-otp', async (req, res) => {
 })
 
 // POST admin login (verifies OTP)
-app.post('/api/admin/login', (req, res) => {
+app.post('/api/admin/login', async (req, res) => {
   const { email, otp } = req.body
 
   if (!email || !otp) {
