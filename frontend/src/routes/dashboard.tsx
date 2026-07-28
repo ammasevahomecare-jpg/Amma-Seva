@@ -62,7 +62,7 @@ function CustomerDashboard() {
   const [caretakerPhone, setCaretakerPhone] = useState("");
   const [caretakerSpecialty, setCaretakerSpecialty] = useState("Elderly Care");
   const [caretakerExperience, setCaretakerExperience] = useState("3");
-  const [servicesList, setServicesList] = useState<Service[]>([]);
+  const [servicesList, setServicesList] = useState<any[]>(SERVICES_CATALOG);
   const [caretakerExperienceDetails, setCaretakerExperienceDetails] = useState("");
   const [caretakerWorkingLocations, setCaretakerWorkingLocations] = useState("");
   const [caretakerAvailableTimings, setCaretakerAvailableTimings] = useState("");
@@ -219,10 +219,27 @@ function CustomerDashboard() {
     }
   }, [navigate]);
 
-  // Load dynamic services for specialty dropdown
+  // Load dynamic services for specialty dropdown and booking catalog
   useEffect(() => {
     fetchServices().then((list) => {
-      setServicesList(list);
+      const formatted = list.map((s) => {
+        let rate = 1200;
+        const matches = s.pricing?.replace(/,/g, '').match(/\d+/);
+        if (matches) {
+          rate = Number(matches[0]);
+        }
+        return {
+          id: s.slug,
+          title: s.title,
+          rate: rate,
+          unit: s.duration || "day",
+          desc: s.short || s.description
+        };
+      });
+      if (formatted.length > 0) {
+        setServicesList(formatted);
+        setSelectedServiceId(formatted[0].id);
+      }
     });
   }, []);
 
@@ -255,9 +272,9 @@ function CustomerDashboard() {
   }, [user, activeView]);
 
   // Calculate pricing
-  const currentService = SERVICES_CATALOG.find(s => s.id === selectedServiceId) || SERVICES_CATALOG[0];
+  const currentService = servicesList.find(s => s.id === selectedServiceId) || SERVICES_CATALOG.find(s => s.id === selectedServiceId) || servicesList[0] || SERVICES_CATALOG[0];
   const calculateTotal = () => {
-    const base = currentService.rate;
+    const base = currentService?.rate || 1200;
     switch (bookingDuration) {
       case "Hourly": return base * 0.5;
       case "Daily": return base;
@@ -910,11 +927,11 @@ function CustomerDashboard() {
                       onChange={(e) => setSelectedServiceId(e.target.value)}
                       className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
                     >
-                      {SERVICES_CATALOG.map(s => (
+                      {servicesList.map(s => (
                         <option key={s.id} value={s.id}>{s.title} (₹{s.rate}/{s.unit})</option>
                       ))}
                     </select>
-                    <p className="text-[10px] text-slate-400 mt-1.5">{currentService.desc}</p>
+                    <p className="text-[10px] text-slate-400 mt-1.5">{currentService?.desc}</p>
                   </div>
 
                   {/* Duration Selector */}
