@@ -153,6 +153,18 @@ function AdminPage() {
   const [serviceBenefits, setServiceBenefits] = useState("");
   const [serviceDuration, setServiceDuration] = useState("");
   const [serviceComingSoon, setServiceComingSoon] = useState(false);
+  const [serviceImage, setServiceImage] = useState("");
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setFileState: (val: string) => void) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFileState(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Form states - Notification
   const [notifRecipient, setNotifRecipient] = useState("All Users");
@@ -361,6 +373,7 @@ function AdminPage() {
       setServicePrice("₹1,200/day");
       setServiceCategory("care");
       setServiceComingSoon(false);
+      setServiceImage("");
     } else if (type === "notification") {
       setNotifRecipient("All Users");
       setNotifMessage("");
@@ -411,6 +424,7 @@ function AdminPage() {
       setServicePrice(record.price);
       setServiceCategory(record.category || "care");
       setServiceComingSoon(!!record.comingSoon);
+      setServiceImage(record.image || "");
     }
   };
 
@@ -475,7 +489,8 @@ function AdminPage() {
         duration: serviceDuration,
         price: servicePrice,
         category: serviceCategory,
-        comingSoon: serviceComingSoon
+        comingSoon: serviceComingSoon,
+        image: serviceImage
       };
     } else if (modalType === "notification") {
       url = "/api/notifications";
@@ -1258,11 +1273,22 @@ function AdminPage() {
                 {filteredServices.map((service) => (
                   <div key={service.id} className="rounded-2xl border border-slate-200/60 bg-white p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
                     <div>
-                      <div className="flex justify-between items-start gap-4">
-                        <h4 className="text-lg font-semibold text-primary font-display">{service.title}</h4>
-                        <span className="text-sm font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-100">{service.price}</span>
+                      <div className="flex gap-4">
+                        {service.image && (
+                          <img 
+                            src={service.image} 
+                            className="h-20 w-20 rounded-xl object-cover border border-slate-200 shrink-0" 
+                            alt={service.title} 
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-start gap-4">
+                            <h4 className="text-lg font-semibold text-primary font-display truncate">{service.title}</h4>
+                            <span className="text-sm font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-100 shrink-0">{service.price}</span>
+                          </div>
+                          <p className="mt-2 text-sm text-slate-400 leading-relaxed line-clamp-3">{service.description}</p>
+                        </div>
                       </div>
-                      <p className="mt-2 text-sm text-slate-400 leading-relaxed">{service.description}</p>
                     </div>
                     <div className="mt-6 flex justify-end gap-2">
                       <button 
@@ -1826,6 +1852,25 @@ function AdminPage() {
                       placeholder="e.g.&#10;Personal hygiene & grooming&#10;Medication reminders&#10;Meal preparation"
                       className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 font-mono text-xs"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Service Image</label>
+                    <div className="flex items-center gap-4">
+                      {serviceImage && (
+                        <img 
+                          src={serviceImage} 
+                          className="h-16 w-16 rounded-lg object-cover border border-slate-200" 
+                          alt="Service Preview" 
+                        />
+                      )}
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={e => handleFileChange(e, setServiceImage)}
+                        className="w-full text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer"
+                      />
+                    </div>
                   </div>
                 </>
               )}

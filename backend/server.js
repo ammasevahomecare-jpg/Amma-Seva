@@ -984,12 +984,13 @@ app.get('/api/services', async (req, res) => {
 
 // POST add service (Admin Panel)
 app.post('/api/services', authenticateAdmin, async (req, res) => {
-  const { title, slug, short, description, benefits, duration, price, category, comingSoon } = req.body
+  const { title, slug, short, description, benefits, duration, price, category, comingSoon, image } = req.body
   if (!title || !price) {
-    return res.status(400).json({ error: 'Title and price are required fields.' })
+    return res.status(400).json({ success: false, error: 'Title and price are required fields.' })
   }
   const slugVal = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
   try {
+    const uploadedImage = image ? await uploadToCloudinary(image) : ''
     const newService = await db.addService({
       title,
       slug: slugVal,
@@ -999,22 +1000,25 @@ app.post('/api/services', authenticateAdmin, async (req, res) => {
       duration: duration || 'Hourly',
       price,
       category: category || 'care',
-      comingSoon: !!comingSoon
+      comingSoon: !!comingSoon,
+      image: uploadedImage
     })
     res.status(201).json({ success: true, message: 'Service successfully created.', data: newService })
   } catch (err) {
-    res.status(500).json({ error: 'Failed to create service.' })
+    console.error('Failed to create service:', err)
+    res.status(500).json({ success: false, error: 'Failed to create service.' })
   }
 })
 
 // PUT update service (Admin Panel)
 app.put('/api/services/:id', authenticateAdmin, async (req, res) => {
-  const { title, slug, short, description, benefits, duration, price, category, comingSoon } = req.body
+  const { title, slug, short, description, benefits, duration, price, category, comingSoon, image } = req.body
   if (!title || !price) {
-    return res.status(400).json({ error: 'Title and price are required fields.' })
+    return res.status(400).json({ success: false, error: 'Title and price are required fields.' })
   }
   const slugVal = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
   try {
+    const uploadedImage = image ? await uploadToCloudinary(image) : undefined
     const updated = await db.updateService(req.params.id, {
       title,
       slug: slugVal,
@@ -1024,7 +1028,8 @@ app.put('/api/services/:id', authenticateAdmin, async (req, res) => {
       duration: duration || 'Hourly',
       price,
       category: category || 'care',
-      comingSoon: !!comingSoon
+      comingSoon: !!comingSoon,
+      image: uploadedImage
     })
     if (updated) {
       res.json({ success: true, message: 'Service successfully updated.' })

@@ -178,7 +178,8 @@ export const db = {
             duration VARCHAR(100),
             price VARCHAR(50) NOT NULL,
             category VARCHAR(50),
-            comingSoon TINYINT DEFAULT 0
+            comingSoon TINYINT DEFAULT 0,
+            image LONGTEXT
           )
         `)
 
@@ -258,6 +259,9 @@ export const db = {
         } catch (e) {}
         try {
           await connection.query(`ALTER TABLE services ADD COLUMN comingSoon TINYINT DEFAULT 0`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE services ADD COLUMN image LONGTEXT`)
         } catch (e) {}
 
         // Insert initial values if MySQL database is fresh/empty
@@ -963,15 +967,15 @@ export const db = {
   },
 
   addService: async (serviceData) => {
-    const { title, slug, short, description, benefits, duration, price, category, comingSoon = false } = serviceData
+    const { title, slug, short, description, benefits, duration, price, category, comingSoon = false, image = '' } = serviceData
     const benefitsStr = Array.isArray(benefits) ? JSON.stringify(benefits) : JSON.stringify([])
     const comingSoonVal = comingSoon ? 1 : 0
     if (useMySQL) {
       const [result] = await pool.query(
-        'INSERT INTO services (title, slug, short, description, benefits, duration, price, category, comingSoon) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [title, slug, short, description, benefitsStr, duration, price, category, comingSoonVal]
+        'INSERT INTO services (title, slug, short, description, benefits, duration, price, category, comingSoon, image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [title, slug, short, description, benefitsStr, duration, price, category, comingSoonVal, image]
       )
-      return { id: result.insertId, title, slug, short, description, benefits, duration, price, category, comingSoon }
+      return { id: result.insertId, title, slug, short, description, benefits, duration, price, category, comingSoon, image }
     } else {
       const data = await readJSONDb()
       if (!data.services) data.services = []
@@ -985,7 +989,8 @@ export const db = {
         duration,
         price,
         category,
-        comingSoon: !!comingSoon
+        comingSoon: !!comingSoon,
+        image
       }
       data.services.push(newService)
       await writeJSONDb(data)
@@ -994,13 +999,13 @@ export const db = {
   },
 
   updateService: async (id, serviceData) => {
-    const { title, slug, short, description, benefits, duration, price, category, comingSoon = false } = serviceData
+    const { title, slug, short, description, benefits, duration, price, category, comingSoon = false, image } = serviceData
     const benefitsStr = Array.isArray(benefits) ? JSON.stringify(benefits) : JSON.stringify([])
     const comingSoonVal = comingSoon ? 1 : 0
     if (useMySQL) {
       const [result] = await pool.query(
-        'UPDATE services SET title = ?, slug = ?, short = ?, description = ?, benefits = ?, duration = ?, price = ?, category = ?, comingSoon = ? WHERE id = ?',
-        [title, slug, short, description, benefitsStr, duration, price, category, comingSoonVal, id]
+        'UPDATE services SET title = ?, slug = ?, short = ?, description = ?, benefits = ?, duration = ?, price = ?, category = ?, comingSoon = ?, image = COALESCE(?, image) WHERE id = ?',
+        [title, slug, short, description, benefitsStr, duration, price, category, comingSoonVal, image !== undefined ? image : null, id]
       )
       return result.affectedRows > 0
     } else {
@@ -1017,7 +1022,8 @@ export const db = {
           duration,
           price,
           category,
-          comingSoon: !!comingSoon
+          comingSoon: !!comingSoon,
+          image: image !== undefined ? image : data.services[idx].image
         }
         await writeJSONDb(data)
         return true

@@ -7,6 +7,7 @@ export type Service = {
   duration: string;
   pricing?: string;
   comingSoon?: boolean;
+  image?: string;
 };
 
 export const services: Service[] = [
@@ -150,7 +151,8 @@ export async function fetchServices(): Promise<Service[]> {
         benefits: Array.isArray(item.benefits) ? item.benefits : [],
         duration: item.duration || "Hourly",
         pricing: item.price || item.pricing,
-        comingSoon: !!item.comingSoon
+        comingSoon: !!item.comingSoon,
+        image: item.image || ""
       }));
     }
   } catch (err) {
