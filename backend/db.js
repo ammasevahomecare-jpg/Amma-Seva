@@ -132,6 +132,9 @@ export const db = {
             paymentMethod VARCHAR(100),
             transactionId VARCHAR(255),
             paymentDate VARCHAR(100),
+            patientName LONGTEXT,
+            patientAge VARCHAR(50),
+            patientNeeds LONGTEXT,
             createdAt VARCHAR(255) NOT NULL
           )
         `)
@@ -242,6 +245,15 @@ export const db = {
         } catch (e) {}
         try {
           await connection.query(`ALTER TABLE bookings ADD COLUMN paymentDate VARCHAR(100)`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE bookings ADD COLUMN patientName LONGTEXT`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE bookings ADD COLUMN patientAge VARCHAR(50)`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE bookings ADD COLUMN patientNeeds LONGTEXT`)
         } catch (e) {}
 
         // Migration queries for services table
@@ -703,14 +715,14 @@ export const db = {
 
   // User Bookings Operations
   addBookingForUser: async (bookingData) => {
-    const { name, phone, service, date, time, duration, address, amount = 1200, userId = null } = bookingData
+    const { name, phone, service, date, time, duration, address, amount = 1200, userId = null, patientName = '', patientAge = '', patientNeeds = '' } = bookingData
     const createdAt = new Date().toISOString()
     if (useMySQL) {
       const [result] = await pool.query(
-        'INSERT INTO bookings (name, phone, service, date, time, duration, address, amount, userId, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [name, phone, service, date, time, duration, address, amount, userId, createdAt]
+        'INSERT INTO bookings (name, phone, service, date, time, duration, address, amount, userId, createdAt, patientName, patientAge, patientNeeds) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [name, phone, service, date, time, duration, address, amount, userId, createdAt, patientName, patientAge, patientNeeds]
       )
-      return { id: result.insertId, name, phone, service, date, time, duration, address, status: 'Pending', assignedStaff: null, amount, paymentStatus: 'Unpaid', userId, createdAt }
+      return { id: result.insertId, name, phone, service, date, time, duration, address, status: 'Pending', assignedStaff: null, amount, paymentStatus: 'Unpaid', userId, createdAt, patientName, patientAge, patientNeeds }
     } else {
       const data = await readJSONDb()
       const newBooking = {
@@ -727,6 +739,9 @@ export const db = {
         amount,
         paymentStatus: 'Unpaid',
         userId: userId ? Number(userId) : null,
+        patientName,
+        patientAge,
+        patientNeeds,
         createdAt
       }
       data.bookings.push(newBooking)
@@ -742,6 +757,16 @@ export const db = {
     } else {
       const data = await readJSONDb()
       return data.bookings.filter(b => b.userId === Number(userId)).reverse()
+    }
+  },
+
+  getBookingsByAssignedStaff: async (staffName) => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM bookings WHERE assignedStaff = ? ORDER BY id DESC', [staffName])
+      return rows
+    } else {
+      const data = await readJSONDb()
+      return data.bookings.filter(b => b.assignedStaff === staffName).reverse()
     }
   },
 

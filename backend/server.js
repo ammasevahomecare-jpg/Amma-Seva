@@ -413,6 +413,24 @@ app.put('/api/caretaker/profile', authenticateUser, async (req, res) => {
   }
 })
 
+// GET all bookings assigned to current caretaker
+app.get('/api/caretaker/bookings', authenticateUser, async (req, res) => {
+  if (req.role !== 'caretaker') {
+    return res.status(403).json({ error: 'Access forbidden. Caretaker only.' })
+  }
+  try {
+    const caretaker = await db.getCaregiverById(req.userId)
+    if (!caretaker) {
+      return res.status(404).json({ error: 'Caretaker profile not found.' })
+    }
+    const list = await db.getBookingsByAssignedStaff(caretaker.name)
+    res.json(list)
+  } catch (err) {
+    console.error('Failed to retrieve caretaker bookings:', err)
+    res.status(500).json({ error: 'Failed to retrieve bookings.' })
+  }
+})
+
 // POST register user
 app.post('/api/user/register', async (req, res) => {
   const { name, email, phone, password } = req.body
@@ -739,7 +757,10 @@ app.post('/api/booking', async (req, res) => {
       duration, 
       address, 
       amount: amount || 1200, 
-      userId: authUserId 
+      userId: authUserId,
+      patientName: patientName || '',
+      patientAge: patientAge || '',
+      patientNeeds: patientNeeds || ''
     })
 
     // Prepare notification mock logs

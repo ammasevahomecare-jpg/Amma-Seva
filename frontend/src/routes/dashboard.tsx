@@ -87,6 +87,28 @@ function CustomerDashboard() {
     }
   };
 
+  // Fetch caretaker assigned bookings
+  const fetchCaretakerBookings = async () => {
+    const token = localStorage.getItem("ammaseva_caretaker_token");
+    if (!token) return;
+    setIsLoading(true);
+    setDashboardError(null);
+    try {
+      const res = await fetch("/api/caretaker/bookings", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to load assigned shifts.");
+      }
+      setCaretakerBookings(Array.isArray(data) ? data : []);
+    } catch (err: any) {
+      setDashboardError(err.message || "Failed to load assigned shifts.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Fetch caretaker profile
   const fetchCaretakerProfile = async () => {
     const token = localStorage.getItem("ammaseva_caretaker_token");
@@ -168,6 +190,7 @@ function CustomerDashboard() {
   // View states
   const [activeView, setActiveView] = useState<"bookings" | "new-booking">("bookings");
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [caretakerBookings, setCaretakerBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
 
@@ -211,6 +234,7 @@ function CustomerDashboard() {
       setIsCaretaker(true);
       setCaretaker(JSON.parse(caretakerDetails));
       fetchCaretakerProfile();
+      fetchCaretakerBookings();
     } else if (userToken && userDetails) {
       setIsCaretaker(false);
       setUser(JSON.parse(userDetails));
@@ -462,6 +486,100 @@ function CustomerDashboard() {
                     Your caretaker registration is currently undergoing administrative background checks. To speed up verification, make sure all your profile details and required documents are complete and up-to-date below.
                   </p>
                 </div>
+              </div>
+            )}
+
+            {/* My Assigned Patient Shifts Card */}
+            {caretaker?.status === "Verified" && (
+              <div className="bg-white p-8 sm:p-10 rounded-3xl border border-slate-200/60 shadow-sm space-y-6">
+                <div>
+                  <h2 className="text-xl font-bold text-primary font-display flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-indigo-600" /> My Assigned Patient Shifts
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Below are the patient homecare shifts you have been assigned to by the administrator.</p>
+                </div>
+
+                {isLoading ? (
+                  <div className="flex justify-center py-6">
+                    <RefreshCw className="h-6 w-6 text-indigo-600 animate-spin" />
+                  </div>
+                ) : caretakerBookings.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-8 text-center text-slate-500">
+                    <Clock className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                    <p className="text-sm font-semibold">No assigned shifts yet</p>
+                    <p className="text-xs text-slate-400 mt-0.5">You will be notified once a customer booking is allocated to your profile.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {caretakerBookings.map((shift: any) => (
+                      <div key={shift.id} className="rounded-2xl border border-slate-100 bg-slate-50/50 p-6 space-y-4 hover:border-indigo-100 transition-colors">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Shift #{shift.id}</span>
+                            <h4 className="text-base font-bold text-slate-800">{shift.service}</h4>
+                          </div>
+                          <span className={`text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border ${
+                            shift.status === "Confirmed" ? "bg-emerald-50 text-emerald-800 border-emerald-100" :
+                            shift.status === "Completed" ? "bg-indigo-50 text-indigo-800 border-indigo-100" :
+                            "bg-amber-50 text-amber-800 border-amber-100"
+                          }`}>
+                            {shift.status}
+                          </span>
+                        </div>
+
+                        {/* Patient & Care Details Grid */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs pt-3 border-t border-slate-100/80">
+                          <div>
+                            <span className="text-slate-400 block mb-0.5">Patient Name</span>
+                            <span className="font-semibold text-slate-800 flex items-center gap-1">
+                              <User className="h-3.5 w-3.5 text-slate-400" /> {shift.patientName || shift.name || "N/A"}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block mb-0.5">Patient Age</span>
+                            <span className="font-semibold text-slate-800">{shift.patientAge || "N/A"} yrs</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block mb-0.5">Shift Date & Time</span>
+                            <span className="font-semibold text-slate-800 flex items-center gap-1">
+                              <Calendar className="h-3.5 w-3.5 text-slate-400" /> {shift.date} at {shift.time}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block mb-0.5">Duration Option</span>
+                            <span className="font-semibold text-slate-800">{shift.duration}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block mb-0.5">Customer Contact</span>
+                            <a href={`tel:${shift.phone}`} className="font-semibold text-indigo-600 hover:underline flex items-center gap-1">
+                              <Phone className="h-3.5 w-3.5" /> {shift.phone}
+                            </a>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block mb-0.5">Shift Remuneration</span>
+                            <span className="font-bold text-slate-800">₹{shift.amount}</span>
+                          </div>
+                        </div>
+
+                        {shift.address && (
+                          <div className="text-xs pt-2 border-t border-slate-100/60">
+                            <span className="text-slate-400 block mb-0.5">Patient Care Address</span>
+                            <span className="text-slate-700 flex items-start gap-1">
+                              <MapPin className="h-3.5 w-3.5 text-slate-400 mt-0.5 shrink-0" /> {shift.address}
+                            </span>
+                          </div>
+                        )}
+
+                        {shift.patientNeeds && (
+                          <div className="text-xs bg-indigo-50/30 border border-indigo-100/20 p-3 rounded-xl">
+                            <span className="text-indigo-600 font-bold block mb-0.5 uppercase tracking-wider text-[10px]">Special Instructions & Patient Needs</span>
+                            <p className="text-slate-600 leading-relaxed italic">&ldquo;{shift.patientNeeds}&rdquo;</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
