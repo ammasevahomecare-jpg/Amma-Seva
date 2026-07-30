@@ -370,7 +370,18 @@ app.get('/api/caretaker/profile', authenticateUser, async (req, res) => {
       return res.status(404).json({ error: 'Caretaker profile not found.' })
     }
     const { password, ...details } = caretaker
-    res.json({ success: true, details })
+    const reviews = await db.getReviewsForCaregiver(caretaker.name)
+    const avgRating = reviews.length > 0 
+      ? Number((reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)) 
+      : 0
+    res.json({ 
+      success: true, 
+      details: {
+        ...details,
+        reviews,
+        rating: avgRating
+      }
+    })
   } catch (err) {
     res.status(500).json({ error: 'Failed to retrieve profile details.' })
   }
@@ -428,6 +439,81 @@ app.get('/api/caretaker/bookings', authenticateUser, async (req, res) => {
   } catch (err) {
     console.error('Failed to retrieve caretaker bookings:', err)
     res.status(500).json({ error: 'Failed to retrieve bookings.' })
+  }
+})
+
+// PUT update booking status (for caregiver check-in / check-out shift tracking)
+app.put('/api/booking/:id/status', authenticateUser, async (req, res) => {
+  const { status } = req.body
+  if (!status) {
+    return res.status(400).json({ error: 'Status is required.' })
+  }
+  try {
+    const updated = await db.updateBookingStatus(req.params.id, status)
+    if (updated) {
+      res.json({ success: true, message: `Booking status updated to ${status}.` })
+    } else {
+      res.status(404).json({ error: 'Booking not found.' })
+    }
+  } catch (err) {
+    console.error('Failed to update booking status:', err)
+    res.status(500).json({ error: 'Failed to update booking status.' })
+  }
+})
+
+// POST submit a review for a caregiver
+app.post('/api/reviews', authenticateUser, async (req, res) => {
+  if (req.role !== 'user') {
+    return res.status(403).json({ error: 'Access forbidden. Customers only.' })
+  }
+  const { bookingId, caregiverName, rating, comment } = req.body
+  if (!bookingId || !caregiverName || !rating) {
+    return res.status(400).json({ error: 'Booking ID, Caregiver Name, and Rating are required.' })
+  }
+  try {
+    const review = await db.addReview({ bookingId, caregiverName, rating, comment })
+    res.json({ success: true, review })
+  } catch (err) {
+    console.error('Failed to save review:', err)
+    res.status(500).json({ error: 'Failed to submit review.' })
+  }
+})
+
+// GET caregiver reviews list
+app.get('/api/reviews/:caregiverName', async (req, res) => {
+  try {
+    const list = await db.getReviewsForCaregiver(req.params.caregiverName)
+    res.json(list)
+  } catch (err) {
+    console.error('Failed to retrieve reviews:', err)
+    res.status(500).json({ error: 'Failed to retrieve reviews.' })
+  }
+})
+
+// GET active announcements for user
+app.get('/api/announcements', authenticateUser, async (req, res) => {
+  try {
+    const target = req.role === 'caretaker' ? 'Caregivers' : 'Patients'
+    const list = await db.getAnnouncements(target)
+    res.json(list)
+  } catch (err) {
+    console.error('Failed to retrieve announcements:', err)
+    res.status(500).json({ error: 'Failed to retrieve announcements.' })
+  }
+})
+
+// POST broadcast announcement (admin only)
+app.post('/api/announcements', authenticateAdmin, async (req, res) => {
+  const { message, target } = req.body
+  if (!message || !target) {
+    return res.status(400).json({ error: 'Message and target are required.' })
+  }
+  try {
+    const ann = await db.addAnnouncement(message, target)
+    res.json({ success: true, announcement: ann })
+  } catch (err) {
+    console.error('Failed to save announcement:', err)
+    res.status(500).json({ error: 'Failed to broadcast announcement.' })
   }
 })
 
@@ -631,24 +717,27 @@ app.get('/api/user/bookings', authenticateUser, async (req, res) => {
   try {
     const list = await db.getBookingsByUserId(req.userId)
     const listWithStaffDetails = await Promise.all(list.map(async (booking) => {
+      const review = await db.getReviewByBookingId(booking.id)
+      let extendedBooking = {
+        ...booking,
+        isReviewed: !!review,
+        review: review || null
+      }
       if (booking.assignedStaff) {
         const caregiver = await db.getCaregiverByName(booking.assignedStaff)
         if (caregiver) {
-          return {
-            ...booking,
-            caregiverDetails: {
-              name: caregiver.name,
-              phone: caregiver.phone,
-              email: caregiver.email,
-              specialty: caregiver.specialty,
-              experience: caregiver.experience,
-              profilePhoto: caregiver.profilePhoto,
-              experienceDetails: caregiver.experienceDetails
-            }
+          extendedBooking.caregiverDetails = {
+            name: caregiver.name,
+            phone: caregiver.phone,
+            email: caregiver.email,
+            specialty: caregiver.specialty,
+            experience: caregiver.experience,
+            profilePhoto: caregiver.profilePhoto,
+            experienceDetails: caregiver.experienceDetails
           }
         }
       }
-      return booking
+      return extendedBooking
     }))
     res.json(listWithStaffDetails)
   } catch (err) {
@@ -847,7 +936,18 @@ app.put('/api/booking/:id', authenticateAdmin, async (req, res) => {
 app.get('/api/caregivers', authenticateAdmin, async (req, res) => {
   try {
     const list = await db.getCaregivers()
-    res.json(list)
+    const listWithReviews = await Promise.all(list.map(async (cg) => {
+      const reviews = await db.getReviewsForCaregiver(cg.name)
+      const avgRating = reviews.length > 0 
+        ? Number((reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)) 
+        : 0
+      return {
+        ...cg,
+        reviews,
+        rating: avgRating
+      }
+    }))
+    res.json(listWithReviews)
   } catch (err) {
     res.status(500).json({ error: 'Failed to retrieve caregivers list.' })
   }

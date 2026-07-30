@@ -21,7 +21,9 @@ const DEFAULT_MOCK_DATA = {
   bookings: [],
   caregivers: [],
   services: [],
-  notifications: []
+  notifications: [],
+  reviews: [],
+  announcements: []
 }
 
 // Initialize JSON database with default template
@@ -38,6 +40,8 @@ const initJSONDb = () => {
       if (!data.caregivers) { data.caregivers = DEFAULT_MOCK_DATA.caregivers; modified = true }
       if (!data.services) { data.services = DEFAULT_MOCK_DATA.services; modified = true }
       if (!data.notifications) { data.notifications = DEFAULT_MOCK_DATA.notifications; modified = true }
+      if (!data.reviews) { data.reviews = []; modified = true }
+      if (!data.announcements) { data.announcements = []; modified = true }
       if (modified) {
         fs.writeFileSync(JSON_DB_PATH, JSON.stringify(data, null, 2))
       }
@@ -202,6 +206,26 @@ export const db = {
             otp VARCHAR(10) NOT NULL,
             role VARCHAR(50) NOT NULL,
             expiresAt BIGINT NOT NULL
+          )
+        `)
+
+        await connection.query(`
+          CREATE TABLE IF NOT EXISTS reviews (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            bookingId INT UNIQUE,
+            caregiverName VARCHAR(255) NOT NULL,
+            rating INT NOT NULL,
+            comment TEXT,
+            createdAt VARCHAR(255) NOT NULL
+          )
+        `)
+
+        await connection.query(`
+          CREATE TABLE IF NOT EXISTS announcements (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            message TEXT NOT NULL,
+            target VARCHAR(50) NOT NULL,
+            createdAt VARCHAR(255) NOT NULL
           )
         `)
 
@@ -1115,6 +1139,105 @@ export const db = {
       data.notifications.push(newNotification)
       await writeJSONDb(data)
       return newNotification
+    }
+  },
+
+  updateBookingStatus: async (id, status) => {
+    if (useMySQL) {
+      const [result] = await pool.query('UPDATE bookings SET status = ? WHERE id = ?', [status, id])
+      return result.affectedRows > 0
+    } else {
+      const data = await readJSONDb()
+      const idx = data.bookings.findIndex(b => b.id === Number(id))
+      if (idx > -1) {
+        data.bookings[idx].status = status
+        await writeJSONDb(data)
+        return true
+      }
+      return false
+    }
+  },
+
+  addReview: async (reviewData) => {
+    const { bookingId, caregiverName, rating, comment } = reviewData
+    const createdAt = new Date().toISOString()
+    if (useMySQL) {
+      const [result] = await pool.query(
+        'INSERT INTO reviews (bookingId, caregiverName, rating, comment, createdAt) VALUES (?, ?, ?, ?, ?)',
+        [bookingId, caregiverName, rating, comment, createdAt]
+      )
+      return { id: result.insertId, bookingId, caregiverName, rating, comment, createdAt }
+    } else {
+      const data = await readJSONDb()
+      if (!data.reviews) data.reviews = []
+      data.reviews = data.reviews.filter(r => r.bookingId !== Number(bookingId))
+      const newReview = {
+        id: data.reviews.length > 0 ? Math.max(...data.reviews.map(r => r.id)) + 1 : 1,
+        bookingId: Number(bookingId),
+        caregiverName,
+        rating: Number(rating),
+        comment,
+        createdAt
+      }
+      data.reviews.push(newReview)
+      await writeJSONDb(data)
+      return newReview
+    }
+  },
+
+  getReviewsForCaregiver: async (caregiverName) => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM reviews WHERE caregiverName = ? ORDER BY id DESC', [caregiverName])
+      return rows
+    } else {
+      const data = await readJSONDb()
+      if (!data.reviews) data.reviews = []
+      return data.reviews.filter(r => r.caregiverName === caregiverName).reverse()
+    }
+  },
+
+  getReviewByBookingId: async (bookingId) => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM reviews WHERE bookingId = ?', [bookingId])
+      return rows[0] || null
+    } else {
+      const data = await readJSONDb()
+      if (!data.reviews) data.reviews = []
+      return data.reviews.find(r => r.bookingId === Number(bookingId)) || null
+    }
+  },
+
+  getAnnouncements: async (target) => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM announcements WHERE target = ? OR target = "All" ORDER BY id DESC', [target])
+      return rows
+    } else {
+      const data = await readJSONDb()
+      if (!data.announcements) data.announcements = []
+      return data.announcements.filter(a => a.target === target || a.target === 'All').reverse()
+    }
+  },
+
+  addAnnouncement: async (message, target) => {
+    const createdAt = new Date().toISOString()
+    if (useMySQL) {
+      const [result] = await pool.query(
+        'INSERT INTO announcements (message, target, createdAt) VALUES (?, ?, ?)',
+        [message, target, createdAt]
+      )
+      return { id: result.insertId, message, target, createdAt }
+    } else {
+      const data = await readJSONDb()
+      if (!data.announcements) data.announcements = []
+      const newAnn = {
+        id: data.announcements.length > 0 ? Math.max(...data.announcements.map(a => a.id)) + 1 : 1,
+        message,
+        target,
+        createdAt
+      }
+      data.announcements.push(newAnn)
+      await writeJSONDb(data)
+      return newAnn
     }
   }
 }

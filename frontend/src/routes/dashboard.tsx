@@ -96,6 +96,23 @@ function CustomerDashboard() {
     }
   };
 
+  // Fetch announcements helper
+  const fetchAnnouncements = async (role: 'user' | 'caretaker') => {
+    const token = localStorage.getItem(role === 'caretaker' ? "ammaseva_caretaker_token" : "ammaseva_user_token");
+    if (!token) return;
+    try {
+      const res = await fetch("/api/announcements", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setAnnouncements(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error("Failed to load announcements:", err);
+    }
+  };
+
   // Fetch caretaker assigned bookings
   const fetchCaretakerBookings = async () => {
     const token = localStorage.getItem("ammaseva_caretaker_token");
@@ -200,8 +217,15 @@ function CustomerDashboard() {
   const [activeView, setActiveView] = useState<"bookings" | "new-booking">("bookings");
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [caretakerBookings, setCaretakerBookings] = useState<Booking[]>([]);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
+
+  // Submit Review States
+  const [submittingReviewBookingId, setSubmittingReviewBookingId] = useState<number | null>(null);
+  const [reviewRating, setReviewRating] = useState<number>(5);
+  const [reviewComment, setReviewComment] = useState<string>("");
+  const [isReviewSubmitting, setIsReviewSubmitting] = useState(false);
 
   // New Booking State
   const [selectedServiceId, setSelectedServiceId] = useState("elderly");
@@ -244,9 +268,11 @@ function CustomerDashboard() {
       setCaretaker(JSON.parse(caretakerDetails));
       fetchCaretakerProfile();
       fetchCaretakerBookings();
+      fetchAnnouncements('caretaker');
     } else if (userToken && userDetails) {
       setIsCaretaker(false);
       setUser(JSON.parse(userDetails));
+      fetchAnnouncements('user');
     } else {
       navigate({ to: "/login" });
     }
@@ -447,7 +473,14 @@ function CustomerDashboard() {
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold text-primary font-display">Caregiver Portal</h1>
-                  <p className="text-sm text-slate-500">Welcome back, <span className="font-semibold text-slate-800">{caretakerName || caretaker?.name || "Caregiver"}</span></p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <p className="text-sm text-slate-500">Welcome back, <span className="font-semibold text-slate-800">{caretakerName || caretaker?.name || "Caregiver"}</span></p>
+                    {caretaker?.rating > 0 && (
+                      <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100 flex items-center gap-0.5 shrink-0">
+                        ⭐ {caretaker.rating} ({caretaker.reviews?.length || 0} reviews)
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               
@@ -458,6 +491,20 @@ function CustomerDashboard() {
                 Sign Out
               </button>
             </div>
+
+            {/* Announcement Banners for Caretaker */}
+            {announcements.map((ann) => (
+              <div key={ann.id} className="bg-gradient-to-r from-indigo-600 to-indigo-800 text-white px-6 py-4 rounded-3xl flex items-center justify-between shadow-sm border border-indigo-700/50">
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">📢</span>
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] uppercase font-bold tracking-widest text-indigo-200">System Announcement</span>
+                    <p className="text-sm font-semibold">{ann.message}</p>
+                  </div>
+                </div>
+                <span className="text-[10px] text-indigo-300 font-semibold shrink-0 ml-4">{new Date(ann.createdAt).toLocaleDateString()}</span>
+              </div>
+            ))}
 
             {/* Application Status Banner */}
             {caretaker?.status === "Verified" ? (
@@ -583,6 +630,63 @@ function CustomerDashboard() {
                           <div className="text-xs bg-indigo-50/30 border border-indigo-100/20 p-3 rounded-xl">
                             <span className="text-indigo-600 font-bold block mb-0.5 uppercase tracking-wider text-[10px]">Special Instructions & Patient Needs</span>
                             <p className="text-slate-600 leading-relaxed italic">&ldquo;{shift.patientNeeds}&rdquo;</p>
+                          </div>
+                        )}
+
+                        {/* Check-In / Check-Out Shift Tracking actions */}
+                        {shift.status !== "Completed" && shift.status !== "Cancelled" && (
+                          <div className="flex gap-3 pt-3 border-t border-slate-100/60 justify-end">
+                            {shift.status === "Confirmed" ? (
+                              <button
+                                onClick={async () => {
+                                  const token = localStorage.getItem("ammaseva_caretaker_token");
+                                  if (!token) return;
+                                  try {
+                                    const res = await fetch(`/api/booking/${shift.id}/status`, {
+                                      method: "PUT",
+                                      headers: { 
+                                        "Content-Type": "application/json",
+                                        "Authorization": `Bearer ${token}` 
+                                      },
+                                      body: JSON.stringify({ status: "Active" })
+                                    });
+                                    if (res.ok) {
+                                      fetchCaretakerBookings();
+                                    }
+                                  } catch (err) {
+                                    console.error(err);
+                                  }
+                                }}
+                                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-sm flex items-center gap-1.5"
+                              >
+                                <Check className="h-4 w-4" /> Start Shift (Check-In)
+                              </button>
+                            ) : shift.status === "Active" ? (
+                              <button
+                                onClick={async () => {
+                                  const token = localStorage.getItem("ammaseva_caretaker_token");
+                                  if (!token) return;
+                                  try {
+                                    const res = await fetch(`/api/booking/${shift.id}/status`, {
+                                      method: "PUT",
+                                      headers: { 
+                                        "Content-Type": "application/json",
+                                        "Authorization": `Bearer ${token}` 
+                                      },
+                                      body: JSON.stringify({ status: "Completed" })
+                                    });
+                                    if (res.ok) {
+                                      fetchCaretakerBookings();
+                                    }
+                                  } catch (err) {
+                                    console.error(err);
+                                  }
+                                }}
+                                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-sm flex items-center gap-1.5"
+                              >
+                                <CheckCircle2 className="h-4 w-4" /> Complete Shift (Check-Out)
+                              </button>
+                            ) : null}
                           </div>
                         )}
                       </div>
@@ -851,6 +955,20 @@ function CustomerDashboard() {
           </div>
 
           {/* Main Workspace View */}
+          {/* Announcement Banners for Customer */}
+          {announcements.map((ann) => (
+            <div key={ann.id} className="bg-gradient-to-r from-amber-600 to-amber-700 text-white px-6 py-4 rounded-3xl flex items-center justify-between shadow-sm border border-amber-600/50 mb-6">
+              <div className="flex items-center gap-3">
+                <span className="text-xl animate-bounce">📢</span>
+                <div className="space-y-0.5">
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-amber-100">Broadcaster Alert</span>
+                  <p className="text-sm font-semibold">{ann.message}</p>
+                </div>
+              </div>
+              <span className="text-[10px] text-amber-200 font-semibold shrink-0 ml-4">{new Date(ann.createdAt).toLocaleDateString()}</span>
+            </div>
+          ))}
+
           {activeView === "bookings" ? (
             
             // MY BOOKINGS VIEW
@@ -923,25 +1041,27 @@ function CustomerDashboard() {
                               {/* Step 2: Confirmed */}
                               <div className="text-center">
                                 <div className={`h-6 w-6 rounded-full flex items-center justify-center mx-auto text-xs font-bold ${
-                                  booking.status === "Confirmed" || booking.status === "Completed"
+                                  booking.status === "Confirmed" || booking.status === "Active" || booking.status === "Completed"
                                     ? "bg-emerald-500 text-white shadow-sm"
                                     : "bg-slate-100 text-slate-400"
                                 }`}>
-                                  {booking.status === "Confirmed" || booking.status === "Completed" ? <Check className="h-3.5 w-3.5" /> : "2"}
+                                  {booking.status === "Confirmed" || booking.status === "Active" || booking.status === "Completed" ? <Check className="h-3.5 w-3.5" /> : "2"}
                                 </div>
                                 <span className="block text-[9px] font-bold text-slate-700 mt-1">Confirmed</span>
                               </div>
-
+ 
                               {/* Step 3: Caretaker Assigned */}
                               <div className="text-center">
                                 <div className={`h-6 w-6 rounded-full flex items-center justify-center mx-auto text-xs font-bold ${
-                                  (booking.status === "Confirmed" || booking.status === "Completed") && booking.assignedStaff
+                                  (booking.status === "Confirmed" || booking.status === "Active" || booking.status === "Completed") && booking.assignedStaff
                                     ? "bg-emerald-500 text-white shadow-sm"
                                     : "bg-slate-100 text-slate-400"
                                 }`}>
-                                  {(booking.status === "Confirmed" || booking.status === "Completed") && booking.assignedStaff ? <Check className="h-3.5 w-3.5" /> : "3"}
+                                  {(booking.status === "Confirmed" || booking.status === "Active" || booking.status === "Completed") && booking.assignedStaff ? <Check className="h-3.5 w-3.5" /> : "3"}
                                 </div>
-                                <span className="block text-[9px] font-bold text-slate-700 mt-1">Staff Assigned</span>
+                                <span className="block text-[9px] font-bold text-slate-700 mt-1">
+                                  {booking.status === "Active" ? "Staff Active at Home" : "Staff Assigned"}
+                                </span>
                               </div>
 
                               {/* Step 4: Completed */}
@@ -1043,6 +1163,129 @@ function CustomerDashboard() {
                                 </a>
                               </div>
                             </div>
+                          </div>
+                        )}
+
+                        {/* Caregiver Performance Rating & Review widget */}
+                        {booking.status === "Completed" && booking.assignedStaff && !booking.isReviewed && (
+                          <div className="mt-4 border border-amber-100 bg-amber-50/20 p-5 rounded-2xl space-y-3">
+                            <div className="flex justify-between items-center pb-2 border-b border-amber-100/50">
+                              <span className="text-xs font-bold uppercase tracking-wider text-amber-800 flex items-center gap-1.5 font-display">
+                                🌟 Rate Caregiver Performance
+                              </span>
+                              <span className="text-[10px] text-slate-500 font-medium">Shift Completed</span>
+                            </div>
+
+                            {submittingReviewBookingId === booking.id ? (
+                              <div className="space-y-3">
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Select Rating Star Score</label>
+                                  <div className="flex gap-2">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                      <button
+                                        key={star}
+                                        type="button"
+                                        onClick={() => setReviewRating(star)}
+                                        className={`h-9 w-9 rounded-xl border text-base font-bold flex items-center justify-center transition-colors cursor-pointer ${
+                                          reviewRating >= star 
+                                            ? "bg-amber-500 border-amber-500 text-white" 
+                                            : "bg-white border-slate-200 text-slate-400 hover:border-amber-300"
+                                        }`}
+                                      >
+                                        ⭐
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Write Feedback Comment</label>
+                                  <textarea
+                                    value={reviewComment}
+                                    onChange={(e) => setReviewComment(e.target.value)}
+                                    placeholder="Tell us about the caregiver's punctuality, care quality, or bedside manners..."
+                                    rows={3}
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none bg-white text-xs text-slate-700"
+                                  />
+                                </div>
+
+                                <div className="flex justify-end gap-2 pt-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => setSubmittingReviewBookingId(null)}
+                                    className="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-100 cursor-pointer"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      const token = localStorage.getItem("ammaseva_user_token");
+                                      if (!token) return;
+                                      setIsReviewSubmitting(true);
+                                      try {
+                                        const res = await fetch("/api/reviews", {
+                                          method: "POST",
+                                          headers: {
+                                            "Content-Type": "application/json",
+                                            "Authorization": `Bearer ${token}`
+                                          },
+                                          body: JSON.stringify({
+                                            bookingId: booking.id,
+                                            caregiverName: booking.assignedStaff,
+                                            rating: reviewRating,
+                                            comment: reviewComment
+                                          })
+                                        });
+                                        if (res.ok) {
+                                          fetchBookings();
+                                          setSubmittingReviewBookingId(null);
+                                          setReviewComment("");
+                                          setReviewRating(5);
+                                        }
+                                      } catch (err) {
+                                        console.error(err);
+                                      } finally {
+                                        setIsReviewSubmitting(false);
+                                      }
+                                    }}
+                                    disabled={isReviewSubmitting}
+                                    className="btn-primary inline-flex items-center gap-1.5 text-xs py-2 px-4 shadow-sm"
+                                  >
+                                    {isReviewSubmitting ? <RefreshCw className="h-3 w-3 animate-spin" /> : "Submit Care Review"}
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex justify-between items-center bg-white border border-slate-100 rounded-xl p-3 shadow-inner">
+                                <p className="text-xs text-slate-500 font-medium">Please share your experience with <strong className="text-slate-700">{booking.assignedStaff}</strong> to help us improve quality.</p>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSubmittingReviewBookingId(booking.id);
+                                    setReviewRating(5);
+                                    setReviewComment("");
+                                  }}
+                                  className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-sm shrink-0"
+                                >
+                                  Rate &amp; Review
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {booking.status === "Completed" && booking.isReviewed && booking.review && (
+                          <div className="mt-4 border border-slate-100 bg-slate-50/50 p-5 rounded-2xl space-y-2">
+                            <div className="flex justify-between items-center pb-2 border-b border-slate-200">
+                              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5 font-display">
+                                💬 Submitted Feedback
+                              </span>
+                              <span className="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 font-bold flex items-center gap-0.5">
+                                ⭐ {booking.review.rating}.0
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-600 italic leading-relaxed">&ldquo;{booking.review.comment || "No written comments submitted."}&rdquo;</p>
                           </div>
                         )}
 

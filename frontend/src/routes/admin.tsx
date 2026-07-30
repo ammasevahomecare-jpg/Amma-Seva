@@ -6,7 +6,7 @@ import {
   Users, Calendar, DollarSign, ShieldAlert, LogOut, CheckCircle2, 
   XCircle, Edit3, Save, Check, LayoutDashboard, CalendarDays,
   UserCheck, MessageSquare, Sliders, Bell, Search, Plus, Send, TrendingDown,
-  ArrowUpRight
+  ArrowUpRight, Star
 } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
@@ -170,6 +170,9 @@ function AdminPage() {
   const [notifRecipient, setNotifRecipient] = useState("All Users");
   const [notifMessage, setNotifMessage] = useState("");
   const [notifType, setNotifType] = useState("Email");
+
+  // Collapsible Reviews modal state
+  const [selectedCaregiverForReviews, setSelectedCaregiverForReviews] = useState<any | null>(null);
 
   // Check login status on mount
   useEffect(() => {
@@ -500,6 +503,22 @@ function AdminPage() {
         message: notifMessage,
         type: notifType
       };
+
+      if (notifType === "Broadcast") {
+        // Also broadcast system wide notice
+        fetch("/api/announcements", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            message: notifMessage,
+            target: notifRecipient === "All Users" || notifRecipient === "All" ? "All" : 
+                    notifRecipient.toLowerCase().includes("caregiver") || notifRecipient.toLowerCase().includes("staff") ? "Caregivers" : "Patients"
+          })
+        }).catch(err => console.error("Announcement broadcast failed:", err));
+      }
     }
 
     const token = localStorage.getItem("ammaseva_admin_token");
@@ -534,6 +553,57 @@ function AdminPage() {
   const caregiverUtilizationRate = caregivers.length > 0 
     ? Math.round((bookings.filter(b => b.status === "Confirmed" && b.assignedStaff).length / caregivers.length) * 100)
     : 0;
+
+  // Caregiver Ratings & Reviews aggregate
+  const verifiedCaregivers = caregivers.filter(c => c.status === "Verified" && Number(c.rating) > 0);
+  const avgPlatformRating = verifiedCaregivers.length > 0
+    ? Number((verifiedCaregivers.reduce((sum, c) => sum + Number(c.rating), 0) / verifiedCaregivers.length).toFixed(1))
+    : 4.8;
+  const activeShiftsCount = bookings.filter(b => b.status === "Active").length;
+
+  // Monthly Revenue Data (last 6 months)
+  const getMonthlyRevenueData = () => {
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const data = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const monthIdx = d.getMonth();
+      const monthLabel = months[monthIdx];
+      
+      const monthlyRevenue = bookings
+        .filter(b => {
+          if (b.paymentStatus !== "Paid" || b.status === "Cancelled") return false;
+          const bDate = new Date(b.createdAt || b.date);
+          return bDate.getMonth() === monthIdx;
+        })
+        .reduce((sum, b) => sum + Number(b.amount), 0);
+
+      data.push({ label: monthLabel, value: monthlyRevenue });
+    }
+    const maxVal = Math.max(...data.map(d => d.value), 1000);
+    return data.map(d => ({
+      label: d.label,
+      value: d.value,
+      height: Math.max(10, Math.round((d.value / maxVal) * 80))
+    }));
+  };
+  const monthlyRevenueChart = getMonthlyRevenueData();
+
+  // Service distribution details
+  const getServiceDistribution = () => {
+    const counts: Record<string, number> = {};
+    bookings.forEach(b => {
+      counts[b.service] = (counts[b.service] || 0) + 1;
+    });
+    const total = bookings.length || 1;
+    return Object.entries(counts).map(([name, count]) => ({
+      name,
+      count,
+      percentage: Math.round((count / total) * 100)
+    })).sort((a, b) => b.count - a.count).slice(0, 4);
+  };
+  const serviceDistribution = getServiceDistribution();
 
   // Search logic
   const filteredBookings = bookings.filter(b => 
@@ -606,7 +676,7 @@ function AdminPage() {
             { id: "overview", label: "Dashboard", icon: LayoutDashboard },
             { id: "bookings", label: "Manage Bookings", icon: CalendarDays },
             { id: "caregivers", label: "Employees & Staff", icon: UserCheck },
-            { id: "users", label: "Customer Base", icon: Users },
+            { id: "users", label: "Patients", icon: Users },
             { id: "services", label: "Services", icon: Sliders },
             { id: "payments", label: "Payment Status", icon: DollarSign },
             { id: "notifications", label: "Alert Notifications", icon: Bell },
@@ -697,7 +767,7 @@ function AdminPage() {
           {activeTab === "overview" && (
             <div className="space-y-6">
               
-              {/* Row 1: Weekly bookings line chart & Metric widgets */}
+              {/* Row 1: Revenue Line Card & Metric widgets */}
               <div className="grid gap-6 lg:grid-cols-3">
                 
                 {/* Revenue Sales Card */}
@@ -708,30 +778,31 @@ function AdminPage() {
                         <span className="block text-3xl font-bold font-display text-slate-900">₹{totalRevenue.toLocaleString()}</span>
                         <span className="text-xs text-slate-400 mt-1 block">Total Platform Revenue</span>
                       </div>
-                      <span className="inline-flex items-center gap-0.5 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                        <ArrowUpRight className="h-3.5 w-3.5" /> 14.2%
+                      <span className="inline-flex items-center gap-0.5 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full font-display">
+                        <ArrowUpRight className="h-3.5 w-3.5" /> Active
                       </span>
                     </div>
                   </div>
                   
-                  {/* SVG line chart representation */}
+                  {/* SVG line chart representation of dynamic monthly revenues */}
                   <div className="h-28 mt-6">
                     <svg className="w-full h-full" viewBox="0 0 300 100" preserveAspectRatio="none">
                       <defs>
                         <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#10b981" stopOpacity="0.2"/>
-                          <stop offset="100%" stopColor="#10b981" stopOpacity="0"/>
+                          <stop offset="0%" stopColor="#818cf8" stopOpacity="0.3"/>
+                          <stop offset="100%" stopColor="#818cf8" stopOpacity="0"/>
                         </linearGradient>
                       </defs>
                       <path
-                        d="M 0 80 Q 50 20 100 60 T 200 30 T 300 10"
+                        d={`M 0 90 L ${monthlyRevenueChart.map((d, i) => `${i * 60} ${90 - d.height * 0.8}`).join(" L ")}`}
                         fill="none"
-                        stroke="#10b981"
-                        strokeWidth="3"
+                        stroke="#4f46e5"
+                        strokeWidth="3.5"
                         strokeLinecap="round"
+                        strokeLinejoin="round"
                       />
                       <path
-                        d="M 0 80 Q 50 20 100 60 T 200 30 T 300 10 L 300 100 L 0 100 Z"
+                        d={`M 0 100 L 0 90 L ${monthlyRevenueChart.map((d, i) => `${i * 60} ${90 - d.height * 0.8}`).join(" L ")} L 300 100 Z`}
                         fill="url(#chartGradient)"
                       />
                     </svg>
@@ -741,44 +812,46 @@ function AdminPage() {
                 {/* Grid of 4 horizontal cards */}
                 <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm col-span-1 lg:col-span-2 grid grid-cols-2 gap-y-8 gap-x-6">
                   <HorizontalMetric icon={CalendarDays} iconColor="text-indigo-500 bg-indigo-50" label="Bookings" value={bookings.length.toString()} />
-                  <HorizontalMetric icon={DollarSign} iconColor="text-emerald-500 bg-emerald-50" label="Revenue" value={`₹${totalRevenue.toLocaleString()}`} />
-                  <HorizontalMetric icon={Users} iconColor="text-rose-500 bg-rose-50" label="Customers" value={users.length.toString()} />
-                  <HorizontalMetric icon={UserCheck} iconColor="text-amber-500 bg-amber-50" label="Nurses/Staff" value={caregivers.length.toString()} />
+                  <HorizontalMetric icon={UserCheck} iconColor="text-amber-500 bg-amber-50" label="Active Shifts" value={activeShiftsCount.toString()} />
+                  <HorizontalMetric icon={Users} iconColor="text-rose-500 bg-rose-50" label="Patients" value={users.length.toString()} />
+                  <HorizontalMetric icon={Star} iconColor="text-yellow-500 bg-yellow-50" label="Care Rating" value={`⭐ ${avgPlatformRating.toFixed(1)}`} />
                 </div>
               </div>
 
               {/* Row 2: Sales comparison double bar chart & progress circles */}
               <div className="grid gap-6 lg:grid-cols-3">
                 
-                {/* Users progress cards */}
-                <div className="grid gap-6 col-span-1">
-                  
-                  {/* Total Users bar chart widget */}
-                  <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm">
-                    <div className="flex justify-between items-center mb-4">
-                      <div>
-                        <span className="block text-2xl font-bold font-display text-slate-900">{caregivers.length} Staff</span>
-                        <span className="text-xs text-slate-400">Total Employees</span>
-                      </div>
-                      <span className="text-xs text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">+12.5%</span>
-                    </div>
-                    {/* SVG mini bar chart */}
-                    <div className="h-16 flex items-end justify-between gap-1.5 pt-2">
-                      {[15, 30, 45, 20, 35, 50, 40, 25, 45, 60, 55, 65].map((val, idx) => (
-                        <div key={idx} className="bg-rose-500 rounded-t-sm w-full" style={{ height: `${val}%` }} />
+                {/* Popular Services utilization card */}
+                <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm col-span-1 flex flex-col justify-between gap-4">
+                  <div>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3">Service Distribution</h3>
+                    
+                    <div className="space-y-3.5">
+                      {serviceDistribution.map((item) => (
+                        <div key={item.name} className="space-y-1">
+                          <div className="flex justify-between text-xs font-semibold">
+                            <span className="text-slate-700 truncate max-w-[70%]">{item.name}</span>
+                            <span className="text-slate-400">{item.percentage}% ({item.count})</span>
+                          </div>
+                          <div className="w-full bg-slate-100 rounded-full h-1.5">
+                            <div className="bg-indigo-600 h-1.5 rounded-full" style={{ width: `${item.percentage}%` }} />
+                          </div>
+                        </div>
                       ))}
+                      {serviceDistribution.length === 0 && (
+                        <p className="text-xs text-slate-400 italic">No bookings recorded yet.</p>
+                      )}
                     </div>
                   </div>
 
-                  {/* Active Users utilization rate */}
-                  <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm flex items-center justify-between gap-4">
+                  {/* Staff utilization rate */}
+                  <div className="border-t border-slate-100 pt-4 flex items-center justify-between gap-4">
                     <div>
                       <span className="block text-2xl font-bold font-display text-slate-900">{caregiverUtilizationRate}%</span>
-                      <span className="text-xs text-slate-400">Caregiver Utilization</span>
-                      <p className="text-[10px] text-slate-400 mt-2">Active staff assigned to confirmed bookings</p>
+                      <span className="text-xs text-slate-400">Staff Utilization</span>
                     </div>
                     {/* SVG circular progress */}
-                    <div className="relative w-18 h-18 shrink-0">
+                    <div className="relative w-14 h-14 shrink-0">
                       <svg className="w-full h-full" viewBox="0 0 36 36">
                         <path
                           className="text-slate-100"
@@ -804,7 +877,7 @@ function AdminPage() {
                 {/* Sales & Views Chart */}
                 <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm col-span-1 lg:col-span-2 flex flex-col justify-between">
                   <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">Platform Analytics</h3>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">Financial Revenue Trends</h3>
                     <button 
                       onClick={() => window.print()}
                       className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
@@ -813,24 +886,16 @@ function AdminPage() {
                     </button>
                   </div>
 
-                  {/* SVG Double Bar Chart */}
+                  {/* SVG Bar Chart mapped from actual database records */}
                   <div className="h-44 flex items-end justify-between gap-6 px-2">
-                    {[
-                      { b: 40, e: 30, m: "Jan" },
-                      { b: 20, e: 45, m: "Feb" },
-                      { b: 85, e: 60, m: "Mar" },
-                      { b: 30, e: 40, m: "Apr" },
-                      { b: 50, e: 45, m: "May" },
-                      { b: 40, e: 30, m: "Jun" },
-                      { b: 60, e: 55, m: "Jul" },
-                      { b: 80, e: 40, m: "Aug" }
-                    ].map((item, idx) => (
+                    {monthlyRevenueChart.map((item, idx) => (
                       <div key={idx} className="flex-1 flex flex-col items-center gap-2">
-                        <div className="w-full flex items-end justify-center gap-1 h-32">
-                          <div className="bg-indigo-600 rounded-t-sm w-3.5" style={{ height: `${item.b}%` }} />
-                          <div className="bg-purple-400 rounded-t-sm w-3.5" style={{ height: `${item.e}%` }} />
+                        <div className="w-full flex items-end justify-center h-32">
+                          <div className="bg-indigo-600 hover:bg-indigo-700 transition-colors rounded-t-lg w-7 shadow-sm flex flex-col justify-end items-center text-[8px] text-white font-bold" style={{ height: `${item.height}%` }}>
+                            {item.value > 0 && <span className="mb-1 truncate px-0.5">₹{item.value > 999 ? `${(item.value/1000).toFixed(0)}k` : item.value}</span>}
+                          </div>
                         </div>
-                        <span className="text-[10px] text-slate-400 font-semibold">{item.m}</span>
+                        <span className="text-[10px] text-slate-400 font-semibold">{item.label}</span>
                       </div>
                     ))}
                   </div>
@@ -984,6 +1049,16 @@ function AdminPage() {
                                 <div className="font-semibold text-primary font-display text-base">{c.name}</div>
                                 <div className="text-xs text-slate-400 mt-0.5">{c.phone}</div>
                                 <div className="text-xs text-slate-400 mt-0.5">{c.email}</div>
+                                {c.rating > 0 ? (
+                                  <button
+                                    onClick={() => setSelectedCaregiverForReviews(c)}
+                                    className="text-[10px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200 mt-1 flex items-center gap-0.5 w-fit cursor-pointer"
+                                  >
+                                    ⭐ {c.rating} ({c.reviews?.length || 0} reviews)
+                                  </button>
+                                ) : (
+                                  <span className="text-[10px] text-slate-400 block mt-1">No ratings yet</span>
+                                )}
                               </div>
                             </div>
                           </td>
@@ -1073,8 +1148,8 @@ function AdminPage() {
             <div className="space-y-4">
               <div className="flex justify-between items-center bg-white border border-slate-200/60 rounded-2xl p-4 sm:p-6 shadow-sm">
                 <div>
-                  <h3 className="text-lg font-bold text-primary font-display">Customer Base</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Total: {filteredUsers.length} registered customers</p>
+                  <h3 className="text-lg font-bold text-primary font-display">Patients</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Total: {filteredUsers.length} registered patients</p>
                 </div>
               </div>
 
@@ -1083,7 +1158,7 @@ function AdminPage() {
                   <table className="w-full text-left text-sm text-slate-700">
                     <thead>
                       <tr className="border-b border-slate-200 bg-slate-50/55 text-xs text-slate-400 uppercase font-bold tracking-wider">
-                        <th className="py-4 px-6">Customer Name</th>
+                        <th className="py-4 px-6">Patient Name</th>
                         <th className="py-4 px-6">Email Address</th>
                         <th className="py-4 px-6">Phone Number</th>
                         <th className="py-4 px-6">Registration Date</th>
@@ -1879,6 +1954,46 @@ function AdminPage() {
                 {isLoading ? "Saving changes..." : "Save Record"}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Collapsible Caregiver Reviews Modal */}
+      {selectedCaregiverForReviews && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-xl bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden flex flex-col max-h-[80vh]">
+            <div className="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-bold text-primary font-display flex items-center gap-2">
+                  Reviews for {selectedCaregiverForReviews.name}
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">Overall rating: ⭐ {selectedCaregiverForReviews.rating || "N/A"} / 5.0</p>
+              </div>
+              <button
+                onClick={() => setSelectedCaregiverForReviews(null)}
+                className="h-8 w-8 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-4 flex-1">
+              {!selectedCaregiverForReviews.reviews || selectedCaregiverForReviews.reviews.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-8">No feedback reviews submitted for this caregiver yet.</p>
+              ) : (
+                selectedCaregiverForReviews.reviews.map((r: any) => (
+                  <div key={r.id} className="p-4 bg-slate-50/50 border border-slate-100 rounded-2xl space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded border border-amber-100 font-bold">
+                        ⭐ {r.rating}.0
+                      </span>
+                      <span className="text-[10px] text-slate-400">{new Date(r.createdAt).toLocaleDateString()}</span>
+                    </div>
+                    <p className="text-xs text-slate-600 italic">&ldquo;{r.comment || "No written feedback."}&rdquo;</p>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}
