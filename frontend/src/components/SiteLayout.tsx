@@ -10,13 +10,11 @@ const EMAIL = "care@ammaseva.in";
 
 function Header() {
   const [open, setOpen] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [isUser, setIsUser] = useState(false);
   const [isCaretaker, setIsCaretaker] = useState(false);
 
   useEffect(() => {
     const checkAuth = () => {
-      setIsAdmin(!!localStorage.getItem("ammaseva_admin_token"));
       setIsUser(!!localStorage.getItem("ammaseva_user_token"));
       setIsCaretaker(!!localStorage.getItem("ammaseva_caretaker_token"));
     };
@@ -34,8 +32,7 @@ function Header() {
     { to: "/contact", label: "Contact" },
     ...(isUser ? [{ to: "/dashboard", label: "Dashboard" }] : []),
     ...(isCaretaker ? [{ to: "/dashboard", label: "Profile" }] : []),
-    ...(isAdmin ? [{ to: "/admin", label: "Admin Panel" }] : []),
-    ...(!isUser && !isCaretaker && !isAdmin ? [{ to: "/login", label: "Login" }] : []),
+    ...(!isUser && !isCaretaker ? [{ to: "/login", label: "Login" }] : []),
   ];
 
   return (
@@ -62,12 +59,6 @@ function Header() {
               activeOptions={{ exact: n.to === "/" }}
             >
               {n.label}
-              {n.label === "Admin Panel" && (
-                <span 
-                  className={`h-1.5 w-1.5 rounded-full ${isAdmin ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} 
-                  title={isAdmin ? "Logged in" : "Lock secured"}
-                />
-              )}
             </Link>
           ))}
         </nav>
@@ -82,10 +73,6 @@ function Header() {
           ) : isCaretaker ? (
             <Link to="/dashboard" className="btn-primary text-sm">
               My Profile
-            </Link>
-          ) : isAdmin ? (
-            <Link to="/admin" className="btn-primary text-sm">
-              Admin Panel
             </Link>
           ) : (
             <Link to="/login" className="btn-primary text-sm">
@@ -126,10 +113,6 @@ function Header() {
               ) : isCaretaker ? (
                 <Link to="/dashboard" onClick={() => setOpen(false)} className="btn-primary flex-1 text-sm text-center">
                   Profile
-                </Link>
-              ) : isAdmin ? (
-                <Link to="/admin" onClick={() => setOpen(false)} className="btn-primary flex-1 text-sm text-center">
-                  Admin Panel
                 </Link>
               ) : (
                 <Link to="/login" onClick={() => setOpen(false)} className="btn-primary flex-1 text-sm text-center">
