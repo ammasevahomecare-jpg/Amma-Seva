@@ -2,6 +2,15 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { fetchServices } from "@/lib/services";
+import motherBaby from "@/assets/service-mother-baby.jpg";
+import nursing from "@/assets/service-nursing.jpg";
+import elderly from "@/assets/service-elderly.jpg";
+
+const IMAGE_BY_SLUG: Record<string, string> = {
+  "mother-baby-care": motherBaby,
+  "home-nursing": nursing,
+  "elderly-care": elderly,
+};
 
 export const Route = createFileRoute("/services")({
   loader: async () => {
@@ -36,23 +45,40 @@ function ServicesPage() {
       </section>
       <section>
         <div className="mx-auto grid max-w-7xl gap-6 px-4 py-16 sm:grid-cols-2 sm:px-6 lg:grid-cols-3 lg:px-8">
-          {services.map((s) => (
-            <Link
-              key={s.slug}
-              to="/services/$slug"
-              params={{ slug: s.slug }}
-              className="group flex flex-col rounded-2xl border border-border bg-background p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg"
-            >
-              <h3 className="text-xl font-semibold text-primary">{s.title}</h3>
-              {s.comingSoon && (
-                <span className="mt-2 w-fit rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-primary">Coming soon</span>
-              )}
-              <p className="mt-3 flex-1 text-sm text-muted-foreground">{s.short}</p>
-              <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-gold">
-                Learn more <ChevronRight className="h-4 w-4" />
-              </span>
-            </Link>
-          ))}
+          {services.map((s) => {
+            const imgSrc = s.image || IMAGE_BY_SLUG[s.slug];
+            return (
+              <Link
+                key={s.slug}
+                to="/services/$slug"
+                params={{ slug: s.slug }}
+                className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg"
+              >
+                {imgSrc && (
+                  <div className="aspect-[4/3] overflow-hidden bg-slate-100">
+                    <img 
+                      src={imgSrc} 
+                      alt={s.title} 
+                      width={1200} 
+                      height={900} 
+                      loading="lazy" 
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                    />
+                  </div>
+                )}
+                <div className="flex flex-1 flex-col p-6">
+                  <h3 className="text-xl font-semibold text-primary">{s.title}</h3>
+                  {s.comingSoon && (
+                    <span className="mt-2 w-fit rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-primary">Coming soon</span>
+                  )}
+                  <p className="mt-3 flex-1 text-sm text-muted-foreground">{s.short}</p>
+                  <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-gold">
+                    Learn more <ChevronRight className="h-4 w-4" />
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </section>
     </SiteLayout>

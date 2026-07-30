@@ -2,6 +2,15 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { Check, Phone, Clock, IndianRupee } from "lucide-react";
 import { SiteLayout, contact } from "@/components/SiteLayout";
 import { fetchServices } from "@/lib/services";
+import motherBaby from "@/assets/service-mother-baby.jpg";
+import nursing from "@/assets/service-nursing.jpg";
+import elderly from "@/assets/service-elderly.jpg";
+
+const IMAGE_BY_SLUG: Record<string, string> = {
+  "mother-baby-care": motherBaby,
+  "home-nursing": nursing,
+  "elderly-care": elderly,
+};
 
 export const Route = createFileRoute("/services/$slug")({
   loader: async ({ params }) => {
@@ -35,12 +44,23 @@ function ServicePage() {
   return (
     <SiteLayout>
       <section className="border-b border-border bg-cream/40">
-        <div className="mx-auto max-w-5xl px-4 py-14 sm:px-6 lg:px-8">
-          <Link to="/services" className="text-sm text-muted-foreground hover:text-primary">← All services</Link>
-          <h1 className="mt-4 text-4xl font-semibold text-primary sm:text-5xl">{service.title}</h1>
-          <p className="mt-4 max-w-2xl text-lg text-muted-foreground">{service.description}</p>
-          {service.comingSoon && (
-            <span className="mt-4 inline-block rounded-full bg-accent px-3 py-1 text-xs font-medium text-primary">Launching soon</span>
+        <div className="mx-auto max-w-5xl px-4 py-14 sm:px-6 lg:px-8 flex flex-col md:flex-row gap-8 items-center justify-between">
+          <div className="flex-1">
+            <Link to="/services" className="text-sm text-muted-foreground hover:text-primary">← All services</Link>
+            <h1 className="mt-4 text-4xl font-semibold text-primary sm:text-5xl">{service.title}</h1>
+            <p className="mt-4 max-w-2xl text-lg text-muted-foreground leading-relaxed">{service.description}</p>
+            {service.comingSoon && (
+              <span className="mt-4 inline-block rounded-full bg-accent px-3 py-1 text-xs font-medium text-primary">Launching soon</span>
+            )}
+          </div>
+          {(service.image || IMAGE_BY_SLUG[service.slug]) && (
+            <div className="w-full md:w-80 h-52 shrink-0 rounded-2xl overflow-hidden border border-border shadow-md">
+              <img 
+                src={service.image || IMAGE_BY_SLUG[service.slug]} 
+                alt={service.title} 
+                className="w-full h-full object-cover" 
+              />
+            </div>
           )}
         </div>
       </section>

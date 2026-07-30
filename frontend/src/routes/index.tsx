@@ -128,18 +128,27 @@ function Home() {
             <p className="mt-3 text-muted-foreground">From newborns to seniors — comprehensive home healthcare tailored to your family.</p>
           </div>
           <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {services.slice(0, 6).map((s) => (
-              <Link
-                key={s.slug}
-                to="/services/$slug"
-                params={{ slug: s.slug }}
-                className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg"
-              >
-                {IMAGE_BY_SLUG[s.slug] && (
-                  <div className="aspect-[4/3] overflow-hidden">
-                    <img src={IMAGE_BY_SLUG[s.slug]} alt={s.title} width={1200} height={900} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                  </div>
-                )}
+            {services.slice(0, 6).map((s) => {
+              const imgSrc = s.image || IMAGE_BY_SLUG[s.slug];
+              return (
+                <Link
+                  key={s.slug}
+                  to="/services/$slug"
+                  params={{ slug: s.slug }}
+                  className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg"
+                >
+                  {imgSrc && (
+                    <div className="aspect-[4/3] overflow-hidden bg-slate-100">
+                      <img 
+                        src={imgSrc} 
+                        alt={s.title} 
+                        width={1200} 
+                        height={900} 
+                        loading="lazy" 
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                      />
+                    </div>
+                  )}
                 <div className="flex flex-1 flex-col p-6">
                   <h3 className="text-xl font-semibold text-primary">{s.title}</h3>
                   <p className="mt-2 flex-1 text-sm text-muted-foreground">{s.short}</p>
@@ -148,7 +157,8 @@ function Home() {
                   </span>
                 </div>
               </Link>
-            ))}
+            )
+          })}
           </div>
           <div className="mt-10 text-center">
             <Link to="/services" className="btn-outline">View all services</Link>
