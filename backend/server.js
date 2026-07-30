@@ -630,8 +630,29 @@ app.post('/api/caretaker/login', async (req, res) => {
 app.get('/api/user/bookings', authenticateUser, async (req, res) => {
   try {
     const list = await db.getBookingsByUserId(req.userId)
-    res.json(list)
+    const listWithStaffDetails = await Promise.all(list.map(async (booking) => {
+      if (booking.assignedStaff) {
+        const caregiver = await db.getCaregiverByName(booking.assignedStaff)
+        if (caregiver) {
+          return {
+            ...booking,
+            caregiverDetails: {
+              name: caregiver.name,
+              phone: caregiver.phone,
+              email: caregiver.email,
+              specialty: caregiver.specialty,
+              experience: caregiver.experience,
+              profilePhoto: caregiver.profilePhoto,
+              experienceDetails: caregiver.experienceDetails
+            }
+          }
+        }
+      }
+      return booking
+    }))
+    res.json(listWithStaffDetails)
   } catch (err) {
+    console.error('Failed to retrieve user bookings list:', err)
     res.status(500).json({ error: 'Failed to retrieve bookings list.' })
   }
 })

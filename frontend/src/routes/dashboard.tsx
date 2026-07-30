@@ -39,6 +39,15 @@ interface Booking {
   amount: number;
   paymentStatus: string;
   createdAt: string;
+  caregiverDetails?: {
+    name: string;
+    phone: string;
+    email?: string;
+    specialty: string;
+    experience: number;
+    profilePhoto?: string;
+    experienceDetails?: string;
+  };
 }
 
 const SERVICES_CATALOG = [
@@ -986,6 +995,54 @@ function CustomerDashboard() {
                             <span className="text-slate-600 flex items-start gap-1">
                               <MapPin className="h-3.5 w-3.5 text-slate-400 mt-0.5 shrink-0" /> {booking.address}
                             </span>
+                          </div>
+                        )}
+
+                        {booking.caregiverDetails && (
+                          <div className="mt-4 border border-indigo-100 bg-indigo-50/20 p-5 rounded-2xl space-y-4">
+                            <div className="flex justify-between items-center pb-2 border-b border-indigo-100/50">
+                              <span className="text-xs font-bold uppercase tracking-wider text-indigo-700 flex items-center gap-1.5 font-display">
+                                <User className="h-4 w-4" /> Assigned Caregiver Profile
+                              </span>
+                              <span className="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 font-semibold">Verified Professional</span>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
+                              {booking.caregiverDetails.profilePhoto ? (
+                                <img 
+                                  src={booking.caregiverDetails.profilePhoto} 
+                                  className="h-16 w-16 rounded-full object-cover border border-slate-200 shadow-sm shrink-0" 
+                                  alt={booking.caregiverDetails.name} 
+                                />
+                              ) : (
+                                <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 shrink-0 border border-slate-200 shadow-sm">
+                                  <User className="h-8 w-8" />
+                                </div>
+                              )}
+                              
+                              <div className="flex-1 space-y-1 text-center sm:text-left min-w-0">
+                                <h4 className="text-base font-bold text-slate-800">{booking.caregiverDetails.name}</h4>
+                                <div className="flex flex-wrap justify-center sm:justify-start gap-x-3 gap-y-1 text-xs text-slate-500">
+                                  <span>Role: <strong className="text-slate-700 font-semibold">{booking.caregiverDetails.specialty}</strong></span>
+                                  <span>•</span>
+                                  <span>Experience: <strong className="text-slate-700 font-semibold">{booking.caregiverDetails.experience}+ years</strong></span>
+                                </div>
+                                {booking.caregiverDetails.experienceDetails && (
+                                  <p className="text-xs text-slate-400 mt-2 line-clamp-2 leading-relaxed italic">
+                                    &ldquo;{booking.caregiverDetails.experienceDetails}&rdquo;
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="shrink-0 pt-1">
+                                <a 
+                                  href={`tel:${booking.caregiverDetails.phone}`} 
+                                  className="btn-primary inline-flex items-center gap-1.5 text-xs py-2 px-4 shadow-sm"
+                                >
+                                  <Phone className="h-3.5 w-3.5" /> Call Caregiver
+                                </a>
+                              </div>
+                            </div>
                           </div>
                         )}
 

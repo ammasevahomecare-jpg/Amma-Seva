@@ -585,6 +585,17 @@ export const db = {
     }
   },
 
+  getCaregiverByName: async (name) => {
+    const trimmed = name.trim()
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM caregivers WHERE name = ?', [trimmed])
+      return rows[0] || null
+    } else {
+      const data = await readJSONDb()
+      return data.caregivers.find(c => c.name && c.name.trim() === trimmed) || null
+    }
+  },
+
   updateCaregiverProfile: async (id, profileData) => {
     const { 
       name, phone, specialty, experience, 
