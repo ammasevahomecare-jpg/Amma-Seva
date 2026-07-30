@@ -1465,7 +1465,7 @@ function AdminPage() {
       {/* DYNAMIC FORMS EDITING MODALS */}
       {modalType && modalType !== "notification" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-xl max-w-lg w-full overflow-hidden animate-in fade-in zoom-in duration-200">
+          <div className={`bg-white rounded-3xl border border-slate-200 shadow-xl w-full overflow-hidden animate-in fade-in zoom-in duration-200 ${modalType === 'service' ? 'max-w-3xl' : 'max-w-xl'}`}>
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <h3 className="text-lg font-bold text-primary font-display uppercase tracking-wide">
                 {modalMode === "add" ? "Create New" : "Edit Details"} {modalType}
@@ -1775,13 +1775,23 @@ function AdminPage() {
               {/* Form elements for Service */}
               {modalType === "service" && (
                 <>
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Service Title</label>
-                    <input 
-                      type="text" required value={serviceTitle} onChange={e => setServiceTitle(e.target.value)}
-                      placeholder="e.g. Newborn Care shift"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Service Title</label>
+                      <input 
+                        type="text" required value={serviceTitle} onChange={e => setServiceTitle(e.target.value)}
+                        placeholder="e.g. Newborn Care shift"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Pricing Package</label>
+                      <input 
+                        type="text" required value={servicePrice} onChange={e => setServicePrice(e.target.value)}
+                        placeholder="e.g. ₹1,200/day"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
+                      />
+                    </div>
                   </div>
 
                   <div>
@@ -1793,15 +1803,7 @@ function AdminPage() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Pricing Package</label>
-                      <input 
-                        type="text" required value={servicePrice} onChange={e => setServicePrice(e.target.value)}
-                        placeholder="e.g. ₹1,200/day"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
-                      />
-                    </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Duration Options</label>
                       <input 
@@ -1810,65 +1812,58 @@ function AdminPage() {
                         className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
                       />
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Service Category</label>
-                      <select 
-                        value={serviceCategory} onChange={e => setServiceCategory(e.target.value)}
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Service Image (Upload file OR Enter URL)</label>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          {serviceImage && (
+                            <img 
+                              src={serviceImage} 
+                              className="h-10 w-10 rounded-lg object-cover border border-slate-200 shrink-0" 
+                              alt="Service Preview" 
+                            />
+                          )}
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            onChange={e => handleFileChange(e, setServiceImage)}
+                            className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer"
+                          />
+                        </div>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[10px] font-semibold text-slate-400">
+                            URL
+                          </div>
+                          <input 
+                            type="text" 
+                            placeholder="Or paste image URL (e.g. https://example.com/image.jpg)"
+                            value={serviceImage.startsWith("data:") ? "" : serviceImage}
+                            onChange={e => setServiceImage(e.target.value)}
+                            className="w-full pl-10 pr-2 py-1 text-xs border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Service description (Full details)</label>
+                      <textarea 
+                        required rows={5} value={serviceDescription} onChange={e => setServiceDescription(e.target.value)}
+                        placeholder="Describe what tasks are covered in this caregiver shift..."
                         className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
-                      >
-                        <option value="care">Homecare & nursing</option>
-                        <option value="food">Meals & distribution</option>
-                        <option value="other">General utilities</option>
-                      </select>
-                    </div>
-                    <div className="flex items-center gap-2 mt-6">
-                      <input 
-                        type="checkbox" id="serviceComingSoon" checked={serviceComingSoon} onChange={e => setServiceComingSoon(e.target.checked)}
-                        className="h-4 w-4 rounded border-slate-300 text-gold focus:ring-gold"
                       />
-                      <label htmlFor="serviceComingSoon" className="text-sm font-medium text-slate-700 select-none">Coming Soon / Launching Later</label>
                     </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Service description (Full details)</label>
-                    <textarea 
-                      required rows={4} value={serviceDescription} onChange={e => setServiceDescription(e.target.value)}
-                      placeholder="Describe what tasks are covered in this caregiver shift..."
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Key Benefits / Tasks Included</label>
-                      <span className="text-[10px] text-slate-400 font-medium">Enter one benefit per line</span>
-                    </div>
-                    <textarea 
-                      rows={4} value={serviceBenefits} onChange={e => setServiceBenefits(e.target.value)}
-                      placeholder="e.g.&#10;Personal hygiene & grooming&#10;Medication reminders&#10;Meal preparation"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 font-mono text-xs"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Service Image</label>
-                    <div className="flex items-center gap-4">
-                      {serviceImage && (
-                        <img 
-                          src={serviceImage} 
-                          className="h-16 w-16 rounded-lg object-cover border border-slate-200" 
-                          alt="Service Preview" 
-                        />
-                      )}
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        onChange={e => handleFileChange(e, setServiceImage)}
-                        className="w-full text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer"
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Key Benefits / Tasks Included</label>
+                        <span className="text-[10px] text-slate-400 font-medium">Enter one benefit per line</span>
+                      </div>
+                      <textarea 
+                        rows={5} value={serviceBenefits} onChange={e => setServiceBenefits(e.target.value)}
+                        placeholder="e.g.&#10;Personal hygiene & grooming&#10;Medication reminders&#10;Meal preparation"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 font-mono text-xs"
                       />
                     </div>
                   </div>
