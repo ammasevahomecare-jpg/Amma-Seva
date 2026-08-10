@@ -72,6 +72,7 @@ function LoginPage() {
   const [googleMapLocation, setGoogleMapLocation] = useState("");
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setFileState: (val: string) => void) => {
     const file = e.target.files?.[0];
@@ -701,13 +702,48 @@ function LoginPage() {
                         onChange={(e) => setAgreeTerms(e.target.checked)}
                         className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                       />
-                      <span>I have read and agree to the Amma Seva Terms & Conditions and Privacy Policy.</span>
+                      <span>
+                        I have read and agree to the{" "}
+                        <button
+                          type="button"
+                          onClick={() => setShowTermsModal(true)}
+                          className="text-gold font-bold hover:underline cursor-pointer inline focus:outline-none"
+                        >
+                          Amma Seva Terms & Conditions
+                        </button>{" "}
+                        and Privacy Policy.
+                      </span>
                     </label>
                   </div>
                 </div>
               )}
 
-
+              {/* Terms checkbox for Customer (register/login) and Caretaker (login only) */}
+              {((role === "customer" && (mode === "register" || authStep === "email")) ||
+                (role === "caretaker" && mode === "login" && authStep === "email")) && (
+                <div className="pt-2">
+                  <label className="flex items-start gap-2.5 cursor-pointer text-xs text-slate-700 font-medium select-none">
+                    <input
+                      type="checkbox"
+                      required
+                      checked={agreeTerms}
+                      onChange={(e) => setAgreeTerms(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                    />
+                    <span>
+                      I have read and agree to the{" "}
+                      <button
+                        type="button"
+                        onClick={() => setShowTermsModal(true)}
+                        className="text-gold font-bold hover:underline cursor-pointer inline focus:outline-none"
+                      >
+                        Amma Seva Terms & Conditions
+                      </button>{" "}
+                      and Privacy Policy.
+                    </span>
+                  </label>
+                </div>
+              )}
 
               {/* OTP Code (Step 2 of login) */}
               {mode === "login" && authStep === "otp" && (
@@ -760,7 +796,7 @@ function LoginPage() {
 
               <button
                 type="submit"
-                disabled={isLoading || (role === "caretaker" && mode === "register" && !agreeTerms)}
+                disabled={isLoading || ((mode === "register" || authStep === "email") && !agreeTerms)}
                 className="btn-primary w-full py-2.5 mt-4 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 {isLoading 
@@ -805,6 +841,200 @@ function LoginPage() {
         </div>
 
       </div>
+
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes scaleUp {
+          from { transform: scale(0.95); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.2s ease-out forwards;
+        }
+        .animate-scaleUp {
+          animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+      `}</style>
+
+      {/* Terms & Conditions Modal */}
+      {showTermsModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all duration-300 animate-fadeIn">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden border border-slate-100 transform transition-all duration-300 scale-100 animate-scaleUp">
+            
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h3 className="font-serif text-base font-bold text-slate-800">
+                {role === "caretaker" 
+                  ? "Amma Seva – Nurse & Caregiver Terms & Conditions" 
+                  : "Amma Seva – Terms & Conditions"}
+              </h3>
+              <button 
+                type="button"
+                onClick={() => setShowTermsModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold text-lg cursor-pointer h-8 w-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors focus:outline-none"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-4 text-xs text-slate-600 leading-relaxed max-h-[60vh]">
+              {role === "customer" ? (
+                <>
+                  <p className="font-semibold text-slate-800 text-sm">Effective Date: 10/08/2026</p>
+                  <p className="font-medium text-slate-700">
+                    Welcome to Amma Seva. By booking or using our services, you agree to the following Terms & Conditions.
+                  </p>
+                  
+                  <div className="space-y-3.5">
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-xs">1. Service Scope</h4>
+                      <p>Amma Seva is a technology-enabled platform that connects clients with qualified nurses, caregivers, attendants, and home healthcare professionals.</p>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-xs">2. Booking Confirmation</h4>
+                      <p>A booking is confirmed only after acceptance by Amma Seva and successful payment (where applicable).</p>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-xs">3. Service Charges</h4>
+                      <p>Service charges vary depending on the type of service, duration, location, and special requirements.</p>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-xs">4. Payment Terms</h4>
+                      <p>Payments shall be made through the approved payment methods provided by Amma Seva. Outstanding dues must be cleared before future bookings.</p>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-xs">5. Cancellation & Rescheduling</h4>
+                      <p>Cancellation or rescheduling is subject to Amma Seva's Cancellation & Refund Policy.</p>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-xs">6. Working Hours</h4>
+                      <p>Caregivers will provide services only during the booked time. Extra hours will be charged separately.</p>
+                    </div>
+                    <div className="p-3 bg-rose-50/50 border border-rose-100 rounded-xl">
+                      <h4 className="font-bold text-rose-800 text-xs flex items-center gap-1">
+                        ⚠️ 7. No Medical Advice or Prescription
+                      </h4>
+                      <p className="text-rose-700 font-medium text-[11px]">Amma Seva does not diagnose illnesses, prescribe medications, recommend treatments, or sell/promote medicines. Our nurses and caregivers provide care strictly according to the treating doctor's valid prescription and instructions.</p>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-xs">8. Emergency Services</h4>
+                      <p>Amma Seva is not an emergency medical service. In case of a medical emergency, clients must immediately contact the nearest hospital or ambulance service.</p>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-xs">9. Patient Information</h4>
+                      <p>Clients must provide complete and accurate medical history, medications, allergies, and emergency contact details.</p>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-xs">10. Client Responsibilities</h4>
+                      <p>Clients shall provide a safe, hygienic, and respectful environment for caregivers while services are being provided.</p>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-xs">11. Caregiver Safety</h4>
+                      <p>Abusive behavior, harassment, violence, discrimination, or illegal activities towards caregivers will result in immediate termination of services.</p>
+                    </div>
+                    <div className="p-3 bg-amber-50/50 border border-amber-100 rounded-xl">
+                      <h4 className="font-bold text-amber-800 text-xs">12. Direct Engagement</h4>
+                      <p className="text-amber-700 font-medium text-[11px]">If a client or caregiver directly engages with each other without Amma Seva's knowledge or authorization, Amma Seva shall not be responsible for any payments, disputes, liabilities, damages, or consequences arising from such independent arrangements.</p>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-xs">13. No Employment Relationship</h4>
+                      <p>Using Amma Seva does not create an employer-employee relationship between the client and the caregiver.</p>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-xs">14. No Guarantee of Medical Outcome</h4>
+                      <p>Amma Seva does not guarantee recovery, cure, or any specific medical outcome.</p>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-xs">15. Confidentiality</h4>
+                      <p>Patient information will be kept confidential and handled in accordance with applicable privacy laws.</p>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-xs">16. Personal Belongings</h4>
+                      <p>Amma Seva is not responsible for the loss of cash, jewellery, valuables, or personal belongings kept at the client's premises.</p>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-xs">17. Background Verification</h4>
+                      <p>Amma Seva makes reasonable efforts to verify the identity and qualifications of caregivers but cannot guarantee their conduct beyond the services provided.</p>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-xs">18. Service Refusal</h4>
+                      <p>Amma Seva reserves the right to refuse, suspend, or terminate services in cases of abuse, unsafe conditions, non-payment, or violation of these Terms.</p>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-xs">19. Force Majeure</h4>
+                      <p>Amma Seva shall not be liable for delays or service interruptions caused by events beyond its reasonable control, including natural disasters, government restrictions, strikes, epidemics, or technical failures.</p>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-xs">20. Intellectual Property</h4>
+                      <p>The Amma Seva name, logo, website, mobile application, and related content are the intellectual property of Amma Seva and may not be copied or used without prior written permission.</p>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-xs">21. Jurisdiction</h4>
+                      <p>Any disputes arising from these Terms & Conditions shall be subject to the exclusive jurisdiction of the competent courts where Amma Seva is registered.</p>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-xs">22. Amendments</h4>
+                      <p>Amma Seva reserves the right to modify these Terms & Conditions at any time. Updated versions will be published on the official website and mobile application.</p>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-xs">23. Acceptance</h4>
+                      <p>By using Amma Seva's services, the client confirms that they have read, understood, and agreed to these Terms & Conditions.</p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="font-semibold text-slate-800 text-sm">Amma Seva – Nurse & Caregiver Terms & Conditions</p>
+                  <p className="font-medium text-slate-700">By registering with Amma Seva, you agree to the following:</p>
+                  
+                  <ol className="list-decimal pl-4 space-y-2.5">
+                    <li>All information and documents submitted by you are true, accurate, and valid.</li>
+                    <li>Amma Seva reserves the right to verify your identity, qualifications, experience, and other supporting documents.</li>
+                    <li>You are registered as an independent service provider and not as an employee of Amma Seva.</li>
+                    <li>You shall provide services professionally, ethically, and with respect for every client.</li>
+                    <li>You shall provide nursing or caregiving services only within your qualifications and as per the treating doctor's prescription and instructions.</li>
+                    <li>You shall maintain the confidentiality and privacy of all client information.</li>
+                    <li>You shall report on time for assigned bookings and promptly inform Amma Seva in case of any delay or inability to attend.</li>
+                    <li>You shall not demand or accept additional payments directly from clients unless authorized by Amma Seva.</li>
+                    <li>You shall not directly engage with or continue providing services to Amma Seva clients outside the platform without prior written permission.</li>
+                    <li>Any misconduct, negligence, abuse, harassment, fraud, submission of false documents, repeated cancellations, or violation of these Terms may result in suspension or permanent termination of your registration.</li>
+                    <li>Payments will be processed by Amma Seva as per the applicable payment policy after successful completion of eligible services.</li>
+                    <li>Amma Seva reserves the right to modify these Terms & Conditions at any time. Continued use of the platform constitutes acceptance of the revised Terms.</li>
+                    <li>Any disputes shall be subject to the jurisdiction of the competent courts where Amma Seva is registered.</li>
+                    <li>By clicking "Register", you confirm that you have read, understood, and agreed to these Terms & Conditions.</li>
+                  </ol>
+                </>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setAgreeTerms(true);
+                  setShowTermsModal(false);
+                }}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+              >
+                I Agree & Accept
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(false)}
+                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </SiteLayout>
   );
 }
