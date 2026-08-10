@@ -500,18 +500,6 @@ export const db = {
       return newBooking
     }
   },
-        amount,
-        paymentStatus,
-        paymentMethod,
-        transactionId,
-        paymentDate,
-        createdAt
-      }
-      data.bookings.push(newBooking)
-      await writeJSONDb(data)
-      return newBooking
-    }
-  },
 
   updateBooking: async (id, status, assignedStaff, paymentStatus) => {
     if (useMySQL) {
