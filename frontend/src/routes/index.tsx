@@ -128,7 +128,7 @@ function Home() {
             <p className="mt-3 text-muted-foreground">From newborns to seniors — comprehensive home healthcare tailored to your family.</p>
           </div>
           <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {services.slice(0, 6).map((s) => {
+            {services.slice(0, 6).map((s: any) => {
               const imgSrc = s.image || IMAGE_BY_SLUG[s.slug];
               return (
                 <Link

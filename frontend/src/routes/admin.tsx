@@ -9,6 +9,16 @@ import {
   ArrowUpRight, Star
 } from "lucide-react";
 
+const INDIAN_STATES = [
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", 
+  "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", 
+  "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", 
+  "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", 
+  "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
+  "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu", 
+  "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
+];
+
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
@@ -33,6 +43,19 @@ interface Booking {
   amount: number;
   paymentStatus: string;
   createdAt: string;
+  patientName?: string;
+  patientAge?: string;
+  patientNeeds?: string;
+  prescription?: string;
+  googleMapLocation?: string;
+  paymentMethod?: string;
+  transactionId?: string;
+  paymentDate?: string;
+  isReviewed?: boolean;
+  review?: {
+    rating: number;
+    comment?: string;
+  };
 }
 
 interface Caregiver {
@@ -51,6 +74,14 @@ interface Caregiver {
   experienceDetails?: string;
   workingLocations?: string;
   availableTimings?: string;
+  state?: string;
+  city?: string;
+  googleMapLocation?: string;
+  experienceCertificate?: string;
+  policeVerification?: string;
+  additionalCertificates?: string;
+  rating?: number | string;
+  reviews?: any[];
 }
 
 interface Enquiry {
@@ -78,6 +109,7 @@ interface ServiceRecord {
   description: string;
   price: string;
   category: string;
+  image?: string;
 }
 
 interface NotificationRecord {
@@ -143,6 +175,13 @@ function AdminPage() {
   const [caregiverExperienceDetails, setCaregiverExperienceDetails] = useState("");
   const [caregiverWorkingLocations, setCaregiverWorkingLocations] = useState("");
   const [caregiverAvailableTimings, setCaregiverAvailableTimings] = useState("");
+  
+  const [caregiverState, setCaregiverState] = useState("");
+  const [caregiverCity, setCaregiverCity] = useState("");
+  const [caregiverGoogleMapLocation, setCaregiverGoogleMapLocation] = useState("");
+  const [caregiverExperienceCertificate, setCaregiverExperienceCertificate] = useState("");
+  const [caregiverPoliceVerification, setCaregiverPoliceVerification] = useState("");
+  const [caregiverAdditionalCertificates, setCaregiverAdditionalCertificates] = useState("");
 
   // Form states - Service
   const [serviceTitle, setServiceTitle] = useState("");
@@ -367,6 +406,12 @@ function AdminPage() {
       setCaregiverExperienceDetails("");
       setCaregiverWorkingLocations("");
       setCaregiverAvailableTimings("");
+      setCaregiverState("");
+      setCaregiverCity("");
+      setCaregiverGoogleMapLocation("");
+      setCaregiverExperienceCertificate("");
+      setCaregiverPoliceVerification("");
+      setCaregiverAdditionalCertificates("");
     } else if (type === "service") {
       setServiceTitle("");
       setServiceShort("");
@@ -418,6 +463,12 @@ function AdminPage() {
       setCaregiverExperienceDetails(record.experienceDetails || "");
       setCaregiverWorkingLocations(record.workingLocations || "");
       setCaregiverAvailableTimings(record.availableTimings || "");
+      setCaregiverState(record.state || "");
+      setCaregiverCity(record.city || "");
+      setCaregiverGoogleMapLocation(record.googleMapLocation || "");
+      setCaregiverExperienceCertificate(record.experienceCertificate || "");
+      setCaregiverPoliceVerification(record.policeVerification || "");
+      setCaregiverAdditionalCertificates(record.additionalCertificates || "");
     } else if (type === "service") {
       setServiceTitle(record.title);
       setServiceShort(record.short || "");
@@ -435,6 +486,8 @@ function AdminPage() {
   const handleModalSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+
+    const token = localStorage.getItem("ammaseva_admin_token");
 
     let url = "";
     let method = "POST";
@@ -475,7 +528,13 @@ function AdminPage() {
         profilePhoto: caregiverProfilePhoto,
         experienceDetails: caregiverExperienceDetails,
         workingLocations: caregiverWorkingLocations,
-        availableTimings: caregiverAvailableTimings
+        availableTimings: caregiverAvailableTimings,
+        state: caregiverState,
+        city: caregiverCity,
+        googleMapLocation: caregiverGoogleMapLocation,
+        experienceCertificate: caregiverExperienceCertificate,
+        policeVerification: caregiverPoliceVerification,
+        additionalCertificates: caregiverAdditionalCertificates
       };
       if (modalMode === "add") {
         bodyData.password = "123456"; // Default password
@@ -521,7 +580,6 @@ function AdminPage() {
       }
     }
 
-    const token = localStorage.getItem("ammaseva_admin_token");
     fetch(url, {
       method,
       headers: { 
@@ -941,6 +999,27 @@ function AdminPage() {
                             <div className="font-semibold text-primary font-display text-base">{b.name}</div>
                             <div className="text-xs text-slate-400 mt-0.5">{b.phone}</div>
                             <div className="text-xs text-slate-400 italic mt-0.5 truncate max-w-xs">{b.address}</div>
+                            
+                            {b.patientName && (
+                              <div className="text-xs text-indigo-700 mt-1 font-semibold">
+                                👤 Patient: {b.patientName} ({b.patientAge} years)
+                              </div>
+                            )}
+                            {b.patientNeeds && (
+                              <div className="text-[10px] text-slate-600 mt-0.5 bg-slate-50 p-1.5 rounded-lg border border-slate-100 max-w-xs whitespace-normal">
+                                Needs: {b.patientNeeds}
+                              </div>
+                            )}
+                            {b.googleMapLocation && (
+                              <a href={b.googleMapLocation} target="_blank" rel="noopener noreferrer" className="text-[10px] text-indigo-600 font-bold hover:underline block mt-1">
+                                🗺 Open Map Location
+                              </a>
+                            )}
+                            {b.prescription && (
+                              <a href={b.prescription} target="_blank" rel="noopener noreferrer" className="text-[10px] text-emerald-600 font-bold hover:underline block mt-0.5">
+                                📄 Doctor Prescription / Case File
+                              </a>
+                            )}
                           </td>
                           <td className="py-4 px-6">
                             <div className="font-medium text-slate-800">{b.service}</div>
@@ -1049,7 +1128,7 @@ function AdminPage() {
                                 <div className="font-semibold text-primary font-display text-base">{c.name}</div>
                                 <div className="text-xs text-slate-400 mt-0.5">{c.phone}</div>
                                 <div className="text-xs text-slate-400 mt-0.5">{c.email}</div>
-                                {c.rating > 0 ? (
+                                {Number(c.rating) > 0 ? (
                                   <button
                                     onClick={() => setSelectedCaregiverForReviews(c)}
                                     className="text-[10px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200 mt-1 flex items-center gap-0.5 w-fit cursor-pointer"
@@ -1065,7 +1144,22 @@ function AdminPage() {
                           <td className="py-4 px-6">
                             <div className="font-medium text-slate-800">{c.specialty}</div>
                             <div className="text-xs text-slate-400 mt-0.5">{c.experience} years experience</div>
-                            {c.workingLocations && <div className="text-[10px] text-indigo-600 mt-1 font-semibold">📍 {c.workingLocations}</div>}
+                            {(c.city || c.state) && (
+                              <div className="text-xs text-slate-700 mt-1 flex items-center gap-1 font-medium">
+                                🏠 {c.city ? c.city : ""}{c.state ? `, ${c.state}` : ""}
+                              </div>
+                            )}
+                            {c.googleMapLocation && (
+                              <a 
+                                href={c.googleMapLocation}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[10px] text-indigo-600 hover:underline font-bold block mt-1"
+                              >
+                                🗺 Open Map Location
+                              </a>
+                            )}
+                            {c.workingLocations && <div className="text-[10px] text-indigo-600 mt-1 font-semibold">📍 Pref: {c.workingLocations}</div>}
                             {c.availableTimings && <div className="text-[10px] text-slate-500 mt-0.5 font-medium">🕒 {c.availableTimings}</div>}
                           </td>
                           <td className="py-4 px-6 text-xs">
@@ -1084,9 +1178,27 @@ function AdminPage() {
                               
                               {c.certificates ? (
                                 <a href={c.certificates} target="_blank" rel="noopener noreferrer" className="text-gold font-semibold hover:underline block">
-                                  📄 Certificates
+                                  📄 Edu Certificate
                                 </a>
-                              ) : <span className="text-slate-300 block">❌ Certificates</span>}
+                              ) : <span className="text-slate-300 block">❌ Edu Cert</span>}
+
+                              {c.experienceCertificate ? (
+                                <a href={c.experienceCertificate} target="_blank" rel="noopener noreferrer" className="text-gold font-semibold hover:underline block">
+                                  📄 Exp Certificate
+                                </a>
+                              ) : <span className="text-slate-300 block">❌ Exp Cert</span>}
+
+                              {c.policeVerification ? (
+                                <a href={c.policeVerification} target="_blank" rel="noopener noreferrer" className="text-gold font-semibold hover:underline block">
+                                  📄 Police Verification
+                                </a>
+                              ) : <span className="text-slate-300 block">❌ Police Cert</span>}
+
+                              {c.additionalCertificates ? (
+                                <a href={c.additionalCertificates} target="_blank" rel="noopener noreferrer" className="text-gold font-semibold hover:underline block">
+                                  📄 Addit. Certs
+                                </a>
+                              ) : null}
                             </div>
                           </td>
                           <td className="py-4 px-6">
@@ -1780,6 +1892,52 @@ function AdminPage() {
                     />
                   </div>
 
+                  {/* Address Section */}
+                  <div className="border border-slate-100 rounded-2xl p-4 bg-slate-50/50 space-y-3">
+                    <div className="text-xs font-bold text-slate-800 uppercase tracking-wider">Address Details</div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">State</label>
+                        <select 
+                          value={caregiverState} onChange={e => setCaregiverState(e.target.value)}
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-white text-sm"
+                        >
+                          <option value="">Select State</option>
+                          {INDIAN_STATES.map((st) => (
+                            <option key={st} value={st}>{st}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">City</label>
+                        <input 
+                          type="text" value={caregiverCity} onChange={e => setCaregiverCity(e.target.value)}
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-white text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 flex justify-between items-center">
+                        <span>Google Map Location URL</span>
+                        {caregiverGoogleMapLocation && (
+                          <a 
+                            href={caregiverGoogleMapLocation} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-xs text-indigo-600 hover:underline font-semibold animate-pulse"
+                          >
+                            Open on Map
+                          </a>
+                        )}
+                      </label>
+                      <input 
+                        type="text" value={caregiverGoogleMapLocation} onChange={e => setCaregiverGoogleMapLocation(e.target.value)}
+                        placeholder="Google Maps URL"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-white text-xs"
+                      />
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Preferred Locations</label>
@@ -1834,13 +1992,43 @@ function AdminPage() {
                       </div>
 
                       <div>
-                        <span className="block font-bold text-slate-500 mb-1">Nursing Certificates</span>
+                        <span className="block font-bold text-slate-500 mb-1">Educational Qualification Certs</span>
                         {caregiverCertificates ? (
                           <div className="space-y-1">
                             <div className="text-[10px] text-slate-500 truncate max-w-[150px]">Base64 Data Available</div>
-                            <a href={caregiverCertificates} download={`Certificates_${caregiverName}`} className="text-gold font-semibold hover:underline block text-[10px]">Download File</a>
+                            <a href={caregiverCertificates} download={`EduCertificates_${caregiverName}`} className="text-gold font-semibold hover:underline block text-[10px]">Download File</a>
                           </div>
                         ) : <span className="text-slate-400 italic">No certificates uploaded</span>}
+                      </div>
+
+                      <div>
+                        <span className="block font-bold text-slate-500 mb-1">Experience Certificate(s)</span>
+                        {caregiverExperienceCertificate ? (
+                          <div className="space-y-1">
+                            <div className="text-[10px] text-slate-500 truncate max-w-[150px]">Base64 Data Available</div>
+                            <a href={caregiverExperienceCertificate} download={`ExpCertificates_${caregiverName}`} className="text-gold font-semibold hover:underline block text-[10px]">Download File</a>
+                          </div>
+                        ) : <span className="text-slate-400 italic">No experience certs</span>}
+                      </div>
+
+                      <div>
+                        <span className="block font-bold text-slate-500 mb-1">Police Verification</span>
+                        {caregiverPoliceVerification ? (
+                          <div className="space-y-1">
+                            <div className="text-[10px] text-slate-500 truncate max-w-[150px]">Base64 Data Available</div>
+                            <a href={caregiverPoliceVerification} download={`PoliceVerification_${caregiverName}`} className="text-gold font-semibold hover:underline block text-[10px]">Download File</a>
+                          </div>
+                        ) : <span className="text-slate-400 italic">No police verification</span>}
+                      </div>
+
+                      <div>
+                        <span className="block font-bold text-slate-500 mb-1">Additional Certificates</span>
+                        {caregiverAdditionalCertificates ? (
+                          <div className="space-y-1">
+                            <div className="text-[10px] text-slate-500 truncate max-w-[150px]">Base64 Data Available</div>
+                            <a href={caregiverAdditionalCertificates} download={`AddCertificates_${caregiverName}`} className="text-gold font-semibold hover:underline block text-[10px]">Download File</a>
+                          </div>
+                        ) : <span className="text-slate-400 italic">No additional certs</span>}
                       </div>
                     </div>
                   </div>

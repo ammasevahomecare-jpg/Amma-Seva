@@ -7,6 +7,16 @@ import {
   ArrowRight, HeartHandshake, Eye, EyeOff, Briefcase, Star, Sparkles, RefreshCw
 } from "lucide-react";
 
+const INDIAN_STATES = [
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", 
+  "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", 
+  "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", 
+  "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", 
+  "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
+  "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu", 
+  "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
+];
+
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
@@ -52,6 +62,16 @@ function LoginPage() {
   const [experienceDetails, setExperienceDetails] = useState("");
   const [workingLocations, setWorkingLocations] = useState("");
   const [availableTimings, setAvailableTimings] = useState("");
+  
+  const [experienceCertificateFile, setExperienceCertificateFile] = useState("");
+  const [policeVerificationFile, setPoliceVerificationFile] = useState("");
+  const [additionalCertificatesFile, setAdditionalCertificatesFile] = useState("");
+  
+  const [stateName, setStateName] = useState("");
+  const [cityName, setCityName] = useState("");
+  const [googleMapLocation, setGoogleMapLocation] = useState("");
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setFileState: (val: string) => void) => {
     const file = e.target.files?.[0];
@@ -92,7 +112,14 @@ function LoginPage() {
     setAuthStep("email");
     setError(null);
     setSuccessMsg(null);
-  }, [mode]);
+    setStateName("");
+    setCityName("");
+    setGoogleMapLocation("");
+    setAgreeTerms(false);
+    setExperienceCertificateFile("");
+    setPoliceVerificationFile("");
+    setAdditionalCertificatesFile("");
+  }, [mode, role]);
 
   // Check redirects if already logged in
   useEffect(() => {
@@ -127,6 +154,12 @@ function LoginPage() {
         bodyData.experienceDetails = experienceDetails;
         bodyData.workingLocations = workingLocations;
         bodyData.availableTimings = availableTimings;
+        bodyData.state = stateName;
+        bodyData.city = cityName;
+        bodyData.googleMapLocation = googleMapLocation;
+        bodyData.experienceCertificate = experienceCertificateFile;
+        bodyData.policeVerification = policeVerificationFile;
+        bodyData.additionalCertificates = additionalCertificatesFile;
       }
 
       fetch(endpoint, {
@@ -415,6 +448,84 @@ function LoginPage() {
               {/* Caregiver specific registration questions */}
               {role === "caretaker" && mode === "register" && (
                 <div className="space-y-4">
+                  {/* Address Section */}
+                  <div className="border border-slate-100 rounded-2xl p-4 bg-slate-50/50 space-y-3">
+                    <div className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-1.5">
+                      Address Details
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">State</label>
+                        <select
+                          required
+                          value={stateName}
+                          onChange={(e) => setStateName(e.target.value)}
+                          className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                        >
+                          <option value="">Select State</option>
+                          {INDIAN_STATES.map((st) => (
+                            <option key={st} value={st}>{st}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">City</label>
+                        <input
+                          type="text"
+                          required
+                          value={cityName}
+                          onChange={(e) => setCityName(e.target.value)}
+                          placeholder="e.g. Hyderabad"
+                          className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Google Map Location</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          required
+                          value={googleMapLocation}
+                          placeholder="Fetch map coordinates..."
+                          className="flex-1 px-3 py-2 text-xs rounded-md border border-slate-200 bg-slate-100 outline-none truncate"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!navigator.geolocation) {
+                              alert("Geolocation is not supported by your browser");
+                              return;
+                            }
+                            setIsFetchingLocation(true);
+                            navigator.geolocation.getCurrentPosition(
+                              (position) => {
+                                const lat = position.coords.latitude;
+                                const lng = position.coords.longitude;
+                                setGoogleMapLocation(`https://www.google.com/maps?q=${lat},${lng}`);
+                                setIsFetchingLocation(false);
+                              },
+                              (err) => {
+                                alert("Failed to fetch location. Please ensure location permissions are enabled.");
+                                setIsFetchingLocation(false);
+                              }
+                            );
+                          }}
+                          disabled={isFetchingLocation}
+                          className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-md flex items-center gap-1 shrink-0 disabled:opacity-50 cursor-pointer"
+                        >
+                          {isFetchingLocation ? "Fetching..." : "Fetch GPS Location"}
+                        </button>
+                      </div>
+                      {googleMapLocation && (
+                        <p className="text-[10px] text-emerald-600 mt-1 flex items-center gap-1">
+                          ✓ Geolocation fetched!
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Specialty</label>
@@ -488,7 +599,7 @@ function LoginPage() {
                     
                     <div className="grid grid-cols-2 gap-3 text-xs">
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Profile Photo</label>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Recent Passport Photograph</label>
                         <input
                           type="file"
                           accept="image/*"
@@ -518,7 +629,7 @@ function LoginPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Nursing Certificates</label>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Educational Qualification Cert(s)</label>
                         <input
                           type="file"
                           accept="image/*,application/pdf"
@@ -527,7 +638,71 @@ function LoginPage() {
                           className="w-full text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
                         />
                       </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Experience Certificate(s) (if available)</label>
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          onChange={(e) => handleFileChange(e, setExperienceCertificateFile)}
+                          className="w-full text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Police Verification Cert (Mandatory for Non-Local)</label>
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          onChange={(e) => handleFileChange(e, setPoliceVerificationFile)}
+                          className="w-full text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Additional Certification(s) relevant (if applicable)</label>
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          onChange={(e) => handleFileChange(e, setAdditionalCertificatesFile)}
+                          className="w-full text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                        />
+                      </div>
                     </div>
+                  </div>
+
+                  {/* Terms and conditions */}
+                  <div className="border border-slate-100 rounded-2xl p-4 bg-slate-50/50 space-y-3">
+                    <div className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-1.5">
+                      Terms & Conditions Agreement
+                    </div>
+                    <div className="h-36 overflow-y-scroll rounded-md border border-slate-200 bg-white p-3 text-[11px] leading-relaxed text-slate-600 space-y-2">
+                      <p className="font-bold text-slate-800">Amma Seva – Nurse & Caregiver Terms & Conditions</p>
+                      <p>By registering with Amma Seva, you agree to the following:</p>
+                      <ol className="list-decimal pl-4 space-y-1.5">
+                        <li>All information and documents submitted by you are true, accurate, and valid.</li>
+                        <li>Amma Seva reserves the right to verify your identity, qualifications, experience, and other supporting documents.</li>
+                        <li>You are registered as an independent service provider and not as an employee of Amma Seva.</li>
+                        <li>You shall provide services professionally, ethically, and with respect for every client.</li>
+                        <li>You shall provide nursing or caregiving services only within your qualifications and as per the treating doctor's prescription and instructions.</li>
+                        <li>You shall maintain the confidentiality and privacy of all client information.</li>
+                        <li>You shall report on time for assigned bookings and promptly inform Amma Seva in case of any delay or inability to attend.</li>
+                        <li>You shall not demand or accept additional payments directly from clients unless authorized by Amma Seva.</li>
+                        <li>You shall not directly engage with or continue providing services to Amma Seva clients outside the platform without prior written permission.</li>
+                        <li>Any misconduct, negligence, abuse, harassment, fraud, submission of false documents, repeated cancellations, or violation of these Terms may result in suspension or permanent termination of your registration.</li>
+                        <li>Payments will be processed by Amma Seva as per the applicable payment policy after successful completion of eligible services.</li>
+                        <li>Amma Seva reserves the right to modify these Terms & Conditions at any time. Continued use of the platform constitutes acceptance of the revised Terms.</li>
+                        <li>Any disputes shall be subject to the jurisdiction of the competent courts where Amma Seva is registered.</li>
+                        <li>By clicking "Register", you confirm that you have read, understood, and agreed to these Terms & Conditions.</li>
+                      </ol>
+                    </div>
+                    <label className="flex items-start gap-2.5 cursor-pointer text-xs text-slate-700 font-medium select-none pt-1">
+                      <input
+                        type="checkbox"
+                        required
+                        checked={agreeTerms}
+                        onChange={(e) => setAgreeTerms(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                      />
+                      <span>I have read and agree to the Amma Seva Terms & Conditions and Privacy Policy.</span>
+                    </label>
                   </div>
                 </div>
               )}
@@ -585,7 +760,7 @@ function LoginPage() {
 
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || (role === "caretaker" && mode === "register" && !agreeTerms)}
                 className="btn-primary w-full py-2.5 mt-4 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 {isLoading 

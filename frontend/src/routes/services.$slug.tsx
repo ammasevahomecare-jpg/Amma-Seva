@@ -40,7 +40,7 @@ export const Route = createFileRoute("/services/$slug")({
 
 function ServicePage() {
   const { service, allServices } = Route.useLoaderData();
-  const others = allServices.filter((s) => s.slug !== service.slug).slice(0, 3);
+  const others = allServices.filter((s: any) => s.slug !== service.slug).slice(0, 3);
   return (
     <SiteLayout>
       <section className="border-b border-border bg-cream/40">
@@ -149,7 +149,7 @@ function ServicePage() {
         <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
           <h2 className="text-2xl font-semibold text-primary">Other services you may need</h2>
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            {others.map((o) => (
+            {others.map((o: any) => (
               <Link key={o.slug} to="/services/$slug" params={{ slug: o.slug }} className="rounded-xl border border-border bg-background p-5 shadow-sm hover:shadow-md">
                 <div className="font-semibold text-primary">{o.title}</div>
                 <p className="mt-1 text-sm text-muted-foreground">{o.short}</p>

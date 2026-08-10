@@ -139,6 +139,8 @@ export const db = {
             patientName LONGTEXT,
             patientAge VARCHAR(50),
             patientNeeds LONGTEXT,
+            prescription LONGTEXT,
+            googleMapLocation TEXT,
             createdAt VARCHAR(255) NOT NULL
           )
         `)
@@ -159,6 +161,12 @@ export const db = {
             experienceDetails TEXT,
             workingLocations TEXT,
             availableTimings TEXT,
+            state VARCHAR(100),
+            city VARCHAR(100),
+            googleMapLocation TEXT,
+            experienceCertificate LONGTEXT,
+            policeVerification LONGTEXT,
+            additionalCertificates LONGTEXT,
             joinedAt VARCHAR(255) NOT NULL
           )
         `)
@@ -257,6 +265,24 @@ export const db = {
           await connection.query(`ALTER TABLE caregivers ADD COLUMN availableTimings TEXT`)
         } catch (e) {}
         try {
+          await connection.query(`ALTER TABLE caregivers ADD COLUMN state VARCHAR(100)`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE caregivers ADD COLUMN city VARCHAR(100)`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE caregivers ADD COLUMN googleMapLocation TEXT`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE caregivers ADD COLUMN experienceCertificate LONGTEXT`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE caregivers ADD COLUMN policeVerification LONGTEXT`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE caregivers ADD COLUMN additionalCertificates LONGTEXT`)
+        } catch (e) {}
+        try {
           await connection.query(`ALTER TABLE bookings ADD COLUMN userId INT`)
         } catch (e) {
           // ignore column already exists error
@@ -278,6 +304,12 @@ export const db = {
         } catch (e) {}
         try {
           await connection.query(`ALTER TABLE bookings ADD COLUMN patientNeeds LONGTEXT`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE bookings ADD COLUMN prescription LONGTEXT`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE bookings ADD COLUMN googleMapLocation TEXT`)
         } catch (e) {}
 
         // Migration queries for services table
@@ -433,14 +465,14 @@ export const db = {
   },
 
   addBooking: async (bookingData) => {
-    const { name, phone, service, date, time, duration, address, amount = 1200, paymentStatus = 'Unpaid', paymentMethod = '', transactionId = '', paymentDate = '' } = bookingData
+    const { name, phone, service, date, time, duration, address, amount = 1200, paymentStatus = 'Unpaid', paymentMethod = '', transactionId = '', paymentDate = '', prescription = '', googleMapLocation = '' } = bookingData
     const createdAt = new Date().toISOString()
     if (useMySQL) {
       const [result] = await pool.query(
-        'INSERT INTO bookings (name, phone, service, date, time, duration, address, amount, paymentStatus, paymentMethod, transactionId, paymentDate, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [name, phone, service, date, time, duration, address, amount, paymentStatus, paymentMethod, transactionId, paymentDate, createdAt]
+        'INSERT INTO bookings (name, phone, service, date, time, duration, address, amount, paymentStatus, paymentMethod, transactionId, paymentDate, prescription, googleMapLocation, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [name, phone, service, date, time, duration, address, amount, paymentStatus, paymentMethod, transactionId, paymentDate, prescription, googleMapLocation, createdAt]
       )
-      return { id: result.insertId, name, phone, service, date, time, duration, address, status: 'Pending', assignedStaff: null, amount, paymentStatus, paymentMethod, transactionId, paymentDate, createdAt }
+      return { id: result.insertId, name, phone, service, date, time, duration, address, status: 'Pending', assignedStaff: null, amount, paymentStatus, paymentMethod, transactionId, paymentDate, prescription, googleMapLocation, createdAt }
     } else {
       const data = await readJSONDb()
       const newBooking = {
@@ -454,6 +486,20 @@ export const db = {
         address,
         status: 'Pending',
         assignedStaff: null,
+        amount,
+        paymentStatus,
+        paymentMethod,
+        transactionId,
+        paymentDate,
+        prescription,
+        googleMapLocation,
+        createdAt
+      }
+      data.bookings.push(newBooking)
+      await writeJSONDb(data)
+      return newBooking
+    }
+  },
         amount,
         paymentStatus,
         paymentMethod,
@@ -624,7 +670,9 @@ export const db = {
     const { 
       name, phone, specialty, experience, 
       aadhaar, pan, certificates, profilePhoto, 
-      experienceDetails, workingLocations, availableTimings 
+      experienceDetails, workingLocations, availableTimings,
+      state, city, googleMapLocation,
+      experienceCertificate, policeVerification, additionalCertificates
     } = profileData
     if (useMySQL) {
       const [result] = await pool.query(
@@ -639,7 +687,13 @@ export const db = {
           profilePhoto = COALESCE(?, profilePhoto), 
           experienceDetails = COALESCE(?, experienceDetails), 
           workingLocations = COALESCE(?, workingLocations), 
-          availableTimings = COALESCE(?, availableTimings) 
+          availableTimings = COALESCE(?, availableTimings),
+          state = COALESCE(?, state),
+          city = COALESCE(?, city),
+          googleMapLocation = COALESCE(?, googleMapLocation),
+          experienceCertificate = COALESCE(?, experienceCertificate),
+          policeVerification = COALESCE(?, policeVerification),
+          additionalCertificates = COALESCE(?, additionalCertificates)
         WHERE id = ?`,
         [
           name !== undefined ? name : null, 
@@ -653,6 +707,12 @@ export const db = {
           experienceDetails !== undefined ? experienceDetails : null, 
           workingLocations !== undefined ? workingLocations : null, 
           availableTimings !== undefined ? availableTimings : null, 
+          state !== undefined ? state : null,
+          city !== undefined ? city : null,
+          googleMapLocation !== undefined ? googleMapLocation : null,
+          experienceCertificate !== undefined ? experienceCertificate : null,
+          policeVerification !== undefined ? policeVerification : null,
+          additionalCertificates !== undefined ? additionalCertificates : null,
           id
         ]
       )
@@ -673,7 +733,13 @@ export const db = {
           profilePhoto: profilePhoto !== undefined ? profilePhoto : data.caregivers[idx].profilePhoto,
           experienceDetails: experienceDetails !== undefined ? experienceDetails : data.caregivers[idx].experienceDetails,
           workingLocations: workingLocations !== undefined ? workingLocations : data.caregivers[idx].workingLocations,
-          availableTimings: availableTimings !== undefined ? availableTimings : data.caregivers[idx].availableTimings
+          availableTimings: availableTimings !== undefined ? availableTimings : data.caregivers[idx].availableTimings,
+          state: state !== undefined ? state : data.caregivers[idx].state,
+          city: city !== undefined ? city : data.caregivers[idx].city,
+          googleMapLocation: googleMapLocation !== undefined ? googleMapLocation : data.caregivers[idx].googleMapLocation,
+          experienceCertificate: experienceCertificate !== undefined ? experienceCertificate : data.caregivers[idx].experienceCertificate,
+          policeVerification: policeVerification !== undefined ? policeVerification : data.caregivers[idx].policeVerification,
+          additionalCertificates: additionalCertificates !== undefined ? additionalCertificates : data.caregivers[idx].additionalCertificates
         }
         await writeJSONDb(data)
         return true
@@ -712,16 +778,18 @@ export const db = {
     const { 
       name, phone, email, specialty, experience, 
       aadhaar = '', pan = '', certificates = '', profilePhoto = '', 
-      experienceDetails = '', workingLocations = '', availableTimings = '' 
+      experienceDetails = '', workingLocations = '', availableTimings = '',
+      state = '', city = '', googleMapLocation = '',
+      experienceCertificate = '', policeVerification = '', additionalCertificates = ''
     } = caregiverData
     const joinedAt = new Date().toISOString()
     const dummyPassword = ''
     if (useMySQL) {
       const [result] = await pool.query(
-        'INSERT INTO caregivers (name, phone, email, specialty, experience, password, joinedAt, aadhaar, pan, certificates, profilePhoto, experienceDetails, workingLocations, availableTimings) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [name, phone, email, specialty, experience, dummyPassword, joinedAt, aadhaar, pan, certificates, profilePhoto, experienceDetails, workingLocations, availableTimings]
+        'INSERT INTO caregivers (name, phone, email, specialty, experience, password, joinedAt, aadhaar, pan, certificates, profilePhoto, experienceDetails, workingLocations, availableTimings, state, city, googleMapLocation, experienceCertificate, policeVerification, additionalCertificates) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [name, phone, email, specialty, experience, dummyPassword, joinedAt, aadhaar, pan, certificates, profilePhoto, experienceDetails, workingLocations, availableTimings, state, city, googleMapLocation, experienceCertificate, policeVerification, additionalCertificates]
       )
-      return { id: result.insertId, name, phone, email, specialty, experience, status: 'Pending', joinedAt }
+      return { id: result.insertId, name, phone, email, specialty, experience, status: 'Pending', joinedAt, state, city, googleMapLocation, experienceCertificate, policeVerification, additionalCertificates }
     } else {
       const data = await readJSONDb()
       const newCaregiver = {
@@ -740,7 +808,13 @@ export const db = {
         profilePhoto,
         experienceDetails,
         workingLocations,
-        availableTimings
+        availableTimings,
+        state,
+        city,
+        googleMapLocation,
+        experienceCertificate,
+        policeVerification,
+        additionalCertificates
       }
       data.caregivers.push(newCaregiver)
       await writeJSONDb(data)
@@ -750,14 +824,14 @@ export const db = {
 
   // User Bookings Operations
   addBookingForUser: async (bookingData) => {
-    const { name, phone, service, date, time, duration, address, amount = 1200, userId = null, patientName = '', patientAge = '', patientNeeds = '' } = bookingData
+    const { name, phone, service, date, time, duration, address, amount = 1200, userId = null, patientName = '', patientAge = '', patientNeeds = '', prescription = '', googleMapLocation = '' } = bookingData
     const createdAt = new Date().toISOString()
     if (useMySQL) {
       const [result] = await pool.query(
-        'INSERT INTO bookings (name, phone, service, date, time, duration, address, amount, userId, createdAt, patientName, patientAge, patientNeeds) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [name, phone, service, date, time, duration, address, amount, userId, createdAt, patientName, patientAge, patientNeeds]
+        'INSERT INTO bookings (name, phone, service, date, time, duration, address, amount, userId, createdAt, patientName, patientAge, patientNeeds, prescription, googleMapLocation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [name, phone, service, date, time, duration, address, amount, userId, createdAt, patientName, patientAge, patientNeeds, prescription, googleMapLocation]
       )
-      return { id: result.insertId, name, phone, service, date, time, duration, address, status: 'Pending', assignedStaff: null, amount, paymentStatus: 'Unpaid', userId, createdAt, patientName, patientAge, patientNeeds }
+      return { id: result.insertId, name, phone, service, date, time, duration, address, status: 'Pending', assignedStaff: null, amount, paymentStatus: 'Unpaid', userId, createdAt, patientName, patientAge, patientNeeds, prescription, googleMapLocation }
     } else {
       const data = await readJSONDb()
       const newBooking = {
@@ -777,6 +851,8 @@ export const db = {
         patientName,
         patientAge,
         patientNeeds,
+        prescription,
+        googleMapLocation,
         createdAt
       }
       data.bookings.push(newBooking)
@@ -918,12 +994,14 @@ export const db = {
     const { 
       name, phone, email, specialty, experience, status, 
       aadhaar, pan, certificates, profilePhoto, 
-      experienceDetails, workingLocations, availableTimings 
+      experienceDetails, workingLocations, availableTimings,
+      state, city, googleMapLocation,
+      experienceCertificate, policeVerification, additionalCertificates
     } = caregiverData
     if (useMySQL) {
       const [result] = await pool.query(
-        'UPDATE caregivers SET name = ?, phone = ?, email = ?, specialty = ?, experience = ?, status = ?, aadhaar = COALESCE(?, aadhaar), pan = COALESCE(?, pan), certificates = COALESCE(?, certificates), profilePhoto = COALESCE(?, profilePhoto), experienceDetails = COALESCE(?, experienceDetails), workingLocations = COALESCE(?, workingLocations), availableTimings = COALESCE(?, availableTimings) WHERE id = ?',
-        [name, phone, email, specialty, experience, status, aadhaar, pan, certificates, profilePhoto, experienceDetails, workingLocations, availableTimings, id]
+        'UPDATE caregivers SET name = ?, phone = ?, email = ?, specialty = ?, experience = ?, status = ?, aadhaar = COALESCE(?, aadhaar), pan = COALESCE(?, pan), certificates = COALESCE(?, certificates), profilePhoto = COALESCE(?, profilePhoto), experienceDetails = COALESCE(?, experienceDetails), workingLocations = COALESCE(?, workingLocations), availableTimings = COALESCE(?, availableTimings), state = COALESCE(?, state), city = COALESCE(?, city), googleMapLocation = COALESCE(?, googleMapLocation), experienceCertificate = COALESCE(?, experienceCertificate), policeVerification = COALESCE(?, policeVerification), additionalCertificates = COALESCE(?, additionalCertificates) WHERE id = ?',
+        [name, phone, email, specialty, experience, status, aadhaar, pan, certificates, profilePhoto, experienceDetails, workingLocations, availableTimings, state !== undefined ? state : null, city !== undefined ? city : null, googleMapLocation !== undefined ? googleMapLocation : null, experienceCertificate !== undefined ? experienceCertificate : null, policeVerification !== undefined ? policeVerification : null, additionalCertificates !== undefined ? additionalCertificates : null, id]
       )
       return result.affectedRows > 0
     } else {
@@ -944,7 +1022,13 @@ export const db = {
           profilePhoto: profilePhoto !== undefined ? profilePhoto : data.caregivers[idx].profilePhoto,
           experienceDetails: experienceDetails !== undefined ? experienceDetails : data.caregivers[idx].experienceDetails,
           workingLocations: workingLocations !== undefined ? workingLocations : data.caregivers[idx].workingLocations,
-          availableTimings: availableTimings !== undefined ? availableTimings : data.caregivers[idx].availableTimings
+          availableTimings: availableTimings !== undefined ? availableTimings : data.caregivers[idx].availableTimings,
+          state: state !== undefined ? state : data.caregivers[idx].state,
+          city: city !== undefined ? city : data.caregivers[idx].city,
+          googleMapLocation: googleMapLocation !== undefined ? googleMapLocation : data.caregivers[idx].googleMapLocation,
+          experienceCertificate: experienceCertificate !== undefined ? experienceCertificate : data.caregivers[idx].experienceCertificate,
+          policeVerification: policeVerification !== undefined ? policeVerification : data.caregivers[idx].policeVerification,
+          additionalCertificates: additionalCertificates !== undefined ? additionalCertificates : data.caregivers[idx].additionalCertificates
         }
         await writeJSONDb(data)
         return true

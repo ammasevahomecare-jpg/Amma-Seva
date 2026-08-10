@@ -282,7 +282,13 @@ app.post('/api/auth/login', async (req, res) => {
         profilePhoto: caretaker.profilePhoto,
         experienceDetails: caretaker.experienceDetails,
         workingLocations: caretaker.workingLocations,
-        availableTimings: caretaker.availableTimings
+        availableTimings: caretaker.availableTimings,
+        state: caretaker.state,
+        city: caretaker.city,
+        googleMapLocation: caretaker.googleMapLocation,
+        experienceCertificate: caretaker.experienceCertificate,
+        policeVerification: caretaker.policeVerification,
+        additionalCertificates: caretaker.additionalCertificates
       }
     })
   } else if (role === 'customer') {
@@ -396,13 +402,18 @@ app.put('/api/caretaker/profile', authenticateUser, async (req, res) => {
     const { 
       name, phone, specialty, experience, 
       aadhaar, pan, certificates, profilePhoto, 
-      experienceDetails, workingLocations, availableTimings 
+      experienceDetails, workingLocations, availableTimings,
+      state, city, googleMapLocation,
+      experienceCertificate, policeVerification, additionalCertificates
     } = req.body
 
     const uploadedProfilePhoto = profilePhoto ? await uploadToCloudinary(profilePhoto) : undefined
     const uploadedAadhaar = aadhaar ? await uploadToCloudinary(aadhaar) : undefined
     const uploadedPan = pan ? await uploadToCloudinary(pan) : undefined
     const uploadedCertificates = certificates ? await uploadToCloudinary(certificates) : undefined
+    const uploadedExperienceCert = experienceCertificate ? await uploadToCloudinary(experienceCertificate) : undefined
+    const uploadedPoliceVerification = policeVerification ? await uploadToCloudinary(policeVerification) : undefined
+    const uploadedAdditionalCertificates = additionalCertificates ? await uploadToCloudinary(additionalCertificates) : undefined
 
     const updated = await db.updateCaregiverProfile(req.userId, {
       name, phone, specialty, experience,
@@ -410,7 +421,11 @@ app.put('/api/caretaker/profile', authenticateUser, async (req, res) => {
       pan: uploadedPan,
       certificates: uploadedCertificates,
       profilePhoto: uploadedProfilePhoto,
-      experienceDetails, workingLocations, availableTimings
+      experienceDetails, workingLocations, availableTimings,
+      state, city, googleMapLocation,
+      experienceCertificate: uploadedExperienceCert,
+      policeVerification: uploadedPoliceVerification,
+      additionalCertificates: uploadedAdditionalCertificates
     })
     if (updated) {
       const caretaker = await db.getCaregiverById(req.userId)
@@ -611,7 +626,9 @@ app.post('/api/caretaker/register', async (req, res) => {
   const { 
     name, phone, email, specialty, experience,
     aadhaar, pan, certificates, profilePhoto, 
-    experienceDetails, workingLocations, availableTimings 
+    experienceDetails, workingLocations, availableTimings,
+    state, city, googleMapLocation,
+    experienceCertificate, policeVerification, additionalCertificates
   } = req.body
 
   if (!name || !phone || !specialty) {
@@ -630,6 +647,9 @@ app.post('/api/caretaker/register', async (req, res) => {
     const uploadedAadhaar = await uploadToCloudinary(aadhaar)
     const uploadedPan = await uploadToCloudinary(pan)
     const uploadedCertificates = await uploadToCloudinary(certificates)
+    const uploadedExperienceCert = await uploadToCloudinary(experienceCertificate)
+    const uploadedPoliceVerification = await uploadToCloudinary(policeVerification)
+    const uploadedAdditionalCertificates = await uploadToCloudinary(additionalCertificates)
 
     const newCaregiver = await db.addCaregiverWithPassword({ 
       name, phone, email, specialty, experience, 
@@ -639,7 +659,13 @@ app.post('/api/caretaker/register', async (req, res) => {
       profilePhoto: uploadedProfilePhoto,
       experienceDetails: experienceDetails || '',
       workingLocations: workingLocations || '',
-      availableTimings: availableTimings || ''
+      availableTimings: availableTimings || '',
+      state: state || '',
+      city: city || '',
+      googleMapLocation: googleMapLocation || '',
+      experienceCertificate: uploadedExperienceCert,
+      policeVerification: uploadedPoliceVerification,
+      additionalCertificates: uploadedAdditionalCertificates
     })
 
     const token = jwt.sign({ id: newCaregiver.id, role: 'caretaker', email: newCaregiver.email }, JWT_SECRET, { expiresIn: '7d' })
@@ -834,7 +860,7 @@ app.get('/api/bookings', authenticateAdmin, async (req, res) => {
 
 // POST create booking
 app.post('/api/booking', async (req, res) => {
-  const { name, phone, service, date, time, duration, address, amount, userId, patientName, patientAge, patientNeeds, paymentMethod, email } = req.body
+  const { name, phone, service, date, time, duration, address, amount, userId, patientName, patientAge, patientNeeds, paymentMethod, email, prescription, googleMapLocation } = req.body
 
   if (!name || !phone || !service || !date || !time || !duration || !address) {
     return res.status(400).json({ error: 'Missing required booking details.' })
@@ -858,6 +884,8 @@ app.post('/api/booking', async (req, res) => {
   }
 
   try {
+    const uploadedPrescription = prescription ? await uploadToCloudinary(prescription) : ''
+
     const newBooking = await db.addBookingForUser({ 
       name, 
       phone, 
@@ -870,7 +898,9 @@ app.post('/api/booking', async (req, res) => {
       userId: authUserId,
       patientName: patientName || '',
       patientAge: patientAge || '',
-      patientNeeds: patientNeeds || ''
+      patientNeeds: patientNeeds || '',
+      prescription: uploadedPrescription,
+      googleMapLocation: googleMapLocation || ''
     })
 
     // Prepare notification mock logs
@@ -1074,13 +1104,18 @@ app.put('/api/admin/caregiver/:id', authenticateAdmin, async (req, res) => {
     const { 
       name, phone, email, specialty, experience, status, 
       aadhaar, pan, certificates, profilePhoto, 
-      experienceDetails, workingLocations, availableTimings 
+      experienceDetails, workingLocations, availableTimings,
+      state, city, googleMapLocation,
+      experienceCertificate, policeVerification, additionalCertificates
     } = req.body
 
     const uploadedProfilePhoto = profilePhoto ? await uploadToCloudinary(profilePhoto) : undefined
     const uploadedAadhaar = aadhaar ? await uploadToCloudinary(aadhaar) : undefined
     const uploadedPan = pan ? await uploadToCloudinary(pan) : undefined
     const uploadedCertificates = certificates ? await uploadToCloudinary(certificates) : undefined
+    const uploadedExperienceCert = experienceCertificate ? await uploadToCloudinary(experienceCertificate) : undefined
+    const uploadedPoliceVerification = policeVerification ? await uploadToCloudinary(policeVerification) : undefined
+    const uploadedAdditionalCertificates = additionalCertificates ? await uploadToCloudinary(additionalCertificates) : undefined
 
     const updated = await db.adminUpdateCaregiver(req.params.id, {
       name, phone, email, specialty, experience, status,
@@ -1088,7 +1123,11 @@ app.put('/api/admin/caregiver/:id', authenticateAdmin, async (req, res) => {
       pan: uploadedPan,
       certificates: uploadedCertificates,
       profilePhoto: uploadedProfilePhoto,
-      experienceDetails, workingLocations, availableTimings
+      experienceDetails, workingLocations, availableTimings,
+      state, city, googleMapLocation,
+      experienceCertificate: uploadedExperienceCert,
+      policeVerification: uploadedPoliceVerification,
+      additionalCertificates: uploadedAdditionalCertificates
     })
     if (updated) {
       res.json({ success: true, message: 'Caregiver details successfully updated.' })

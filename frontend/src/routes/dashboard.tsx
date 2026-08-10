@@ -8,6 +8,16 @@ import {
   Phone, Briefcase, ChevronRight, Check, DollarSign, QrCode
 } from "lucide-react";
 
+const INDIAN_STATES = [
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", 
+  "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", 
+  "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", 
+  "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", 
+  "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
+  "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu", 
+  "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
+];
+
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
@@ -39,6 +49,19 @@ interface Booking {
   amount: number;
   paymentStatus: string;
   createdAt: string;
+  patientName?: string;
+  patientAge?: string;
+  patientNeeds?: string;
+  prescription?: string;
+  googleMapLocation?: string;
+  paymentMethod?: string;
+  transactionId?: string;
+  paymentDate?: string;
+  isReviewed?: boolean;
+  review?: {
+    rating: number;
+    comment?: string;
+  };
   caregiverDetails?: {
     name: string;
     phone: string;
@@ -79,6 +102,15 @@ function CustomerDashboard() {
   const [caretakerPan, setCaretakerPan] = useState("");
   const [caretakerCertificates, setCaretakerCertificates] = useState("");
   const [caretakerProfilePhoto, setCaretakerProfilePhoto] = useState("");
+  
+  const [caretakerExperienceCertificate, setCaretakerExperienceCertificate] = useState("");
+  const [caretakerPoliceVerification, setCaretakerPoliceVerification] = useState("");
+  const [caretakerAdditionalCertificates, setCaretakerAdditionalCertificates] = useState("");
+  
+  const [caretakerState, setCaretakerState] = useState("");
+  const [caretakerCity, setCaretakerCity] = useState("");
+  const [caretakerGoogleMapLocation, setCaretakerGoogleMapLocation] = useState("");
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   
   const [isCaretakerSaving, setIsCaretakerSaving] = useState(false);
   const [caretakerError, setCaretakerError] = useState<string | null>(null);
@@ -162,6 +194,12 @@ function CustomerDashboard() {
       setCaretakerPan(details.pan || "");
       setCaretakerCertificates(details.certificates || "");
       setCaretakerProfilePhoto(details.profilePhoto || "");
+      setCaretakerState(details.state || "");
+      setCaretakerCity(details.city || "");
+      setCaretakerGoogleMapLocation(details.googleMapLocation || "");
+      setCaretakerExperienceCertificate(details.experienceCertificate || "");
+      setCaretakerPoliceVerification(details.policeVerification || "");
+      setCaretakerAdditionalCertificates(details.additionalCertificates || "");
     } catch (err: any) {
       setCaretakerError(err.message || "Failed to load profile.");
     } finally {
@@ -194,7 +232,13 @@ function CustomerDashboard() {
           aadhaar: caretakerAadhaar,
           pan: caretakerPan,
           certificates: caretakerCertificates,
-          profilePhoto: caretakerProfilePhoto
+          profilePhoto: caretakerProfilePhoto,
+          state: caretakerState,
+          city: caretakerCity,
+          googleMapLocation: caretakerGoogleMapLocation,
+          experienceCertificate: caretakerExperienceCertificate,
+          policeVerification: caretakerPoliceVerification,
+          additionalCertificates: caretakerAdditionalCertificates
         })
       });
       const data = await res.json();
@@ -237,6 +281,11 @@ function CustomerDashboard() {
   const [patientAge, setPatientAge] = useState("");
   const [patientNeeds, setPatientNeeds] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"pay_later" | "card" | "upi">("pay_later");
+  
+  const [prescriptionFile, setPrescriptionFile] = useState("");
+  const [bookingGoogleMapLocation, setBookingGoogleMapLocation] = useState("");
+  const [isFetchingLocationBooking, setIsFetchingLocationBooking] = useState(false);
+  const [agreeTermsBooking, setAgreeTermsBooking] = useState(false);
   
   // Card states
   const [cardNumber, setCardNumber] = useState("");
@@ -370,8 +419,11 @@ function CustomerDashboard() {
             patientName,
             patientAge,
             patientNeeds,
-            paymentMethod: paymentMethod === "pay_later" ? "Pay Later" : "Online Paid",
-            paymentStatus: payStatus
+            paymentMethod,
+            paymentStatus: payStatus,
+            userId: user.id,
+            prescription: prescriptionFile,
+            googleMapLocation: bookingGoogleMapLocation
           })
         });
         const data = await res.json();
@@ -385,6 +437,9 @@ function CustomerDashboard() {
         setPatientName("");
         setPatientAge("");
         setPatientNeeds("");
+        setPrescriptionFile("");
+        setBookingGoogleMapLocation("");
+        setAgreeTermsBooking(false);
       } catch (err: any) {
         alert("Booking failed: " + err.message);
       } finally {
@@ -793,6 +848,94 @@ function CustomerDashboard() {
                     </select>
                   </div>
 
+                  {/* Address Section */}
+                  <div className="md:col-span-2 border border-slate-100 rounded-2xl p-4 bg-slate-50/50 space-y-4">
+                    <div className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-1.5">
+                      Address Details
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">State</label>
+                        <select
+                          required
+                          value={caretakerState}
+                          onChange={(e) => setCaretakerState(e.target.value)}
+                          className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                        >
+                          <option value="">Select State</option>
+                          {INDIAN_STATES.map((st) => (
+                            <option key={st} value={st}>{st}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">City</label>
+                        <input
+                          type="text"
+                          required
+                          value={caretakerCity}
+                          onChange={(e) => setCaretakerCity(e.target.value)}
+                          placeholder="e.g. Hyderabad"
+                          className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Google Map Location</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          required
+                          value={caretakerGoogleMapLocation}
+                          placeholder="Fetch map coordinates..."
+                          className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-100 outline-none truncate"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!navigator.geolocation) {
+                              alert("Geolocation is not supported by your browser");
+                              return;
+                            }
+                            setIsFetchingLocation(true);
+                            navigator.geolocation.getCurrentPosition(
+                              (position) => {
+                                const lat = position.coords.latitude;
+                                const lng = position.coords.longitude;
+                                setCaretakerGoogleMapLocation(`https://www.google.com/maps?q=${lat},${lng}`);
+                                setIsFetchingLocation(false);
+                              },
+                              (err) => {
+                                alert("Failed to fetch location. Please ensure location permissions are enabled.");
+                                setIsFetchingLocation(false);
+                              }
+                            );
+                          }}
+                          disabled={isFetchingLocation}
+                          className="px-3 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl flex items-center gap-1 shrink-0 disabled:opacity-50 cursor-pointer"
+                        >
+                          {isFetchingLocation ? "Fetching..." : "Fetch GPS Location"}
+                        </button>
+                      </div>
+                      {caretakerGoogleMapLocation && (
+                        <div className="flex items-center justify-between text-[10px] mt-1">
+                          <span className="text-emerald-600 font-semibold flex items-center gap-1">
+                            ✓ Geolocation fetched!
+                          </span>
+                          <a
+                            href={caretakerGoogleMapLocation}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-indigo-600 hover:underline font-semibold"
+                          >
+                            Open on Google Maps
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Working Locations (Areas)</label>
                     <input
@@ -882,7 +1025,7 @@ function CustomerDashboard() {
 
                     {/* Certificates */}
                     <div className="space-y-2">
-                      <label className="block text-[11px] font-bold text-slate-600">Nursing / Care Certificates</label>
+                      <label className="block text-[11px] font-bold text-slate-600">Educational Qualification Cert(s)</label>
                       <div className="flex items-center gap-2">
                         <input
                           type="file"
@@ -898,6 +1041,72 @@ function CustomerDashboard() {
                       ) : (
                         <span className="inline-flex items-center gap-1 text-[10px] text-rose-500 font-semibold bg-rose-50 px-2 py-0.5 rounded-full">
                           ⚠ Missing Document
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Experience Certificate */}
+                    <div className="space-y-2">
+                      <label className="block text-[11px] font-bold text-slate-600">Experience Certificate(s)</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          onChange={(e) => handleCaretakerFileChange(e, setCaretakerExperienceCertificate)}
+                          className="w-full text-[11px] text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+                        />
+                      </div>
+                      {caretakerExperienceCertificate ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full">
+                          ✓ Document Uploaded
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 font-semibold bg-slate-50 px-2 py-0.5 rounded-full">
+                          Optional Document
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Police Verification */}
+                    <div className="space-y-2">
+                      <label className="block text-[11px] font-bold text-slate-600">Police Verification Cert (Mandatory for Non-Local)</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          onChange={(e) => handleCaretakerFileChange(e, setCaretakerPoliceVerification)}
+                          className="w-full text-[11px] text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+                        />
+                      </div>
+                      {caretakerPoliceVerification ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full">
+                          ✓ Document Uploaded
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 font-semibold bg-slate-50 px-2 py-0.5 rounded-full">
+                          Optional / Pending
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Additional Certificates */}
+                    <div className="space-y-2 md:col-span-3">
+                      <label className="block text-[11px] font-bold text-slate-600">Any Additional Certification(s) relevant</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          onChange={(e) => handleCaretakerFileChange(e, setCaretakerAdditionalCertificates)}
+                          className="w-full text-[11px] text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+                        />
+                      </div>
+                      {caretakerAdditionalCertificates ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full">
+                          ✓ Document Uploaded
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 font-semibold bg-slate-50 px-2 py-0.5 rounded-full">
+                          Optional
                         </span>
                       )}
                     </div>
@@ -1115,6 +1324,44 @@ function CustomerDashboard() {
                             <span className="text-slate-600 flex items-start gap-1">
                               <MapPin className="h-3.5 w-3.5 text-slate-400 mt-0.5 shrink-0" /> {booking.address}
                             </span>
+                          </div>
+                        )}
+
+                        {(booking.patientName || booking.prescription || booking.googleMapLocation) && (
+                          <div className="text-xs pt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 border-t border-slate-100/50 mt-2">
+                            {booking.patientName && (
+                              <div>
+                                <span className="text-slate-400 block mb-0.5">Patient Details</span>
+                                <span className="text-slate-700 font-semibold">
+                                  👤 {booking.patientName} ({booking.patientAge} years)
+                                </span>
+                                {booking.patientNeeds && (
+                                  <p className="text-[10px] text-slate-500 italic mt-0.5">Needs: {booking.patientNeeds}</p>
+                                )}
+                              </div>
+                            )}
+                            <div className="space-y-1">
+                              {booking.googleMapLocation && (
+                                <a 
+                                  href={booking.googleMapLocation} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="text-[10px] text-indigo-600 hover:underline font-bold block"
+                                >
+                                  🗺 Open Google Map Location
+                                </a>
+                              )}
+                              {booking.prescription && (
+                                <a 
+                                  href={booking.prescription} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="text-[10px] text-emerald-600 hover:underline font-bold block"
+                                >
+                                  📄 Doctor Prescription / Case File
+                                </a>
+                              )}
+                            </div>
                           </div>
                         )}
 
@@ -1360,7 +1607,7 @@ function CustomerDashboard() {
                       onChange={(e) => setBookingDuration(e.target.value)}
                       className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
                     >
-                      <option value="Hourly">Hourly (2-4 Hours)</option>
+                      <option value="Hourly">Hourly</option>
                       <option value="Daily">Daily (24 Hours shift)</option>
                       <option value="Weekly">Weekly Contract</option>
                       <option value="Monthly">Monthly Contract</option>
@@ -1442,6 +1689,67 @@ function CustomerDashboard() {
                     placeholder="Enter complete delivery address"
                     className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
                   />
+                </div>
+
+                {/* Google Map Location */}
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Google Map Location</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      required
+                      value={bookingGoogleMapLocation}
+                      placeholder="Fetch map coordinates..."
+                      className="flex-1 px-3 py-2 text-xs rounded-md border border-slate-200 bg-slate-100 outline-none truncate"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!navigator.geolocation) {
+                          alert("Geolocation is not supported by your browser");
+                          return;
+                        }
+                        setIsFetchingLocationBooking(true);
+                        navigator.geolocation.getCurrentPosition(
+                          (position) => {
+                            const lat = position.coords.latitude;
+                            const lng = position.coords.longitude;
+                            setBookingGoogleMapLocation(`https://www.google.com/maps?q=${lat},${lng}`);
+                            setIsFetchingLocationBooking(false);
+                          },
+                          (err) => {
+                            alert("Failed to fetch location. Please ensure location permissions are enabled.");
+                            setIsFetchingLocationBooking(false);
+                          }
+                        );
+                      }}
+                      disabled={isFetchingLocationBooking}
+                      className="px-3 py-2 bg-gold hover:bg-gold/90 text-slate-900 text-xs font-semibold rounded-md flex items-center gap-1 shrink-0 disabled:opacity-50 cursor-pointer"
+                    >
+                      {isFetchingLocationBooking ? "Fetching..." : "Fetch GPS Location"}
+                    </button>
+                  </div>
+                  {bookingGoogleMapLocation && (
+                    <p className="text-[10px] text-emerald-600 mt-1 flex items-center gap-1">
+                      ✓ Geolocation fetched exactly!
+                    </p>
+                  )}
+                </div>
+
+                {/* Document Upload: doctor prescription or Case file */}
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Doctor Prescription or Case of the File (PDF/Image)</label>
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    required
+                    onChange={(e) => handleCaretakerFileChange(e, setPrescriptionFile)}
+                    className="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+                  />
+                  {prescriptionFile && (
+                    <p className="text-[10px] text-emerald-600 mt-1 font-semibold">✓ Document loaded successfully</p>
+                  )}
                 </div>
 
                 {/* Payment selection */}
@@ -1552,6 +1860,99 @@ function CustomerDashboard() {
                   </div>
                 )}
 
+                {/* Terms and Conditions of Patient booking */}
+                <div className="border border-slate-200/60 rounded-2xl p-4 bg-slate-50/50 space-y-3">
+                  <div className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-1.5">
+                    Amma Seva – Patient Booking Terms &amp; Conditions
+                  </div>
+                  <div className="max-h-36 overflow-y-auto border border-slate-200/80 rounded-lg p-3 bg-white text-[11px] text-slate-600 leading-relaxed font-mono space-y-2">
+                    <p className="font-semibold text-slate-700">Effective Date: 06/08/2026</p>
+                    <p>Welcome to Amma Seva. By booking or using our services, you agree to the following Terms &amp; Conditions.</p>
+                    
+                    <p className="font-semibold text-slate-800">1. Service Scope</p>
+                    <p>Amma Seva is a technology-enabled platform that connects clients with qualified nurses, caregivers, attendants, and home healthcare professionals.</p>
+                    
+                    <p className="font-semibold text-slate-800">2. Booking Confirmation</p>
+                    <p>A booking is confirmed only after acceptance by Amma Seva and successful payment (where applicable).</p>
+                    
+                    <p className="font-semibold text-slate-800">3. Service Charges</p>
+                    <p>Service charges vary depending on the type of service, duration, location, and special requirements.</p>
+                    
+                    <p className="font-semibold text-slate-800">4. Payment Terms</p>
+                    <p>Payments shall be made through the approved payment methods provided by Amma Seva. Outstanding dues must be cleared before future bookings.</p>
+                    
+                    <p className="font-semibold text-slate-800">5. Cancellation &amp; Rescheduling</p>
+                    <p>Cancellation or rescheduling is subject to Amma Seva's Cancellation &amp; Refund Policy.</p>
+                    
+                    <p className="font-semibold text-slate-800">6. Working Hours</p>
+                    <p>Caregivers will provide services only during the booked time. Extra hours will be charged separately.</p>
+                    
+                    <p className="font-semibold text-slate-800">7. No Medical Advice or Prescription</p>
+                    <p>Amma Seva does not diagnose illnesses, prescribe medications, recommend treatments, or sell/promote medicines. Our nurses and caregivers provide care strictly according to the treating doctor's valid prescription and instructions.</p>
+                    
+                    <p className="font-semibold text-slate-800">8. Emergency Services</p>
+                    <p>Amma Seva is not an emergency medical service. In case of a medical emergency, clients must immediately contact the nearest hospital or ambulance service.</p>
+                    
+                    <p className="font-semibold text-slate-800">9. Patient Information</p>
+                    <p>Clients must provide complete and accurate medical history, medications, allergies, and emergency contact details.</p>
+                    
+                    <p className="font-semibold text-slate-800">10. Client Responsibilities</p>
+                    <p>Clients shall provide a safe, hygienic, and respectful environment for caregivers while services are being provided.</p>
+                    
+                    <p className="font-semibold text-slate-800">11. Caregiver Safety</p>
+                    <p>Abusive behavior, harassment, violence, discrimination, or illegal activities towards caregivers will result in immediate termination of services.</p>
+                    
+                    <p className="font-semibold text-slate-800">12. Direct Engagement</p>
+                    <p>If a client or caregiver directly engages with each other without Amma Seva's knowledge or authorization, Amma Seva shall not be responsible for any payments, disputes, liabilities, damages, or consequences arising from such independent arrangements.</p>
+                    
+                    <p className="font-semibold text-slate-800">13. No Employment Relationship</p>
+                    <p>Using Amma Seva does not create an employer-employee relationship between the client and the caregiver.</p>
+                    
+                    <p className="font-semibold text-slate-800">14. No Guarantee of Medical Outcome</p>
+                    <p>Amma Seva does not guarantee recovery, cure, or any specific medical outcome.</p>
+                    
+                    <p className="font-semibold text-slate-800">15. Confidentiality</p>
+                    <p>Patient information will be kept confidential and handled in accordance with applicable privacy laws.</p>
+                    
+                    <p className="font-semibold text-slate-800">16. Personal Belongings</p>
+                    <p>Amma Seva is not responsible for the loss of cash, jewellery, valuables, or personal belongings kept at the client's premises.</p>
+                    
+                    <p className="font-semibold text-slate-800">17. Background Verification</p>
+                    <p>Amma Seva makes reasonable efforts to verify the identity and qualifications of caregivers but cannot guarantee their conduct beyond the services provided.</p>
+                    
+                    <p className="font-semibold text-slate-800">18. Service Refusal</p>
+                    <p>Amma Seva reserves the right to refuse, suspend, or terminate services in cases of abuse, unsafe conditions, non-payment, or violation of these Terms.</p>
+                    
+                    <p className="font-semibold text-slate-800">19. Force Majeure</p>
+                    <p>Amma Seva shall not be liable for delays or service interruptions caused by events beyond its reasonable control, including natural disasters, government restrictions, strikes, epidemics, or technical failures.</p>
+                    
+                    <p className="font-semibold text-slate-800">20. Intellectual Property</p>
+                    <p>The Amma Seva name, logo, website, mobile application, and related content are the intellectual property of Amma Seva and may not be copied or used without prior written permission.</p>
+                    
+                    <p className="font-semibold text-slate-800">21. Jurisdiction</p>
+                    <p>Any disputes arising from these Terms &amp; Conditions shall be subject to the exclusive jurisdiction of the competent courts where Amma Seva is registered.</p>
+                    
+                    <p className="font-semibold text-slate-800">22. Amendments</p>
+                    <p>Amma Seva reserves the right to modify these Terms &amp; Conditions at any time. Updated versions will be published on the official website and mobile application.</p>
+                    
+                    <p className="font-semibold text-slate-800">23. Acceptance</p>
+                    <p>By using Amma Seva's services, the client confirms that they have read, understood, and agreed to these Terms &amp; Conditions.</p>
+                  </div>
+                  
+                  <label className="flex items-start gap-2.5 mt-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      required
+                      checked={agreeTermsBooking}
+                      onChange={(e) => setAgreeTermsBooking(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                    />
+                    <span className="text-[11px] font-semibold text-slate-600 select-none">
+                      I have read and agree to the Amma Seva Patient Booking Terms &amp; Conditions
+                    </span>
+                  </label>
+                </div>
+
                 {/* Cost Summary & Submission */}
                 <div className="border-t border-slate-100 pt-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50 -mx-6 -mb-6 p-6 rounded-b-3xl">
                   <div>
@@ -1562,7 +1963,7 @@ function CustomerDashboard() {
                   
                   <button
                     type="submit"
-                    disabled={isSubmitting || isPaymentProcessing}
+                    disabled={isSubmitting || isPaymentProcessing || !agreeTermsBooking}
                     className="btn-primary py-2.5 px-6 font-semibold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 w-full sm:w-auto"
                   >
                     {(isSubmitting || isPaymentProcessing) && <RefreshCw className="h-4 w-4 animate-spin" />}
