@@ -6,7 +6,7 @@ import {
   Users, Calendar, DollarSign, ShieldAlert, LogOut, CheckCircle2, 
   XCircle, Edit3, Save, Check, LayoutDashboard, CalendarDays,
   UserCheck, MessageSquare, Sliders, Bell, Search, Plus, Send, TrendingDown,
-  ArrowUpRight, Star
+  ArrowUpRight, Star, BookOpen
 } from "lucide-react";
 
 const INDIAN_STATES = [
@@ -127,7 +127,7 @@ function AdminPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem("ammaseva_admin_token"));
 
   // Navigation and Search
-  const [activeTab, setActiveTab] = useState<"overview" | "bookings" | "caregivers" | "enquiries" | "services" | "users" | "notifications" | "payments">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "bookings" | "caregivers" | "enquiries" | "services" | "users" | "notifications" | "payments" | "blogs">("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -139,9 +139,10 @@ function AdminPage() {
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [services, setServices] = useState<ServiceRecord[]>([]);
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
+  const [blogs, setBlogs] = useState<any[]>([]);
 
   // Modal Control
-  const [modalType, setModalType] = useState<"booking" | "caregiver" | "service" | "notification" | null>(null);
+  const [modalType, setModalType] = useState<"booking" | "caregiver" | "service" | "notification" | "blog" | null>(null);
   const [modalMode, setModalMode] = useState<"add" | "edit">("add");
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
@@ -193,6 +194,17 @@ function AdminPage() {
   const [serviceDuration, setServiceDuration] = useState("");
   const [serviceComingSoon, setServiceComingSoon] = useState(false);
   const [serviceImage, setServiceImage] = useState("");
+  const [serviceAbout, setServiceAbout] = useState("");
+  const [serviceHighlights, setServiceHighlights] = useState("");
+  const [serviceImages, setServiceImages] = useState("");
+
+  // Form states - Blog
+  const [blogTitle, setBlogTitle] = useState("");
+  const [blogDescription, setBlogDescription] = useState("");
+  const [blogContent, setBlogContent] = useState("");
+  const [blogImage, setBlogImage] = useState("");
+  const [blogCategory, setBlogCategory] = useState("General");
+  const [blogAuthor, setBlogAuthor] = useState("Amma Seva Care Team");
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setFileState: (val: string) => void) => {
     const file = e.target.files?.[0];
@@ -227,13 +239,14 @@ function AdminPage() {
     setError(null);
     const token = localStorage.getItem("ammaseva_admin_token");
     try {
-      const [bookingsRes, caregiversRes, enquiriesRes, usersRes, servicesRes, notificationsRes] = await Promise.all([
+      const [bookingsRes, caregiversRes, enquiriesRes, usersRes, servicesRes, notificationsRes, blogsRes] = await Promise.all([
         fetch("/api/bookings", { headers: { "Authorization": `Bearer ${token}` } }).then(res => res.json()),
         fetch("/api/caregivers", { headers: { "Authorization": `Bearer ${token}` } }).then(res => res.json()),
         fetch("/api/enquiries", { headers: { "Authorization": `Bearer ${token}` } }).then(res => res.json()),
         fetch("/api/admin/users", { headers: { "Authorization": `Bearer ${token}` } }).then(res => res.json()),
         fetch("/api/services", { headers: { "Authorization": `Bearer ${token}` } }).then(res => res.json()),
-        fetch("/api/notifications", { headers: { "Authorization": `Bearer ${token}` } }).then(res => res.json())
+        fetch("/api/notifications", { headers: { "Authorization": `Bearer ${token}` } }).then(res => res.json()),
+        fetch("/api/blogs").then(res => res.json())
       ]);
       setBookings(Array.isArray(bookingsRes) ? bookingsRes : []);
       setCaregivers(Array.isArray(caregiversRes) ? caregiversRes : []);
@@ -241,6 +254,7 @@ function AdminPage() {
       setUsers(Array.isArray(usersRes) ? usersRes : []);
       setServices(Array.isArray(servicesRes) ? servicesRes : []);
       setNotifications(Array.isArray(notificationsRes) ? notificationsRes : []);
+      setBlogs(Array.isArray(blogsRes) ? blogsRes : []);
     } catch (err) {
       console.error(err);
       setError("Failed to sync database logs. Please verify backend state.");
@@ -353,6 +367,23 @@ function AdminPage() {
     }
   };
 
+  const handleDeleteBlog = (id: number) => {
+    if (window.confirm("Are you sure you want to permanently delete this health blog article?")) {
+      const token = localStorage.getItem("ammaseva_admin_token");
+      fetch(`/api/blogs/${id}`, { 
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setBlogs(prev => prev.filter(b => b.id !== id));
+          }
+        })
+        .catch(err => console.error(err));
+    }
+  };
+
   const handleDeleteEnquiry = (id: number) => {
     if (window.confirm("Are you sure you want to delete this customer inquiry lead?")) {
       const token = localStorage.getItem("ammaseva_admin_token");
@@ -422,6 +453,16 @@ function AdminPage() {
       setServiceCategory("care");
       setServiceComingSoon(false);
       setServiceImage("");
+      setServiceAbout("");
+      setServiceHighlights("");
+      setServiceImages("");
+    } else if (type === "blog") {
+      setBlogTitle("");
+      setBlogDescription("");
+      setBlogContent("");
+      setBlogImage("");
+      setBlogCategory("General");
+      setBlogAuthor("Amma Seva Care Team");
     } else if (type === "notification") {
       setNotifRecipient("All Users");
       setNotifMessage("");
@@ -429,7 +470,7 @@ function AdminPage() {
     }
   };
 
-  const openEditModal = (type: "booking" | "caregiver" | "service", record: any) => {
+  const openEditModal = (type: "booking" | "caregiver" | "service" | "blog", record: any) => {
     setModalType(type);
     setModalMode("edit");
     setSelectedId(record.id);
@@ -440,22 +481,27 @@ function AdminPage() {
       setBookingService(record.service);
       setBookingDate(record.date);
       setBookingTime(record.time);
-      setBookingDuration(record.duration);
+      setBookingDuration(record.duration || "Daily");
       setBookingAddress(record.address);
-      setBookingAmount(record.amount.toString());
-      setBookingStatus(record.status);
+      setBookingStatus(record.status || "Pending");
       setBookingAssignedStaff(record.assignedStaff || "");
-      setBookingPaymentStatus(record.paymentStatus);
-      setBookingPaymentMethod(record.paymentMethod || "UPI");
+      setBookingAmount(record.amount?.toString() || "0");
+      setBookingPaymentStatus(record.paymentStatus || "Unpaid");
+      setBookingPaymentMethod(record.paymentMethod || "");
       setBookingTransactionId(record.transactionId || "");
       setBookingPaymentDate(record.paymentDate || "");
+      setBookingPatientName(record.patientName || "");
+      setBookingPatientAge(record.patientAge || "");
+      setBookingPatientNeeds(record.patientNeeds || "");
+      setBookingPrescription(record.prescription || "");
+      setBookingGoogleMapLocation(record.googleMapLocation || "");
     } else if (type === "caregiver") {
       setCaregiverName(record.name);
       setCaregiverPhone(record.phone);
       setCaregiverEmail(record.email || "");
       setCaregiverSpecialty(record.specialty);
-      setCaregiverExperience(record.experience.toString());
-      setCaregiverStatus(record.status);
+      setCaregiverExperience(record.experience?.toString() || "0");
+      setCaregiverStatus(record.status || "Pending");
       setCaregiverAadhaar(record.aadhaar || "");
       setCaregiverPan(record.pan || "");
       setCaregiverCertificates(record.certificates || "");
@@ -479,6 +525,16 @@ function AdminPage() {
       setServiceCategory(record.category || "care");
       setServiceComingSoon(!!record.comingSoon);
       setServiceImage(record.image || "");
+      setServiceAbout(record.about || "");
+      setServiceHighlights(Array.isArray(record.highlights) ? record.highlights.join("\n") : "");
+      setServiceImages(Array.isArray(record.images) ? record.images.join("\n") : "");
+    } else if (type === "blog") {
+      setBlogTitle(record.title);
+      setBlogDescription(record.description || "");
+      setBlogContent(record.content || "");
+      setBlogImage(record.image || "");
+      setBlogCategory(record.category || "General");
+      setBlogAuthor(record.author || "Amma Seva Care Team");
     }
   };
 
@@ -552,7 +608,22 @@ function AdminPage() {
         price: servicePrice,
         category: serviceCategory,
         comingSoon: serviceComingSoon,
-        image: serviceImage
+        image: serviceImage,
+        about: serviceAbout,
+        highlights: serviceHighlights.split("\n").map(h => h.trim()).filter(Boolean),
+        images: serviceImages.split("\n").map(img => img.trim()).filter(Boolean)
+      };
+    } else if (modalType === "blog") {
+      url = modalMode === "add" ? "/api/blogs" : `/api/blogs/${selectedId}`;
+      method = modalMode === "add" ? "POST" : "PUT";
+      bodyData = {
+        title: blogTitle,
+        slug: blogTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''),
+        description: blogDescription,
+        content: blogContent,
+        image: blogImage,
+        category: blogCategory,
+        author: blogAuthor
       };
     } else if (modalType === "notification") {
       url = "/api/notifications";
@@ -738,7 +809,8 @@ function AdminPage() {
             { id: "services", label: "Services", icon: Sliders },
             { id: "payments", label: "Payment Status", icon: DollarSign },
             { id: "notifications", label: "Alert Notifications", icon: Bell },
-            { id: "enquiries", label: "Customer Leads", icon: MessageSquare }
+            { id: "enquiries", label: "Customer Leads", icon: MessageSquare },
+            { id: "blogs", label: "Health Blogs", icon: BookOpen }
           ].map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -1646,6 +1718,76 @@ function AdminPage() {
             </div>
           )}
 
+          {/* Blogs Management Panel */}
+          {activeTab === "blogs" && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm">
+                <div className="text-left">
+                  <h3 className="text-lg font-bold text-primary font-display">Health Articles &amp; Blogs</h3>
+                  <p className="text-xs text-slate-400 mt-1">Publish and manage clinical advice pages for the Amma Seva Blog.</p>
+                </div>
+                <button
+                  onClick={() => {
+                    resetForm("blog");
+                    setModalMode("add");
+                    setModalType("blog");
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-primary hover:bg-[#1a2d5e] text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                >
+                  <Plus className="h-4 w-4" /> Add Blog Post
+                </button>
+              </div>
+
+              <div className="grid gap-4">
+                {blogs.filter(b => b.title.toLowerCase().includes(searchQuery.toLowerCase()) || b.category.toLowerCase().includes(searchQuery.toLowerCase())).map((b) => (
+                  <div
+                    key={b.id}
+                    className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col sm:flex-row gap-5 items-start sm:items-center"
+                  >
+                    {b.image && (
+                      <div className="h-20 w-32 rounded-xl overflow-hidden shrink-0 border border-slate-100 bg-slate-50">
+                        <img src={b.image} className="w-full h-full object-cover" alt="" />
+                      </div>
+                    )}
+                    <div className="flex-1 text-left space-y-1.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider bg-gold/10 text-gold border border-gold/20 px-2 py-0.5 rounded">
+                          {b.category}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-medium">
+                          📅 {b.date} | ✍️ {b.author}
+                        </span>
+                      </div>
+                      <h4 className="text-base font-bold text-primary leading-snug">{b.title}</h4>
+                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{b.description}</p>
+                    </div>
+
+                    <div className="flex gap-2 shrink-0 w-full sm:w-auto justify-end">
+                      <button
+                        onClick={() => openEditModal("blog", b)}
+                        className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteBlog(b.id)}
+                        className="p-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                {blogs.length === 0 && (
+                  <div className="text-center py-16 border border-dashed border-slate-200 rounded-3xl bg-white p-6">
+                    <p className="text-slate-400 text-sm font-semibold">No health articles loaded. Click "Add Blog Post" to publish the first guide!</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
         </main>
       </div>
 
@@ -2129,6 +2271,120 @@ function AdminPage() {
                         className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 font-mono text-xs"
                       />
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">About Service (Detailed narrative)</label>
+                      <textarea 
+                        rows={5} value={serviceAbout} onChange={e => setServiceAbout(e.target.value)}
+                        placeholder="Detailed narrative about the service for the details page..."
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 text-sm"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div>
+                        <div className="flex justify-between items-center mb-1">
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Service Highlights (Features)</label>
+                          <span className="text-[10px] text-slate-400 font-medium">One per line</span>
+                        </div>
+                        <textarea 
+                          rows={2} value={serviceHighlights} onChange={e => setServiceHighlights(e.target.value)}
+                          placeholder="e.g.&#10;Verified Professionals&#10;24/7 Helpline Support"
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 font-mono text-xs"
+                        />
+                      </div>
+                      <div>
+                        <div className="flex justify-between items-center mb-1">
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Additional Images (URLs)</label>
+                          <span className="text-[10px] text-slate-400 font-medium">One URL per line</span>
+                        </div>
+                        <textarea 
+                          rows={2} value={serviceImages} onChange={e => setServiceImages(e.target.value)}
+                          placeholder="e.g.&#10;https://example.com/gallery1.jpg&#10;https://example.com/gallery2.jpg"
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 font-mono text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {modalType === "blog" && (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Blog Title</label>
+                      <input 
+                        type="text" required value={blogTitle} onChange={e => setBlogTitle(e.target.value)}
+                        placeholder="e.g. Caring for a bedridden parent: a family guide"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 text-slate-800"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Category</label>
+                      <input 
+                        type="text" required value={blogCategory} onChange={e => setBlogCategory(e.target.value)}
+                        placeholder="e.g. Elderly Care, Maternal, Clinical"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 text-slate-800"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Author Name</label>
+                      <input 
+                        type="text" required value={blogAuthor} onChange={e => setBlogAuthor(e.target.value)}
+                        placeholder="e.g. Dr. Lakshmi Prasad"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 text-slate-800"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Blog Banner Image (Upload file OR Enter URL)</label>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          {blogImage && (
+                            <img 
+                              src={blogImage} 
+                              className="h-10 w-10 rounded-lg object-cover border border-slate-200 shrink-0" 
+                              alt="Blog Preview" 
+                            />
+                          )}
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            onChange={e => handleFileChange(e, setBlogImage)}
+                            className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer"
+                          />
+                        </div>
+                        <input 
+                          type="text" 
+                          placeholder="Or paste image URL"
+                          value={blogImage.startsWith("data:") ? "" : blogImage}
+                          onChange={e => setBlogImage(e.target.value)}
+                          className="w-full pl-3 pr-2 py-1 text-xs border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 text-slate-800"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Short Description (Excerpt)</label>
+                    <input 
+                      type="text" required value={blogDescription} onChange={e => setBlogDescription(e.target.value)}
+                      placeholder="Enter a brief one-line summary for the blog cards listing..."
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 text-slate-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Blog Post Content (Markdown / Text)</label>
+                    <textarea 
+                      required rows={8} value={blogContent} onChange={e => setBlogContent(e.target.value)}
+                      placeholder="Write your detailed care article guidelines here..."
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 text-slate-800 text-xs font-mono"
+                    />
                   </div>
                 </>
               )}

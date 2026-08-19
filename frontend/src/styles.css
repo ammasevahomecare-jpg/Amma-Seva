@@ -145,12 +145,12 @@
 @utility gold-rule {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  &::before, &::after {
+  gap: 0.75rem;
+  &::after {
     content: "";
     display: inline-block;
-    width: 2rem;
-    height: 1px;
+    width: 3rem;
+    height: 1.5px;
     background: var(--gold);
   }
 }
@@ -160,13 +160,21 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
+  padding: 0.65rem 1.5rem;
+  border-radius: 1.5rem 0.25rem;
   background: var(--primary);
   color: var(--primary-foreground);
   font-weight: 500;
-  transition: background 0.2s, transform 0.2s;
-  &:hover { background: color-mix(in oklab, var(--primary) 88%, black); }
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px -4px rgba(30, 42, 90, 0.1);
+  &:hover {
+    background: color-mix(in oklab, var(--primary) 92%, black);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px -6px var(--primary);
+  }
+  &:active {
+    transform: translateY(0);
+  }
 }
 
 @utility btn-gold {
@@ -174,13 +182,21 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
+  padding: 0.65rem 1.5rem;
+  border-radius: 1.5rem 0.25rem;
   background: var(--gold);
   color: var(--gold-foreground);
   font-weight: 500;
-  transition: background 0.2s;
-  &:hover { background: color-mix(in oklab, var(--gold) 88%, black); }
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px -4px rgba(201, 162, 76, 0.1);
+  &:hover {
+    background: color-mix(in oklab, var(--gold) 92%, black);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px -6px var(--gold);
+  }
+  &:active {
+    transform: translateY(0);
+  }
 }
 
 @utility btn-outline {
@@ -188,12 +204,20 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
+  padding: 0.65rem 1.5rem;
+  border-radius: 1.5rem 0.25rem;
   border: 1px solid var(--primary);
   color: var(--primary);
   background: transparent;
   font-weight: 500;
-  transition: background 0.2s;
-  &:hover { background: var(--primary); color: var(--primary-foreground); }
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  &:hover {
+    background: var(--primary);
+    color: var(--primary-foreground);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px -6px var(--primary);
+  }
+  &:active {
+    transform: translateY(0);
+  }
 }

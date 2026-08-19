@@ -23,7 +23,42 @@ const DEFAULT_MOCK_DATA = {
   services: [],
   notifications: [],
   reviews: [],
-  announcements: []
+  announcements: [],
+  blogs: [
+    {
+      id: 1,
+      title: "5 things to prepare before bringing your newborn home",
+      slug: "prepare-before-bringing-newborn-home",
+      description: "A calm, well-prepared home makes those first weeks so much easier — here's a gentle checklist.",
+      content: "Bringing a newborn home is one of the most beautiful and overwhelming moments of life. To help you transition smoothly, here are 5 key things to prepare:\n\n1. Set up a dedicated nursing and diapering station.\n2. Stock up on postpartum recovery essentials for the mother.\n3. Prepare a safe sleep space (like a certified crib or bassinet).\n4. Sterilize bottles, pump parts, and newborn clothes ahead of time.\n5. Keep a list of contact numbers for your pediatrician and lactation advisor.\n\nAmma Seva's trained maternal caregivers are always ready to support you with professional, motherly care.",
+      image: "service-mother-baby.jpg",
+      category: "Maternal",
+      author: "Amma Seva Care Team",
+      date: "2026-08-17"
+    },
+    {
+      id: 2,
+      title: "Caring for a bedridden parent: a family guide",
+      slug: "caring-for-bedridden-parent-family-guide",
+      description: "Simple daily routines that keep your loved one comfortable, safe and dignified.",
+      content: "Caring for a bedridden loved one requires patience, empathy, and proper technique. This guide offers essential routines:\n\n1. Prevent pressure sores (bedsores) by shifting positions every 2 hours.\n2. Ensure proper hygiene with gentle sponge baths and skin moisturizing.\n3. Pay close attention to hydration and a balanced soft-diet.\n4. Perform passive range-of-motion exercises to maintain joint flexibility.\n5. Maintain a positive, cheerful atmosphere in their room to support mental health.\n\nOur professional patient care attendants at Amma Seva are trained specifically in caring for bedridden patients with high dignity.",
+      image: "service-elderly.jpg",
+      category: "Elderly Care",
+      author: "Dr. Lakshmi Prasad",
+      date: "2026-08-15"
+    },
+    {
+      id: 3,
+      title: "Post-surgery recovery at home: what to expect",
+      slug: "post-surgery-recovery-home-expectations",
+      description: "Wound care, nutrition and mobility — a week-by-week overview for families.",
+      content: "Recovering from surgery at home can feel challenging, but knowing what to expect makes a significant difference:\n\n1. Week 1 is all about rest and strict pain management as prescribed.\n2. Week 2 focuses on gentle mobility and tracking wound healing/infections.\n3. Week 3 shifts to building strength through light therapy and nutrition.\n\nAlways ensure you have a trained nurse for complex tasks like IV injections, dressing, and catheter management. Amma Seva provides full-scope home nursing for post-surgery recovery.",
+      image: "service-nursing.jpg",
+      category: "Clinical",
+      author: "Nurse Mercy K.",
+      date: "2026-08-10"
+    }
+  ]
 }
 
 // Initialize JSON database with default template
@@ -42,6 +77,7 @@ const initJSONDb = () => {
       if (!data.notifications) { data.notifications = DEFAULT_MOCK_DATA.notifications; modified = true }
       if (!data.reviews) { data.reviews = []; modified = true }
       if (!data.announcements) { data.announcements = []; modified = true }
+      if (!data.blogs) { data.blogs = DEFAULT_MOCK_DATA.blogs; modified = true }
       if (modified) {
         fs.writeFileSync(JSON_DB_PATH, JSON.stringify(data, null, 2))
       }
@@ -194,7 +230,10 @@ export const db = {
             price VARCHAR(50) NOT NULL,
             category VARCHAR(50),
             comingSoon TINYINT DEFAULT 0,
-            image LONGTEXT
+            image LONGTEXT,
+            about TEXT,
+            highlights TEXT,
+            images TEXT
           )
         `)
 
@@ -234,6 +273,20 @@ export const db = {
             message TEXT NOT NULL,
             target VARCHAR(50) NOT NULL,
             createdAt VARCHAR(255) NOT NULL
+          )
+        `)
+
+        await connection.query(`
+          CREATE TABLE IF NOT EXISTS blogs (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            title VARCHAR(255) NOT NULL,
+            slug VARCHAR(255) NOT NULL,
+            description TEXT NOT NULL,
+            content LONGTEXT NOT NULL,
+            image TEXT,
+            category VARCHAR(255),
+            author VARCHAR(255),
+            date VARCHAR(255)
           )
         `)
 
@@ -1089,6 +1142,8 @@ export const db = {
       return rows.map(row => ({
         ...row,
         benefits: row.benefits ? JSON.parse(row.benefits) : [],
+        highlights: row.highlights ? JSON.parse(row.highlights) : [],
+        images: row.images ? JSON.parse(row.images) : [],
         comingSoon: !!row.comingSoon
       }))
     } else {
@@ -1099,15 +1154,20 @@ export const db = {
   },
 
   addService: async (serviceData) => {
-    const { title, slug, short, description, benefits, duration, price, category, comingSoon = false, image = '' } = serviceData
+    const { 
+      title, slug, short, description, benefits, duration, price, category, 
+      comingSoon = false, image = '', about = '', highlights = [], images = [] 
+    } = serviceData
     const benefitsStr = Array.isArray(benefits) ? JSON.stringify(benefits) : JSON.stringify([])
+    const highlightsStr = Array.isArray(highlights) ? JSON.stringify(highlights) : JSON.stringify([])
+    const imagesStr = Array.isArray(images) ? JSON.stringify(images) : JSON.stringify([])
     const comingSoonVal = comingSoon ? 1 : 0
     if (useMySQL) {
       const [result] = await pool.query(
-        'INSERT INTO services (title, slug, short, description, benefits, duration, price, category, comingSoon, image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [title, slug, short, description, benefitsStr, duration, price, category, comingSoonVal, image]
+        'INSERT INTO services (title, slug, short, description, benefits, duration, price, category, comingSoon, image, about, highlights, images) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [title, slug, short, description, benefitsStr, duration, price, category, comingSoonVal, image, about, highlightsStr, imagesStr]
       )
-      return { id: result.insertId, title, slug, short, description, benefits, duration, price, category, comingSoon, image }
+      return { id: result.insertId, title, slug, short, description, benefits, duration, price, category, comingSoon, image, about, highlights, images }
     } else {
       const data = await readJSONDb()
       if (!data.services) data.services = []
@@ -1122,7 +1182,10 @@ export const db = {
         price,
         category,
         comingSoon: !!comingSoon,
-        image
+        image,
+        about,
+        highlights: Array.isArray(highlights) ? highlights : [],
+        images: Array.isArray(images) ? images : []
       }
       data.services.push(newService)
       await writeJSONDb(data)
@@ -1131,13 +1194,18 @@ export const db = {
   },
 
   updateService: async (id, serviceData) => {
-    const { title, slug, short, description, benefits, duration, price, category, comingSoon = false, image } = serviceData
+    const { 
+      title, slug, short, description, benefits, duration, price, category, 
+      comingSoon = false, image, about, highlights, images 
+    } = serviceData
     const benefitsStr = Array.isArray(benefits) ? JSON.stringify(benefits) : JSON.stringify([])
+    const highlightsStr = Array.isArray(highlights) ? JSON.stringify(highlights) : JSON.stringify([])
+    const imagesStr = Array.isArray(images) ? JSON.stringify(images) : JSON.stringify([])
     const comingSoonVal = comingSoon ? 1 : 0
     if (useMySQL) {
       const [result] = await pool.query(
-        'UPDATE services SET title = ?, slug = ?, short = ?, description = ?, benefits = ?, duration = ?, price = ?, category = ?, comingSoon = ?, image = COALESCE(?, image) WHERE id = ?',
-        [title, slug, short, description, benefitsStr, duration, price, category, comingSoonVal, image !== undefined ? image : null, id]
+        'UPDATE services SET title = ?, slug = ?, short = ?, description = ?, benefits = ?, duration = ?, price = ?, category = ?, comingSoon = ?, image = COALESCE(?, image), about = ?, highlights = ?, images = ? WHERE id = ?',
+        [title, slug, short, description, benefitsStr, duration, price, category, comingSoonVal, image !== undefined ? image : null, about, highlightsStr, imagesStr, id]
       )
       return result.affectedRows > 0
     } else {
@@ -1155,7 +1223,10 @@ export const db = {
           price,
           category,
           comingSoon: !!comingSoon,
-          image: image !== undefined ? image : data.services[idx].image
+          image: image !== undefined ? image : data.services[idx].image,
+          about: about !== undefined ? about : (data.services[idx].about || ''),
+          highlights: Array.isArray(highlights) ? highlights : (data.services[idx].highlights || []),
+          images: Array.isArray(images) ? images : (data.services[idx].images || [])
         }
         await writeJSONDb(data)
         return true
@@ -1310,6 +1381,75 @@ export const db = {
       data.announcements.push(newAnn)
       await writeJSONDb(data)
       return newAnn
+    }
+  },
+
+  getBlogs: async () => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM blogs ORDER BY id DESC')
+      return rows
+    } else {
+      const data = await readJSONDb()
+      if (!data.blogs) data.blogs = []
+      return data.blogs.slice().reverse()
+    }
+  },
+
+  addBlog: async (blog) => {
+    const date = new Date().toISOString().split('T')[0]
+    const author = blog.author || 'Amma Seva Care Team'
+    if (useMySQL) {
+      const [result] = await pool.query(
+        'INSERT INTO blogs (title, slug, description, content, image, category, author, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [blog.title, blog.slug, blog.description, blog.content, blog.image, blog.category, author, date]
+      )
+      return { id: result.insertId, ...blog, author, date }
+    } else {
+      const data = await readJSONDb()
+      if (!data.blogs) data.blogs = []
+      const newBlog = {
+        id: data.blogs.length > 0 ? Math.max(...data.blogs.map(b => b.id)) + 1 : 1,
+        ...blog,
+        author,
+        date
+      }
+      data.blogs.push(newBlog)
+      await writeJSONDb(data)
+      return newBlog
+    }
+  },
+
+  updateBlog: async (id, blog) => {
+    if (useMySQL) {
+      await pool.query(
+        'UPDATE blogs SET title = ?, slug = ?, description = ?, content = ?, image = ?, category = ?, author = ? WHERE id = ?',
+        [blog.title, blog.slug, blog.description, blog.content, blog.image, blog.category, blog.author, Number(id)]
+      )
+      return { id: Number(id), ...blog }
+    } else {
+      const data = await readJSONDb()
+      if (!data.blogs) data.blogs = []
+      const idx = data.blogs.findIndex(b => b.id === Number(id))
+      if (idx !== -1) {
+        data.blogs[idx] = { ...data.blogs[idx], ...blog }
+        await writeJSONDb(data)
+        return data.blogs[idx]
+      }
+      return null
+    }
+  },
+
+  deleteBlog: async (id) => {
+    if (useMySQL) {
+      await pool.query('DELETE FROM blogs WHERE id = ?', [Number(id)])
+      return true
+    } else {
+      const data = await readJSONDb()
+      if (!data.blogs) data.blogs = []
+      const filtered = data.blogs.filter(b => b.id !== Number(id))
+      data.blogs = filtered
+      await writeJSONDb(data)
+      return true
     }
   }
 }

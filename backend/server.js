@@ -1165,13 +1165,16 @@ app.get('/api/services', async (req, res) => {
 
 // POST add service (Admin Panel)
 app.post('/api/services', authenticateAdmin, async (req, res) => {
-  const { title, slug, short, description, benefits, duration, price, category, comingSoon, image } = req.body
+  const { title, slug, short, description, benefits, duration, price, category, comingSoon, image, about, highlights, images } = req.body
   if (!title || !price) {
     return res.status(400).json({ success: false, error: 'Title and price are required fields.' })
   }
   const slugVal = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
   try {
     const uploadedImage = image ? await uploadToCloudinary(image) : ''
+    const uploadedImages = Array.isArray(images) 
+      ? await Promise.all(images.map(img => img.startsWith('data:') ? uploadToCloudinary(img) : img))
+      : []
     const newService = await db.addService({
       title,
       slug: slugVal,
@@ -1182,7 +1185,10 @@ app.post('/api/services', authenticateAdmin, async (req, res) => {
       price,
       category: category || 'care',
       comingSoon: !!comingSoon,
-      image: uploadedImage
+      image: uploadedImage,
+      about: about || '',
+      highlights: Array.isArray(highlights) ? highlights : [],
+      images: uploadedImages
     })
     res.status(201).json({ success: true, message: 'Service successfully created.', data: newService })
   } catch (err) {
@@ -1193,13 +1199,16 @@ app.post('/api/services', authenticateAdmin, async (req, res) => {
 
 // PUT update service (Admin Panel)
 app.put('/api/services/:id', authenticateAdmin, async (req, res) => {
-  const { title, slug, short, description, benefits, duration, price, category, comingSoon, image } = req.body
+  const { title, slug, short, description, benefits, duration, price, category, comingSoon, image, about, highlights, images } = req.body
   if (!title || !price) {
     return res.status(400).json({ success: false, error: 'Title and price are required fields.' })
   }
   const slugVal = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
   try {
     const uploadedImage = image ? await uploadToCloudinary(image) : undefined
+    const uploadedImages = Array.isArray(images)
+      ? await Promise.all(images.map(img => img.startsWith('data:') ? uploadToCloudinary(img) : img))
+      : undefined
     const updated = await db.updateService(req.params.id, {
       title,
       slug: slugVal,
@@ -1210,7 +1219,10 @@ app.put('/api/services/:id', authenticateAdmin, async (req, res) => {
       price,
       category: category || 'care',
       comingSoon: !!comingSoon,
-      image: uploadedImage
+      image: uploadedImage,
+      about: about || '',
+      highlights: Array.isArray(highlights) ? highlights : [],
+      images: uploadedImages
     })
     if (updated) {
       res.json({ success: true, message: 'Service successfully updated.' })
@@ -1218,7 +1230,8 @@ app.put('/api/services/:id', authenticateAdmin, async (req, res) => {
       res.status(404).json({ error: 'Service not found.' })
     }
   } catch (err) {
-    res.status(500).json({ error: 'Failed to update service.' })
+    console.error('Failed to update service:', err)
+    res.status(500).json({ success: false, error: 'Failed to update service.' })
   }
 })
 
@@ -1233,6 +1246,84 @@ app.delete('/api/services/:id', authenticateAdmin, async (req, res) => {
     }
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete service.' })
+  }
+})
+
+// GET all blogs
+app.get('/api/blogs', async (req, res) => {
+  try {
+    const list = await db.getBlogs()
+    res.json(list)
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve blogs list.' })
+  }
+})
+
+// POST add blog (Admin Panel)
+app.post('/api/blogs', authenticateAdmin, async (req, res) => {
+  const { title, slug, description, content, image, category, author } = req.body
+  if (!title || !content) {
+    return res.status(400).json({ success: false, error: 'Title and content are required fields.' })
+  }
+  const slugVal = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
+  try {
+    const uploadedImage = image ? await uploadToCloudinary(image) : ''
+    const newBlog = await db.addBlog({
+      title,
+      slug: slugVal,
+      description: description || '',
+      content,
+      image: uploadedImage,
+      category: category || 'General',
+      author: author || 'Amma Seva Care Team'
+    })
+    res.status(201).json({ success: true, message: 'Blog successfully created.', data: newBlog })
+  } catch (err) {
+    console.error('Failed to create blog:', err)
+    res.status(500).json({ success: false, error: 'Failed to create blog.' })
+  }
+})
+
+// PUT update blog (Admin Panel)
+app.put('/api/blogs/:id', authenticateAdmin, async (req, res) => {
+  const { title, slug, description, content, image, category, author } = req.body
+  if (!title || !content) {
+    return res.status(400).json({ success: false, error: 'Title and content are required fields.' })
+  }
+  const slugVal = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
+  try {
+    const uploadedImage = image ? await uploadToCloudinary(image) : undefined
+    const updated = await db.updateBlog(req.params.id, {
+      title,
+      slug: slugVal,
+      description: description || '',
+      content,
+      image: uploadedImage,
+      category: category || 'General',
+      author: author || 'Amma Seva Care Team'
+    })
+    if (updated) {
+      res.json({ success: true, message: 'Blog successfully updated.' })
+    } else {
+      res.status(404).json({ error: 'Blog not found.' })
+    }
+  } catch (err) {
+    console.error('Failed to update blog:', err)
+    res.status(500).json({ success: false, error: 'Failed to update blog.' })
+  }
+})
+
+// DELETE blog (Admin Panel)
+app.delete('/api/blogs/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const deleted = await db.deleteBlog(req.params.id)
+    if (deleted) {
+      res.json({ success: true, message: 'Blog successfully deleted.' })
+    } else {
+      res.status(404).json({ error: 'Blog not found.' })
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete blog.' })
   }
 })
 

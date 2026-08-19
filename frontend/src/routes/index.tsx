@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
 import { Phone, Calendar, ShieldCheck, HeartHandshake, Clock, BadgeCheck, Star, ChevronRight } from "lucide-react";
 import { SiteLayout, contact } from "@/components/SiteLayout";
 import { fetchServices } from "@/lib/services";
@@ -6,6 +7,8 @@ import hero from "@/assets/hero-care.jpg";
 import motherBaby from "@/assets/service-mother-baby.jpg";
 import nursing from "@/assets/service-nursing.jpg";
 import elderly from "@/assets/service-elderly.jpg";
+
+const HERO_IMAGES = [hero, motherBaby, nursing, elderly];
 
 export const Route = createFileRoute("/")({
   loader: async () => {
@@ -40,11 +43,75 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
-const IMAGE_BY_SLUG: Record<string, string> = {
-  "mother-baby-care": motherBaby,
-  "home-nursing": nursing,
-  "elderly-care": elderly,
-};
+function getServiceDetails(slug: string) {
+  const details: Record<string, { category: string; badgeClass: string; image: string }> = {
+    "elderly-care": {
+      category: "Elderly Care",
+      badgeClass: "bg-emerald-50 text-emerald-700 border border-emerald-200/60",
+      image: elderly,
+    },
+    "mother-baby-care": {
+      category: "Maternal",
+      badgeClass: "bg-rose-50 text-rose-700 border border-rose-200/60",
+      image: motherBaby,
+    },
+    "pregnancy-care": {
+      category: "Prenatal",
+      badgeClass: "bg-indigo-50 text-indigo-700 border border-indigo-200/60",
+      image: motherBaby,
+    },
+    "newborn-baby-care": {
+      category: "Pediatric",
+      badgeClass: "bg-sky-50 text-sky-700 border border-sky-200/60",
+      image: motherBaby,
+    },
+    "home-nursing": {
+      category: "Clinical",
+      badgeClass: "bg-cyan-50 text-cyan-700 border border-cyan-200/60",
+      image: nursing,
+    },
+    "injection-services": {
+      category: "Clinical",
+      badgeClass: "bg-cyan-50 text-cyan-700 border border-cyan-200/60",
+      image: nursing,
+    },
+    "post-surgery-care": {
+      category: "Recovery",
+      badgeClass: "bg-amber-50 text-amber-700 border border-amber-200/60",
+      image: nursing,
+    },
+    "patient-care-attendant": {
+      category: "Assistance",
+      badgeClass: "bg-purple-50 text-purple-700 border border-purple-200/60",
+      image: elderly,
+    },
+    "bedridden-patient-care": {
+      category: "Specialized",
+      badgeClass: "bg-teal-50 text-teal-700 border border-teal-200/60",
+      image: elderly,
+    },
+    "icu-home-recovery": {
+      category: "Intensive",
+      badgeClass: "bg-red-50 text-red-700 border border-red-200/60",
+      image: nursing,
+    },
+    "physiotherapy": {
+      category: "Therapy",
+      badgeClass: "bg-fuchsia-50 text-fuchsia-700 border border-fuchsia-200/60",
+      image: elderly,
+    },
+    "doctor-consultation": {
+      category: "Medical",
+      badgeClass: "bg-slate-50 text-slate-700 border border-slate-200/60",
+      image: nursing,
+    },
+  };
+  return details[slug] || {
+    category: "Specialized",
+    badgeClass: "bg-teal-50 text-teal-700 border border-teal-200/60",
+    image: nursing,
+  };
+}
 
 const WHY = [
   { icon: BadgeCheck, title: "Verified Professionals", desc: "Background-checked nurses and caregivers, trained and certified." },
@@ -76,11 +143,20 @@ const FAQ = [
 
 function Home() {
   const { services } = Route.useLoaderData();
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % HERO_IMAGES.length);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, []);
+
   return (
     <SiteLayout>
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:px-8 lg:py-20">
+        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-2 lg:gap-10 lg:px-8 lg:py-12">
           <div className="flex flex-col justify-center">
             <span className="gold-rule text-xs font-semibold uppercase tracking-[0.2em] text-gold">Home Healthcare</span>
             <h1 className="mt-5 text-4xl font-semibold leading-tight text-primary sm:text-5xl lg:text-6xl">
@@ -105,10 +181,21 @@ function Home() {
           </div>
           <div className="relative">
             <div className="absolute -inset-4 rounded-3xl bg-accent/50 blur-2xl" aria-hidden />
-            <div className="relative overflow-hidden rounded-3xl border border-border shadow-xl">
-              <img src={hero} alt="Amma Seva nurse caring for elderly woman at home" width={1600} height={1000} className="h-full w-full object-cover" />
+            <div className="relative overflow-hidden rounded-3xl border border-border shadow-xl aspect-[16/10] w-full">
+              {HERO_IMAGES.map((imgSrc, idx) => (
+                <img
+                  key={imgSrc}
+                  src={imgSrc}
+                  alt="Amma Seva nurse caring for patients at home"
+                  width={1600}
+                  height={1000}
+                  className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ease-in-out ${
+                    idx === currentImageIndex ? "opacity-100" : "opacity-0 pointer-events-none"
+                  }`}
+                />
+              ))}
             </div>
-            <div className="absolute -bottom-6 -left-6 hidden max-w-xs rounded-2xl border border-border bg-background p-5 shadow-lg sm:block">
+            <div className="absolute -bottom-6 -left-6 hidden max-w-xs rounded-2xl border border-border bg-background p-5 shadow-lg sm:block z-10">
               <div className="flex items-center gap-2 text-gold">
                 {Array.from({ length: 5 }).map((_, i) => <Star key={i} className="h-4 w-4 fill-current" />)}
               </div>
@@ -121,46 +208,63 @@ function Home() {
 
       {/* Services */}
       <section className="border-t border-border bg-cream/40">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-2xl text-center">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="max-w-3xl text-left">
             <span className="gold-rule text-xs font-semibold uppercase tracking-[0.2em] text-gold">Our Services</span>
             <h2 className="mt-4 text-3xl font-semibold text-primary sm:text-4xl">Care for every stage of life</h2>
-            <p className="mt-3 text-muted-foreground">From newborns to seniors — comprehensive home healthcare tailored to your family.</p>
+            <p className="mt-2 text-muted-foreground">From newborns to seniors — comprehensive home healthcare tailored to your family.</p>
           </div>
-          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {services.slice(0, 6).map((s: any) => {
-              const imgSrc = s.image || IMAGE_BY_SLUG[s.slug];
+              const details = getServiceDetails(s.slug);
               return (
-                <Link
+                <div
                   key={s.slug}
-                  to="/services/$slug"
-                  params={{ slug: s.slug }}
-                  className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg"
+                  className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
                 >
-                  {imgSrc && (
-                    <div className="aspect-[4/3] overflow-hidden bg-slate-100">
-                      <img 
-                        src={imgSrc} 
-                        alt={s.title} 
-                        width={1200} 
-                        height={900} 
-                        loading="lazy" 
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
-                      />
+                  <Link
+                    to="/services/$slug"
+                    params={{ slug: s.slug }}
+                    className="aspect-[4/3] w-full overflow-hidden bg-slate-100 block"
+                  >
+                    <img 
+                      src={details.image} 
+                      alt={s.title} 
+                      width={1200} 
+                      height={900} 
+                      loading="lazy" 
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                    />
+                  </Link>
+                  <div className="flex flex-1 flex-col p-5">
+                    <div className="flex">
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${details.badgeClass}`}>
+                        {details.category}
+                      </span>
                     </div>
-                  )}
-                <div className="flex flex-1 flex-col p-6">
-                  <h3 className="text-xl font-semibold text-primary">{s.title}</h3>
-                  <p className="mt-2 flex-1 text-sm text-muted-foreground">{s.short}</p>
-                  <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-gold">
-                    Learn more <ChevronRight className="h-4 w-4" />
-                  </span>
+                    <Link
+                      to="/services/$slug"
+                      params={{ slug: s.slug }}
+                      className="mt-3 block text-lg font-bold text-primary hover:text-gold transition-colors duration-200"
+                    >
+                      {s.title}
+                    </Link>
+                    <p className="mt-2 flex-1 text-sm text-muted-foreground line-clamp-3">
+                      {s.short}
+                    </p>
+                    <Link
+                      to="/services/$slug"
+                      params={{ slug: s.slug }}
+                      className="mt-5 w-full bg-[#3f5151] hover:bg-[#2c3a3a] text-white text-center py-2 px-4 rounded-lg text-sm font-semibold transition-colors duration-300 flex items-center justify-center gap-1.5"
+                    >
+                      View Details <ChevronRight className="h-4 w-4" />
+                    </Link>
+                  </div>
                 </div>
-              </Link>
-            )
-          })}
+              );
+            })}
           </div>
-          <div className="mt-10 text-center">
+          <div className="mt-6 text-center">
             <Link to="/services" className="btn-outline">View all services</Link>
           </div>
         </div>
@@ -168,12 +272,12 @@ function Home() {
 
       {/* Why choose */}
       <section className="border-t border-border">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-2xl text-center">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="max-w-3xl text-left">
             <span className="gold-rule text-xs font-semibold uppercase tracking-[0.2em] text-gold">Why Amma Seva</span>
             <h2 className="mt-4 text-3xl font-semibold text-primary sm:text-4xl">A promise your family can lean on</h2>
           </div>
-          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {WHY.map((w) => (
               <div key={w.title} className="rounded-2xl border border-border bg-background p-6 text-center shadow-sm">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent text-gold">
@@ -189,12 +293,12 @@ function Home() {
 
       {/* How it works */}
       <section className="border-t border-border bg-cream/40">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-2xl text-center">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="max-w-3xl text-left">
             <span className="gold-rule text-xs font-semibold uppercase tracking-[0.2em] text-gold">How It Works</span>
             <h2 className="mt-4 text-3xl font-semibold text-primary sm:text-4xl">Care arranged in four simple steps</h2>
           </div>
-          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {STEPS.map((s) => (
               <div key={s.n} className="relative rounded-2xl border border-border bg-background p-6 shadow-sm">
                 <div className="font-display text-4xl font-semibold text-gold">{s.n}</div>
@@ -208,12 +312,12 @@ function Home() {
 
       {/* Testimonials */}
       <section className="border-t border-border">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-2xl text-center">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="max-w-3xl text-left">
             <span className="gold-rule text-xs font-semibold uppercase tracking-[0.2em] text-gold">Testimonials</span>
             <h2 className="mt-4 text-3xl font-semibold text-primary sm:text-4xl">Loved by families across India</h2>
           </div>
-          <div className="mt-12 grid gap-6 lg:grid-cols-3">
+          <div className="mt-6 grid gap-6 lg:grid-cols-3">
             {TESTIMONIALS.map((t) => (
               <figure key={t.name} className="rounded-2xl border border-border bg-background p-6 shadow-sm">
                 <div className="flex gap-1 text-gold">
@@ -232,12 +336,12 @@ function Home() {
 
       {/* FAQ */}
       <section className="border-t border-border bg-cream/40">
-        <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
-          <div className="text-center">
+        <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="max-w-3xl text-left">
             <span className="gold-rule text-xs font-semibold uppercase tracking-[0.2em] text-gold">FAQs</span>
             <h2 className="mt-4 text-3xl font-semibold text-primary sm:text-4xl">Answers to common questions</h2>
           </div>
-          <div className="mt-10 space-y-3">
+          <div className="mt-6 grid gap-4 md:grid-cols-2 items-start">
             {FAQ.map((f) => (
               <details key={f.q} className="group rounded-xl border border-border bg-background p-5 open:shadow-md">
                 <summary className="flex cursor-pointer list-none items-center justify-between text-base font-medium text-primary">
@@ -253,8 +357,8 @@ function Home() {
 
       {/* CTA */}
       <section className="border-t border-border">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <div className="rounded-3xl border border-border bg-primary p-10 text-center text-primary-foreground shadow-xl sm:p-14">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="rounded-3xl border border-border bg-primary p-6 text-center text-primary-foreground shadow-xl sm:p-8">
             <h2 className="text-3xl font-semibold sm:text-4xl">Ready to bring care home?</h2>
             <p className="mx-auto mt-3 max-w-2xl text-primary-foreground/80">
               Talk to our care team today. We&apos;ll help you find the right professional for your family — usually within hours.
