@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SiteLayout } from "@/components/SiteLayout";
 import { LegalShell } from "./privacy";
+import imageAsset from "@/assets/service-mother-baby.jpg";
 
 export const Route = createFileRoute("/refund")({
   head: () => ({
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/refund")({
 function Refund() {
   return (
     <SiteLayout>
-      <LegalShell title="Refund Policy">
+      <LegalShell title="Refund Policy" image={imageAsset}>
         <h3>Cancellations</h3>
         <p>You may cancel a booking free of charge up to 4 hours before the scheduled start time. Later cancellations may incur a partial charge.</p>
         <h3>Refunds</h3>

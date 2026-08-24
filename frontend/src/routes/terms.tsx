@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SiteLayout } from "@/components/SiteLayout";
 import { LegalShell } from "./privacy";
+import imageAsset from "@/assets/service-nursing.jpg";
 
 export const Route = createFileRoute("/terms")({
   head: () => ({
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/terms")({
 function Terms() {
   return (
     <SiteLayout>
-      <LegalShell title="Terms & Conditions">
+      <LegalShell title="Terms & Conditions" image={imageAsset}>
         <p>These terms govern your use of Amma Seva services. By booking a service you agree to these terms.</p>
         <h3>Services</h3>
         <p>Amma Seva provides trained nurses and caregivers for home healthcare. Specific services, pricing and availability are as listed on our website or shared by our team.</p>
@@ -29,7 +30,7 @@ function Terms() {
         <p>Customers agree to provide a safe environment for our staff. Staff are held to professional standards; concerns can be reported to our helpline.</p>
         <h3>Liability</h3>
         <p>While we take every care to deliver safe services, our liability is limited to the value of the specific service booked.</p>
-        <p className="text-sm text-muted-foreground">These terms may be updated from time to time.</p>
+        <p className="text-sm text-slate-400">These terms may be updated from time to time.</p>
       </LegalShell>
     </SiteLayout>
   );

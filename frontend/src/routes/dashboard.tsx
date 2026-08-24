@@ -1389,14 +1389,19 @@ function CustomerDashboard() {
         <div className="mx-auto max-w-6xl">
           
           {/* Dashboard Header Bar */}
-          <div className="rounded-3xl border border-slate-200/60 bg-white p-6 sm:p-8 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-            <div>
-              <span className="text-xs font-semibold uppercase tracking-wider text-gold">Dashboard Gateway</span>
-              <h1 className="mt-1 text-3xl font-bold text-primary font-display">Welcome, {user?.name || "Patient"}</h1>
-              <p className="text-xs text-slate-400 mt-0.5">Manage your homecare booking log and caretaker allocations.</p>
+          <div className="rounded-3xl premium-card bg-white p-6 sm:p-8 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+            <div className="flex items-center gap-4 text-left">
+              <div className="h-14 w-14 rounded-full bg-gold/10 text-gold border-2 border-gold/30 font-display font-bold text-xl flex items-center justify-center shadow-inner shrink-0 uppercase select-none">
+                {(user?.name || "P").substring(0, 2)}
+              </div>
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wider text-gold">Dashboard Gateway</span>
+                <h1 className="mt-0.5 text-3xl font-bold text-primary font-display leading-tight">Welcome, {user?.name || "Patient"}</h1>
+                <p className="text-xs text-slate-400 mt-0.5">Manage your homecare booking log and caretaker allocations.</p>
+              </div>
             </div>
             
-            <div className="flex gap-3">
+            <div className="flex gap-3 shrink-0">
               <button
                 onClick={() => setActiveView(activeView === "bookings" ? "new-booking" : "bookings")}
                 className="btn-primary py-2 px-4 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
@@ -1409,6 +1414,43 @@ function CustomerDashboard() {
               >
                 Sign Out
               </button>
+            </div>
+          </div>
+
+          {/* Quick Metrics Grid */}
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-3 mb-8">
+            <div className="premium-card bg-white p-5 rounded-3xl text-left shadow-sm flex items-center gap-4">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-inner">
+                <Calendar className="h-5.5 w-5.5" />
+              </span>
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Bookings</div>
+                <div className="text-xl font-bold text-primary font-display mt-0.5">{bookings.length}</div>
+              </div>
+            </div>
+
+            <div className="premium-card bg-white p-5 rounded-3xl text-left shadow-sm flex items-center gap-4">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 shadow-inner">
+                <User className="h-5.5 w-5.5" />
+              </span>
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Assigned Caregivers</div>
+                <div className="text-xl font-bold text-primary font-display mt-0.5">
+                  {bookings.filter(b => b.assignedStaff && b.status !== "Cancelled").length} Active
+                </div>
+              </div>
+            </div>
+
+            <div className="premium-card bg-white p-5 rounded-3xl text-left shadow-sm flex items-center gap-4">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-inner">
+                <DollarSign className="h-5.5 w-5.5" />
+              </span>
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Billing</div>
+                <div className="text-xl font-bold text-primary font-display mt-0.5 font-sans">
+                  ₹{bookings.filter(b => b.paymentStatus === "Paid").reduce((sum, b) => sum + Number(b.amount || 0), 0).toLocaleString()}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1463,7 +1505,7 @@ function CustomerDashboard() {
                   {bookings.map((booking) => (
                     <div
                       key={booking.id}
-                      className="rounded-3xl border border-slate-200/60 bg-white p-6 sm:p-8 shadow-sm hover:shadow-md transition-shadow duration-300 flex flex-col lg:flex-row justify-between gap-6"
+                      className="rounded-3xl premium-card bg-white p-6 sm:p-8 shadow-sm hover:shadow-md transition-shadow duration-300 flex flex-col lg:flex-row justify-between gap-6"
                     >
                       <div className="space-y-4 flex-1">
                         {/* Summary Header */}
@@ -1485,20 +1527,31 @@ function CustomerDashboard() {
                         {/* Booking Tracker Visual Pipeline (Stepper) */}
                         {booking.status !== "Cancelled" && (
                           <div className="pt-4 pb-2 border-t border-slate-100">
-                            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Care tracker status</span>
+                            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3 text-left">Care tracker status</span>
                             <div className="grid grid-cols-4 gap-2 relative">
+                              {/* Connecting timeline background bar */}
+                              <div className="absolute top-[11px] left-[12%] right-[12%] h-[3px] bg-slate-100 -z-0" />
+                              {/* Connecting timeline active filled bar */}
+                              <div 
+                                className="absolute top-[11px] left-[12%] h-[3px] bg-emerald-500 transition-all duration-500 -z-0" 
+                                style={{ 
+                                  width: booking.status === "Completed" ? "76%" : 
+                                         (booking.status === "Confirmed" || booking.status === "Active") && booking.assignedStaff ? "51%" :
+                                         booking.status === "Confirmed" || booking.status === "Active" ? "25%" : "0%"
+                                }} 
+                              />
                               
                               {/* Step 1: Request Pending */}
-                              <div className="text-center">
-                                <div className="h-6 w-6 rounded-full bg-emerald-500 text-white flex items-center justify-center mx-auto text-xs font-bold shadow-sm">
+                              <div className="text-center relative z-10">
+                                <div className="h-6 w-6 rounded-full bg-emerald-500 text-white flex items-center justify-center mx-auto text-xs font-bold shadow-sm border border-white">
                                   <Check className="h-3.5 w-3.5" />
                                 </div>
                                 <span className="block text-[9px] font-bold text-slate-700 mt-1">Requested</span>
                               </div>
 
                               {/* Step 2: Confirmed */}
-                              <div className="text-center">
-                                <div className={`h-6 w-6 rounded-full flex items-center justify-center mx-auto text-xs font-bold ${
+                              <div className="text-center relative z-10">
+                                <div className={`h-6 w-6 rounded-full flex items-center justify-center mx-auto text-xs font-bold border border-white ${
                                   booking.status === "Confirmed" || booking.status === "Active" || booking.status === "Completed"
                                     ? "bg-emerald-500 text-white shadow-sm"
                                     : "bg-slate-100 text-slate-400"
@@ -1509,8 +1562,8 @@ function CustomerDashboard() {
                               </div>
  
                               {/* Step 3: Caretaker Assigned */}
-                              <div className="text-center">
-                                <div className={`h-6 w-6 rounded-full flex items-center justify-center mx-auto text-xs font-bold ${
+                              <div className="text-center relative z-10">
+                                <div className={`h-6 w-6 rounded-full flex items-center justify-center mx-auto text-xs font-bold border border-white ${
                                   (booking.status === "Confirmed" || booking.status === "Active" || booking.status === "Completed") && booking.assignedStaff
                                     ? "bg-emerald-500 text-white shadow-sm"
                                     : "bg-slate-100 text-slate-400"
@@ -1518,13 +1571,13 @@ function CustomerDashboard() {
                                   {(booking.status === "Confirmed" || booking.status === "Active" || booking.status === "Completed") && booking.assignedStaff ? <Check className="h-3.5 w-3.5" /> : "3"}
                                 </div>
                                 <span className="block text-[9px] font-bold text-slate-700 mt-1">
-                                  {booking.status === "Active" ? "Staff Active at Home" : "Staff Assigned"}
+                                  {booking.status === "Active" ? "Staff Active" : "Staff Assigned"}
                                 </span>
                               </div>
 
                               {/* Step 4: Completed */}
-                              <div className="text-center">
-                                <div className={`h-6 w-6 rounded-full flex items-center justify-center mx-auto text-xs font-bold ${
+                              <div className="text-center relative z-10">
+                                <div className={`h-6 w-6 rounded-full flex items-center justify-center mx-auto text-xs font-bold border border-white ${
                                   booking.status === "Completed"
                                     ? "bg-emerald-500 text-white shadow-sm"
                                     : "bg-slate-100 text-slate-400"
@@ -1823,9 +1876,8 @@ function CustomerDashboard() {
               )}
             </div>
           ) : (
-            
             // NEW BOOKING VIEW
-            <div className="rounded-3xl border border-slate-200/60 bg-white p-6 sm:p-8 shadow-sm">
+            <div className="rounded-3xl premium-card bg-white p-6 sm:p-8 shadow-sm text-left">
               <h2 className="text-xl font-bold text-primary font-display flex items-center gap-2 mb-6">
                 <Calendar className="h-5 w-5 text-gold" /> Schedule verified home care
               </h2>
@@ -1835,13 +1887,13 @@ function CustomerDashboard() {
                   
                   {/* Select Service */}
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Select Service</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Select Service</label>
                     <select
                       value={selectedServiceId}
                       onChange={(e) => setSelectedServiceId(e.target.value)}
                       disabled={hasServiceParam}
-                      className={`w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold ${
-                        hasServiceParam ? 'bg-slate-100/80 cursor-not-allowed text-slate-500' : ''
+                      className={`w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/40 text-slate-850 outline-none transition-all focus:bg-white focus:border-gold focus:ring-2 focus:ring-gold/20 shadow-sm font-medium ${
+                        hasServiceParam ? 'bg-slate-100 cursor-not-allowed text-slate-500' : ''
                       }`}
                     >
                       {servicesList
@@ -1851,19 +1903,19 @@ function CustomerDashboard() {
                         ))
                       }
                     </select>
-                    <p className="text-[10px] text-slate-400 mt-1.5">{currentService?.desc}</p>
+                    <p className="text-[10px] text-slate-450 mt-1.5 leading-relaxed">{currentService?.desc}</p>
                   </div>
 
                   {/* Duration Selector */}
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Billing Option</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Billing Option</label>
                     <select
                       value={bookingDuration}
                       onChange={(e) => {
                         setBookingDuration(e.target.value);
                         setDurationCount(1);
                       }}
-                      className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                      className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/40 text-slate-850 outline-none transition-all focus:bg-white focus:border-gold focus:ring-2 focus:ring-gold/20 shadow-sm font-medium"
                     >
                       <option value="Hourly">Hourly</option>
                       <option value="Daily">Daily</option>
@@ -1874,13 +1926,13 @@ function CustomerDashboard() {
 
                   {/* Duration Count Multiplier */}
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5 flex justify-between items-center">
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 flex justify-between items-center">
                       <span>
                         {bookingDuration === "Hourly" ? "Number of Hours" :
                          bookingDuration === "Daily" ? "Number of Days" :
                          bookingDuration === "Weekly" ? "Number of Weeks" : "Number of Months"}
                       </span>
-                      <span className="text-[10px] text-indigo-600 font-bold lowercase normal-case">
+                      <span className="text-[10px] text-indigo-650 font-bold lowercase normal-case">
                         (₹{
                           bookingDuration === "Hourly" ? getServiceRates().hourly :
                           bookingDuration === "Daily" ? getServiceRates().daily :
@@ -1899,57 +1951,57 @@ function CustomerDashboard() {
                       required
                       value={durationCount}
                       onChange={(e) => setDurationCount(Math.max(1, Number(e.target.value)))}
-                      className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                      className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/40 text-slate-850 outline-none transition-all focus:bg-white focus:border-gold focus:ring-2 focus:ring-gold/20 shadow-sm font-medium"
                     />
                   </div>
 
                   {/* Date selection */}
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Date</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Date</label>
                     <input
                       type="date"
                       required
                       value={bookingDate}
                       onChange={(e) => setBookingDate(e.target.value)}
-                      className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                      className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/40 text-slate-850 outline-none transition-all focus:bg-white focus:border-gold focus:ring-2 focus:ring-gold/20 shadow-sm font-medium"
                     />
                   </div>
 
                   {/* Time selection */}
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Start Time</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Start Time</label>
                     <input
                       type="time"
                       required
                       value={bookingTime}
                       onChange={(e) => setBookingTime(e.target.value)}
-                      className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                      className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/40 text-slate-850 outline-none transition-all focus:bg-white focus:border-gold focus:ring-2 focus:ring-gold/20 shadow-sm font-medium"
                     />
                   </div>
 
                   {/* Patient Name */}
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Patient Name</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Patient Name</label>
                     <input
                       type="text"
                       required
                       value={patientName}
                       onChange={(e) => setPatientName(e.target.value)}
                       placeholder="Enter patient full name"
-                      className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                      className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/40 text-slate-855 outline-none transition-all focus:bg-white focus:border-gold focus:ring-2 focus:ring-gold/20 shadow-sm font-medium"
                     />
                   </div>
 
                   {/* Patient Age */}
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Patient Age</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Patient Age</label>
                     <input
                       type="number"
                       required
                       value={patientAge}
                       onChange={(e) => setPatientAge(e.target.value)}
                       placeholder="e.g. 72"
-                      className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                      className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/40 text-slate-855 outline-none transition-all focus:bg-white focus:border-gold focus:ring-2 focus:ring-gold/20 shadow-sm font-medium"
                     />
                   </div>
 
@@ -1957,26 +2009,26 @@ function CustomerDashboard() {
 
                 {/* Patient Special Needs */}
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Medical Conditions &amp; Special Needs</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Medical Conditions &amp; Special Needs</label>
                   <textarea
                     rows={2}
                     value={patientNeeds}
                     onChange={(e) => setPatientNeeds(e.target.value)}
                     placeholder="Describe patient condition (e.g. dementia, diabetic, wheelchair bound, urinary catheter, post-surgery)"
-                    className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                    className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/40 text-slate-855 outline-none transition-all focus:bg-white focus:border-gold focus:ring-2 focus:ring-gold/20 shadow-sm font-medium"
                   />
                 </div>
 
                 {/* Address */}
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Care Address</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Care Address</label>
                   <textarea
                     rows={2}
                     required
                     value={bookingAddress}
                     onChange={(e) => setBookingAddress(e.target.value)}
                     placeholder="Enter complete delivery address"
-                    className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                    className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/40 text-slate-855 outline-none transition-all focus:bg-white focus:border-gold focus:ring-2 focus:ring-gold/20 shadow-sm font-medium"
                   />
                 </div>
 
