@@ -305,7 +305,7 @@ function CustomerDashboard() {
   const [patientName, setPatientName] = useState("");
   const [patientAge, setPatientAge] = useState("");
   const [patientNeeds, setPatientNeeds] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"pay_later" | "razorpay">("pay_later");
+  const [paymentMethod, setPaymentMethod] = useState<"pay_later" | "razorpay">("razorpay");
   
   const [prescriptionFile, setPrescriptionFile] = useState("");
   const [bookingGoogleMapLocation, setBookingGoogleMapLocation] = useState("");
@@ -356,11 +356,32 @@ function CustomerDashboard() {
         if (matches) {
           rate = Number(matches[0]);
         }
+
+        // Determine price basis unit from the pricing string (e.g. ₹900 / day -> day)
+        let unit = "day";
+        const priceStr = (s.pricing || "").toLowerCase();
+        if (priceStr.includes("month")) {
+          unit = "month";
+        } else if (priceStr.includes("hour")) {
+          unit = "hour";
+        } else if (priceStr.includes("week")) {
+          unit = "week";
+        } else if (priceStr.includes("day") || priceStr.includes("visit") || priceStr.includes("session") || priceStr.includes("consultation")) {
+          unit = "day";
+        } else {
+          // fallback to duration if pricing string doesn't specify unit
+          const durStr = (s.duration || "").toLowerCase();
+          if (durStr.includes("month")) unit = "month";
+          else if (durStr.includes("hour")) unit = "hour";
+          else if (durStr.includes("week")) unit = "week";
+          else unit = "day";
+        }
+
         return {
           id: s.slug,
           title: s.title,
           rate: rate,
-          unit: s.duration || "day",
+          unit: unit,
           desc: s.short || s.description
         };
       });
@@ -2001,34 +2022,15 @@ function CustomerDashboard() {
 
                 {/* Payment selection */}
                 <div className="border-t border-slate-100 pt-6">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Choose Payment Method</label>
-                  <div className="grid grid-cols-2 gap-4">
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod("pay_later")}
-                      className={`p-4 border rounded-xl text-left transition-all cursor-pointer ${
-                        paymentMethod === "pay_later" 
-                          ? "border-gold bg-gold/5 text-gold shadow-sm" 
-                          : "border-slate-200 text-slate-600 hover:bg-slate-50"
-                      }`}
-                    >
-                      <DollarSign className="h-6 w-6 mb-1.5" />
-                      <span className="block text-xs font-bold">Pay Later</span>
-                      <span className="text-[10px] text-slate-400 block mt-0.5">Pay after service</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod("razorpay")}
-                      className={`p-4 border rounded-xl text-left transition-all cursor-pointer ${
-                        paymentMethod === "razorpay" 
-                          ? "border-gold bg-gold/5 text-gold shadow-sm" 
-                          : "border-slate-200 text-slate-600 hover:bg-slate-50"
-                      }`}
-                    >
-                      <CreditCard className="h-6 w-6 mb-1.5" />
-                      <span className="block text-xs font-bold">Pay Online</span>
-                      <span className="text-[10px] text-slate-400 block mt-0.5">Secure payment via Razorpay</span>
-                    </button>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Payment Method</label>
+                  <div className="p-4 border border-gold bg-gold/5 text-gold rounded-xl flex items-center gap-4">
+                    <div className="p-2.5 rounded-xl bg-gold/10 text-gold shrink-0">
+                      <CreditCard className="h-6 w-6" />
+                    </div>
+                    <div className="text-left">
+                      <span className="block text-xs font-bold text-slate-900">Pay Online (Razorpay)</span>
+                      <span className="text-[10px] text-slate-500 block mt-0.5 leading-relaxed">Secure online payment integration. Pay online now to instantly schedule your caregiver shift and secure verified booking credentials.</span>
+                    </div>
                   </div>
                 </div>
 
