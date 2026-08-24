@@ -1874,10 +1874,24 @@ function CustomerDashboard() {
 
                   {/* Duration Count Multiplier */}
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-                      {bookingDuration === "Hourly" ? "Number of Hours" :
-                       bookingDuration === "Daily" ? "Number of Days" :
-                       bookingDuration === "Weekly" ? "Number of Weeks" : "Number of Months"}
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5 flex justify-between items-center">
+                      <span>
+                        {bookingDuration === "Hourly" ? "Number of Hours" :
+                         bookingDuration === "Daily" ? "Number of Days" :
+                         bookingDuration === "Weekly" ? "Number of Weeks" : "Number of Months"}
+                      </span>
+                      <span className="text-[10px] text-indigo-600 font-bold lowercase normal-case">
+                        (₹{
+                          bookingDuration === "Hourly" ? getServiceRates().hourly :
+                          bookingDuration === "Daily" ? getServiceRates().daily :
+                          bookingDuration === "Weekly" ? getServiceRates().weekly :
+                          getServiceRates().monthly
+                        } / {
+                          bookingDuration === "Hourly" ? "hour" :
+                          bookingDuration === "Daily" ? "day" :
+                          bookingDuration === "Weekly" ? "week" : "month"
+                        })
+                      </span>
                     </label>
                     <input
                       type="number"
