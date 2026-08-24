@@ -244,7 +244,7 @@ function Home() {
                 return (
                   <div
                     key={s.slug}
-                    className="min-w-[280px] sm:min-w-[calc(50%-12px)] md:min-w-[calc(33.333%-16px)] lg:min-w-[calc(25%-18px)] snap-start snap-always shrink-0 group/card flex flex-col overflow-hidden rounded-3xl border border-slate-200/60 bg-background shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-1.5"
+                    className="carousel-card snap-start snap-always group/card flex flex-col overflow-hidden rounded-3xl border border-slate-200/60 bg-background shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-1.5"
                   >
                     <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100 block">
                       <img 

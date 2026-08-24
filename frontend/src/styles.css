@@ -265,3 +265,30 @@
     transform: translateY(0);
   }
 }
+
+.carousel-card {
+  flex-shrink: 0 !important;
+  width: 280px !important;
+  min-width: 280px !important;
+}
+
+@media (min-width: 640px) {
+  .carousel-card {
+    width: calc(50% - 12px) !important;
+    min-width: calc(50% - 12px) !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .carousel-card {
+    width: calc(33.333% - 16px) !important;
+    min-width: calc(33.333% - 16px) !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .carousel-card {
+    width: calc(25% - 18px) !important;
+    min-width: calc(25% - 18px) !important;
+  }
+}
