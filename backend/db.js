@@ -879,6 +879,8 @@ export const db = {
       await writeJSONDb(data)
       return newUser
     }
+  },
+
   getUserById: async (id) => {
     if (useMySQL) {
       const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [id])
@@ -1130,6 +1132,8 @@ export const db = {
       await writeJSONDb(data)
       return newBooking
     }
+  },
+
   getBookingById: async (id) => {
     if (useMySQL) {
       const [rows] = await pool.query('SELECT * FROM bookings WHERE id = ?', [id])
