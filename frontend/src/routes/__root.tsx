@@ -78,13 +78,6 @@ function SplashScreen() {
   const [fade, setFade] = useState(false);
 
   useEffect(() => {
-    // Check if splash screen was already shown in this session
-    const shown = sessionStorage.getItem("ammaseva_splash_shown");
-    if (shown) {
-      setVisible(false);
-      return;
-    }
-
     // Set timers for fade-out and unmount
     const fadeTimer = setTimeout(() => {
       setFade(true);
@@ -92,7 +85,6 @@ function SplashScreen() {
 
     const hideTimer = setTimeout(() => {
       setVisible(false);
-      sessionStorage.setItem("ammaseva_splash_shown", "true");
     }, 2000); // Fully unmount at 2.0s
 
     return () => {
