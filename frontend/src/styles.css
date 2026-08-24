@@ -296,3 +296,19 @@
     min-width: calc(25% - 18px) !important;
   }
 }
+
+.premium-card {
+  border: 1px solid rgba(30, 42, 90, 0.18) !important;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.premium-card:hover {
+  border-color: rgba(30, 42, 90, 0.85) !important;
+  box-shadow: 0 15px 30px -10px rgba(30, 42, 90, 0.15) !important;
+}
+
+header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 50 !important;
+}

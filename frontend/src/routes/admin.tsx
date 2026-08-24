@@ -6,7 +6,7 @@ import {
   Users, Calendar, DollarSign, ShieldAlert, LogOut, CheckCircle2, 
   XCircle, Edit3, Save, Check, LayoutDashboard, CalendarDays,
   UserCheck, MessageSquare, Sliders, Bell, Search, Plus, Send, TrendingDown,
-  ArrowUpRight, Star, BookOpen, HelpCircle, Menu, X
+  ArrowUpRight, Star, BookOpen, HelpCircle, Menu, X, Image
 } from "lucide-react";
 
 const INDIAN_STATES = [
@@ -133,7 +133,7 @@ function AdminPage() {
   };
 
   // Navigation and Search
-  const [activeTab, setActiveTab] = useState<"overview" | "bookings" | "caregivers" | "enquiries" | "services" | "users" | "notifications" | "payments" | "blogs" | "faqs">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "bookings" | "caregivers" | "enquiries" | "services" | "users" | "notifications" | "payments" | "blogs" | "faqs" | "gallery">("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -148,9 +148,10 @@ function AdminPage() {
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
   const [blogs, setBlogs] = useState<any[]>([]);
   const [faqs, setFaqs] = useState<any[]>([]);
+  const [gallery, setGallery] = useState<any[]>([]);
 
   // Modal Control
-  const [modalType, setModalType] = useState<"booking" | "caregiver" | "service" | "notification" | "blog" | "faq" | null>(null);
+  const [modalType, setModalType] = useState<"booking" | "caregiver" | "service" | "notification" | "blog" | "faq" | "gallery" | null>(null);
   const [modalMode, setModalMode] = useState<"add" | "edit">("add");
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
@@ -221,6 +222,10 @@ function AdminPage() {
   const [faqQuestion, setFaqQuestion] = useState("");
   const [faqAnswer, setFaqAnswer] = useState("");
 
+  // Form states - Gallery
+  const [galleryTitle, setGalleryTitle] = useState("");
+  const [galleryImageUrl, setGalleryImageUrl] = useState("");
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setFileState: (val: string) => void) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -264,7 +269,7 @@ function AdminPage() {
     };
 
     try {
-      const [bookingsRes, caregiversRes, enquiriesRes, usersRes, servicesRes, notificationsRes, blogsRes, faqsRes] = await Promise.all([
+      const [bookingsRes, caregiversRes, enquiriesRes, usersRes, servicesRes, notificationsRes, blogsRes, faqsRes, galleryRes] = await Promise.all([
         fetchWithAuth("/api/bookings"),
         fetchWithAuth("/api/caregivers"),
         fetchWithAuth("/api/enquiries"),
@@ -272,7 +277,8 @@ function AdminPage() {
         fetchWithAuth("/api/services"),
         fetchWithAuth("/api/notifications"),
         fetch("/api/blogs").then(res => res.json()),
-        fetch("/api/faqs").then(res => res.json())
+        fetch("/api/faqs").then(res => res.json()),
+        fetch("/api/gallery").then(res => res.json())
       ]);
       setBookings(Array.isArray(bookingsRes) ? bookingsRes : []);
       setCaregivers(Array.isArray(caregiversRes) ? caregiversRes : []);
@@ -282,6 +288,7 @@ function AdminPage() {
       setNotifications(Array.isArray(notificationsRes) ? notificationsRes : []);
       setBlogs(Array.isArray(blogsRes) ? blogsRes : []);
       setFaqs(Array.isArray(faqsRes) ? faqsRes : []);
+      setGallery(Array.isArray(galleryRes) ? galleryRes : []);
     } catch (err) {
       console.error(err);
       if (err instanceof Error && err.message === "Unauthorized") {
@@ -426,6 +433,23 @@ function AdminPage() {
     }
   };
 
+  const handleDeleteGallery = (id: number) => {
+    if (window.confirm("Are you sure you want to delete this gallery image?")) {
+      const token = localStorage.getItem("ammaseva_admin_token");
+      fetch(`/api/gallery/${id}`, { 
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setGallery(prev => prev.filter(g => g.id !== id));
+          }
+        })
+        .catch(err => console.error(err));
+    }
+  };
+
   const handleDeleteEnquiry = (id: number) => {
     if (window.confirm("Are you sure you want to delete this customer inquiry lead?")) {
       const token = localStorage.getItem("ammaseva_admin_token");
@@ -444,7 +468,7 @@ function AdminPage() {
   };
 
   // Open modal forms
-  const openAddModal = (type: "booking" | "caregiver" | "service" | "notification" | "blog") => {
+  const openAddModal = (type: "booking" | "caregiver" | "service" | "notification" | "blog" | "faq" | "gallery") => {
     setModalType(type);
     setModalMode("add");
     setSelectedId(null);
@@ -515,6 +539,9 @@ function AdminPage() {
     } else if (type === "faq") {
       setFaqQuestion("");
       setFaqAnswer("");
+    } else if (type === "gallery") {
+      setGalleryTitle("");
+      setGalleryImageUrl("");
     }
   };
 
@@ -722,6 +749,13 @@ function AdminPage() {
         question: faqQuestion,
         answer: faqAnswer
       };
+    } else if (modalType === "gallery") {
+      url = modalMode === "add" ? "/api/gallery" : `/api/gallery/${selectedId}`;
+      method = modalMode === "add" ? "POST" : "PUT";
+      bodyData = {
+        title: galleryTitle,
+        imageUrl: galleryImageUrl
+      };
     }
 
     fetch(url, {
@@ -894,7 +928,8 @@ function AdminPage() {
               { id: "notifications", label: "Alert Notifications", icon: Bell },
               { id: "enquiries", label: "Customer Leads", icon: MessageSquare },
               { id: "blogs", label: "Health Blogs", icon: BookOpen },
-              { id: "faqs", label: "Manage FAQs", icon: HelpCircle }
+              { id: "faqs", label: "Manage FAQs", icon: HelpCircle },
+              { id: "gallery", label: "Photo Gallery", icon: Image }
             ].map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -1926,6 +1961,55 @@ function AdminPage() {
               </div>
             </div>
           )}
+          {activeTab === "gallery" && (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center bg-white border border-slate-200/60 rounded-2xl p-4 sm:p-6 shadow-sm">
+                <div>
+                  <h3 className="text-lg font-bold text-primary font-display">Manage Photo Gallery</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Total: {gallery.length} photos</p>
+                </div>
+                <button
+                  onClick={() => openAddModal("gallery")}
+                  className="btn-primary py-2 px-4 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Plus className="h-4 w-4" /> Add Gallery Image
+                </button>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                {gallery
+                  .filter(g => g.title.toLowerCase().includes(searchQuery.toLowerCase()))
+                  .map((g) => (
+                    <div
+                      key={g.id}
+                      className="bg-white border border-slate-200/60 rounded-2xl overflow-hidden shadow-sm flex flex-col justify-between"
+                    >
+                      <div className="relative aspect-video w-full overflow-hidden bg-slate-100 border-b border-slate-100">
+                        <img src={g.imageUrl} className="w-full h-full object-cover" alt={g.title} />
+                      </div>
+                      <div className="p-4 text-left space-y-1">
+                        <h4 className="text-sm font-bold text-primary truncate">{g.title}</h4>
+                        <p className="text-[10px] text-slate-400">Added: {new Date(g.createdAt).toLocaleDateString()}</p>
+                      </div>
+                      <div className="px-4 pb-4 flex justify-end">
+                        <button
+                          onClick={() => handleDeleteGallery(g.id)}
+                          className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer text-xs font-semibold flex items-center gap-1"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" /> Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                {gallery.length === 0 && (
+                  <div className="col-span-full text-center py-16 border border-dashed border-slate-200 rounded-3xl bg-white p-6">
+                    <p className="text-slate-400 text-sm font-semibold">No images uploaded. Click "Add Gallery Image" to publish the first photo!</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </main>
       </div>
 
@@ -2576,6 +2660,46 @@ function AdminPage() {
                       placeholder="Write the detailed answer here..."
                       className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 text-slate-800 text-sm leading-relaxed"
                     />
+                  </div>
+                </>
+              )}
+
+              {modalType === "gallery" && (
+                <>
+                  <div className="text-left">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Image Title / Description</label>
+                    <input 
+                      type="text" required value={galleryTitle} onChange={e => setGalleryTitle(e.target.value)}
+                      placeholder="e.g. Caregiver assist walk shift"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 text-slate-800"
+                    />
+                  </div>
+                  <div className="text-left">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Image Upload (Select file OR Enter URL)</label>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        {galleryImageUrl && (
+                          <img 
+                            src={galleryImageUrl} 
+                            className="h-10 w-10 rounded-lg object-cover border border-slate-200 shrink-0" 
+                            alt="Gallery Preview" 
+                          />
+                        )}
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          onChange={e => handleFileChange(e, setGalleryImageUrl)}
+                          className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer"
+                        />
+                      </div>
+                      <input 
+                        type="text" 
+                        placeholder="Or paste image URL"
+                        value={galleryImageUrl.startsWith("data:") ? "" : galleryImageUrl}
+                        onChange={e => setGalleryImageUrl(e.target.value)}
+                        className="w-full pl-3 pr-2 py-1 text-xs border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 text-slate-800"
+                      />
+                    </div>
                   </div>
                 </>
               )}

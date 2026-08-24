@@ -1440,6 +1440,49 @@ app.delete('/api/blogs/:id', authenticateAdmin, async (req, res) => {
   }
 })
 
+// GET all gallery items
+app.get('/api/gallery', async (req, res) => {
+  try {
+    const list = await db.getGallery()
+    res.json(list)
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve gallery items.' })
+  }
+})
+
+// POST add gallery item (Admin Panel)
+app.post('/api/gallery', authenticateAdmin, async (req, res) => {
+  const { imageUrl, title } = req.body
+  if (!imageUrl || !title) {
+    return res.status(400).json({ success: false, error: 'Image and title are required.' })
+  }
+  try {
+    const uploadedImage = imageUrl.startsWith('data:') ? await uploadToCloudinary(imageUrl) : imageUrl
+    const newItem = await db.addGallery({
+      imageUrl: uploadedImage,
+      title
+    })
+    res.status(201).json({ success: true, message: 'Gallery item successfully created.', data: newItem })
+  } catch (err) {
+    console.error('Failed to create gallery item:', err)
+    res.status(500).json({ success: false, error: 'Failed to create gallery item.' })
+  }
+})
+
+// DELETE gallery item (Admin Panel)
+app.delete('/api/gallery/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const deleted = await db.deleteGallery(req.params.id)
+    if (deleted) {
+      res.json({ success: true, message: 'Gallery item successfully deleted.' })
+    } else {
+      res.status(404).json({ error: 'Gallery item not found.' })
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete gallery item.' })
+  }
+})
+
 // GET notification logs (Admin Panel)
 app.get('/api/notifications', authenticateAdmin, async (req, res) => {
   try {

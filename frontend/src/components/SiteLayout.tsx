@@ -45,6 +45,7 @@ function Header() {
     { to: "/", label: "Home" },
     { to: "/services", label: "Services" },
     { to: "/about", label: "About" },
+    { to: "/gallery", label: "Gallery" },
     { to: "/blog", label: "Blog" },
     { to: "/careers", label: "Careers" },
     { to: "/contact", label: "Contact" },
@@ -99,12 +100,6 @@ function Header() {
           ))}
         </nav>
         <div className="hidden items-center gap-2.5 lg:flex shrink-0">
-          <a
-            href={`tel:${PHONE_TEL}`}
-            className="btn-outline text-sm shrink-0 whitespace-nowrap text-white! border-white/50! hover:bg-white! hover:text-primary! hover:shadow-white/10"
-          >
-            <Phone className="h-4 w-4" /> Call Now
-          </a>
           {isUser ? (
             <Link to="/dashboard" className="text-sm shrink-0 whitespace-nowrap btn-gold">
               My Dashboard
@@ -143,9 +138,6 @@ function Header() {
               </Link>
             ))}
             <div className="mt-4 flex gap-2.5">
-              <a href={`tel:${PHONE_TEL}`} className="btn-outline flex-1 text-sm text-white! border-white/40! hover:bg-white! hover:text-primary!">
-                <Phone className="h-4 w-4" /> Call
-              </a>
               {isUser ? (
                 <Link to="/dashboard" onClick={() => setOpen(false)} className="btn-gold flex-1 text-sm text-center">
                   Dashboard
@@ -155,7 +147,7 @@ function Header() {
                   Profile
                 </Link>
               ) : (
-                <Link to="/login" onClick={() => setOpen(false)} className="btn-gold flex-1 text-sm text-center">
+                <Link to="/login" onClick={() => setOpen(false)} className="btn-gold flex-1 text-sm text-center text-white!">
                   Login / Book
                 </Link>
               )}

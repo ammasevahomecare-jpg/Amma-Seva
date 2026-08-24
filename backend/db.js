@@ -20,6 +20,7 @@ const DEFAULT_MOCK_DATA = {
   enquiries: [],
   bookings: [],
   caregivers: [],
+  gallery: [],
   services: [
     {
       id: 1,
@@ -439,6 +440,15 @@ export const db = {
             id INT AUTO_INCREMENT PRIMARY KEY,
             message TEXT NOT NULL,
             target VARCHAR(50) NOT NULL,
+            createdAt VARCHAR(255) NOT NULL
+          )
+        `)
+
+        await connection.query(`
+          CREATE TABLE IF NOT EXISTS gallery (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            imageUrl LONGTEXT NOT NULL,
+            title VARCHAR(255) NOT NULL,
             createdAt VARCHAR(255) NOT NULL
           )
         `)
@@ -1726,6 +1736,52 @@ export const db = {
       if (!data.faqs) data.faqs = []
       const filtered = data.faqs.filter(f => f.id !== Number(id))
       data.faqs = filtered
+      await writeJSONDb(data)
+      return true
+    }
+  },
+
+  getGallery: async () => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM gallery ORDER BY id DESC')
+      return rows
+    } else {
+      const data = await readJSONDb()
+      if (!data.gallery) data.gallery = []
+      return data.gallery.slice().reverse()
+    }
+  },
+
+  addGallery: async (item) => {
+    const createdAt = new Date().toISOString()
+    if (useMySQL) {
+      const [result] = await pool.query(
+        'INSERT INTO gallery (imageUrl, title, createdAt) VALUES (?, ?, ?)',
+        [item.imageUrl, item.title, createdAt]
+      )
+      return { id: result.insertId, ...item, createdAt }
+    } else {
+      const data = await readJSONDb()
+      if (!data.gallery) data.gallery = []
+      const newItem = {
+        id: data.gallery.length > 0 ? Math.max(...data.gallery.map(g => g.id)) + 1 : 1,
+        ...item,
+        createdAt
+      }
+      data.gallery.push(newItem)
+      await writeJSONDb(data)
+      return newItem
+    }
+  },
+
+  deleteGallery: async (id) => {
+    if (useMySQL) {
+      await pool.query('DELETE FROM gallery WHERE id = ?', [Number(id)])
+      return true
+    } else {
+      const data = await readJSONDb()
+      if (!data.gallery) data.gallery = []
+      data.gallery = data.gallery.filter(g => g.id !== Number(id))
       await writeJSONDb(data)
       return true
     }

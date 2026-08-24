@@ -244,7 +244,7 @@ function Home() {
                 return (
                   <div
                     key={s.slug}
-                    className="carousel-card snap-start snap-always group/card flex flex-col overflow-hidden rounded-3xl border border-slate-200/60 bg-background shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-1.5"
+                    className="carousel-card premium-card snap-start snap-always group/card flex flex-col overflow-hidden rounded-3xl bg-background shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-1.5"
                   >
                     <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100 block">
                       <img 
@@ -317,7 +317,7 @@ function Home() {
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {WHY.map((w) => (
-              <div key={w.title} className="group rounded-3xl border border-slate-200/60 bg-background p-5 text-left shadow-sm hover:shadow-xl hover:border-gold/30 transition-all duration-500 hover:-translate-y-1">
+              <div key={w.title} className="group rounded-3xl premium-card bg-background p-5 text-left shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-1">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gold/10 text-gold transition-all duration-500 group-hover:bg-primary group-hover:text-white group-hover:rotate-3 shadow-inner">
                   <w.icon className="h-6 w-6" />
                 </div>
@@ -338,7 +338,7 @@ function Home() {
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {STEPS.map((s) => (
-              <div key={s.n} className="relative rounded-3xl border border-slate-200/60 bg-background p-5 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-1 text-left">
+              <div key={s.n} className="relative rounded-3xl premium-card bg-background p-5 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-1 text-left">
                 <div className="absolute top-4 right-6 font-display text-5xl font-extrabold text-gold/15 select-none">{s.n}</div>
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-white font-bold text-sm shadow-sm">{s.n}</div>
                 <h3 className="mt-3 text-lg font-bold text-primary font-display">{s.t}</h3>
@@ -358,7 +358,7 @@ function Home() {
           </div>
           <div className="grid gap-4 lg:grid-cols-3">
             {TESTIMONIALS.map((t) => (
-              <figure key={t.name} className="relative rounded-3xl border border-slate-200/60 bg-background p-5 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-1 flex flex-col justify-between text-left">
+              <figure key={t.name} className="relative rounded-3xl premium-card bg-background p-5 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-1 flex flex-col justify-between text-left">
                 <div>
                   <div className="flex gap-1 text-gold">
                     {Array.from({ length: 5 }).map((_, i) => <Star key={i} className="h-4 w-4 fill-current" />)}

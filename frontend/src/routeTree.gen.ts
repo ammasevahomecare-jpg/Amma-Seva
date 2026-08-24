@@ -16,6 +16,7 @@ import { Route as BlogRouteImport } from './routes/blog'
 import { Route as CareersRouteImport } from './routes/careers'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RefundRouteImport } from './routes/refund'
@@ -60,6 +61,11 @@ const ContactRoute = ContactRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GalleryRoute = GalleryRouteImport.update({
+  id: '/gallery',
+  path: '/gallery',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -121,6 +127,7 @@ export interface FileRoutesByFullPath {
   '/careers': typeof CareersRoute
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
+  '/gallery': typeof GalleryRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/refund': typeof RefundRoute
@@ -139,6 +146,7 @@ export interface FileRoutesByTo {
   '/careers': typeof CareersRoute
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
+  '/gallery': typeof GalleryRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/refund': typeof RefundRoute
@@ -158,6 +166,7 @@ export interface FileRoutesById {
   '/careers': typeof CareersRoute
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
+  '/gallery': typeof GalleryRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/refund': typeof RefundRoute
@@ -179,6 +188,7 @@ export interface FileRouteTypes {
     | '/careers'
     | '/contact'
     | '/dashboard'
+    | '/gallery'
     | '/login'
     | '/privacy'
     | '/refund'
@@ -197,6 +207,7 @@ export interface FileRouteTypes {
     | '/careers'
     | '/contact'
     | '/dashboard'
+    | '/gallery'
     | '/login'
     | '/privacy'
     | '/refund'
@@ -215,6 +226,7 @@ export interface FileRouteTypes {
     | '/careers'
     | '/contact'
     | '/dashboard'
+    | '/gallery'
     | '/login'
     | '/privacy'
     | '/refund'
@@ -235,6 +247,7 @@ export interface RootRouteChildren {
   CareersRoute: typeof CareersRoute
   ContactRoute: typeof ContactRoute
   DashboardRoute: typeof DashboardRoute
+  GalleryRoute: typeof GalleryRoute
   LoginRoute: typeof LoginRoute
   PrivacyRoute: typeof PrivacyRoute
   RefundRoute: typeof RefundRoute
@@ -292,6 +305,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gallery': {
+      id: '/gallery'
+      path: '/gallery'
+      fullPath: '/gallery'
+      preLoaderRoute: typeof GalleryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -401,6 +421,7 @@ const rootRouteChildren: RootRouteChildren = {
   CareersRoute: CareersRoute,
   ContactRoute: ContactRoute,
   DashboardRoute: DashboardRoute,
+  GalleryRoute: GalleryRoute,
   LoginRoute: LoginRoute,
   PrivacyRoute: PrivacyRoute,
   RefundRoute: RefundRoute,
