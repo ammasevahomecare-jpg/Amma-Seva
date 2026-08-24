@@ -148,137 +148,153 @@ function Home() {
 
   return (
     <SiteLayout>
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-2 lg:gap-10 lg:px-8 lg:py-12">
-          <div className="flex flex-col justify-center">
-            <span className="gold-rule text-xs font-semibold uppercase tracking-[0.2em] text-gold">Home Healthcare</span>
-            <h1 className="mt-5 text-4xl font-semibold leading-tight text-primary sm:text-5xl lg:text-6xl">
-              Professional Care with a <span className="text-gold italic">Mother&apos;s Touch.</span>
+      {/* Hero with dynamic premium styling */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#fbfbfe] to-white pb-12">
+        {/* Floating background graphic elements */}
+        <div className="absolute top-0 right-0 -z-10 h-96 w-96 rounded-full bg-gold/5 blur-3xl opacity-60" />
+        <div className="absolute top-20 left-10 -z-10 h-80 w-80 rounded-full bg-primary/5 blur-3xl opacity-60" />
+
+        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-2 lg:gap-12 lg:px-8 lg:py-16">
+          <div className="flex flex-col justify-center text-left">
+            <div className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/5 px-3 py-1 text-[11px] font-bold text-gold tracking-wider uppercase mb-5 max-w-fit">
+              ✨ Hyderabad&apos;s Trusted Professional Care Network
+            </div>
+            <h1 className="text-4xl font-extrabold leading-tight text-primary sm:text-5xl lg:text-6xl font-display">
+              Professional Care <br className="hidden sm:inline" />
+              with a <span className="text-gold italic font-medium relative">Mother&apos;s Touch.</span>
             </h1>
-            <p className="mt-5 max-w-xl text-lg text-muted-foreground">
-              Trusted nurses and compassionate caregivers for elderly care, mothers, newborns and patients — delivered to the comfort of your home.
+            <p className="mt-5 max-w-xl text-lg text-slate-500 leading-relaxed">
+              Qualified nurses and compassionate caregivers for elderly care, mothers, newborns, and patients — delivered to the comfort of your home.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link to="/contact" className="btn-primary">
+            <div className="mt-8 flex flex-wrap gap-4">
+              <Link to="/contact" className="btn-primary shadow-lg shadow-primary/20 hover:shadow-xl transition-all">
                 <Calendar className="h-5 w-5" /> Book a Service
               </Link>
-              <a href={`tel:${contact.PHONE_TEL}`} className="btn-gold">
+              <a href={`tel:${contact.PHONE_TEL}`} className="btn-gold shadow-lg shadow-gold/20 hover:shadow-xl transition-all">
                 <Phone className="h-5 w-5" /> Call Now
               </a>
             </div>
-            <div className="mt-10 grid grid-cols-3 gap-6 border-t border-border pt-6">
+            <div className="mt-12 grid grid-cols-3 gap-6 border-t border-slate-100 pt-8">
               <Stat n="5,000+" l="Happy families" />
               <Stat n="500+" l="Verified staff" />
               <Stat n="24/7" l="Care helpline" />
             </div>
           </div>
-          <div className="relative">
-            <div className="absolute -inset-4 rounded-3xl bg-accent/50 blur-2xl" aria-hidden />
-            <div className="relative overflow-hidden rounded-3xl border border-border shadow-xl aspect-[16/10] w-full">
+          <div className="relative flex items-center justify-center lg:pl-4">
+            <div className="absolute -inset-4 rounded-3xl bg-gold/5 blur-2xl" aria-hidden />
+            <div className="relative overflow-hidden rounded-[2.5rem] border border-slate-200/60 shadow-2xl aspect-[16/10] w-full bg-slate-50">
               {HERO_IMAGES.map((imgSrc, idx) => (
                 <img
                   key={imgSrc}
                   src={imgSrc}
-                  alt="Amma Seva nurse caring for patients at home"
+                  alt="Amma Seva home nursing"
                   width={1600}
                   height={1000}
-                  className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ease-in-out ${
-                    idx === currentImageIndex ? "opacity-100" : "opacity-0 pointer-events-none"
+                  className={`absolute inset-0 h-full w-full object-cover transition-all duration-1000 ease-in-out hover:scale-103 ${
+                    idx === currentImageIndex ? "opacity-100 scale-100" : "opacity-0 scale-95 pointer-events-none"
                   }`}
                 />
               ))}
+              <div className="absolute inset-0 bg-gradient-to-t from-primary/10 via-transparent to-transparent" />
             </div>
-            <div className="absolute -bottom-6 -left-6 hidden max-w-xs rounded-2xl border border-border bg-background p-5 shadow-lg sm:block z-10">
-              <div className="flex items-center gap-2 text-gold">
+            {/* Premium Floating Card */}
+            <div className="absolute -bottom-6 -left-2 sm:-left-6 max-w-[280px] sm:max-w-xs rounded-2xl border border-white/40 bg-white/80 backdrop-blur-md p-5 shadow-2xl z-10 text-left transition-transform hover:scale-102 duration-300">
+              <div className="flex items-center gap-1.5 text-gold">
                 {Array.from({ length: 5 }).map((_, i) => <Star key={i} className="h-4 w-4 fill-current" />)}
               </div>
-              <p className="mt-2 text-sm text-foreground">“Punctual, gentle and skilled. Real peace of mind for our family.”</p>
-              <p className="mt-2 text-xs text-muted-foreground">— Priya R.</p>
+              <p className="mt-2.5 text-sm font-semibold text-primary leading-relaxed">
+                “Punctual, gentle, and highly skilled caregivers. Real peace of mind for our parents.”
+              </p>
+              <p className="mt-2 text-xs font-bold text-slate-400 uppercase tracking-wider">— Priya R.</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Services */}
-      <section className="border-t border-border bg-cream/40">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="max-w-3xl text-left">
+      {/* Services Section */}
+      <section className="border-t border-slate-100 bg-cream/35 py-12 sm:py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="max-w-3xl text-left mb-10 sm:mb-12">
             <span className="gold-rule text-xs font-semibold uppercase tracking-[0.2em] text-gold">Our Services</span>
-            <h2 className="mt-4 text-3xl font-semibold text-primary sm:text-4xl">Care for every stage of life</h2>
-            <p className="mt-2 text-muted-foreground">From newborns to seniors — comprehensive home healthcare tailored to your family.</p>
+            <h2 className="mt-4 text-3xl font-extrabold text-primary sm:text-4xl font-display">Care for every stage of life</h2>
+            <p className="mt-3 text-slate-500 text-base leading-relaxed">From newborns to seniors — comprehensive home healthcare tailored to your family.</p>
           </div>
-          <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
             {services.slice(0, 6).map((s: any) => {
               const details = getServiceDetails(s.slug);
               return (
                 <div
                   key={s.slug}
-                  className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
+                  className="group flex flex-col overflow-hidden rounded-3xl border border-slate-200/60 bg-background shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-1.5"
                 >
-                  <Link
-                    to="/services/$slug"
-                    params={{ slug: s.slug }}
-                    className="aspect-[4/3] w-full overflow-hidden bg-slate-100 block"
-                  >
+                  <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100 block">
                     <img 
                       src={details.image} 
                       alt={s.title} 
                       width={1200} 
                       height={900} 
                       loading="lazy" 
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                      className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-108" 
                     />
-                  </Link>
-                  <div className="flex flex-1 flex-col p-5">
+                    <div className="absolute inset-0 bg-gradient-to-t from-primary/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    
+                    {/* Floating Price Badge */}
+                    <div className="absolute top-4 right-4 bg-primary/95 backdrop-blur-sm text-white px-3.5 py-1 rounded-xl text-xs font-bold shadow-md border border-white/10">
+                      {s.price}
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-1 flex-col p-6 text-left">
                     <div className="flex">
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${details.badgeClass}`}>
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider border ${details.badgeClass}`}>
                         {details.category}
                       </span>
                     </div>
                     <Link
                       to="/services/$slug"
                       params={{ slug: s.slug }}
-                      className="mt-3 block text-lg font-bold text-primary hover:text-gold transition-colors duration-200"
+                      className="mt-3 block text-lg font-bold text-primary hover:text-gold transition-colors duration-300 font-display"
                     >
                       {s.title}
                     </Link>
-                    <p className="mt-2 flex-1 text-sm text-muted-foreground line-clamp-3">
+                    <p className="mt-2.5 flex-1 text-sm text-slate-500 leading-relaxed line-clamp-3">
                       {s.short}
                     </p>
                     <Link
                       to="/services/$slug"
                       params={{ slug: s.slug }}
-                      className="mt-5 w-full bg-[#3f5151] hover:bg-[#2c3a3a] text-white text-center py-2 px-4 rounded-lg text-sm font-semibold transition-colors duration-300 flex items-center justify-center gap-1.5"
+                      className="mt-6 w-full btn-primary text-sm font-bold flex items-center justify-center gap-1.5 shadow-sm shadow-primary/10 group-hover:shadow-md transition-all duration-300"
                     >
-                      View Details <ChevronRight className="h-4 w-4" />
+                      View Details <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                     </Link>
                   </div>
                 </div>
               );
             })}
           </div>
-          <div className="mt-6 text-center">
-            <Link to="/services" className="btn-outline">View all services</Link>
+          
+          <div className="mt-12 text-center">
+            <Link to="/services" className="btn-outline px-8 py-3">View all services</Link>
           </div>
         </div>
       </section>
 
-      {/* Why choose */}
-      <section className="border-t border-border">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="max-w-3xl text-left">
+      {/* Why Choose Us */}
+      <section className="border-t border-slate-100 py-12 sm:py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="max-w-3xl text-left mb-10">
             <span className="gold-rule text-xs font-semibold uppercase tracking-[0.2em] text-gold">Why Amma Seva</span>
-            <h2 className="mt-4 text-3xl font-semibold text-primary sm:text-4xl">A promise your family can lean on</h2>
+            <h2 className="mt-4 text-3xl font-extrabold text-primary sm:text-4xl font-display">A promise your family can lean on</h2>
           </div>
-          <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {WHY.map((w) => (
-              <div key={w.title} className="rounded-2xl border border-border bg-background p-6 text-center shadow-sm">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent text-gold">
+              <div key={w.title} className="group rounded-3xl border border-slate-200/60 bg-background p-6 text-center shadow-sm hover:shadow-xl hover:border-gold/30 transition-all duration-500 hover:-translate-y-1">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gold/10 text-gold transition-all duration-500 group-hover:bg-primary group-hover:text-white group-hover:rotate-3 shadow-inner">
                   <w.icon className="h-6 w-6" />
                 </div>
-                <h3 className="mt-4 text-lg font-semibold text-primary">{w.title}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">{w.desc}</p>
+                <h3 className="mt-5 text-lg font-bold text-primary font-display">{w.title}</h3>
+                <p className="mt-2.5 text-sm text-slate-500 leading-relaxed">{w.desc}</p>
               </div>
             ))}
           </div>
@@ -286,18 +302,19 @@ function Home() {
       </section>
 
       {/* How it works */}
-      <section className="border-t border-border bg-cream/40">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="max-w-3xl text-left">
+      <section className="border-t border-slate-100 bg-cream/35 py-12 sm:py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="max-w-3xl text-left mb-10">
             <span className="gold-rule text-xs font-semibold uppercase tracking-[0.2em] text-gold">How It Works</span>
-            <h2 className="mt-4 text-3xl font-semibold text-primary sm:text-4xl">Care arranged in four simple steps</h2>
+            <h2 className="mt-4 text-3xl font-extrabold text-primary sm:text-4xl font-display">Care arranged in four simple steps</h2>
           </div>
-          <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {STEPS.map((s) => (
-              <div key={s.n} className="relative rounded-2xl border border-border bg-background p-6 shadow-sm">
-                <div className="font-display text-4xl font-semibold text-gold">{s.n}</div>
-                <h3 className="mt-2 text-lg font-semibold text-primary">{s.t}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">{s.d}</p>
+              <div key={s.n} className="relative rounded-3xl border border-slate-200/60 bg-background p-6 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-1 text-left">
+                <div className="absolute top-4 right-6 font-display text-5xl font-extrabold text-gold/15 select-none">{s.n}</div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white font-bold text-sm shadow-sm">{s.n}</div>
+                <h3 className="mt-5 text-lg font-bold text-primary font-display">{s.t}</h3>
+                <p className="mt-2.5 text-sm text-slate-500 leading-relaxed">{s.d}</p>
               </div>
             ))}
           </div>
@@ -305,22 +322,29 @@ function Home() {
       </section>
 
       {/* Testimonials */}
-      <section className="border-t border-border">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="max-w-3xl text-left">
+      <section className="border-t border-slate-100 py-12 sm:py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="max-w-3xl text-left mb-10">
             <span className="gold-rule text-xs font-semibold uppercase tracking-[0.2em] text-gold">Testimonials</span>
-            <h2 className="mt-4 text-3xl font-semibold text-primary sm:text-4xl">Loved by families across India</h2>
+            <h2 className="mt-4 text-3xl font-extrabold text-primary sm:text-4xl font-display">Loved by families across India</h2>
           </div>
-          <div className="mt-6 grid gap-6 lg:grid-cols-3">
+          <div className="grid gap-6 lg:grid-cols-3">
             {TESTIMONIALS.map((t) => (
-              <figure key={t.name} className="rounded-2xl border border-border bg-background p-6 shadow-sm">
-                <div className="flex gap-1 text-gold">
-                  {Array.from({ length: 5 }).map((_, i) => <Star key={i} className="h-4 w-4 fill-current" />)}
+              <figure key={t.name} className="relative rounded-3xl border border-slate-200/60 bg-background p-6 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-1 flex flex-col justify-between text-left">
+                <div>
+                  <div className="flex gap-1 text-gold">
+                    {Array.from({ length: 5 }).map((_, i) => <Star key={i} className="h-4 w-4 fill-current" />)}
+                  </div>
+                  <blockquote className="mt-4 text-slate-600 leading-relaxed italic">“{t.quote}”</blockquote>
                 </div>
-                <blockquote className="mt-4 text-foreground">“{t.quote}”</blockquote>
-                <figcaption className="mt-6 text-sm">
-                  <div className="font-semibold text-primary">{t.name}</div>
-                  <div className="text-muted-foreground">{t.role}</div>
+                <figcaption className="mt-6 flex items-center gap-3.5 border-t border-slate-100 pt-4">
+                  <div className="h-10 w-10 rounded-full bg-gold/10 flex items-center justify-center font-bold text-gold text-sm border border-gold/20 uppercase shrink-0">
+                    {t.name[0]}
+                  </div>
+                  <div className="text-sm">
+                    <div className="font-bold text-primary font-display">{t.name}</div>
+                    <div className="text-xs text-slate-400 mt-0.5">{t.role}</div>
+                  </div>
                 </figcaption>
               </figure>
             ))}
@@ -329,15 +353,15 @@ function Home() {
       </section>
 
       {/* FAQ */}
-      <section className="border-t border-border bg-cream/40">
+      <section className="border-t border-slate-100 bg-cream/35 py-12 sm:py-16">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="max-w-3xl text-left">
             <span className="gold-rule text-xs font-semibold uppercase tracking-[0.2em] text-gold">FAQs</span>
-            <h2 className="mt-4 text-3xl font-semibold text-primary sm:text-4xl">Answers to common questions</h2>
+            <h2 className="mt-4 text-3xl font-extrabold text-primary sm:text-4xl font-display">Answers to common questions</h2>
           </div>
-          <div className="mt-6 grid gap-4 md:grid-cols-2 items-start text-left">
+          <div className="mt-8 grid gap-4 md:grid-cols-2 items-start text-left">
             {faqs.map((f: any) => (
-              <details key={f.id} className="group rounded-2xl border border-border/80 bg-background p-5 hover:border-gold/50 transition-all duration-300 open:border-gold open:shadow-md hover:shadow-sm">
+              <details key={f.id} className="group rounded-2xl border border-slate-200/60 bg-background p-5 hover:border-gold/50 transition-all duration-300 open:border-gold open:shadow-md hover:shadow-sm">
                 <summary className="flex cursor-pointer list-none items-center justify-between text-base font-bold text-primary transition-colors group-open:text-gold select-none outline-none">
                   <span>{f.question}</span>
                   <ChevronRight className="h-5 w-5 text-gold/70 transition-transform group-open:rotate-90 group-open:text-gold shrink-0" />
@@ -350,8 +374,6 @@ function Home() {
           </div>
         </div>
       </section>
-
-
     </SiteLayout>
   );
 }

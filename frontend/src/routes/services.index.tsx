@@ -107,36 +107,39 @@ function ServicesPage() {
           </p>
         </div>
       </section>
-      <section>
-        <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:grid-cols-2 sm:px-6 lg:grid-cols-3 lg:px-8">
+      <section className="py-12 sm:py-16">
+        <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-3 lg:px-8">
           {services.map((s: any) => {
             const details = getServiceDetails(s.slug);
             return (
               <div
                 key={s.slug}
-                className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
+                className="group flex flex-col overflow-hidden rounded-3xl border border-slate-200/60 bg-background shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-1.5"
               >
-                <Link
-                  to="/services/$slug"
-                  params={{ slug: s.slug }}
-                  className="aspect-[4/3] w-full overflow-hidden bg-slate-100 block"
-                >
+                <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100 block">
                   <img 
                     src={details.image} 
                     alt={s.title} 
                     width={1200} 
                     height={900} 
                     loading="lazy" 
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                    className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-108" 
                   />
-                </Link>
-                <div className="flex flex-1 flex-col p-5">
+                  <div className="absolute inset-0 bg-gradient-to-t from-primary/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  
+                  {/* Floating Price Badge */}
+                  <div className="absolute top-4 right-4 bg-primary/95 backdrop-blur-sm text-white px-3.5 py-1 rounded-xl text-xs font-bold shadow-md border border-white/10">
+                    {s.price}
+                  </div>
+                </div>
+                
+                <div className="flex flex-1 flex-col p-6 text-left">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${details.badgeClass}`}>
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider border ${details.badgeClass}`}>
                       {details.category}
                     </span>
                     {s.comingSoon && (
-                      <span className="inline-flex items-center rounded-full bg-amber-50 text-amber-700 border border-amber-200/60 px-2 py-0.5 text-xs font-medium">
+                      <span className="inline-flex items-center rounded-full bg-amber-50 text-amber-700 border border-amber-200/60 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider">
                         Coming soon
                       </span>
                     )}
@@ -144,19 +147,19 @@ function ServicesPage() {
                   <Link
                     to="/services/$slug"
                     params={{ slug: s.slug }}
-                    className="mt-3 block text-lg font-bold text-primary hover:text-gold transition-colors duration-200"
+                    className="mt-3 block text-lg font-bold text-primary hover:text-gold transition-colors duration-300 font-display"
                   >
                     {s.title}
                   </Link>
-                  <p className="mt-2 flex-1 text-sm text-muted-foreground line-clamp-3">
+                  <p className="mt-2.5 flex-1 text-sm text-slate-500 leading-relaxed line-clamp-3">
                     {s.short}
                   </p>
                   <Link
                     to="/services/$slug"
                     params={{ slug: s.slug }}
-                    className="mt-5 w-full bg-[#3f5151] hover:bg-[#2c3a3a] text-white text-center py-2 px-4 rounded-lg text-sm font-semibold transition-colors duration-300 flex items-center justify-center gap-1.5"
+                    className="mt-6 w-full btn-primary text-sm font-bold flex items-center justify-center gap-1.5 shadow-sm shadow-primary/10 group-hover:shadow-md transition-all duration-300"
                   >
-                    View Details <ChevronRight className="h-4 w-4" />
+                    View Details <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                   </Link>
                 </div>
               </div>
