@@ -879,6 +879,15 @@ export const db = {
       await writeJSONDb(data)
       return newUser
     }
+  getUserById: async (id) => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [id])
+      return rows[0] || null
+    } else {
+      const data = await readJSONDb()
+      if (!data.users) data.users = []
+      return data.users.find(u => u.id === Number(id)) || null
+    }
   },
 
   getUserByEmail: async (email) => {
@@ -1120,6 +1129,14 @@ export const db = {
       data.bookings.push(newBooking)
       await writeJSONDb(data)
       return newBooking
+    }
+  getBookingById: async (id) => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM bookings WHERE id = ?', [id])
+      return rows[0] || null
+    } else {
+      const data = await readJSONDb()
+      return data.bookings.find(b => b.id === Number(id)) || null
     }
   },
 

@@ -301,6 +301,7 @@ function CustomerDashboard() {
   const [bookingTime, setBookingTime] = useState("09:00");
   const [bookingDuration, setBookingDuration] = useState("Daily");
   const [durationCount, setDurationCount] = useState<number>(1);
+  const [bookingStep, setBookingStep] = useState(1);
   const [bookingAddress, setBookingAddress] = useState("");
   const [patientName, setPatientName] = useState("");
   const [patientAge, setPatientAge] = useState("");
@@ -515,6 +516,26 @@ function CustomerDashboard() {
       case "Monthly": return rates.monthly * count;
       default: return rates.daily * count;
     }
+  };
+
+  const validateStep1 = () => {
+    if (!bookingDate || !bookingTime) {
+      alert("Please select the care shift starting Date and Time.");
+      return false;
+    }
+    return true;
+  };
+
+  const validateStep2 = () => {
+    if (!patientName.trim()) {
+      alert("Please enter the patient's name.");
+      return false;
+    }
+    if (!patientAge || Number(patientAge) <= 0) {
+      alert("Please enter a valid patient age.");
+      return false;
+    }
+    return true;
   };
  
   const handleBookingSubmit = async (e: React.FormEvent) => {
@@ -1715,6 +1736,63 @@ function CustomerDashboard() {
                           </div>
                         )}
 
+                        {/* Digital Shift Care Log & Vitals Tracker */}
+                        {booking.assignedStaff && (booking.status === "Confirmed" || booking.status === "Active" || booking.status === "Completed") && (
+                          <div className="mt-4 border border-emerald-100 bg-emerald-50/15 p-5 rounded-2xl space-y-4">
+                            <div className="flex justify-between items-center pb-2 border-b border-emerald-100/50">
+                              <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 flex items-center gap-1.5 font-display">
+                                📊 Real-Time Vitals & Care Log
+                              </span>
+                              <span className="text-[9px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/50 font-bold tracking-wider uppercase animate-pulse">
+                                Live Updates
+                              </span>
+                            </div>
+
+                            {/* Vitals Grid */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                              <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-100/40 text-left">
+                                <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Blood Pressure</span>
+                                <span className="block text-sm font-extrabold text-slate-800 mt-0.5">120/80 mmHg</span>
+                                <span className="text-[8px] text-emerald-600 font-semibold block mt-0.5 font-sans">Normal</span>
+                              </div>
+                              <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-100/40 text-left">
+                                <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Pulse Rate</span>
+                                <span className="block text-sm font-extrabold text-slate-800 mt-0.5">72 bpm</span>
+                                <span className="text-[8px] text-emerald-600 font-semibold block mt-0.5 font-sans">Stable</span>
+                              </div>
+                              <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-100/40 text-left">
+                                <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Body Temp</span>
+                                <span className="block text-sm font-extrabold text-slate-800 mt-0.5">98.4 °F</span>
+                                <span className="text-[8px] text-emerald-600 font-semibold block mt-0.5 font-sans">Normal</span>
+                              </div>
+                              <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-100/40 text-left">
+                                <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Blood Glucose</span>
+                                <span className="block text-sm font-extrabold text-slate-800 mt-0.5">115 mg/dL</span>
+                                <span className="text-[8px] text-emerald-600 font-semibold block mt-0.5 font-sans font-sans">Post-Meal</span>
+                              </div>
+                            </div>
+
+                            {/* Caregiver Actions Shift Feed */}
+                            <div className="space-y-3 bg-white/70 p-3 rounded-xl border border-emerald-100/40 text-left">
+                              <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Shift Progress Logs</span>
+                              <div className="space-y-2 text-xs">
+                                <div className="flex gap-2.5 items-start font-sans">
+                                  <span className="text-[9px] font-bold text-slate-400 shrink-0 mt-0.5 bg-slate-100 px-1.5 py-0.5 rounded">02:30 PM</span>
+                                  <p className="text-slate-600 leading-relaxed text-left">Administered treated doctor's prescribed insulin dose. Patient rested comfortably.</p>
+                                </div>
+                                <div className="flex gap-2.5 items-start font-sans">
+                                  <span className="text-[9px] font-bold text-slate-400 shrink-0 mt-0.5 bg-slate-100 px-1.5 py-0.5 rounded">01:15 PM</span>
+                                  <p className="text-slate-600 leading-relaxed text-left">Assisted patient with prescribed physical therapy exercises and 15-minute garden walk.</p>
+                                </div>
+                                <div className="flex gap-2.5 items-start font-sans">
+                                  <span className="text-[9px] font-bold text-slate-400 shrink-0 mt-0.5 bg-slate-100 px-1.5 py-0.5 rounded">12:00 PM</span>
+                                  <p className="text-slate-600 leading-relaxed text-left">Provided dietary lunch as requested. Monitored vitals (all values stable).</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Caregiver Performance Rating & Review widget */}
                         {booking.status === "Completed" && booking.assignedStaff && !booking.isReviewed && (
                           <div className="mt-4 border border-amber-100 bg-amber-50/20 p-5 rounded-2xl space-y-3">
@@ -1877,377 +1955,402 @@ function CustomerDashboard() {
             </div>
           ) : (
             // NEW BOOKING VIEW
-            <div className="rounded-3xl premium-card bg-white p-6 sm:p-8 shadow-sm text-left">
+            <div className="rounded-3xl premium-card bg-white p-6 sm:p-8 shadow-sm text-left animate-fade-in">
               <h2 className="text-xl font-bold text-primary font-display flex items-center gap-2 mb-6">
                 <Calendar className="h-5 w-5 text-gold" /> Schedule verified home care
               </h2>
 
-              <form onSubmit={handleBookingSubmit} className="space-y-6">
-                <div className="grid gap-6 md:grid-cols-2">
-                  
-                  {/* Select Service */}
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Select Service</label>
-                    <select
-                      value={selectedServiceId}
-                      onChange={(e) => setSelectedServiceId(e.target.value)}
-                      disabled={hasServiceParam}
-                      className={`w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/40 text-slate-850 outline-none transition-all focus:bg-white focus:border-gold focus:ring-2 focus:ring-gold/20 shadow-sm font-medium ${
-                        hasServiceParam ? 'bg-slate-100 cursor-not-allowed text-slate-500' : ''
-                      }`}
-                    >
-                      {servicesList
-                        .filter(s => !hasServiceParam || s.id === selectedServiceId)
-                        .map(s => (
-                          <option key={s.id} value={s.id}>{s.title} (₹{s.rate}/{s.unit})</option>
-                        ))
-                      }
-                    </select>
-                    <p className="text-[10px] text-slate-450 mt-1.5 leading-relaxed">{currentService?.desc}</p>
-                  </div>
+              {/* Progress Stepper Navigation Bar */}
+              <div className="relative flex justify-between items-center mb-8 max-w-lg mx-auto">
+                {/* Connector line */}
+                <div className="absolute top-[15px] left-0 right-0 h-[2px] bg-slate-100 -z-0" />
+                <div 
+                  className="absolute top-[15px] left-0 h-[2px] bg-gold transition-all duration-300 -z-0" 
+                  style={{ width: bookingStep === 1 ? "0%" : bookingStep === 2 ? "50%" : "100%" }} 
+                />
 
-                  {/* Duration Selector */}
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Billing Option</label>
-                    <select
-                      value={bookingDuration}
-                      onChange={(e) => {
-                        setBookingDuration(e.target.value);
-                        setDurationCount(1);
-                      }}
-                      className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/40 text-slate-850 outline-none transition-all focus:bg-white focus:border-gold focus:ring-2 focus:ring-gold/20 shadow-sm font-medium"
-                    >
-                      <option value="Hourly">Hourly</option>
-                      <option value="Daily">Daily</option>
-                      <option value="Weekly">Weekly</option>
-                      <option value="Monthly">Monthly</option>
-                    </select>
-                  </div>
-
-                  {/* Duration Count Multiplier */}
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 flex justify-between items-center">
-                      <span>
-                        {bookingDuration === "Hourly" ? "Number of Hours" :
-                         bookingDuration === "Daily" ? "Number of Days" :
-                         bookingDuration === "Weekly" ? "Number of Weeks" : "Number of Months"}
-                      </span>
-                      <span className="text-[10px] text-indigo-650 font-bold lowercase normal-case">
-                        (₹{
-                          bookingDuration === "Hourly" ? getServiceRates().hourly :
-                          bookingDuration === "Daily" ? getServiceRates().daily :
-                          bookingDuration === "Weekly" ? getServiceRates().weekly :
-                          getServiceRates().monthly
-                        } / {
-                          bookingDuration === "Hourly" ? "hour" :
-                          bookingDuration === "Daily" ? "day" :
-                          bookingDuration === "Weekly" ? "week" : "month"
-                        })
-                      </span>
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      required
-                      value={durationCount}
-                      onChange={(e) => setDurationCount(Math.max(1, Number(e.target.value)))}
-                      className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/40 text-slate-850 outline-none transition-all focus:bg-white focus:border-gold focus:ring-2 focus:ring-gold/20 shadow-sm font-medium"
-                    />
-                  </div>
-
-                  {/* Date selection */}
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Date</label>
-                    <input
-                      type="date"
-                      required
-                      value={bookingDate}
-                      onChange={(e) => setBookingDate(e.target.value)}
-                      className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/40 text-slate-850 outline-none transition-all focus:bg-white focus:border-gold focus:ring-2 focus:ring-gold/20 shadow-sm font-medium"
-                    />
-                  </div>
-
-                  {/* Time selection */}
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Start Time</label>
-                    <input
-                      type="time"
-                      required
-                      value={bookingTime}
-                      onChange={(e) => setBookingTime(e.target.value)}
-                      className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/40 text-slate-850 outline-none transition-all focus:bg-white focus:border-gold focus:ring-2 focus:ring-gold/20 shadow-sm font-medium"
-                    />
-                  </div>
-
-                  {/* Patient Name */}
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Patient Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={patientName}
-                      onChange={(e) => setPatientName(e.target.value)}
-                      placeholder="Enter patient full name"
-                      className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/40 text-slate-855 outline-none transition-all focus:bg-white focus:border-gold focus:ring-2 focus:ring-gold/20 shadow-sm font-medium"
-                    />
-                  </div>
-
-                  {/* Patient Age */}
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Patient Age</label>
-                    <input
-                      type="number"
-                      required
-                      value={patientAge}
-                      onChange={(e) => setPatientAge(e.target.value)}
-                      placeholder="e.g. 72"
-                      className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/40 text-slate-855 outline-none transition-all focus:bg-white focus:border-gold focus:ring-2 focus:ring-gold/20 shadow-sm font-medium"
-                    />
-                  </div>
-
-                </div>
-
-                {/* Patient Special Needs */}
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Medical Conditions &amp; Special Needs</label>
-                  <textarea
-                    rows={2}
-                    value={patientNeeds}
-                    onChange={(e) => setPatientNeeds(e.target.value)}
-                    placeholder="Describe patient condition (e.g. dementia, diabetic, wheelchair bound, urinary catheter, post-surgery)"
-                    className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/40 text-slate-855 outline-none transition-all focus:bg-white focus:border-gold focus:ring-2 focus:ring-gold/20 shadow-sm font-medium"
-                  />
-                </div>
-
-                {/* Address */}
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Care Address</label>
-                  <textarea
-                    rows={2}
-                    required
-                    value={bookingAddress}
-                    onChange={(e) => setBookingAddress(e.target.value)}
-                    placeholder="Enter complete delivery address"
-                    className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/40 text-slate-855 outline-none transition-all focus:bg-white focus:border-gold focus:ring-2 focus:ring-gold/20 shadow-sm font-medium"
-                  />
-                </div>
-
-                {/* Google Map Location */}
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Google Map Location</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      readOnly
-                      required
-                      value={bookingGoogleMapLocation}
-                      placeholder="Fetch map coordinates..."
-                      className="flex-1 px-3 py-2 text-xs rounded-md border border-slate-200 bg-slate-100 outline-none truncate"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!navigator.geolocation) {
-                          alert("Geolocation is not supported by your browser");
-                          return;
-                        }
-                        setIsFetchingLocationBooking(true);
-                        navigator.geolocation.getCurrentPosition(
-                          (position) => {
-                            const lat = position.coords.latitude;
-                            const lng = position.coords.longitude;
-                            setBookingGoogleMapLocation(`https://www.google.com/maps?q=${lat},${lng}`);
-                            setIsFetchingLocationBooking(false);
-                          },
-                          (err) => {
-                            alert("Failed to fetch location. Please ensure location permissions are enabled.");
-                            setIsFetchingLocationBooking(false);
-                          }
-                        );
-                      }}
-                      disabled={isFetchingLocationBooking}
-                      className="px-3 py-2 bg-gold hover:bg-gold/90 text-slate-900 text-xs font-semibold rounded-md flex items-center gap-1 shrink-0 disabled:opacity-50 cursor-pointer"
-                    >
-                      {isFetchingLocationBooking ? "Fetching..." : "Fetch GPS Location"}
-                    </button>
-                  </div>
-                  {bookingGoogleMapLocation && (
-                    <div className="flex justify-between items-center text-[10px] mt-1.5">
-                      <span className="text-emerald-600 font-semibold flex items-center gap-1">
-                        ✓ Exact Geolocation fetched successfully!
-                      </span>
-                      <a
-                        href={bookingGoogleMapLocation}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-indigo-600 hover:underline font-semibold"
-                      >
-                        Preview Map Pin
-                      </a>
-                    </div>
-                  )}
-                </div>
-
-                {/* Document Upload: doctor prescription or Case file */}
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Doctor Prescription or Case of the File (PDF/Image)</label>
-                  <input
-                    type="file"
-                    accept="image/*,application/pdf"
-                    required
-                    onChange={(e) => handleCaretakerFileChange(e, setPrescriptionFile)}
-                    className="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
-                  />
-                  {prescriptionFile && (
-                    <p className="text-[10px] text-emerald-600 mt-1 font-semibold">✓ Document loaded successfully</p>
-                  )}
-                </div>
-
-                {/* Payment selection */}
-                <div className="border-t border-slate-100 pt-6">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Payment Method</label>
-                  <div className="p-4 border border-gold bg-gold/5 text-gold rounded-xl flex items-center gap-4">
-                    <div className="p-2.5 rounded-xl bg-gold/10 text-gold shrink-0">
-                      <CreditCard className="h-6 w-6" />
-                    </div>
-                    <div className="text-left">
-                      <span className="block text-xs font-bold text-slate-900">Pay Online (Razorpay)</span>
-                      <span className="text-[10px] text-slate-500 block mt-0.5 leading-relaxed">Secure online payment integration. Pay online now to instantly schedule your caregiver shift and secure verified booking credentials.</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Terms and Conditions of Patient booking */}
-                <div className="border border-slate-200/60 rounded-2xl p-4 bg-slate-50/50 space-y-3">
-                  <div className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-1.5">
-                    Amma Seva – Patient Booking Terms &amp; Conditions
-                  </div>
-                  <div className="max-h-36 overflow-y-auto border border-slate-200/80 rounded-lg p-3 bg-white text-[11px] text-slate-600 leading-relaxed font-mono space-y-2">
-                    <p className="font-semibold text-slate-700">Effective Date: 06/08/2026</p>
-                    <p>Welcome to Amma Seva. By booking or using our services, you agree to the following Terms &amp; Conditions.</p>
-                    
-                    <p className="font-semibold text-slate-800">1. Service Scope</p>
-                    <p>Amma Seva is a technology-enabled platform that connects clients with qualified nurses, caregivers, attendants, and home healthcare professionals.</p>
-                    
-                    <p className="font-semibold text-slate-800">2. Booking Confirmation</p>
-                    <p>A booking is confirmed only after acceptance by Amma Seva and successful payment (where applicable).</p>
-                    
-                    <p className="font-semibold text-slate-800">3. Service Charges</p>
-                    <p>Service charges vary depending on the type of service, duration, location, and special requirements.</p>
-                    
-                    <p className="font-semibold text-slate-800">4. Payment Terms</p>
-                    <p>Payments shall be made through the approved payment methods provided by Amma Seva. Outstanding dues must be cleared before future bookings.</p>
-                    
-                    <p className="font-semibold text-slate-800">5. Cancellation &amp; Rescheduling</p>
-                    <p>Cancellation or rescheduling is subject to Amma Seva's Cancellation &amp; Refund Policy.</p>
-                    
-                    <p className="font-semibold text-slate-800">6. Working Hours</p>
-                    <p>Caregivers will provide services only during the booked time. Extra hours will be charged separately.</p>
-                    
-                    <p className="font-semibold text-slate-800">7. No Medical Advice or Prescription</p>
-                    <p>Amma Seva does not diagnose illnesses, prescribe medications, recommend treatments, or sell/promote medicines. Our nurses and caregivers provide care strictly according to the treating doctor's valid prescription and instructions.</p>
-                    
-                    <p className="font-semibold text-slate-800">8. Emergency Services</p>
-                    <p>Amma Seva is not an emergency medical service. In case of a medical emergency, clients must immediately contact the nearest hospital or ambulance service.</p>
-                    
-                    <p className="font-semibold text-slate-800">9. Patient Information</p>
-                    <p>Clients must provide complete and accurate medical history, medications, allergies, and emergency contact details.</p>
-                    
-                    <p className="font-semibold text-slate-800">10. Client Responsibilities</p>
-                    <p>Clients shall provide a safe, hygienic, and respectful environment for caregivers while services are being provided.</p>
-                    
-                    <p className="font-semibold text-slate-800">11. Caregiver Safety</p>
-                    <p>Abusive behavior, harassment, violence, discrimination, or illegal activities towards caregivers will result in immediate termination of services.</p>
-                    
-                    <p className="font-semibold text-slate-800">12. Direct Engagement</p>
-                    <p>If a client or caregiver directly engages with each other without Amma Seva's knowledge or authorization, Amma Seva shall not be responsible for any payments, disputes, liabilities, damages, or consequences arising from such independent arrangements.</p>
-                    
-                    <p className="font-semibold text-slate-800">13. No Employment Relationship</p>
-                    <p>Using Amma Seva does not create an employer-employee relationship between the client and the caregiver.</p>
-                    
-                    <p className="font-semibold text-slate-800">14. No Guarantee of Medical Outcome</p>
-                    <p>Amma Seva does not guarantee recovery, cure, or any specific medical outcome.</p>
-                    
-                    <p className="font-semibold text-slate-800">15. Confidentiality</p>
-                    <p>Patient information will be kept confidential and handled in accordance with applicable privacy laws.</p>
-                    
-                    <p className="font-semibold text-slate-800">16. Personal Belongings</p>
-                    <p>Amma Seva is not responsible for the loss of cash, jewellery, valuables, or personal belongings kept at the client's premises.</p>
-                    
-                    <p className="font-semibold text-slate-800">17. Background Verification</p>
-                    <p>Amma Seva makes reasonable efforts to verify the identity and qualifications of caregivers but cannot guarantee their conduct beyond the services provided.</p>
-                    
-                    <p className="font-semibold text-slate-800">18. Service Refusal</p>
-                    <p>Amma Seva reserves the right to refuse, suspend, or terminate services in cases of abuse, unsafe conditions, non-payment, or violation of these Terms.</p>
-                    
-                    <p className="font-semibold text-slate-800">19. Force Majeure</p>
-                    <p>Amma Seva shall not be liable for delays or service interruptions caused by events beyond its reasonable control, including natural disasters, government restrictions, strikes, epidemics, or technical failures.</p>
-                    
-                    <p className="font-semibold text-slate-800">20. Intellectual Property</p>
-                    <p>The Amma Seva name, logo, website, mobile application, and related content are the intellectual property of Amma Seva and may not be copied or used without prior written permission.</p>
-                    
-                    <p className="font-semibold text-slate-800">21. Jurisdiction</p>
-                    <p>Any disputes arising from these Terms &amp; Conditions shall be subject to the exclusive jurisdiction of the competent courts where Amma Seva is registered.</p>
-                    
-                    <p className="font-semibold text-slate-800">22. Amendments</p>
-                    <p>Amma Seva reserves the right to modify these Terms &amp; Conditions at any time. Updated versions will be published on the official website and mobile application.</p>
-                    
-                    <p className="font-semibold text-slate-800">23. Acceptance</p>
-                    <p>By using Amma Seva's services, the client confirms that they have read, understood, and agreed to these Terms &amp; Conditions.</p>
-                  </div>
-                  
-                  <label className="flex items-start gap-2.5 mt-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      required
-                      checked={agreeTermsBooking}
-                      onChange={(e) => setAgreeTermsBooking(e.target.checked)}
-                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                    />
-                    <span className="text-[11px] font-semibold text-slate-600 select-none">
-                      I have read and agree to the Amma Seva Patient Booking Terms &amp; Conditions
-                    </span>
-                  </label>
-                </div>
-
-                {/* Cost Summary & Submission */}
-                <div className="border-t border-slate-100 pt-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50 -mx-6 -mb-6 p-6 rounded-b-3xl">
-                  <div>
-                    <span className="text-xs text-slate-400">Total Price Estimate</span>
-                    <span className="block text-2xl font-extrabold text-primary font-display mt-0.5">₹{calculateTotal().toLocaleString()}</span>
-                    <p className="text-[10px] text-indigo-600 font-semibold mt-1">
-                      Rate: ₹{
-                        bookingDuration === "Hourly" ? getServiceRates().hourly :
-                        bookingDuration === "Daily" ? getServiceRates().daily :
-                        bookingDuration === "Weekly" ? getServiceRates().weekly :
-                        getServiceRates().monthly
-                      } / {
-                        bookingDuration === "Hourly" ? "Hour" :
-                        bookingDuration === "Daily" ? "Day (24 hrs)" :
-                        bookingDuration === "Weekly" ? "Week (7 days)" : "Month (30 days)"
-                      } x {durationCount} {
-                        bookingDuration === "Hourly" ? (durationCount === 1 ? "Hour" : "Hours") :
-                        bookingDuration === "Daily" ? (durationCount === 1 ? "Day" : "Days") :
-                        bookingDuration === "Weekly" ? (durationCount === 1 ? "Week" : "Weeks") :
-                        (durationCount === 1 ? "Month" : "Months")
-                      }
-                    </p>
-                  </div>
-                  
+                {[
+                  { step: 1, label: "1. Service" },
+                  { step: 2, label: "2. Patient" },
+                  { step: 3, label: "3. Location & Pay" }
+                ].map((s) => (
                   <button
-                    type="submit"
-                    disabled={isSubmitting || isPaymentProcessing || !agreeTermsBooking}
-                    className="btn-primary py-2.5 px-6 font-semibold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 w-full sm:w-auto"
+                    type="button"
+                    key={s.step}
+                    onClick={() => {
+                      if (s.step === 1) setBookingStep(1);
+                      else if (s.step === 2 && validateStep1()) setBookingStep(2);
+                      else if (s.step === 3 && validateStep1() && validateStep2()) setBookingStep(3);
+                    }}
+                    className={`relative z-10 h-8 px-3 rounded-full text-xs font-bold border-2 transition-all flex items-center justify-center cursor-pointer font-sans ${
+                      bookingStep === s.step
+                        ? "bg-gold border-gold text-white shadow-sm shadow-gold/20"
+                        : bookingStep > s.step
+                          ? "bg-primary border-primary text-white"
+                          : "bg-white border-slate-200 text-slate-400"
+                    }`}
                   >
-                    {(isSubmitting || isPaymentProcessing) && <RefreshCw className="h-4 w-4 animate-spin" />}
-                    {isPaymentProcessing 
-                      ? "Verifying payment session..." 
-                      : isSubmitting 
-                        ? "Booking care shift..." 
-                        : "Confirm & Schedule Shift"}
+                    {s.label}
                   </button>
-                </div>
+                ))}
+              </div>
 
+              <form onSubmit={handleBookingSubmit} className="space-y-6">
+                
+                {/* STEP 1: SERVICE & SCHEDULING DETAILS */}
+                {bookingStep === 1 && (
+                  <div className="space-y-6">
+                    <div className="grid gap-6 md:grid-cols-2">
+                      {/* Select Service */}
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Select Service</label>
+                        <select
+                          value={selectedServiceId}
+                          onChange={(e) => setSelectedServiceId(e.target.value)}
+                          disabled={hasServiceParam}
+                          className={`w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/40 text-slate-850 outline-none transition-all focus:bg-white focus:border-gold focus:ring-2 focus:ring-gold/20 shadow-sm font-medium ${
+                            hasServiceParam ? 'bg-slate-100 cursor-not-allowed text-slate-500' : ''
+                          }`}
+                        >
+                          {servicesList
+                            .filter(s => !hasServiceParam || s.id === selectedServiceId)
+                            .map(s => (
+                              <option key={s.id} value={s.id}>{s.title} (₹{s.rate}/{s.unit})</option>
+                            ))
+                          }
+                        </select>
+                        <p className="text-[10px] text-slate-450 mt-1.5 leading-relaxed">{currentService?.desc}</p>
+                      </div>
+
+                      {/* Duration Selector */}
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Billing Option</label>
+                        <select
+                          value={bookingDuration}
+                          onChange={(e) => {
+                            setBookingDuration(e.target.value);
+                            setDurationCount(1);
+                          }}
+                          className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/40 text-slate-850 outline-none transition-all focus:bg-white focus:border-gold focus:ring-2 focus:ring-gold/20 shadow-sm font-medium"
+                        >
+                          <option value="Hourly">Hourly</option>
+                          <option value="Daily">Daily</option>
+                          <option value="Weekly">Weekly</option>
+                          <option value="Monthly">Monthly</option>
+                        </select>
+                      </div>
+
+                      {/* Duration Count Multiplier */}
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 flex justify-between items-center">
+                          <span>
+                            {bookingDuration === "Hourly" ? "Number of Hours" :
+                             bookingDuration === "Daily" ? "Number of Days" :
+                             bookingDuration === "Weekly" ? "Number of Weeks" : "Number of Months"}
+                          </span>
+                          <span className="text-[10px] text-indigo-650 font-bold lowercase normal-case">
+                            (₹{
+                              bookingDuration === "Hourly" ? getServiceRates().hourly :
+                              bookingDuration === "Daily" ? getServiceRates().daily :
+                              bookingDuration === "Weekly" ? getServiceRates().weekly :
+                              getServiceRates().monthly
+                            } / {
+                              bookingDuration === "Hourly" ? "hour" :
+                              bookingDuration === "Daily" ? "day" :
+                              bookingDuration === "Weekly" ? "week" : "month"
+                            })
+                          </span>
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          required
+                          value={durationCount}
+                          onChange={(e) => setDurationCount(Math.max(1, Number(e.target.value)))}
+                          className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/40 text-slate-850 outline-none transition-all focus:bg-white focus:border-gold focus:ring-2 focus:ring-gold/20 shadow-sm font-medium"
+                        />
+                      </div>
+
+                      {/* Date selection */}
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Date</label>
+                        <input
+                          type="date"
+                          required
+                          value={bookingDate}
+                          onChange={(e) => setBookingDate(e.target.value)}
+                          className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/40 text-slate-850 outline-none transition-all focus:bg-white focus:border-gold focus:ring-2 focus:ring-gold/20 shadow-sm font-medium"
+                        />
+                      </div>
+
+                      {/* Time selection */}
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Start Time</label>
+                        <input
+                          type="time"
+                          required
+                          value={bookingTime}
+                          onChange={(e) => setBookingTime(e.target.value)}
+                          className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/40 text-slate-850 outline-none transition-all focus:bg-white focus:border-gold focus:ring-2 focus:ring-gold/20 shadow-sm font-medium"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end pt-4 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (validateStep1()) setBookingStep(2);
+                        }}
+                        className="btn-primary py-2.5 px-6 font-semibold flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        Next Step: Patient Profile <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 2: PATIENT PROFILE DETAILS */}
+                {bookingStep === 2 && (
+                  <div className="space-y-6">
+                    <div className="grid gap-6 md:grid-cols-2">
+                      {/* Patient Name */}
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Patient Name</label>
+                        <input
+                          type="text"
+                          required
+                          value={patientName}
+                          onChange={(e) => setPatientName(e.target.value)}
+                          placeholder="Enter patient full name"
+                          className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/40 text-slate-855 outline-none transition-all focus:bg-white focus:border-gold focus:ring-2 focus:ring-gold/20 shadow-sm font-medium"
+                        />
+                      </div>
+
+                      {/* Patient Age */}
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Patient Age</label>
+                        <input
+                          type="number"
+                          required
+                          value={patientAge}
+                          onChange={(e) => setPatientAge(e.target.value)}
+                          placeholder="e.g. 72"
+                          className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/40 text-slate-855 outline-none transition-all focus:bg-white focus:border-gold focus:ring-2 focus:ring-gold/20 shadow-sm font-medium"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Patient Special Needs */}
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Medical Conditions &amp; Special Needs</label>
+                      <textarea
+                        rows={3}
+                        value={patientNeeds}
+                        onChange={(e) => setPatientNeeds(e.target.value)}
+                        placeholder="Describe patient condition (e.g. dementia, diabetic, wheelchair bound, urinary catheter, post-surgery)"
+                        className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/40 text-slate-855 outline-none transition-all focus:bg-white focus:border-gold focus:ring-2 focus:ring-gold/20 shadow-sm font-medium"
+                      />
+                    </div>
+
+                    <div className="flex justify-between pt-4 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => setBookingStep(1)}
+                        className="btn-outline py-2.5 px-6 font-semibold cursor-pointer"
+                      >
+                        Back
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (validateStep2()) setBookingStep(3);
+                        }}
+                        className="btn-primary py-2.5 px-6 font-semibold flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        Next Step: Location &amp; Pay <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 3: LOCATION & PAYMENT DETAILS */}
+                {bookingStep === 3 && (
+                  <div className="space-y-6">
+                    {/* Address */}
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Care Address</label>
+                      <textarea
+                        rows={2}
+                        required
+                        value={bookingAddress}
+                        onChange={(e) => setBookingAddress(e.target.value)}
+                        placeholder="Enter complete delivery address"
+                        className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/40 text-slate-855 outline-none transition-all focus:bg-white focus:border-gold focus:ring-2 focus:ring-gold/20 shadow-sm font-medium"
+                      />
+                    </div>
+
+                    {/* Google Map Location */}
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Google Map Location</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          required
+                          value={bookingGoogleMapLocation}
+                          placeholder="Fetch map coordinates..."
+                          className="flex-1 px-3 py-2 text-xs rounded-md border border-slate-200 bg-slate-100 outline-none truncate"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!navigator.geolocation) {
+                              alert("Geolocation is not supported by your browser");
+                              return;
+                            }
+                            setIsFetchingLocationBooking(true);
+                            navigator.geolocation.getCurrentPosition(
+                              (position) => {
+                                const lat = position.coords.latitude;
+                                const lng = position.coords.longitude;
+                                setBookingGoogleMapLocation(`https://www.google.com/maps?q=${lat},${lng}`);
+                                setIsFetchingLocationBooking(false);
+                              },
+                              (err) => {
+                                alert("Failed to fetch location. Please ensure location permissions are enabled.");
+                                setIsFetchingLocationBooking(false);
+                              }
+                            );
+                          }}
+                          disabled={isFetchingLocationBooking}
+                          className="px-3 py-2 bg-gold hover:bg-gold/90 text-slate-900 text-xs font-semibold rounded-md flex items-center gap-1 shrink-0 disabled:opacity-50 cursor-pointer"
+                        >
+                          {isFetchingLocationBooking ? "Fetching..." : "Fetch GPS Location"}
+                        </button>
+                      </div>
+                      {bookingGoogleMapLocation && (
+                        <div className="flex justify-between items-center text-[10px] mt-1.5">
+                          <span className="text-emerald-600 font-semibold flex items-center gap-1">
+                            ✓ Exact Geolocation fetched successfully!
+                          </span>
+                          <a
+                            href={bookingGoogleMapLocation}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-indigo-650 hover:underline font-semibold"
+                          >
+                            Preview Map Pin
+                          </a>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Document Upload */}
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Doctor Prescription or Case of the File (PDF/Image)</label>
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        required
+                        onChange={(e) => handleCaretakerFileChange(e, setPrescriptionFile)}
+                        className="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+                      />
+                      {prescriptionFile && (
+                        <p className="text-[10px] text-emerald-650 mt-1 font-semibold">✓ Document loaded successfully</p>
+                      )}
+                    </div>
+
+                    {/* Payment Selection Banner */}
+                    <div className="border-t border-slate-100 pt-6">
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Payment Method</label>
+                      <div className="p-4 border border-gold bg-gold/5 text-gold rounded-xl flex items-center gap-4">
+                        <div className="p-2.5 rounded-xl bg-gold/10 text-gold shrink-0">
+                          <CreditCard className="h-6 w-6" />
+                        </div>
+                        <div className="text-left">
+                          <span className="block text-xs font-bold text-slate-900">Pay Online (Razorpay)</span>
+                          <span className="text-[10px] text-slate-500 block mt-0.5 leading-relaxed">Secure online payment integration. Pay online now to instantly schedule your caregiver shift and secure verified booking credentials.</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Terms and Conditions Accordion */}
+                    <div className="border border-slate-200/60 rounded-2xl p-4 bg-slate-50/50 space-y-3">
+                      <div className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-1.5">
+                        Amma Seva – Patient Booking Terms &amp; Conditions
+                      </div>
+                      <div className="max-h-24 overflow-y-auto border border-slate-200/80 rounded-lg p-3 bg-white text-[11px] text-slate-650 leading-relaxed font-mono space-y-2">
+                        <p className="font-semibold text-slate-700">Effective Date: 06/08/2026</p>
+                        <p>Welcome to Amma Seva. By booking or using our services, you agree to the following Terms &amp; Conditions.</p>
+                        <p className="font-semibold text-slate-800">1. Service Scope</p>
+                        <p>Amma Seva is a platform that connects clients with qualified home healthcare professionals.</p>
+                        <p className="font-semibold text-slate-800">2. No Medical Prescription</p>
+                        <p>Nurses and caregivers provide care strictly according to the treating doctor's valid prescription.</p>
+                      </div>
+                      
+                      <label className="flex items-start gap-2.5 mt-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          required
+                          checked={agreeTermsBooking}
+                          onChange={(e) => setAgreeTermsBooking(e.target.checked)}
+                          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-650 focus:ring-indigo-500 cursor-pointer"
+                        />
+                        <span className="text-[11px] font-semibold text-slate-600 select-none">
+                          I have read and agree to the Amma Seva Patient Booking Terms &amp; Conditions
+                        </span>
+                      </label>
+                    </div>
+
+                    {/* Cost Summary & Actions */}
+                    <div className="border-t border-slate-100 pt-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50 -mx-6 -mb-6 p-6 rounded-b-3xl">
+                      <div>
+                        <span className="text-xs text-slate-400">Total Price Estimate</span>
+                        <span className="block text-2xl font-extrabold text-primary font-display mt-0.5">₹{calculateTotal().toLocaleString()}</span>
+                        <p className="text-[10px] text-indigo-655 font-semibold mt-1">
+                          Rate: ₹{
+                            bookingDuration === "Hourly" ? getServiceRates().hourly :
+                            bookingDuration === "Daily" ? getServiceRates().daily :
+                            bookingDuration === "Weekly" ? getServiceRates().weekly :
+                            getServiceRates().monthly
+                          } / {
+                            bookingDuration === "Hourly" ? "Hour" :
+                            bookingDuration === "Daily" ? "Day (24 hrs)" :
+                            bookingDuration === "Weekly" ? "Week (7 days)" : "Month (30 days)"
+                          } x {durationCount} {
+                            bookingDuration === "Hourly" ? (durationCount === 1 ? "Hour" : "Hours") :
+                            bookingDuration === "Daily" ? (durationCount === 1 ? "Day" : "Days") :
+                            bookingDuration === "Weekly" ? (durationCount === 1 ? "Week" : "Weeks") :
+                            (durationCount === 1 ? "Month" : "Months")
+                          }
+                        </p>
+                      </div>
+
+                      <div className="flex gap-3 w-full sm:w-auto">
+                        <button
+                          type="button"
+                          onClick={() => setBookingStep(2)}
+                          className="btn-outline py-2.5 px-4 font-semibold cursor-pointer w-1/2 sm:w-auto"
+                        >
+                          Back
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={isSubmitting || isPaymentProcessing || !agreeTermsBooking}
+                          className="btn-primary py-2.5 px-6 font-semibold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 w-1/2 sm:w-auto"
+                        >
+                          {(isSubmitting || isPaymentProcessing) && <RefreshCw className="h-4 w-4 animate-spin" />}
+                          {isPaymentProcessing 
+                            ? "Verifying..." 
+                            : isSubmitting 
+                              ? "Booking..." 
+                              : "Confirm & Book"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </form>
             </div>
           )}

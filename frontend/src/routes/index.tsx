@@ -124,6 +124,7 @@ const TESTIMONIALS = [
 function Home() {
   const { services, faqs } = Route.useLoaderData();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [selectedTag, setSelectedTag] = useState("All");
   const carouselRef = useRef<HTMLDivElement>(null);
 
   const scrollLeft = () => {
@@ -222,6 +223,28 @@ function Home() {
             <h4 className="mt-2 text-lg font-semibold text-slate-600 font-display">Care for every stage of life</h4>
             <p className="mt-1 text-slate-500 text-sm leading-relaxed">From newborns to seniors — comprehensive home healthcare tailored to your family.</p>
           </div>
+
+          {/* Smart Symptom & Care Matcher Tags */}
+          <div className="flex flex-wrap gap-2.5 mb-6 text-left">
+            {[
+              { label: "✨ All Services", value: "All" },
+              { label: "👴 Elderly Support", value: "Elderly" },
+              { label: "🍼 Maternal & Newborn", value: "Maternal" },
+              { label: "🩺 Clinical & Recovery", value: "Clinical" },
+            ].map((tag) => (
+              <button
+                key={tag.value}
+                onClick={() => setSelectedTag(tag.value)}
+                className={`px-4 py-2 text-xs font-bold rounded-full border transition-all duration-300 cursor-pointer ${
+                  selectedTag === tag.value
+                    ? "bg-primary text-white border-primary shadow-sm shadow-primary/20 scale-102 font-sans"
+                    : "bg-white text-slate-600 border-slate-200 hover:border-gold hover:text-gold font-sans"
+                }`}
+              >
+                {tag.label}
+              </button>
+            ))}
+          </div>
           
           <div className="relative group/carousel px-1">
             {/* Left Scroll Navigation Button */}
@@ -239,9 +262,22 @@ function Home() {
               className="flex gap-6 overflow-x-auto snap-x snap-mandatory scrollbar-none pb-6"
               style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
             >
-              {services.map((s: any) => {
-                const details = getServiceDetails(s.slug);
-                return (
+              {(() => {
+                const elderlySlugs = ["elderly-care", "patient-care-attendant", "bedridden-patient-care", "physiotherapy"];
+                const maternalSlugs = ["mother-baby-care", "pregnancy-care", "newborn-baby-care"];
+                const clinicalSlugs = ["home-nursing", "injection-services", "post-surgery-care", "icu-home-recovery", "doctor-consultation"];
+
+                const filteredServices = services.filter((s: any) => {
+                  if (selectedTag === "All") return true;
+                  if (selectedTag === "Elderly") return elderlySlugs.includes(s.slug);
+                  if (selectedTag === "Maternal") return maternalSlugs.includes(s.slug);
+                  if (selectedTag === "Clinical") return clinicalSlugs.includes(s.slug);
+                  return true;
+                });
+
+                return filteredServices.map((s: any) => {
+                  const details = getServiceDetails(s.slug);
+                  return (
                   <div
                     key={s.slug}
                     className="carousel-card premium-card snap-start snap-always group/card flex flex-col overflow-hidden rounded-3xl bg-background shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-1.5"
@@ -288,8 +324,9 @@ function Home() {
                       </Link>
                     </div>
                   </div>
-                );
-              })}
+                  );
+                });
+              })()}
             </div>
 
             {/* Right Scroll Navigation Button */}

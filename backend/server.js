@@ -57,6 +57,96 @@ const transporter = nodemailer.createTransport({
   }
 })
 
+const handleBookingEmailNotification = async (bookingId, oldBooking, newStatus, newAssignedStaff) => {
+  try {
+    const booking = await db.getBookingById(bookingId)
+    if (!booking) return
+
+    // Find user email
+    let email = ''
+    if (booking.userId) {
+      const user = await db.getUserById(booking.userId)
+      if (user && user.email) {
+        email = user.email
+      }
+    }
+
+    if (!email) {
+      console.log(`[Email Notification Alert] Could not find user email for booking ID ${bookingId}`)
+      return
+    }
+
+    // 1. Caretaker assigned scenario
+    const oldStaff = oldBooking ? oldBooking.assignedStaff : null
+    if (newAssignedStaff && newAssignedStaff !== oldStaff) {
+      const caregiver = await db.getCaregiverByName(newAssignedStaff)
+      const phoneStr = caregiver ? caregiver.phone : 'N/A'
+      const specialtyStr = caregiver ? caregiver.specialty : 'Caregiver'
+
+      const mailOptions = {
+        from: `"Amma Seva Bookings" <${process.env.SMTP_EMAIL || 'ammasevahomecare@gmail.com'}>`,
+        to: email,
+        subject: `Caregiver Assigned - Booking ID #${bookingId} - Amma Seva`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 16px;">
+            <h2 style="color: #4f46e5; margin-bottom: 8px;">Caregiver Assigned!</h2>
+            <p style="color: #64748b; font-size: 14px;">Hi ${booking.name},</p>
+            <p style="color: #64748b; font-size: 14px;">We have successfully matched and assigned a background-verified caregiver to your home healthcare request:</p>
+            
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 16px; border-radius: 12px; margin: 16px 0;">
+              <h3 style="color: #0f172a; margin-top: 0; margin-bottom: 8px;">Caregiver Details</h3>
+              <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #334155;">
+                <tr><td style="padding: 4px 0; font-weight: bold;">Name:</td><td style="padding: 4px 0; text-align: right;">${newAssignedStaff}</td></tr>
+                <tr><td style="padding: 4px 0; font-weight: bold;">Specialty:</td><td style="padding: 4px 0; text-align: right;">${specialtyStr}</td></tr>
+                <tr><td style="padding: 4px 0; font-weight: bold;">Phone:</td><td style="padding: 4px 0; text-align: right;"><a href="tel:${phoneStr}">${phoneStr}</a></td></tr>
+              </table>
+            </div>
+
+            <p style="color: #64748b; font-size: 14px;">The caregiver will arrive on <strong>${booking.date}</strong> at <strong>${booking.time}</strong> as scheduled. You can view the live progress and vitals logs directly inside your customer dashboard.</p>
+            <p style="color: #94a3b8; font-size: 12px; margin-top: 24px; text-align: center;">Thank you for choosing Amma Seva.</p>
+          </div>
+        `
+      }
+      await transporter.sendMail(mailOptions)
+      console.log(`[Email Notification] Caregiver assigned email sent to ${email} for booking ID: ${bookingId}`)
+    }
+
+    // 2. Booking completed scenario (Deal Closed / Review request)
+    const oldStatus = oldBooking ? oldBooking.status : null
+    if (newStatus === 'Completed' && oldStatus !== 'Completed') {
+      const mailOptions = {
+        from: `"Amma Seva Bookings" <${process.env.SMTP_EMAIL || 'ammasevahomecare@gmail.com'}>`,
+        to: email,
+        subject: `Service Delivered - Booking ID #${bookingId} - Amma Seva`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 16px;">
+            <h2 style="color: #10b981; margin-bottom: 8px;">Care Delivered Successfully!</h2>
+            <p style="color: #64748b; font-size: 14px;">Hi ${booking.name},</p>
+            <p style="color: #64748b; font-size: 14px;">Your scheduled homecare shift has been completed. We hope our caregiver provided excellent support.</p>
+            
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 16px; border-radius: 12px; margin: 16px 0;">
+              <h3 style="color: #0f172a; margin-top: 0; margin-bottom: 8px;">Service Details</h3>
+              <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #334155;">
+                <tr><td style="padding: 4px 0; font-weight: bold;">Service:</td><td style="padding: 4px 0; text-align: right;">${booking.service}</td></tr>
+                <tr><td style="padding: 4px 0; font-weight: bold;">Completed Date:</td><td style="padding: 4px 0; text-align: right;">${booking.date}</td></tr>
+                <tr><td style="padding: 4px 0; font-weight: bold;">Assigned Staff:</td><td style="padding: 4px 0; text-align: right;">${booking.assignedStaff || 'N/A'}</td></tr>
+                <tr><td style="padding: 4px 0; font-weight: bold;">Paid Amount:</td><td style="padding: 4px 0; text-align: right; font-weight: bold;">₹${booking.amount}</td></tr>
+              </table>
+            </div>
+
+            <p style="color: #64748b; font-size: 14px;">Please open your <a href="http://localhost:5173/dashboard" style="color: #4f46e5; text-decoration: underline; font-weight: bold;">Customer Dashboard</a> to rate the caregiver's performance and write a review. Your feedback helps us maintain the highest care standards.</p>
+            <p style="color: #94a3b8; font-size: 12px; margin-top: 24px; text-align: center;">We look forward to serving your family again. Thank you.</p>
+          </div>
+        `
+      }
+      await transporter.sendMail(mailOptions)
+      console.log(`[Email Notification] Booking completed email sent to ${email} for booking ID: ${bookingId}`)
+    }
+  } catch (err) {
+    console.error('Failed to process booking email notification:', err.message)
+  }
+}
+
 
 
 const app = express()
@@ -474,8 +564,10 @@ app.put('/api/booking/:id/status', authenticateUser, async (req, res) => {
     return res.status(400).json({ error: 'Status is required.' })
   }
   try {
+    const oldBooking = await db.getBookingById(req.params.id)
     const updated = await db.updateBookingStatus(req.params.id, status)
     if (updated) {
+      handleBookingEmailNotification(req.params.id, oldBooking, status, oldBooking ? oldBooking.assignedStaff : null)
       res.json({ success: true, message: `Booking status updated to ${status}.` })
     } else {
       res.status(404).json({ error: 'Booking not found.' })
@@ -1006,8 +1098,10 @@ app.post('/api/booking', async (req, res) => {
 app.put('/api/booking/:id', authenticateAdmin, async (req, res) => {
   const { status, assignedStaff, paymentStatus } = req.body
   try {
+    const oldBooking = await db.getBookingById(req.params.id)
     const updated = await db.updateBooking(req.params.id, status, assignedStaff, paymentStatus)
     if (updated) {
+      handleBookingEmailNotification(req.params.id, oldBooking, status, assignedStaff)
       res.json({ success: true, message: 'Booking successfully updated.' })
     } else {
       res.status(404).json({ error: 'Booking not found.' })
@@ -1128,8 +1222,11 @@ app.post('/api/admin/booking', authenticateAdmin, async (req, res) => {
 // PUT full update booking details (Admin Panel)
 app.put('/api/admin/booking/:id', authenticateAdmin, async (req, res) => {
   try {
+    const oldBooking = await db.getBookingById(req.params.id)
     const updated = await db.adminUpdateBooking(req.params.id, req.body)
     if (updated) {
+      const { status, assignedStaff } = req.body
+      handleBookingEmailNotification(req.params.id, oldBooking, status || oldBooking?.status, assignedStaff || oldBooking?.assignedStaff)
       res.json({ success: true, message: 'Booking details successfully updated.' })
     } else {
       res.status(404).json({ error: 'Booking not found.' })
