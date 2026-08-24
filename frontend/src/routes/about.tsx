@@ -108,9 +108,9 @@ function About() {
       <section className="border-t border-border/60 bg-cream/35 py-10">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto space-y-3">
-            <span className="text-xs font-bold uppercase tracking-widest text-gold">Corporate Pillars</span>
-            <h2 className="text-3xl font-bold text-primary">What we stand for</h2>
-            <p className="text-sm text-slate-500 max-w-xl mx-auto">
+            <span className="block text-xs font-bold uppercase tracking-widest text-gold text-center">Corporate Pillars</span>
+            <h2 className="text-3xl font-bold text-primary text-center">What we stand for</h2>
+            <p className="text-sm text-slate-500 max-w-xl mx-auto text-center">
               Our core values guide every interaction, shift, and clinical consultation we perform across Hyderabad.
             </p>
           </div>
