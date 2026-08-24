@@ -444,6 +444,23 @@ function CustomerDashboard() {
       fetchBookings();
     }
   }, [user, activeView]);
+
+  // Automatically adjust billing option based on selected service's pricing unit
+  useEffect(() => {
+    const current = servicesList.find(s => s.id === selectedServiceId) || servicesList[0];
+    if (!current) return;
+    const unit = (current.unit || 'day').toLowerCase();
+    if (unit.includes('month')) {
+      setBookingDuration("Monthly");
+    } else if (unit.includes('hour')) {
+      setBookingDuration("Hourly");
+    } else if (unit.includes('week')) {
+      setBookingDuration("Weekly");
+    } else {
+      setBookingDuration("Daily");
+    }
+    setDurationCount(1);
+  }, [selectedServiceId, servicesList]);
  
   // Calculate pricing
   const currentService = servicesList.find(s => s.id === selectedServiceId) || SERVICES_CATALOG.find(s => s.id === selectedServiceId) || servicesList[0] || SERVICES_CATALOG[0];
@@ -463,26 +480,26 @@ function CustomerDashboard() {
       basis = 'month';
       monthly = base;
       daily = Math.round(monthly / 30);
-      weekly = Math.round(daily * 6);
-      hourly = Math.round(daily / 8);
+      weekly = Math.round(daily * 7);
+      hourly = Math.round(daily / 24);
     } else if (unit.includes('hour')) {
       basis = 'hour';
       hourly = base;
-      daily = Math.round(hourly * 8);
-      weekly = Math.round(daily * 6);
-      monthly = Math.round(daily * 22);
+      daily = Math.round(hourly * 24);
+      weekly = Math.round(daily * 7);
+      monthly = Math.round(daily * 30);
     } else if (unit.includes('visit') || unit.includes('session') || unit.includes('consultation')) {
       basis = 'day';
       daily = base;
       hourly = base;
-      weekly = base * 6;
-      monthly = base * 22;
+      weekly = base * 7;
+      monthly = base * 30;
     } else { // default to 'day'
       basis = 'day';
       daily = base;
-      hourly = Math.round(daily / 8);
-      weekly = Math.round(daily * 6);
-      monthly = Math.round(daily * 22);
+      hourly = Math.round(daily / 24);
+      weekly = Math.round(daily * 7);
+      monthly = Math.round(daily * 30);
     }
 
     return { hourly, daily, weekly, monthly, basis };
@@ -2140,8 +2157,8 @@ function CustomerDashboard() {
                         getServiceRates().monthly
                       } / {
                         bookingDuration === "Hourly" ? "Hour" :
-                        bookingDuration === "Daily" ? "Day" :
-                        bookingDuration === "Weekly" ? "Week" : "Month"
+                        bookingDuration === "Daily" ? "Day (24 hrs)" :
+                        bookingDuration === "Weekly" ? "Week (7 days)" : "Month (30 days)"
                       } x {durationCount} {
                         bookingDuration === "Hourly" ? (durationCount === 1 ? "Hour" : "Hours") :
                         bookingDuration === "Daily" ? (durationCount === 1 ? "Day" : "Days") :
