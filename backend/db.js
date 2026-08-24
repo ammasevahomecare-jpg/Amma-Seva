@@ -543,6 +543,15 @@ export const db = {
         try {
           await connection.query(`ALTER TABLE services ADD COLUMN image LONGTEXT`)
         } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE services ADD COLUMN about TEXT`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE services ADD COLUMN highlights TEXT`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE services ADD COLUMN images TEXT`)
+        } catch (e) {}
 
         // Insert initial values if MySQL database is fresh/empty
         const [bookingsRows] = await connection.query('SELECT count(*) as count FROM bookings')
