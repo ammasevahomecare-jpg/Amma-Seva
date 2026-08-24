@@ -2,11 +2,12 @@ import { Link } from "@tanstack/react-router";
 import { useState, useEffect, type ReactNode } from "react";
 import { Menu, X, Phone, MessageCircle, Mail, MapPin, Facebook, Instagram } from "lucide-react";
 import logoAsset from "@/assets/amma-seva-logo.png";
+import { fetchServices, type Service } from "@/lib/services";
 
-const PHONE = "+91 90000 00000";
-const PHONE_TEL = "+919000000000";
-const WHATSAPP = "919000000000";
-const EMAIL = "care@ammaseva.in";
+const PHONE = "+91 94945 16543";
+const PHONE_TEL = "+919494516543";
+const WHATSAPP = "919494516543";
+const EMAIL = "info@ammaseva.in";
 
 function Header() {
   const [open, setOpen] = useState(false);
@@ -192,6 +193,15 @@ function Header() {
 }
 
 function Footer() {
+  const [services, setServices] = useState<Service[]>([]);
+
+  useEffect(() => {
+    fetchServices().then((list) => {
+      // Show up to 4 services dynamically in the footer
+      setServices(list.slice(0, 4));
+    });
+  }, []);
+
   return (
     <footer className="bg-[#0b183b] text-white border-t border-slate-800">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-12 lg:px-8">
@@ -240,10 +250,13 @@ function Footer() {
             <span className="h-3 w-0.5 bg-gold rounded-full" /> Services
           </h4>
           <ul className="space-y-2 text-sm text-slate-400">
-            <li><Link to="/services/$slug" params={{ slug: "elderly-care" }} className="hover:text-gold transition-colors">Elderly Care</Link></li>
-            <li><Link to="/services/$slug" params={{ slug: "mother-baby-care" }} className="hover:text-gold transition-colors">Mother &amp; Baby Care</Link></li>
-            <li><Link to="/services/$slug" params={{ slug: "home-nursing" }} className="hover:text-gold transition-colors">Home Nursing</Link></li>
-            <li><Link to="/services/$slug" params={{ slug: "post-surgery-care" }} className="hover:text-gold transition-colors">Post-Surgery Care</Link></li>
+            {services.map((s) => (
+              <li key={s.slug}>
+                <Link to="/services/$slug" params={{ slug: s.slug }} className="hover:text-gold transition-colors">
+                  {s.title}
+                </Link>
+              </li>
+            ))}
             <li><Link to="/services" className="text-gold font-semibold hover:underline">All services →</Link></li>
           </ul>
         </div>
@@ -283,8 +296,13 @@ function Footer() {
               <a href={`mailto:${EMAIL}`} className="hover:text-gold transition-colors">{EMAIL}</a>
             </li>
             <li className="flex items-start gap-2.5">
-              <MapPin className="mt-0.5 h-4 w-4 text-gold shrink-0" />
-              <span>Hyderabad, Telangana, India</span>
+              <MapPin className="mt-1 h-4 w-4 text-gold shrink-0" />
+              <span className="leading-relaxed">
+                <strong>LUXDHANA GLOBAL PRIVATE LIMITED</strong><br />
+                8-2-630/B/B/1, Mount Banjara complex,<br />
+                Road No. 12, Banjara Hills,<br />
+                Hyderabad - 500034, Telangana.
+              </span>
             </li>
           </ul>
         </div>

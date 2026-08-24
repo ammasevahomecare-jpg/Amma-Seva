@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Phone, Calendar, ShieldCheck, HeartHandshake, Clock, BadgeCheck, Star, ChevronRight } from "lucide-react";
 import { SiteLayout, contact } from "@/components/SiteLayout";
 import { fetchServices } from "@/lib/services";
+import { fetchFaqs } from "@/lib/faqs";
 import hero from "@/assets/hero-care.jpg";
 import motherBaby from "@/assets/service-mother-baby.jpg";
 import nursing from "@/assets/service-nursing.jpg";
@@ -12,8 +13,9 @@ const HERO_IMAGES = [hero, motherBaby, nursing, elderly];
 
 export const Route = createFileRoute("/")({
   loader: async () => {
-    const list = await fetchServices();
-    return { services: list };
+    const services = await fetchServices();
+    const faqs = await fetchFaqs();
+    return { services, faqs };
   },
   head: () => ({
     meta: [
@@ -133,16 +135,8 @@ const TESTIMONIALS = [
   { name: "Dr. Anitha K.", role: "Physician", quote: "I recommend Amma Seva to my post-surgical patients — their nurses follow protocols with real professionalism." },
 ];
 
-const FAQ = [
-  { q: "Are your caregivers and nurses verified?", a: "Yes. Every professional undergoes ID verification, background checks, and skill assessments before joining." },
-  { q: "How quickly can care be arranged?", a: "In most cities, we can arrange care within 4–12 hours depending on the service and shift." },
-  { q: "Can I choose the shift duration?", a: "Absolutely. We offer hourly visits, 12-hour and 24-hour shifts, plus weekly and monthly plans." },
-  { q: "How do payments work?", a: "You can pay online via UPI, cards, netbanking, or wallets. Cash after service may also be available." },
-  { q: "What if I need to reschedule or cancel?", a: "You can reschedule anytime by contacting our helpline or via your account. Cancellations follow our refund policy." },
-];
-
 function Home() {
-  const { services } = Route.useLoaderData();
+  const { services, faqs } = Route.useLoaderData();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
@@ -336,44 +330,28 @@ function Home() {
 
       {/* FAQ */}
       <section className="border-t border-border bg-cream/40">
-        <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="max-w-3xl text-left">
             <span className="gold-rule text-xs font-semibold uppercase tracking-[0.2em] text-gold">FAQs</span>
             <h2 className="mt-4 text-3xl font-semibold text-primary sm:text-4xl">Answers to common questions</h2>
           </div>
-          <div className="mt-6 grid gap-4 md:grid-cols-2 items-start">
-            {FAQ.map((f) => (
-              <details key={f.q} className="group rounded-xl border border-border bg-background p-5 open:shadow-md">
-                <summary className="flex cursor-pointer list-none items-center justify-between text-base font-medium text-primary">
-                  {f.q}
-                  <ChevronRight className="h-5 w-5 text-gold transition-transform group-open:rotate-90" />
+          <div className="mt-6 grid gap-4 md:grid-cols-2 items-start text-left">
+            {faqs.map((f: any) => (
+              <details key={f.id} className="group rounded-2xl border border-border/80 bg-background p-5 hover:border-gold/50 transition-all duration-300 open:border-gold open:shadow-md hover:shadow-sm">
+                <summary className="flex cursor-pointer list-none items-center justify-between text-base font-bold text-primary transition-colors group-open:text-gold select-none outline-none">
+                  <span>{f.question}</span>
+                  <ChevronRight className="h-5 w-5 text-gold/70 transition-transform group-open:rotate-90 group-open:text-gold shrink-0" />
                 </summary>
-                <p className="mt-3 text-sm text-muted-foreground">{f.a}</p>
+                <div className="mt-3 text-sm text-slate-600 leading-relaxed pl-3 border-l-2 border-gold/30">
+                  {f.answer}
+                </div>
               </details>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="border-t border-border">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="rounded-3xl border border-border bg-primary p-6 text-center text-primary-foreground shadow-xl sm:p-8">
-            <h2 className="text-3xl font-semibold sm:text-4xl">Ready to bring care home?</h2>
-            <p className="mx-auto mt-3 max-w-2xl text-primary-foreground/80">
-              Talk to our care team today. We&apos;ll help you find the right professional for your family — usually within hours.
-            </p>
-            <div className="mt-8 flex flex-wrap justify-center gap-3">
-              <a href={`tel:${contact.PHONE_TEL}`} className="btn-gold">
-                <Phone className="h-5 w-5" /> {contact.PHONE}
-              </a>
-              <Link to="/contact" className="inline-flex items-center justify-center gap-2 rounded-lg border border-primary-foreground/40 px-6 py-3 font-medium hover:bg-primary-foreground hover:text-primary">
-                Book a Service
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+
     </SiteLayout>
   );
 }

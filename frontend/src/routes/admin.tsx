@@ -6,7 +6,7 @@ import {
   Users, Calendar, DollarSign, ShieldAlert, LogOut, CheckCircle2, 
   XCircle, Edit3, Save, Check, LayoutDashboard, CalendarDays,
   UserCheck, MessageSquare, Sliders, Bell, Search, Plus, Send, TrendingDown,
-  ArrowUpRight, Star, BookOpen
+  ArrowUpRight, Star, BookOpen, HelpCircle
 } from "lucide-react";
 
 const INDIAN_STATES = [
@@ -133,7 +133,7 @@ function AdminPage() {
   };
 
   // Navigation and Search
-  const [activeTab, setActiveTab] = useState<"overview" | "bookings" | "caregivers" | "enquiries" | "services" | "users" | "notifications" | "payments" | "blogs">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "bookings" | "caregivers" | "enquiries" | "services" | "users" | "notifications" | "payments" | "blogs" | "faqs">("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -146,9 +146,10 @@ function AdminPage() {
   const [services, setServices] = useState<ServiceRecord[]>([]);
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
   const [blogs, setBlogs] = useState<any[]>([]);
+  const [faqs, setFaqs] = useState<any[]>([]);
 
   // Modal Control
-  const [modalType, setModalType] = useState<"booking" | "caregiver" | "service" | "notification" | "blog" | null>(null);
+  const [modalType, setModalType] = useState<"booking" | "caregiver" | "service" | "notification" | "blog" | "faq" | null>(null);
   const [modalMode, setModalMode] = useState<"add" | "edit">("add");
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
@@ -215,6 +216,10 @@ function AdminPage() {
   const [blogAuthor, setBlogAuthor] = useState("Amma Seva Care Team");
   const [blogDate, setBlogDate] = useState("");
 
+  // Form states - FAQ
+  const [faqQuestion, setFaqQuestion] = useState("");
+  const [faqAnswer, setFaqAnswer] = useState("");
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setFileState: (val: string) => void) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -258,14 +263,15 @@ function AdminPage() {
     };
 
     try {
-      const [bookingsRes, caregiversRes, enquiriesRes, usersRes, servicesRes, notificationsRes, blogsRes] = await Promise.all([
+      const [bookingsRes, caregiversRes, enquiriesRes, usersRes, servicesRes, notificationsRes, blogsRes, faqsRes] = await Promise.all([
         fetchWithAuth("/api/bookings"),
         fetchWithAuth("/api/caregivers"),
         fetchWithAuth("/api/enquiries"),
         fetchWithAuth("/api/admin/users"),
         fetchWithAuth("/api/services"),
         fetchWithAuth("/api/notifications"),
-        fetch("/api/blogs").then(res => res.json())
+        fetch("/api/blogs").then(res => res.json()),
+        fetch("/api/faqs").then(res => res.json())
       ]);
       setBookings(Array.isArray(bookingsRes) ? bookingsRes : []);
       setCaregivers(Array.isArray(caregiversRes) ? caregiversRes : []);
@@ -274,6 +280,7 @@ function AdminPage() {
       setServices(Array.isArray(servicesRes) ? servicesRes : []);
       setNotifications(Array.isArray(notificationsRes) ? notificationsRes : []);
       setBlogs(Array.isArray(blogsRes) ? blogsRes : []);
+      setFaqs(Array.isArray(faqsRes) ? faqsRes : []);
     } catch (err) {
       console.error(err);
       if (err instanceof Error && err.message === "Unauthorized") {
@@ -401,6 +408,23 @@ function AdminPage() {
     }
   };
 
+  const handleDeleteFaq = (id: number) => {
+    if (window.confirm("Are you sure you want to permanently delete this FAQ item?")) {
+      const token = localStorage.getItem("ammaseva_admin_token");
+      fetch(`/api/faqs/${id}`, { 
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setFaqs(prev => prev.filter(f => f.id !== id));
+          }
+        })
+        .catch(err => console.error(err));
+    }
+  };
+
   const handleDeleteEnquiry = (id: number) => {
     if (window.confirm("Are you sure you want to delete this customer inquiry lead?")) {
       const token = localStorage.getItem("ammaseva_admin_token");
@@ -487,10 +511,13 @@ function AdminPage() {
       setNotifRecipient("All Users");
       setNotifMessage("");
       setNotifType("Email");
+    } else if (type === "faq") {
+      setFaqQuestion("");
+      setFaqAnswer("");
     }
   };
 
-  const openEditModal = (type: "booking" | "caregiver" | "service" | "blog", record: any) => {
+  const openEditModal = (type: "booking" | "caregiver" | "service" | "blog" | "faq", record: any) => {
     setModalType(type);
     setModalMode("edit");
     setSelectedId(record.id);
@@ -566,6 +593,9 @@ function AdminPage() {
       setBlogCategory(record.category || "General");
       setBlogAuthor(record.author || "Amma Seva Care Team");
       setBlogDate(record.date || new Date().toISOString().split("T")[0]);
+    } else if (type === "faq") {
+      setFaqQuestion(record.question);
+      setFaqAnswer(record.answer);
     }
   };
 
@@ -684,6 +714,13 @@ function AdminPage() {
           })
         }).catch(err => console.error("Announcement broadcast failed:", err));
       }
+    } else if (modalType === "faq") {
+      url = modalMode === "add" ? "/api/faqs" : `/api/faqs/${selectedId}`;
+      method = modalMode === "add" ? "POST" : "PUT";
+      bodyData = {
+        question: faqQuestion,
+        answer: faqAnswer
+      };
     }
 
     fetch(url, {
@@ -845,7 +882,8 @@ function AdminPage() {
             { id: "payments", label: "Payment Status", icon: DollarSign },
             { id: "notifications", label: "Alert Notifications", icon: Bell },
             { id: "enquiries", label: "Customer Leads", icon: MessageSquare },
-            { id: "blogs", label: "Health Blogs", icon: BookOpen }
+            { id: "blogs", label: "Health Blogs", icon: BookOpen },
+            { id: "faqs", label: "Manage FAQs", icon: HelpCircle }
           ].map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -1820,7 +1858,59 @@ function AdminPage() {
               </div>
             </div>
           )}
+          {activeTab === "faqs" && (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center bg-white border border-slate-200/60 rounded-2xl p-4 sm:p-6 shadow-sm">
+                <div>
+                  <h3 className="text-lg font-bold text-primary font-display">Manage FAQs</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Total: {faqs.length} FAQ questions</p>
+                </div>
+                <button
+                  onClick={() => openAddModal("faq")}
+                  className="btn-primary py-2 px-4 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Plus className="h-4 w-4" /> Add FAQ Item
+                </button>
+              </div>
 
+              <div className="grid gap-4">
+                {faqs
+                  .filter(f => f.question.toLowerCase().includes(searchQuery.toLowerCase()) || f.answer.toLowerCase().includes(searchQuery.toLowerCase()))
+                  .map((f) => (
+                    <div
+                      key={f.id}
+                      className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col sm:flex-row gap-5 items-start sm:items-center text-left"
+                    >
+                      <div className="flex-1 text-left space-y-1.5">
+                        <h4 className="text-base font-bold text-primary leading-snug">{f.question}</h4>
+                        <p className="text-xs text-slate-500 leading-relaxed">{f.answer}</p>
+                      </div>
+
+                      <div className="flex gap-2 shrink-0 w-full sm:w-auto justify-end">
+                        <button
+                          onClick={() => openEditModal("faq", f)}
+                          className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteFaq(f.id)}
+                          className="p-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                {faqs.length === 0 && (
+                  <div className="text-center py-16 border border-dashed border-slate-200 rounded-3xl bg-white p-6">
+                    <p className="text-slate-400 text-sm font-semibold">No FAQ items loaded. Click "Add FAQ Item" to publish the first guide!</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </main>
       </div>
 
@@ -2441,6 +2531,27 @@ function AdminPage() {
                       required rows={8} value={blogContent} onChange={e => setBlogContent(e.target.value)}
                       placeholder="Write your detailed care article guidelines here..."
                       className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 text-slate-800 text-xs font-mono"
+                    />
+                  </div>
+                </>
+              )}
+
+              {modalType === "faq" && (
+                <>
+                  <div className="text-left">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Question</label>
+                    <input 
+                      type="text" required value={faqQuestion} onChange={e => setFaqQuestion(e.target.value)}
+                      placeholder="e.g. Are your caregivers and nurses verified?"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 text-slate-800"
+                    />
+                  </div>
+                  <div className="text-left">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Answer</label>
+                    <textarea 
+                      required rows={5} value={faqAnswer} onChange={e => setFaqAnswer(e.target.value)}
+                      placeholder="Write the detailed answer here..."
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 text-slate-800 text-sm leading-relaxed"
                     />
                   </div>
                 </>

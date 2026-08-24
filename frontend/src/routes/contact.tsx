@@ -69,8 +69,8 @@ function Contact() {
               <ContactRow 
                 icon={MapPin} 
                 label="Headquarters Office" 
-                value="Hyderabad, Telangana, India" 
-                subtext="Serving across all major Hyderabad sectors."
+                value="LUXDHANA GLOBAL PRIVATE LIMITED" 
+                subtext="8-2-630/B/B/1, Mount Banjara complex, Road No. 12, Banjara Hills, Hyderabad - 500034, Telangana."
               />
             </div>
 
@@ -83,7 +83,7 @@ function Contact() {
               <div className="p-1.5">
                 <iframe
                   title="Amma Seva location"
-                  src="https://www.google.com/maps?q=Hyderabad&output=embed"
+                  src="https://www.google.com/maps?q=Banjara+Hills+Hyderabad+Telangana+LUXDHANA+GLOBAL+PRIVATE+LIMITED&output=embed"
                   className="h-64 w-full rounded-xl border border-slate-100/60"
                   loading="lazy"
                 />

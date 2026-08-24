@@ -217,7 +217,14 @@ const DEFAULT_MOCK_DATA = {
   notifications: [],
   reviews: [],
   announcements: [],
-  blogs: []
+  blogs: [],
+  faqs: [
+    { id: 1, question: "Are your caregivers and nurses verified?", answer: "Yes. Every professional undergoes ID verification, background checks, and skill assessments before joining." },
+    { id: 2, question: "How quickly can care be arranged?", answer: "In most cities, we can arrange care within 4–12 hours depending on the service and shift." },
+    { id: 3, question: "Can I choose the shift duration?", answer: "Absolutely. We offer hourly visits, 12-hour and 24-hour shifts, plus weekly and monthly plans." },
+    { id: 4, question: "How do payments work?", answer: "You can pay online via Razorpay. Shift booking is confirmed immediately after secure payment." },
+    { id: 5, question: "What if I need to reschedule or cancel?", answer: "You can reschedule anytime via your dashboard panel. Cancellations follow our refund policy." }
+  ]
 }
 
 // Initialize JSON database with default template
@@ -237,6 +244,7 @@ const initJSONDb = () => {
       if (!data.reviews) { data.reviews = []; modified = true }
       if (!data.announcements) { data.announcements = []; modified = true }
       if (!data.blogs || data.blogs.length === 0) { data.blogs = DEFAULT_MOCK_DATA.blogs; modified = true }
+      if (!data.faqs || data.faqs.length === 0) { data.faqs = DEFAULT_MOCK_DATA.faqs; modified = true }
       if (modified) {
         fs.writeFileSync(JSON_DB_PATH, JSON.stringify(data, null, 2))
       }
@@ -449,6 +457,15 @@ export const db = {
           )
         `)
 
+        await connection.query(`
+          CREATE TABLE IF NOT EXISTS faqs (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            question TEXT NOT NULL,
+            answer TEXT NOT NULL,
+            createdAt VARCHAR(255) NOT NULL
+          )
+        `)
+
         // Add columns to existing tables if missing
         try {
           await connection.query(`ALTER TABLE caregivers ADD COLUMN password VARCHAR(255)`)
@@ -606,6 +623,17 @@ export const db = {
             await connection.query(
               'INSERT INTO services (title, slug, short, description, benefits, duration, price, category, comingSoon) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
               [s.title, s.slug, s.short, s.description, JSON.stringify(s.benefits), s.duration, s.price, s.category, s.comingSoon ? 1 : 0]
+            )
+          }
+        }
+
+        const [faqsRows] = await connection.query('SELECT count(*) as count FROM faqs')
+        if (faqsRows[0].count === 0) {
+          console.log('Inserting initial mock FAQs into MySQL...')
+          for (const f of DEFAULT_MOCK_DATA.faqs) {
+            await connection.query(
+              'INSERT INTO faqs (question, answer, createdAt) VALUES (?, ?, ?)',
+              [f.question, f.answer, new Date().toISOString()]
             )
           }
         }
@@ -1632,6 +1660,72 @@ export const db = {
       if (!data.blogs) data.blogs = []
       const filtered = data.blogs.filter(b => b.id !== Number(id))
       data.blogs = filtered
+      await writeJSONDb(data)
+      return true
+    }
+  },
+
+  getFaqs: async () => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM faqs ORDER BY id DESC')
+      return rows
+    } else {
+      const data = await readJSONDb()
+      return data.faqs || []
+    }
+  },
+
+  addFaq: async (faq) => {
+    const createdAt = new Date().toISOString()
+    if (useMySQL) {
+      const [result] = await pool.query(
+        'INSERT INTO faqs (question, answer, createdAt) VALUES (?, ?, ?)',
+        [faq.question, faq.answer, createdAt]
+      )
+      return { id: result.insertId, ...faq, createdAt }
+    } else {
+      const data = await readJSONDb()
+      if (!data.faqs) data.faqs = []
+      const newFaq = {
+        id: data.faqs.length > 0 ? Math.max(...data.faqs.map(f => f.id)) + 1 : 1,
+        ...faq,
+        createdAt
+      }
+      data.faqs.push(newFaq)
+      await writeJSONDb(data)
+      return newFaq
+    }
+  },
+
+  updateFaq: async (id, faq) => {
+    if (useMySQL) {
+      await pool.query(
+        'UPDATE faqs SET question = ?, answer = ? WHERE id = ?',
+        [faq.question, faq.answer, Number(id)]
+      )
+      return { id: Number(id), ...faq }
+    } else {
+      const data = await readJSONDb()
+      if (!data.faqs) data.faqs = []
+      const idx = data.faqs.findIndex(f => f.id === Number(id))
+      if (idx !== -1) {
+        data.faqs[idx] = { ...data.faqs[idx], ...faq }
+        await writeJSONDb(data)
+        return data.faqs[idx]
+      }
+      return null
+    }
+  },
+
+  deleteFaq: async (id) => {
+    if (useMySQL) {
+      await pool.query('DELETE FROM faqs WHERE id = ?', [Number(id)])
+      return true
+    } else {
+      const data = await readJSONDb()
+      if (!data.faqs) data.faqs = []
+      const filtered = data.faqs.filter(f => f.id !== Number(id))
+      data.faqs = filtered
       await writeJSONDb(data)
       return true
     }

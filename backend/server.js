@@ -1302,6 +1302,62 @@ app.delete('/api/services/:id', authenticateAdmin, async (req, res) => {
   }
 })
 
+// GET all FAQs
+app.get('/api/faqs', async (req, res) => {
+  try {
+    const list = await db.getFaqs()
+    res.json(list)
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve FAQs.' })
+  }
+})
+
+// POST create FAQ (Admin Panel)
+app.post('/api/faqs', authenticateAdmin, async (req, res) => {
+  const { question, answer } = req.body
+  if (!question || !answer) {
+    return res.status(400).json({ error: 'Question and answer are required.' })
+  }
+  try {
+    const newFaq = await db.addFaq({ question, answer })
+    res.status(201).json({ success: true, message: 'FAQ successfully created.', data: newFaq })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create FAQ.' })
+  }
+})
+
+// PUT update FAQ (Admin Panel)
+app.put('/api/faqs/:id', authenticateAdmin, async (req, res) => {
+  const { question, answer } = req.body
+  if (!question || !answer) {
+    return res.status(400).json({ error: 'Question and answer are required.' })
+  }
+  try {
+    const updated = await db.updateFaq(req.params.id, { question, answer })
+    if (updated) {
+      res.json({ success: true, message: 'FAQ successfully updated.', data: updated })
+    } else {
+      res.status(404).json({ error: 'FAQ not found.' })
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update FAQ.' })
+  }
+})
+
+// DELETE FAQ (Admin Panel)
+app.delete('/api/faqs/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const deleted = await db.deleteFaq(req.params.id)
+    if (deleted) {
+      res.json({ success: true, message: 'FAQ successfully deleted.' })
+    } else {
+      res.status(404).json({ error: 'FAQ not found.' })
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete FAQ.' })
+  }
+})
+
 // GET all blogs
 app.get('/api/blogs', async (req, res) => {
   try {

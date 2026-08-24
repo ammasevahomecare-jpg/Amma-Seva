@@ -2298,7 +2298,10 @@ function CustomerDashboard() {
                 <div>
                   <h3 className="text-2xl font-bold font-display text-primary">Amma Seva Healthcare</h3>
                   <p className="text-[10px] text-slate-400 mt-0.5">Professional Care with a Mother's Touch</p>
-                  <p className="text-[10px] text-slate-400">Hyderabad, Telangana, India</p>
+                  <p className="text-[8px] text-slate-400 leading-normal max-w-xs">
+                    LUXDHANA GLOBAL PRIVATE LIMITED<br />
+                    8-2-630/B/B/1, Mount Banjara complex, Road No. 12, Banjara Hills, Hyderabad - 500034, Telangana.
+                  </p>
                 </div>
                 <div className="text-right">
                   <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest">Receipt Invoice</span>
