@@ -227,7 +227,7 @@ function Home() {
             {/* Left Scroll Navigation Button */}
             <button
               onClick={scrollLeft}
-              className="absolute -left-4 top-1/2 -translate-y-1/2 z-20 bg-white/90 hover:bg-white text-primary p-2.5 sm:p-3 rounded-full shadow-lg border border-slate-200/50 hover:text-gold transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 focus:opacity-100"
+              className="absolute -left-2.5 sm:-left-4 top-1/2 -translate-y-1/2 z-20 bg-white/95 text-primary p-2 sm:p-3 rounded-full shadow-lg border border-slate-200/50 hover:text-gold transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover/carousel:opacity-100 focus:opacity-100"
               aria-label="Scroll left"
             >
               <ChevronLeft className="h-5 w-5" />
@@ -295,7 +295,7 @@ function Home() {
             {/* Right Scroll Navigation Button */}
             <button
               onClick={scrollRight}
-              className="absolute -right-4 top-1/2 -translate-y-1/2 z-20 bg-white/90 hover:bg-white text-primary p-2.5 sm:p-3 rounded-full shadow-lg border border-slate-200/50 hover:text-gold transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 focus:opacity-100"
+              className="absolute -right-2.5 sm:-right-4 top-1/2 -translate-y-1/2 z-20 bg-white/95 text-primary p-2 sm:p-3 rounded-full shadow-lg border border-slate-200/50 hover:text-gold transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover/carousel:opacity-100 focus:opacity-100"
               aria-label="Scroll right"
             >
               <ChevronRight className="h-5 w-5" />
