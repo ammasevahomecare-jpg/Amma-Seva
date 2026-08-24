@@ -194,6 +194,8 @@ function AdminPage() {
   const [serviceTitle, setServiceTitle] = useState("");
   const [serviceDescription, setServiceDescription] = useState("");
   const [servicePrice, setServicePrice] = useState("");
+  const [servicePriceVal, setServicePriceVal] = useState("1200");
+  const [servicePriceUnit, setServicePriceUnit] = useState("day");
   const [serviceCategory, setServiceCategory] = useState("care");
   const [serviceShort, setServiceShort] = useState("");
   const [serviceBenefits, setServiceBenefits] = useState("");
@@ -465,6 +467,8 @@ function AdminPage() {
       setServiceBenefits("");
       setServiceDuration("");
       setServicePrice("₹1,200/day");
+      setServicePriceVal("1200");
+      setServicePriceUnit("day");
       setServiceCategory("care");
       setServiceComingSoon(false);
       setServiceImage("");
@@ -538,6 +542,16 @@ function AdminPage() {
       setServiceBenefits(Array.isArray(record.benefits) ? record.benefits.join("\n") : "");
       setServiceDuration(record.duration || "");
       setServicePrice(record.price);
+      
+      const matchPrice = record.price ? record.price.replace(/,/g, '').match(/\d+/) : null;
+      setServicePriceVal(matchPrice ? matchPrice[0] : "1200");
+      const lowerPrice = (record.price || "").toLowerCase();
+      let extractedUnit = "day";
+      if (lowerPrice.includes("month")) extractedUnit = "month";
+      else if (lowerPrice.includes("week")) extractedUnit = "week";
+      else if (lowerPrice.includes("hour")) extractedUnit = "hour";
+      setServicePriceUnit(extractedUnit);
+
       setServiceCategory(record.category || "care");
       setServiceComingSoon(!!record.comingSoon);
       setServiceImage(record.image || "");
@@ -615,6 +629,9 @@ function AdminPage() {
     } else if (modalType === "service") {
       url = modalMode === "add" ? "/api/services" : `/api/services/${selectedId}`;
       method = modalMode === "add" ? "POST" : "PUT";
+      
+      const priceString = `Starting ₹${servicePriceVal} / ${servicePriceUnit}`;
+      
       bodyData = {
         title: serviceTitle,
         slug: serviceTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''),
@@ -622,7 +639,7 @@ function AdminPage() {
         description: serviceDescription,
         benefits: serviceBenefits.split("\n").map(b => b.trim()).filter(Boolean),
         duration: serviceDuration,
-        price: servicePrice,
+        price: priceString,
         category: serviceCategory,
         comingSoon: serviceComingSoon,
         image: serviceImage,
@@ -2206,12 +2223,28 @@ function AdminPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Pricing Package</label>
-                      <input 
-                        type="text" required value={servicePrice} onChange={e => setServicePrice(e.target.value)}
-                        placeholder="e.g. ₹1,200/day"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
-                      />
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Pricing Amount (₹)</label>
+                          <input 
+                            type="number" required value={servicePriceVal} onChange={e => setServicePriceVal(e.target.value)}
+                            placeholder="e.g. 1200"
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
+                          />
+                        </div>
+                        <div className="w-[100px] shrink-0">
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Per Unit</label>
+                          <select 
+                            value={servicePriceUnit} onChange={e => setServicePriceUnit(e.target.value)}
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 cursor-pointer"
+                          >
+                            <option value="hour">hour</option>
+                            <option value="day">day</option>
+                            <option value="week">week</option>
+                            <option value="month">month</option>
+                          </select>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
