@@ -75,16 +75,18 @@ function Contact() {
             </div>
 
             {/* Premium Google Map Card */}
-            <div className="border border-border/85 bg-background rounded-2xl overflow-hidden shadow-sm text-left">
+            <div className="premium-card bg-background rounded-3xl overflow-hidden shadow-sm text-left">
               <div className="px-5 py-4 border-b border-border/60 bg-slate-50/50 flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-primary">Service Coverage Area</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-primary font-display font-semibold">Service Coverage Area</span>
                 <span className="text-[10px] bg-emerald-50 text-emerald-600 border border-emerald-150 px-2 py-0.5 rounded font-bold">Active</span>
               </div>
               <div className="p-1.5">
                 <iframe
                   title="Amma Seva location"
                   src="https://www.google.com/maps?q=Banjara+Hills+Hyderabad+Telangana+LUXDHANA+GLOBAL+PRIVATE+LIMITED&output=embed"
-                  className="h-64 w-full rounded-xl border border-slate-100/60"
+                  className="h-80 w-full rounded-2xl border border-slate-100/60"
+                  style={{ width: "100%" }}
+                  width="100%"
                   loading="lazy"
                 />
               </div>
@@ -95,7 +97,7 @@ function Contact() {
           {/* Right Column - Premium Message Form */}
           <div className="lg:col-span-7">
             <form
-              className="rounded-2xl border border-border bg-white p-6 sm:p-8 shadow-md text-left space-y-5"
+              className="rounded-3xl premium-card bg-white p-6 sm:p-8 shadow-md text-left space-y-5"
               onSubmit={(e) => {
                 e.preventDefault();
                 const form = e.target as HTMLFormElement;
@@ -191,7 +193,7 @@ function ContactRow({ icon: Icon, label, value, subtext, href }: { icon: React.C
   return (
     <Wrap 
       {...(href ? { href } : {})} 
-      className="flex items-start gap-4 rounded-2xl border border-border bg-background p-4 shadow-sm transition-all duration-300 hover:border-gold hover:shadow text-left cursor-pointer group"
+      className="flex items-start gap-4 rounded-2xl premium-card bg-background p-4 shadow-sm text-left cursor-pointer group"
     >
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gold/10 text-gold border border-gold/25 group-hover:bg-gold group-hover:text-[#0b183b] transition-all duration-300">
         <Icon className="h-5 w-5" />

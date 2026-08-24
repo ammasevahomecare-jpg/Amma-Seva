@@ -7,7 +7,8 @@ import {
   ScrollRestoration,
   useLocation,
 } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import logoAsset from "@/assets/amma-seva-logo.png";
 
 function NotFoundComponent() {
   return (
@@ -72,6 +73,68 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
+function SplashScreen() {
+  const [visible, setVisible] = useState(true);
+  const [fade, setFade] = useState(false);
+
+  useEffect(() => {
+    // Check if splash screen was already shown in this session
+    const shown = sessionStorage.getItem("ammaseva_splash_shown");
+    if (shown) {
+      setVisible(false);
+      return;
+    }
+
+    // Set timers for fade-out and unmount
+    const fadeTimer = setTimeout(() => {
+      setFade(true);
+    }, 1500); // Start fade out at 1.5s
+
+    const hideTimer = setTimeout(() => {
+      setVisible(false);
+      sessionStorage.setItem("ammaseva_splash_shown", "true");
+    }, 2000); // Fully unmount at 2.0s
+
+    return () => {
+      clearTimeout(fadeTimer);
+      clearTimeout(hideTimer);
+    };
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <div
+      className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0c1a30] transition-opacity duration-500 ease-in-out ${
+        fade ? "opacity-0 pointer-events-none" : "opacity-100"
+      }`}
+    >
+      <div className="flex flex-col items-center gap-6 animate-pulse">
+        {/* Big circular logo with premium pulse rings */}
+        <div className="relative flex items-center justify-center">
+          <div className="absolute inset-0 rounded-full bg-gold/20 blur-md scale-110" />
+          <img
+            src={logoAsset}
+            alt="Amma Seva"
+            className="h-28 w-28 rounded-full bg-white p-2 border-2 border-gold object-contain shadow-2xl animate-spin"
+            style={{ animationDuration: "12s" }}
+          />
+        </div>
+
+        {/* Text bottom */}
+        <div className="text-center space-y-1">
+          <h1 className="font-display text-3xl font-bold tracking-wide text-white">
+            Amma <span className="text-gold">Seva</span>
+          </h1>
+          <p className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">
+            Home Healthcare &amp; Caregiving
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const location = useLocation();
@@ -82,6 +145,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <SplashScreen />
       <ScrollRestoration />
       <Outlet />
     </QueryClientProvider>
