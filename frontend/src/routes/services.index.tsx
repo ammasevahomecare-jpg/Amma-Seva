@@ -100,7 +100,7 @@ function ServicesPage() {
     <SiteLayout>
       <section className="border-b border-border bg-cream/40">
         <div className="mx-auto max-w-7xl px-4 py-8 text-left sm:px-6 lg:px-8">
-          <span className="gold-rule text-xs font-semibold uppercase tracking-[0.2em] text-gold">Services</span>
+          <h5 className="gold-rule">Services</h5>
           <h1 className="mt-4 text-4xl font-semibold text-primary sm:text-5xl">Our home healthcare services</h1>
           <p className="mt-4 max-w-2xl text-muted-foreground">
             Care for every stage of life, delivered by verified nurses and compassionate caregivers.

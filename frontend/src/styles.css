@@ -136,9 +136,49 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  h1, h2, h3, h4 {
-    font-family: var(--font-display);
-    letter-spacing: -0.01em;
+  /* Global premium typography - left-aligned headings */
+  h1, h2, h3, h4, h5, h6 {
+    text-align: left !important;
+  }
+
+  h1 {
+    font-family: var(--font-display) !important;
+    color: var(--primary) !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  h2 {
+    font-family: var(--font-display) !important;
+    font-size: 1.75rem !important; /* ~28px */
+    font-weight: 800 !important;
+    color: var(--primary) !important;
+    line-height: 1.3 !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  h3 {
+    font-family: var(--font-display) !important;
+    color: var(--primary) !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.01em !important;
+  }
+
+  h4 {
+    font-family: var(--font-sans) !important;
+    color: var(--primary) !important;
+    font-weight: 600 !important;
+  }
+
+  h5 {
+    font-family: var(--font-sans) !important;
+    font-size: 0.75rem !important; /* text-xs */
+    font-weight: 700 !important;
+    color: var(--gold) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.15em !important;
+    margin-bottom: 0.5rem !important;
+    display: inline-block !important;
   }
 }
 

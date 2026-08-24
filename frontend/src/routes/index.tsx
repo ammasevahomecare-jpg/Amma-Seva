@@ -26,21 +26,6 @@ export const Route = createFileRoute("/")({
       { property: "og:type", content: "website" },
       { property: "og:url", content: "/" },
     ],
-    scripts: [
-      {
-        type: "application/ld+json",
-        children: JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "MedicalBusiness",
-          name: "Amma Seva",
-          description: "Professional home healthcare and caregiving services.",
-          telephone: contact.PHONE,
-          email: contact.EMAIL,
-          slogan: "Professional Care with a Mother's Touch.",
-          areaServed: "IN",
-        }),
-      },
-    ],
   }),
   component: Home,
 });
@@ -215,7 +200,7 @@ function Home() {
       <section className="border-t border-slate-100 bg-cream/35 py-6 sm:py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl text-left mb-6 sm:mb-8">
-            <span className="gold-rule text-xs font-semibold uppercase tracking-[0.2em] text-gold">Our Services</span>
+            <h5 className="gold-rule">Our Services</h5>
             <h2 className="mt-3 text-3xl font-extrabold text-primary sm:text-4xl font-display">Care for every stage of life</h2>
             <p className="mt-2 text-slate-500 text-base leading-relaxed">From newborns to seniors — comprehensive home healthcare tailored to your family.</p>
           </div>
@@ -284,13 +269,13 @@ function Home() {
       <section className="border-t border-slate-100 py-6 sm:py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl text-left mb-6">
-            <span className="gold-rule text-xs font-semibold uppercase tracking-[0.2em] text-gold">Why Amma Seva</span>
+            <h5 className="gold-rule">Why Amma Seva</h5>
             <h2 className="mt-3 text-3xl font-extrabold text-primary sm:text-4xl font-display">A promise your family can lean on</h2>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {WHY.map((w) => (
-              <div key={w.title} className="group rounded-3xl border border-slate-200/60 bg-background p-5 text-center shadow-sm hover:shadow-xl hover:border-gold/30 transition-all duration-500 hover:-translate-y-1">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gold/10 text-gold transition-all duration-500 group-hover:bg-primary group-hover:text-white group-hover:rotate-3 shadow-inner">
+              <div key={w.title} className="group rounded-3xl border border-slate-200/60 bg-background p-5 text-left shadow-sm hover:shadow-xl hover:border-gold/30 transition-all duration-500 hover:-translate-y-1">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gold/10 text-gold transition-all duration-500 group-hover:bg-primary group-hover:text-white group-hover:rotate-3 shadow-inner">
                   <w.icon className="h-6 w-6" />
                 </div>
                 <h3 className="mt-3 text-lg font-bold text-primary font-display">{w.title}</h3>
@@ -305,7 +290,7 @@ function Home() {
       <section className="border-t border-slate-100 bg-cream/35 py-6 sm:py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl text-left mb-6">
-            <span className="gold-rule text-xs font-semibold uppercase tracking-[0.2em] text-gold">How It Works</span>
+            <h5 className="gold-rule">How It Works</h5>
             <h2 className="mt-3 text-3xl font-extrabold text-primary sm:text-4xl font-display">Care arranged in four simple steps</h2>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -325,7 +310,7 @@ function Home() {
       <section className="border-t border-slate-100 py-6 sm:py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl text-left mb-6">
-            <span className="gold-rule text-xs font-semibold uppercase tracking-[0.2em] text-gold">Testimonials</span>
+            <h5 className="gold-rule">Testimonials</h5>
             <h2 className="mt-3 text-3xl font-extrabold text-primary sm:text-4xl font-display">Loved by families across India</h2>
           </div>
           <div className="grid gap-4 lg:grid-cols-3">
@@ -356,7 +341,7 @@ function Home() {
       <section className="border-t border-slate-100 bg-cream/35 py-6 sm:py-8">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl text-left">
-            <span className="gold-rule text-xs font-semibold uppercase tracking-[0.2em] text-gold">FAQs</span>
+            <h5 className="gold-rule">FAQs</h5>
             <h2 className="mt-3 text-3xl font-extrabold text-primary sm:text-4xl font-display">Answers to common questions</h2>
           </div>
           <div className="mt-6 grid gap-3 md:grid-cols-2 items-start text-left">
