@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
-import { Phone, Calendar, ShieldCheck, HeartHandshake, Clock, BadgeCheck, Star, ChevronRight } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Phone, Calendar, ShieldCheck, HeartHandshake, Clock, BadgeCheck, Star, ChevronRight, ChevronLeft } from "lucide-react";
 import { SiteLayout, contact } from "@/components/SiteLayout";
 import { fetchServices } from "@/lib/services";
 import { fetchFaqs } from "@/lib/faqs";
@@ -17,6 +17,7 @@ export const Route = createFileRoute("/")({
     const faqs = await fetchFaqs();
     return { services, faqs };
   },
+  staleTime: 30000,
   head: () => ({
     meta: [
       { title: "Amma Seva — Trusted Home Healthcare & Caregiving" },
@@ -123,6 +124,23 @@ const TESTIMONIALS = [
 function Home() {
   const { services, faqs } = Route.useLoaderData();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const carouselRef = useRef<HTMLDivElement>(null);
+
+  const scrollLeft = () => {
+    if (carouselRef.current) {
+      const card = carouselRef.current.firstElementChild as HTMLElement;
+      const width = card ? card.offsetWidth + 24 : 320;
+      carouselRef.current.scrollBy({ left: -width, behavior: "smooth" });
+    }
+  };
+
+  const scrollRight = () => {
+    if (carouselRef.current) {
+      const card = carouselRef.current.firstElementChild as HTMLElement;
+      const width = card ? card.offsetWidth + 24 : 320;
+      carouselRef.current.scrollBy({ left: width, behavior: "smooth" });
+    }
+  };
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -183,7 +201,7 @@ function Home() {
               <div className="absolute inset-0 bg-gradient-to-t from-primary/10 via-transparent to-transparent" />
             </div>
             {/* Premium Floating Card */}
-            <div className="absolute -bottom-6 -left-2 sm:-left-6 max-w-[280px] sm:max-w-xs rounded-2xl border border-white/40 bg-white/80 backdrop-blur-md p-5 shadow-2xl z-10 text-left transition-transform hover:scale-102 duration-300">
+            <div className="absolute -bottom-6 -left-2 sm:-left-6 max-w-[280px] sm:max-w-xs rounded-2xl border border-white/40 bg-white/80 backdrop-blur-md p-5 shadow-2xl z-10 text-left transition-transform hover:scale-102 duration-300 hidden sm:block">
               <div className="flex items-center gap-1.5 text-gold">
                 {Array.from({ length: 5 }).map((_, i) => <Star key={i} className="h-4 w-4 fill-current" />)}
               </div>
@@ -200,66 +218,91 @@ function Home() {
       <section className="border-t border-slate-100 bg-cream/35 py-6 sm:py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl text-left mb-6 sm:mb-8">
-            <h5 className="gold-rule">Our Services</h5>
-            <h2 className="mt-3 text-3xl font-extrabold text-primary sm:text-4xl font-display">Care for every stage of life</h2>
-            <p className="mt-2 text-slate-500 text-base leading-relaxed">From newborns to seniors — comprehensive home healthcare tailored to your family.</p>
+            <h2 className="gold-rule text-3xl font-extrabold text-primary sm:text-4xl font-display">Our Services</h2>
+            <h4 className="mt-2 text-lg font-semibold text-slate-600 font-display">Care for every stage of life</h4>
+            <p className="mt-1 text-slate-500 text-sm leading-relaxed">From newborns to seniors — comprehensive home healthcare tailored to your family.</p>
           </div>
           
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {services.slice(0, 6).map((s: any) => {
-              const details = getServiceDetails(s.slug);
-              return (
-                <div
-                  key={s.slug}
-                  className="group flex flex-col overflow-hidden rounded-3xl border border-slate-200/60 bg-background shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-1.5"
-                >
-                  <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100 block">
-                    <img 
-                      src={details.image} 
-                      alt={s.title} 
-                      width={1200} 
-                      height={900} 
-                      loading="lazy" 
-                      className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-108" 
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-primary/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          <div className="relative group/carousel px-1">
+            {/* Left Scroll Navigation Button */}
+            <button
+              onClick={scrollLeft}
+              className="absolute -left-4 top-1/2 -translate-y-1/2 z-20 bg-white/90 hover:bg-white text-primary p-2.5 sm:p-3 rounded-full shadow-lg border border-slate-200/50 hover:text-gold transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 focus:opacity-100"
+              aria-label="Scroll left"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+
+            {/* Scroll snap flex container */}
+            <div
+              ref={carouselRef}
+              className="flex gap-6 overflow-x-auto snap-x snap-mandatory scrollbar-none pb-6"
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            >
+              {services.map((s: any) => {
+                const details = getServiceDetails(s.slug);
+                return (
+                  <div
+                    key={s.slug}
+                    className="min-w-[280px] sm:min-w-[calc(50%-12px)] md:min-w-[calc(33.333%-16px)] lg:min-w-[calc(25%-18px)] snap-start snap-always shrink-0 group/card flex flex-col overflow-hidden rounded-3xl border border-slate-200/60 bg-background shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-1.5"
+                  >
+                    <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100 block">
+                      <img 
+                        src={details.image} 
+                        alt={s.title} 
+                        width={1200} 
+                        height={900} 
+                        loading="lazy" 
+                        className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover/card:scale-108" 
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-primary/50 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500" />
+                      
+                      {/* Floating Price Badge */}
+                      <div className="absolute top-4 right-4 bg-primary/95 backdrop-blur-sm text-white px-3.5 py-1 rounded-xl text-xs font-bold shadow-md border border-white/10">
+                        {s.price}
+                      </div>
+                    </div>
                     
-                    {/* Floating Price Badge */}
-                    <div className="absolute top-4 right-4 bg-primary/95 backdrop-blur-sm text-white px-3.5 py-1 rounded-xl text-xs font-bold shadow-md border border-white/10">
-                      {s.price}
+                    <div className="flex flex-1 flex-col p-5 text-left">
+                      <div className="flex">
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider border ${details.badgeClass}`}>
+                          {details.category}
+                        </span>
+                      </div>
+                      <Link
+                        to="/services/$slug"
+                        params={{ slug: s.slug }}
+                        className="mt-2 block text-lg font-bold text-primary hover:text-gold transition-colors duration-300 font-display"
+                      >
+                        {s.title}
+                      </Link>
+                      <p className="mt-1.5 flex-1 text-sm text-slate-500 leading-relaxed line-clamp-3">
+                        {s.short}
+                      </p>
+                      <Link
+                        to="/services/$slug"
+                        params={{ slug: s.slug }}
+                        className="mt-4 w-full btn-primary text-sm font-bold flex items-center justify-center gap-1.5 shadow-sm shadow-primary/10 group-hover/card:shadow-md transition-all duration-300"
+                      >
+                        View Details <ChevronRight className="h-4 w-4 transition-transform group-hover/card:translate-x-0.5" />
+                      </Link>
                     </div>
                   </div>
-                  
-                  <div className="flex flex-1 flex-col p-5 text-left">
-                    <div className="flex">
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider border ${details.badgeClass}`}>
-                        {details.category}
-                      </span>
-                    </div>
-                    <Link
-                      to="/services/$slug"
-                      params={{ slug: s.slug }}
-                      className="mt-2 block text-lg font-bold text-primary hover:text-gold transition-colors duration-300 font-display"
-                    >
-                      {s.title}
-                    </Link>
-                    <p className="mt-1.5 flex-1 text-sm text-slate-500 leading-relaxed line-clamp-3">
-                      {s.short}
-                    </p>
-                    <Link
-                      to="/services/$slug"
-                      params={{ slug: s.slug }}
-                      className="mt-4 w-full btn-primary text-sm font-bold flex items-center justify-center gap-1.5 shadow-sm shadow-primary/10 group-hover:shadow-md transition-all duration-300"
-                    >
-                      View Details <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                    </Link>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+
+            {/* Right Scroll Navigation Button */}
+            <button
+              onClick={scrollRight}
+              className="absolute -right-4 top-1/2 -translate-y-1/2 z-20 bg-white/90 hover:bg-white text-primary p-2.5 sm:p-3 rounded-full shadow-lg border border-slate-200/50 hover:text-gold transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 focus:opacity-100"
+              aria-label="Scroll right"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
           </div>
           
-          <div className="mt-6 text-center">
+          <div className="mt-4 text-center">
             <Link to="/services" className="btn-outline px-8 py-2.5">View all services</Link>
           </div>
         </div>
@@ -269,8 +312,8 @@ function Home() {
       <section className="border-t border-slate-100 py-6 sm:py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl text-left mb-6">
-            <h5 className="gold-rule">Why Amma Seva</h5>
-            <h2 className="mt-3 text-3xl font-extrabold text-primary sm:text-4xl font-display">A promise your family can lean on</h2>
+            <h2 className="gold-rule text-3xl font-extrabold text-primary sm:text-4xl font-display">Why Amma Seva</h2>
+            <h4 className="mt-2 text-lg font-semibold text-slate-600 font-display">A promise your family can lean on</h4>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {WHY.map((w) => (
@@ -290,8 +333,8 @@ function Home() {
       <section className="border-t border-slate-100 bg-cream/35 py-6 sm:py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl text-left mb-6">
-            <h5 className="gold-rule">How It Works</h5>
-            <h2 className="mt-3 text-3xl font-extrabold text-primary sm:text-4xl font-display">Care arranged in four simple steps</h2>
+            <h2 className="gold-rule text-3xl font-extrabold text-primary sm:text-4xl font-display">How It Works</h2>
+            <h4 className="mt-2 text-lg font-semibold text-slate-600 font-display">Care arranged in four simple steps</h4>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {STEPS.map((s) => (
@@ -310,8 +353,8 @@ function Home() {
       <section className="border-t border-slate-100 py-6 sm:py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl text-left mb-6">
-            <h5 className="gold-rule">Testimonials</h5>
-            <h2 className="mt-3 text-3xl font-extrabold text-primary sm:text-4xl font-display">Loved by families across India</h2>
+            <h2 className="gold-rule text-3xl font-extrabold text-primary sm:text-4xl font-display">Testimonials</h2>
+            <h4 className="mt-2 text-lg font-semibold text-slate-600 font-display">Loved by families across India</h4>
           </div>
           <div className="grid gap-4 lg:grid-cols-3">
             {TESTIMONIALS.map((t) => (
@@ -340,9 +383,9 @@ function Home() {
       {/* FAQ */}
       <section className="border-t border-slate-100 bg-cream/35 py-6 sm:py-8">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl text-left">
-            <h5 className="gold-rule">FAQs</h5>
-            <h2 className="mt-3 text-3xl font-extrabold text-primary sm:text-4xl font-display">Answers to common questions</h2>
+          <div className="max-w-3xl text-left mb-6">
+            <h2 className="gold-rule text-3xl font-extrabold text-primary sm:text-4xl font-display">FAQs</h2>
+            <h4 className="mt-2 text-lg font-semibold text-slate-600 font-display">Answers to common questions</h4>
           </div>
           <div className="mt-6 grid gap-3 md:grid-cols-2 items-start text-left">
             {faqs.map((f: any) => (

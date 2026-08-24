@@ -10,6 +10,7 @@ export const Route = createFileRoute("/blog/$slug")({
     const list = await fetchBlogs();
     return { blog, allBlogs: list };
   },
+  staleTime: 30000,
   head: ({ loaderData, params }) => {
     if (!loaderData) {
       return { meta: [{ title: "Blog not found — Amma Seva" }, { name: "robots", content: "noindex" }] };

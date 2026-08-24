@@ -52,10 +52,8 @@ function Header() {
 
   return (
     <header
-      className={`sticky top-0 z-40 w-full transition-all duration-300 ease-in-out ${
-        isScrolled
-          ? "border-b border-white/10 bg-primary/95 shadow-lg shadow-primary/20 backdrop-blur-md py-1.5"
-          : "border-b border-border/40 bg-background py-2.5"
+      className={`sticky top-0 z-40 w-full transition-all duration-300 ease-in-out border-b border-white/10 bg-primary shadow-lg shadow-primary/20 backdrop-blur-md ${
+        isScrolled ? "py-1.5" : "py-2.5"
       }`}
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
@@ -73,15 +71,11 @@ function Header() {
             <div className="absolute inset-0 -z-10 rounded-full bg-gold/20 opacity-0 blur-md transition-opacity duration-300 group-hover:opacity-100" />
           </div>
           <div className="leading-tight">
-            <div className={`font-display text-xl font-bold transition-all duration-300 ${
-              isScrolled ? "text-white" : "text-primary group-hover:text-gold"
-            }`}>
-              Amma <span className={`text-gold transition-colors duration-300 ${
-                isScrolled ? "" : "group-hover:text-primary"
-              }`}>Seva</span>
+            <div className="font-display text-xl font-bold transition-all duration-300 text-white group-hover:text-gold">
+              Amma <span className="text-gold transition-colors duration-300 group-hover:text-white">Seva</span>
             </div>
             <div
-              className={`uppercase tracking-widest text-muted-foreground transition-all duration-300 ease-in-out sm:block ${
+              className={`uppercase tracking-widest text-slate-300/85 transition-all duration-300 ease-in-out sm:block ${
                 isScrolled ? "h-0 opacity-0 overflow-hidden text-[0px] mt-0" : "hidden text-[10px] opacity-100 mt-0.5"
               }`}
             >
@@ -94,15 +88,9 @@ function Header() {
             <Link
               key={n.label + n.to}
               to={n.to}
-              className={`px-4 py-1.5 text-sm font-medium rounded-tl-2xl rounded-br-2xl rounded-tr-sm rounded-bl-sm transition-all duration-300 flex items-center gap-1 ${
-                isScrolled
-                  ? "text-white/80 hover:bg-white/10 hover:text-white"
-                  : "text-foreground/80 hover:bg-secondary/60 hover:text-primary"
-              }`}
+              className="px-4 py-1.5 text-sm font-medium rounded-tl-2xl rounded-br-2xl rounded-tr-sm rounded-bl-sm transition-all duration-300 flex items-center gap-1 text-white/80 hover:bg-white/10 hover:text-white"
               activeProps={{
-                className: isScrolled
-                  ? "bg-gold text-gold-foreground font-semibold rounded-tl-2xl rounded-br-2xl rounded-tr-sm rounded-bl-sm shadow-sm shadow-gold/20"
-                  : "bg-primary text-primary-foreground font-semibold rounded-tl-2xl rounded-br-2xl rounded-tr-sm rounded-bl-sm shadow-sm shadow-primary/10"
+                className: "bg-white/10 text-white font-semibold rounded-tl-2xl rounded-br-2xl rounded-tr-sm rounded-bl-sm border border-gold/70 shadow-sm shadow-gold/25"
               }}
               activeOptions={{ exact: n.to === "/" }}
             >
@@ -113,33 +101,27 @@ function Header() {
         <div className="hidden items-center gap-2.5 lg:flex shrink-0">
           <a
             href={`tel:${PHONE_TEL}`}
-            className={`btn-outline text-sm shrink-0 whitespace-nowrap ${
-              isScrolled
-                ? "text-white! border-white/50! hover:bg-white! hover:text-primary! hover:shadow-white/10"
-                : ""
-            }`}
+            className="btn-outline text-sm shrink-0 whitespace-nowrap text-white! border-white/50! hover:bg-white! hover:text-primary! hover:shadow-white/10"
           >
             <Phone className="h-4 w-4" /> Call Now
           </a>
           {isUser ? (
-            <Link to="/dashboard" className={`text-sm shrink-0 whitespace-nowrap ${isScrolled ? "btn-gold" : "btn-primary"}`}>
+            <Link to="/dashboard" className="text-sm shrink-0 whitespace-nowrap btn-gold">
               My Dashboard
             </Link>
           ) : isCaretaker ? (
-            <Link to="/dashboard" className={`text-sm shrink-0 whitespace-nowrap ${isScrolled ? "btn-gold" : "btn-primary"}`}>
+            <Link to="/dashboard" className="text-sm shrink-0 whitespace-nowrap btn-gold">
               My Profile
             </Link>
           ) : (
-            <Link to="/login" className={`text-sm shrink-0 whitespace-nowrap ${isScrolled ? "btn-gold" : "btn-primary"}`}>
+            <Link to="/login" className="text-sm shrink-0 whitespace-nowrap btn-gold">
               Book &amp; Login
             </Link>
           )}
         </div>
         <button
           type="button"
-          className={`rounded-full p-2.5 transition-all duration-300 lg:hidden ${
-            isScrolled ? "text-white hover:bg-white/10" : "text-primary hover:bg-secondary"
-          }`}
+          className="rounded-full p-2.5 transition-all duration-300 lg:hidden text-white hover:bg-white/10"
           onClick={() => setOpen((v) => !v)}
           aria-label="Toggle menu"
         >
@@ -147,33 +129,33 @@ function Header() {
         </button>
       </div>
       {open && (
-        <div className="border-t border-border/80 bg-background/95 backdrop-blur-md lg:hidden">
+        <div className="border-t border-white/10 bg-primary/95 backdrop-blur-md lg:hidden">
           <div className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-4">
             {dynamicNav.map((n) => (
               <Link
                 key={n.label + n.to}
                 to={n.to}
                 onClick={() => setOpen(false)}
-                className="rounded-full px-4 py-2 text-sm font-medium text-foreground/80 hover:bg-secondary hover:text-primary transition-all duration-200"
-                activeProps={{ className: "bg-secondary text-primary font-semibold" }}
+                className="rounded-full px-4 py-2 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white transition-all duration-200"
+                activeProps={{ className: "bg-white/10 text-white font-semibold border border-gold/40" }}
               >
                 {n.label}
               </Link>
             ))}
             <div className="mt-4 flex gap-2.5">
-              <a href={`tel:${PHONE_TEL}`} className="btn-outline flex-1 text-sm">
+              <a href={`tel:${PHONE_TEL}`} className="btn-outline flex-1 text-sm text-white! border-white/40! hover:bg-white! hover:text-primary!">
                 <Phone className="h-4 w-4" /> Call
               </a>
               {isUser ? (
-                <Link to="/dashboard" onClick={() => setOpen(false)} className="btn-primary flex-1 text-sm text-center">
+                <Link to="/dashboard" onClick={() => setOpen(false)} className="btn-gold flex-1 text-sm text-center">
                   Dashboard
                 </Link>
               ) : isCaretaker ? (
-                <Link to="/dashboard" onClick={() => setOpen(false)} className="btn-primary flex-1 text-sm text-center">
+                <Link to="/dashboard" onClick={() => setOpen(false)} className="btn-gold flex-1 text-sm text-center">
                   Profile
                 </Link>
               ) : (
-                <Link to="/login" onClick={() => setOpen(false)} className="btn-primary flex-1 text-sm text-center">
+                <Link to="/login" onClick={() => setOpen(false)} className="btn-gold flex-1 text-sm text-center">
                   Login / Book
                 </Link>
               )}
@@ -182,7 +164,7 @@ function Header() {
         </div>
       )}
       {/* Scroll Reading Progress Bar */}
-      <div className="absolute bottom-0 left-0 h-[2px] w-full bg-border/20">
+      <div className="absolute bottom-0 left-0 h-[2px] w-full bg-white/10">
         <div
           className="h-full bg-gold transition-all duration-150 ease-out"
           style={{ width: `${scrollProgress}%` }}
@@ -310,7 +292,7 @@ function Footer() {
       </div>
 
       {/* Darker Copyright Bottom Bar */}
-      <div className="bg-[#050f28] py-5 border-t border-slate-900/60 text-xs text-slate-500">
+      <div className="bg-[#050f28] py-5 border-t border-slate-900/60 text-xs text-slate-400">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 sm:px-6 lg:flex-row lg:px-8">
           <span>© {new Date().getFullYear()} Amma Seva Home Healthcare. All rights reserved.</span>
           <span className="text-gold font-medium">Professional Care with a Mother&apos;s Touch.</span>

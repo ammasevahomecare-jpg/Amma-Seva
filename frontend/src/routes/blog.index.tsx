@@ -9,6 +9,7 @@ export const Route = createFileRoute("/blog/")({
     const list = await fetchBlogs();
     return { blogs: list };
   },
+  staleTime: 30000,
   head: () => ({
     meta: [
       { title: "Health Tips & Family Care Guidance — Amma Seva Blog" },

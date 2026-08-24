@@ -81,6 +81,7 @@ export const Route = createFileRoute("/services/")({
     const list = await fetchServices();
     return { services: list };
   },
+  staleTime: 30000,
   head: () => ({
     meta: [
       { title: "Our Services — Amma Seva Home Healthcare" },
@@ -100,9 +101,9 @@ function ServicesPage() {
     <SiteLayout>
       <section className="border-b border-border bg-cream/40">
         <div className="mx-auto max-w-7xl px-4 py-8 text-left sm:px-6 lg:px-8">
-          <h5 className="gold-rule">Services</h5>
-          <h1 className="mt-4 text-4xl font-semibold text-primary sm:text-5xl">Our home healthcare services</h1>
-          <p className="mt-4 max-w-2xl text-muted-foreground">
+          <h1 className="gold-rule text-4xl font-extrabold text-primary sm:text-5xl font-display">Services</h1>
+          <h4 className="mt-2 text-lg font-semibold text-slate-600 font-display">Our home healthcare services</h4>
+          <p className="mt-2 max-w-2xl text-slate-500 text-sm leading-relaxed">
             Care for every stage of life, delivered by verified nurses and compassionate caregivers.
           </p>
         </div>

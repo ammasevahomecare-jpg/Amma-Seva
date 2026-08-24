@@ -6,7 +6,7 @@ import {
   Users, Calendar, DollarSign, ShieldAlert, LogOut, CheckCircle2, 
   XCircle, Edit3, Save, Check, LayoutDashboard, CalendarDays,
   UserCheck, MessageSquare, Sliders, Bell, Search, Plus, Send, TrendingDown,
-  ArrowUpRight, Star, BookOpen, HelpCircle
+  ArrowUpRight, Star, BookOpen, HelpCircle, Menu, X
 } from "lucide-react";
 
 const INDIAN_STATES = [
@@ -135,6 +135,7 @@ function AdminPage() {
   // Navigation and Search
   const [activeTab, setActiveTab] = useState<"overview" | "bookings" | "caregivers" | "enquiries" | "services" | "users" | "notifications" | "payments" | "blogs" | "faqs">("overview");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -859,73 +860,87 @@ function AdminPage() {
       <aside className="w-full lg:w-72 bg-white border-b lg:border-b-0 lg:border-r border-slate-200/60 flex flex-col shrink-0">
         
         {/* Brand Header */}
-        <div className="px-6 py-6 border-b border-slate-100 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-500 to-indigo-600 flex items-center justify-center font-bold text-xl text-white shadow-md">
-            A
+        <div className="px-6 py-4 lg:py-6 border-b border-slate-100 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-500 to-indigo-600 flex items-center justify-center font-bold text-xl text-white shadow-md">
+              A
+            </div>
+            <div>
+              <span className="font-extrabold text-xl tracking-tight text-primary">
+                Amma Seva
+              </span>
+              <p className="text-[9px] text-slate-400 tracking-widest uppercase font-semibold">Systems admin</p>
+            </div>
           </div>
-          <div>
-            <span className="font-extrabold text-xl tracking-tight text-primary">
-              Amma Seva
-            </span>
-            <p className="text-[9px] text-slate-400 tracking-widest uppercase font-semibold">Systems admin</p>
-          </div>
+          <button
+            type="button"
+            className="lg:hidden p-2 text-slate-600 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
+            onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
+          >
+            {isMobileNavOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
         </div>
 
-        {/* Sidebar Nav Items */}
-        <nav className="p-4 space-y-1.5 flex-1">
-          {[
-            { id: "overview", label: "Dashboard", icon: LayoutDashboard },
-            { id: "bookings", label: "Manage Bookings", icon: CalendarDays },
-            { id: "caregivers", label: "Employees & Staff", icon: UserCheck },
-            { id: "users", label: "Patients", icon: Users },
-            { id: "services", label: "Services", icon: Sliders },
-            { id: "payments", label: "Payment Status", icon: DollarSign },
-            { id: "notifications", label: "Alert Notifications", icon: Bell },
-            { id: "enquiries", label: "Customer Leads", icon: MessageSquare },
-            { id: "blogs", label: "Health Blogs", icon: BookOpen },
-            { id: "faqs", label: "Manage FAQs", icon: HelpCircle }
-          ].map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id as any)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
-                  isActive
-                    ? "bg-slate-100 text-primary"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                }`}
-              >
-                <Icon className={`h-4.5 w-4.5 ${isActive ? "text-primary" : "text-slate-400"}`} />
-                {item.label}
-              </button>
-            );
-          })}
-        </nav>
+        {/* Sidebar Nav Items and bottom components - collapses on mobile */}
+        <div className={`flex-col flex-1 lg:flex ${isMobileNavOpen ? "flex" : "hidden lg:flex"}`}>
+          <nav className="p-4 space-y-1.5 flex-1">
+            {[
+              { id: "overview", label: "Dashboard", icon: LayoutDashboard },
+              { id: "bookings", label: "Manage Bookings", icon: CalendarDays },
+              { id: "caregivers", label: "Employees & Staff", icon: UserCheck },
+              { id: "users", label: "Patients", icon: Users },
+              { id: "services", label: "Services", icon: Sliders },
+              { id: "payments", label: "Payment Status", icon: DollarSign },
+              { id: "notifications", label: "Alert Notifications", icon: Bell },
+              { id: "enquiries", label: "Customer Leads", icon: MessageSquare },
+              { id: "blogs", label: "Health Blogs", icon: BookOpen },
+              { id: "faqs", label: "Manage FAQs", icon: HelpCircle }
+            ].map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setActiveTab(item.id as any);
+                    setIsMobileNavOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+                    isActive
+                      ? "bg-slate-100 text-primary"
+                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  }`}
+                >
+                  <Icon className={`h-4.5 w-4.5 ${isActive ? "text-primary" : "text-slate-400"}`} />
+                  {item.label}
+                </button>
+              );
+            })}
+          </nav>
 
-        {/* Status Indicators & Sign Out bottom */}
-        <div className="p-4 border-t border-slate-100 space-y-4">
-          <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100 text-xs space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-slate-400">MySQL Database</span>
-              <span className="text-emerald-600 font-bold flex items-center gap-1">
-                <Check className="h-3 w-3" /> Live
-              </span>
+          {/* Status Indicators & Sign Out bottom */}
+          <div className="p-4 border-t border-slate-100 space-y-4">
+            <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100 text-xs space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">MySQL Database</span>
+                <span className="text-emerald-600 font-bold flex items-center gap-1">
+                  <Check className="h-3 w-3" /> Live
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Environment</span>
+                <span className="font-semibold text-slate-700">Production</span>
+              </div>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-slate-400">Environment</span>
-              <span className="font-semibold text-slate-700">Production</span>
-            </div>
+            
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-destructive/20 bg-destructive/5 hover:bg-destructive hover:text-white text-destructive text-xs font-bold transition-all cursor-pointer"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign Out Session
+            </button>
           </div>
-          
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-destructive/20 bg-destructive/5 hover:bg-destructive hover:text-white text-destructive text-xs font-bold transition-all cursor-pointer"
-          >
-            <LogOut className="h-4 w-4" />
-            Sign Out Session
-          </button>
         </div>
       </aside>
 

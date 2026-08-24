@@ -4,7 +4,10 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  ScrollRestoration,
+  useLocation,
 } from "@tanstack/react-router";
+import { useEffect } from "react";
 
 function NotFoundComponent() {
   return (
@@ -71,9 +74,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const location = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
 
   return (
     <QueryClientProvider client={queryClient}>
+      <ScrollRestoration />
       <Outlet />
     </QueryClientProvider>
   );

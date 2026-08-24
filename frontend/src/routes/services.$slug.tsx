@@ -126,6 +126,7 @@ export const Route = createFileRoute("/services/$slug")({
     if (!service) throw notFound();
     return { service, allServices: list };
   },
+  staleTime: 30000,
   head: ({ loaderData, params }) => {
     if (!loaderData) {
       return { meta: [{ title: "Service not found — Amma Seva" }, { name: "robots", content: "noindex" }] };

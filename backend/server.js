@@ -3,6 +3,7 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import compression from 'compression'
 import nodemailer from 'nodemailer'
 import { db } from './db.js'
 import jwt from 'jsonwebtoken'
@@ -59,6 +60,7 @@ const transporter = nodemailer.createTransport({
 
 
 const app = express()
+app.use(compression())
 const PORT = process.env.PORT || 5000
 
 // Middleware Configuration
@@ -1486,9 +1488,21 @@ app.post('/api/notifications', authenticateAdmin, async (req, res) => {
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-// Serve frontend static assets in production
+// Serve frontend static assets in production with aggressive Cache-Control settings
 const frontendDistPath = path.join(__dirname, 'dist')
-app.use(express.static(frontendDistPath))
+app.use(express.static(frontendDistPath, {
+  maxAge: '1y',
+  etag: true,
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      // Do not cache index.html long-term so users get immediate update notifications
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+    } else {
+      // Hashed assets and images are cached permanently (1 year)
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
+    }
+  }
+}))
 
 // Single Page Application (SPA) Routing Fallback
 app.get('*', (req, res, next) => {
