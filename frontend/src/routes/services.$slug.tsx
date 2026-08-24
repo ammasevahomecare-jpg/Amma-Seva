@@ -190,10 +190,10 @@ function ServicePage() {
             <div className="absolute bottom-6 left-6 right-6 md:right-auto md:max-w-xl bg-white p-6 rounded-2xl shadow-2xl border border-slate-100 text-left">
               <div className="flex flex-wrap gap-2 mb-3">
                 <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-0.5 text-xs font-semibold text-slate-700">
-                  {getSecondaryTag(details.category)[0]}
+                  {getSecondaryTag(service.category || details.category)[0]}
                 </span>
                 <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-0.5 text-xs font-semibold text-slate-700">
-                  {getSecondaryTag(details.category)[1]}
+                  {getSecondaryTag(service.category || details.category)[1]}
                 </span>
               </div>
               <h1 className="text-2xl md:text-3xl font-extrabold text-primary leading-tight">

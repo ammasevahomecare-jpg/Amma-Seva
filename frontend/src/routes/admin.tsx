@@ -2318,7 +2318,7 @@ function AdminPage() {
               {/* Form elements for Service */}
               {modalType === "service" && (
                 <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Service Title</label>
                       <input 
@@ -2328,20 +2328,28 @@ function AdminPage() {
                       />
                     </div>
                     <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Category Badge Tag Name</label>
+                      <input 
+                        type="text" required value={serviceCategory} onChange={e => setServiceCategory(e.target.value)}
+                        placeholder="e.g. Intensive, Specialized, Assistance"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
+                      />
+                    </div>
+                    <div>
                       <div className="flex gap-2">
                         <div className="flex-1">
-                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Pricing Amount (₹)</label>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Pricing (₹)</label>
                           <input 
                             type="number" required value={servicePriceVal} onChange={e => setServicePriceVal(e.target.value)}
                             placeholder="e.g. 1200"
                             className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
                           />
                         </div>
-                        <div className="w-[100px] shrink-0">
+                        <div className="w-[85px] shrink-0">
                           <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Per Unit</label>
                           <select 
                             value={servicePriceUnit} onChange={e => setServicePriceUnit(e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 cursor-pointer"
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 cursor-pointer text-xs"
                           >
                             <option value="hour">hour</option>
                             <option value="day">day</option>

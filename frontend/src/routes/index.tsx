@@ -266,7 +266,7 @@ function Home() {
                     <div className="flex flex-1 flex-col p-5 text-left">
                       <div className="flex">
                         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider border ${details.badgeClass}`}>
-                          {details.category}
+                          {s.category || details.category}
                         </span>
                       </div>
                       <Link
