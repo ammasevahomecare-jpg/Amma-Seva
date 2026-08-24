@@ -346,8 +346,20 @@ export const db = {
             prescription LONGTEXT,
             googleMapLocation TEXT,
             createdAt VARCHAR(255) NOT NULL
-          )
         `)
+
+        try {
+          await connection.query('ALTER TABLE bookings ADD COLUMN vitals TEXT')
+          console.log('[MySQL] Added column vitals to bookings table.')
+        } catch (err) {
+          // Column probably already exists, ignore
+        }
+        try {
+          await connection.query('ALTER TABLE bookings ADD COLUMN careLogs TEXT')
+          console.log('[MySQL] Added column careLogs to bookings table.')
+        } catch (err) {
+          // Column probably already exists, ignore
+        }
 
         await connection.query(`
           CREATE TABLE IF NOT EXISTS caregivers (
@@ -1536,6 +1548,28 @@ export const db = {
       const idx = data.bookings.findIndex(b => b.id === Number(id))
       if (idx > -1) {
         data.bookings[idx].status = status
+        await writeJSONDb(data)
+        return true
+      }
+      return false
+    }
+  },
+
+  updateBookingVitalsAndLogs: async (id, vitals, careLogs) => {
+    const vitalsStr = typeof vitals === 'object' ? JSON.stringify(vitals) : vitals
+    const careLogsStr = typeof careLogs === 'object' ? JSON.stringify(careLogs) : careLogs
+    if (useMySQL) {
+      const [result] = await pool.query(
+        'UPDATE bookings SET vitals = ?, careLogs = ? WHERE id = ?',
+        [vitalsStr, careLogsStr, id]
+      )
+      return result.affectedRows > 0
+    } else {
+      const data = await readJSONDb()
+      const idx = data.bookings.findIndex(b => b.id === Number(id))
+      if (idx > -1) {
+        data.bookings[idx].vitals = vitalsStr
+        data.bookings[idx].careLogs = careLogsStr
         await writeJSONDb(data)
         return true
       }

@@ -578,6 +578,34 @@ app.put('/api/booking/:id/status', authenticateUser, async (req, res) => {
   }
 })
 
+// PUT update vitals and progress logs (Caretaker only, for assigned shifts)
+app.put('/api/booking/:id/vitals-log', authenticateUser, async (req, res) => {
+  if (req.role !== 'caretaker') {
+    return res.status(403).json({ error: 'Access forbidden. Caretaker profile only.' })
+  }
+  const { vitals, careLogs } = req.body
+  try {
+    const booking = await db.getBookingById(req.params.id)
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking shift record not found.' })
+    }
+    
+    const caregiver = await db.getCaregiverById(req.userId)
+    if (!caregiver || booking.assignedStaff !== caregiver.name) {
+      return res.status(403).json({ error: 'Access forbidden. You are not assigned to this care shift.' })
+    }
+    const updated = await db.updateBookingVitalsAndLogs(req.params.id, vitals, careLogs)
+    if (updated) {
+      res.json({ success: true, message: 'Vitals and care logs successfully updated.' })
+    } else {
+      res.status(500).json({ error: 'Failed to save updates to database.' })
+    }
+  } catch (err) {
+    console.error('Failed to update vitals/logs:', err)
+    res.status(500).json({ error: 'Internal server error.' })
+  }
+})
+
 // POST submit a review for a caregiver
 app.post('/api/reviews', authenticateUser, async (req, res) => {
   if (req.role !== 'user') {
