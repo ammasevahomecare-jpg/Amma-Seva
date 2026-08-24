@@ -73,16 +73,28 @@ interface Booking {
   };
 }
 
-const SERVICES_CATALOG = [
-  { id: "elderly", title: "Elderly Care at Home", rate: 1200, unit: "day", desc: "Assisting seniors with daily tasks, medication routine, and vitals monitoring." },
-  { id: "mother-baby", title: "Mother & Baby Care", rate: 2500, unit: "day", desc: "Postnatal care for new moms and newborn health checks." },
-  { id: "nursing", title: "Home Nursing Services", rate: 1500, unit: "visit", desc: "Post-surgery care, wound dressing, vitals tracking, and injections." },
-  { id: "injection", title: "Injection Services", rate: 300, unit: "visit", desc: "IV, IM, and subcutaneous drug administrations by registered staff." },
-  { id: "icu", title: "ICU/Home Recovery Support", rate: 4500, unit: "day", desc: "Critical home support with specialized medical staff and equipments." }
-];
+const SERVICES_CATALOG: any[] = [];
 
 function CustomerDashboard() {
   const navigate = useNavigate();
+
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    const userToken = localStorage.getItem("ammaseva_user_token");
+    const userDetails = localStorage.getItem("ammaseva_user_details");
+    const caretakerToken = localStorage.getItem("ammaseva_caretaker_token");
+    const caretakerDetails = localStorage.getItem("ammaseva_caretaker_details");
+    return !!(userToken && userDetails) || !!(caretakerToken && caretakerDetails);
+  });
+
+  const handleLogout = () => {
+    localStorage.removeItem("ammaseva_user_token");
+    localStorage.removeItem("ammaseva_user_details");
+    localStorage.removeItem("ammaseva_caretaker_token");
+    localStorage.removeItem("ammaseva_caretaker_details");
+    setIsAuthenticated(false);
+    navigate({ to: "/login" });
+  };
+
   const [user, setUser] = useState<UserDetails | null>(null);
   
   // Role selection
@@ -136,6 +148,10 @@ function CustomerDashboard() {
       const res = await fetch("/api/announcements", {
         headers: { "Authorization": `Bearer ${token}` }
       });
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
       const data = await res.json();
       if (res.ok) {
         setAnnouncements(Array.isArray(data) ? data : []);
@@ -155,6 +171,10 @@ function CustomerDashboard() {
       const res = await fetch("/api/caretaker/bookings", {
         headers: { "Authorization": `Bearer ${token}` }
       });
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || "Failed to load assigned shifts.");
@@ -177,6 +197,10 @@ function CustomerDashboard() {
       const res = await fetch("/api/caretaker/profile", {
         headers: { "Authorization": `Bearer ${token}` }
       });
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || "Failed to load profile.");
@@ -276,42 +300,38 @@ function CustomerDashboard() {
   const [bookingDate, setBookingDate] = useState("");
   const [bookingTime, setBookingTime] = useState("09:00");
   const [bookingDuration, setBookingDuration] = useState("Daily");
+  const [durationCount, setDurationCount] = useState<number>(1);
   const [bookingAddress, setBookingAddress] = useState("");
   const [patientName, setPatientName] = useState("");
   const [patientAge, setPatientAge] = useState("");
   const [patientNeeds, setPatientNeeds] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"pay_later" | "card" | "upi">("pay_later");
+  const [paymentMethod, setPaymentMethod] = useState<"pay_later" | "razorpay">("pay_later");
   
   const [prescriptionFile, setPrescriptionFile] = useState("");
   const [bookingGoogleMapLocation, setBookingGoogleMapLocation] = useState("");
   const [isFetchingLocationBooking, setIsFetchingLocationBooking] = useState(false);
   const [agreeTermsBooking, setAgreeTermsBooking] = useState(false);
-  
-  // Card states
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardExpiry, setCardExpiry] = useState("");
-  const [cardCvv, setCardCvv] = useState("");
-  const [cardHolder, setCardHolder] = useState("");
-
+ 
   // Booking result/modals state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
   const [successBooking, setSuccessBooking] = useState<any | null>(null);
-
+ 
   // Action Modals State
   const [rescheduleBookingId, setRescheduleBookingId] = useState<number | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleTime, setRescheduleTime] = useState("");
   
   const [activeInvoice, setActiveInvoice] = useState<Booking | null>(null);
-
+  const hasServiceParam = !!(new URLSearchParams(window.location.search).get("service"));
+ 
   // Check login on mount
   useEffect(() => {
     const userToken = localStorage.getItem("ammaseva_user_token");
     const userDetails = localStorage.getItem("ammaseva_user_details");
     const caretakerToken = localStorage.getItem("ammaseva_caretaker_token");
     const caretakerDetails = localStorage.getItem("ammaseva_caretaker_details");
-
+ 
     if (caretakerToken && caretakerDetails) {
       setIsCaretaker(true);
       setCaretaker(JSON.parse(caretakerDetails));
@@ -326,7 +346,7 @@ function CustomerDashboard() {
       navigate({ to: "/login" });
     }
   }, [navigate]);
-
+ 
   // Load dynamic services for specialty dropdown and booking catalog
   useEffect(() => {
     fetchServices().then((list) => {
@@ -346,11 +366,32 @@ function CustomerDashboard() {
       });
       if (formatted.length > 0) {
         setServicesList(formatted);
-        setSelectedServiceId(formatted[0].id);
+        
+        // Pre-select service from URL query params if present
+        const urlParams = new URLSearchParams(window.location.search);
+        const preSelectedService = urlParams.get("service");
+        const matchingService = formatted.find(s => s.id === preSelectedService);
+        if (matchingService) {
+          setSelectedServiceId(matchingService.id);
+          setActiveView("new-booking");
+        } else {
+          setSelectedServiceId(formatted[0].id);
+        }
       }
     });
   }, []);
 
+  // Load Razorpay checkout script
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    document.body.appendChild(script);
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+ 
   // Fetch customer bookings
   const fetchBookings = async () => {
     const token = localStorage.getItem("ammaseva_user_token");
@@ -361,6 +402,10 @@ function CustomerDashboard() {
       const res = await fetch("/api/user/bookings", {
         headers: { "Authorization": `Bearer ${token}` }
       });
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || "Failed to load bookings log.");
@@ -372,34 +417,83 @@ function CustomerDashboard() {
       setIsLoading(false);
     }
   };
-
+ 
   useEffect(() => {
     if (user) {
       fetchBookings();
     }
   }, [user, activeView]);
-
+ 
   // Calculate pricing
   const currentService = servicesList.find(s => s.id === selectedServiceId) || SERVICES_CATALOG.find(s => s.id === selectedServiceId) || servicesList[0] || SERVICES_CATALOG[0];
-  const calculateTotal = () => {
-    const base = currentService?.rate || 1200;
-    switch (bookingDuration) {
-      case "Hourly": return base * 0.5;
-      case "Daily": return base;
-      case "Weekly": return base * 6;
-      case "Monthly": return base * 22;
-      default: return base;
+  
+  const getServiceRates = () => {
+    if (!currentService) return { hourly: 0, daily: 0, weekly: 0, monthly: 0, basis: 'day' };
+    const base = currentService.rate || 1200;
+    const unit = (currentService.unit || 'day').toLowerCase();
+
+    let hourly = 0;
+    let daily = 0;
+    let weekly = 0;
+    let monthly = 0;
+    let basis = 'day';
+
+    if (unit.includes('month')) {
+      basis = 'month';
+      monthly = base;
+      daily = Math.round(monthly / 30);
+      weekly = Math.round(daily * 6);
+      hourly = Math.round(daily / 8);
+    } else if (unit.includes('hour')) {
+      basis = 'hour';
+      hourly = base;
+      daily = Math.round(hourly * 8);
+      weekly = Math.round(daily * 6);
+      monthly = Math.round(daily * 22);
+    } else if (unit.includes('visit') || unit.includes('session') || unit.includes('consultation')) {
+      basis = 'day';
+      daily = base;
+      hourly = base;
+      weekly = base * 6;
+      monthly = base * 22;
+    } else { // default to 'day'
+      basis = 'day';
+      daily = base;
+      hourly = Math.round(daily / 8);
+      weekly = Math.round(daily * 6);
+      monthly = Math.round(daily * 22);
     }
+
+    return { hourly, daily, weekly, monthly, basis };
   };
 
+  const calculateTotal = () => {
+    const rates = getServiceRates();
+    const count = Number(durationCount) || 1;
+    switch (bookingDuration) {
+      case "Hourly": return rates.hourly * count;
+      case "Daily": return rates.daily * count;
+      case "Weekly": return rates.weekly * count;
+      case "Monthly": return rates.monthly * count;
+      default: return rates.daily * count;
+    }
+  };
+ 
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     setIsSubmitting(true);
-
+ 
     const submitBooking = async (payStatus: string) => {
       try {
         const token = localStorage.getItem("ammaseva_user_token");
+        const formattedDuration = `${durationCount} ${
+          bookingDuration === "Hourly" ? (durationCount === 1 ? "Hour" : "Hours") :
+          bookingDuration === "Daily" ? (durationCount === 1 ? "Day" : "Days") :
+          bookingDuration === "Weekly" ? (durationCount === 1 ? "Week" : "Weeks") :
+          (durationCount === 1 ? "Month" : "Months")
+        }`;
+
         const res = await fetch("/api/booking", {
           method: "POST",
           headers: { 
@@ -413,7 +507,7 @@ function CustomerDashboard() {
             service: currentService.title,
             date: bookingDate,
             time: bookingTime,
-            duration: bookingDuration,
+            duration: formattedDuration,
             address: bookingAddress,
             amount: calculateTotal(),
             patientName,
@@ -426,6 +520,10 @@ function CustomerDashboard() {
             googleMapLocation: bookingGoogleMapLocation
           })
         });
+        if (res.status === 401) {
+          handleLogout();
+          return;
+        }
         const data = await res.json();
         if (!res.ok) {
           throw new Error(data.error || "Booking submission error.");
@@ -440,6 +538,7 @@ function CustomerDashboard() {
         setPrescriptionFile("");
         setBookingGoogleMapLocation("");
         setAgreeTermsBooking(false);
+        setDurationCount(1);
       } catch (err: any) {
         alert("Booking failed: " + err.message);
       } finally {
@@ -447,13 +546,114 @@ function CustomerDashboard() {
       }
     };
 
-    if (paymentMethod !== "pay_later") {
-      setIsPaymentProcessing(true);
-      // Simulate visual loader payment gateway processing
-      setTimeout(async () => {
-        setIsPaymentProcessing(false);
-        await submitBooking("Paid");
-      }, 2000);
+    if (paymentMethod === "razorpay") {
+      if (!(window as any).Razorpay) {
+        alert("Razorpay payment SDK not loaded yet. Please try again in a few seconds.");
+        setIsSubmitting(false);
+        return;
+      }
+      try {
+        const orderRes = await fetch("/api/payment/order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: calculateTotal() })
+        });
+        const orderData = await orderRes.json();
+        if (!orderRes.ok) {
+          throw new Error(orderData.error || "Failed to initiate online payment order.");
+        }
+
+        const options = {
+          key: "rzp_test_SwedUUn1KgRMs0",
+          amount: orderData.amount,
+          currency: orderData.currency,
+          name: "Amma Seva",
+          description: `Care Booking - ${currentService.title}`,
+          order_id: orderData.orderId,
+          handler: async function (response: any) {
+            setIsSubmitting(true);
+            try {
+              const token = localStorage.getItem("ammaseva_user_token");
+              const formattedDuration = `${durationCount} ${
+                bookingDuration === "Hourly" ? (durationCount === 1 ? "Hour" : "Hours") :
+                bookingDuration === "Daily" ? (durationCount === 1 ? "Day" : "Days") :
+                bookingDuration === "Weekly" ? (durationCount === 1 ? "Week" : "Weeks") :
+                (durationCount === 1 ? "Month" : "Months")
+              }`;
+
+              const res = await fetch("/api/booking", {
+                method: "POST",
+                headers: { 
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                  name: user.name,
+                  phone: user.phone,
+                  email: user.email,
+                  service: currentService.title,
+                  date: bookingDate,
+                  time: bookingTime,
+                  duration: formattedDuration,
+                  address: bookingAddress,
+                  amount: calculateTotal(),
+                  patientName,
+                  patientAge,
+                  patientNeeds,
+                  paymentMethod: "razorpay",
+                  userId: user.id,
+                  prescription: prescriptionFile,
+                  googleMapLocation: bookingGoogleMapLocation,
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature
+                })
+              });
+              if (res.status === 401) {
+                handleLogout();
+                return;
+              }
+              const data = await res.json();
+              if (!res.ok) {
+                throw new Error(data.error || "Booking submission error.");
+              }
+              setSuccessBooking(data.data);
+              // Reset form
+              setBookingDate("");
+              setBookingAddress("");
+              setPatientName("");
+              setPatientAge("");
+              setPatientNeeds("");
+              setPrescriptionFile("");
+              setBookingGoogleMapLocation("");
+              setAgreeTermsBooking(false);
+              setDurationCount(1);
+            } catch (err: any) {
+              alert("Booking failed: " + err.message);
+            } finally {
+              setIsSubmitting(false);
+            }
+          },
+          prefill: {
+            name: user.name,
+            email: user.email,
+            contact: user.phone
+          },
+          theme: {
+            color: "#0e2254"
+          },
+          modal: {
+            ondismiss: function() {
+              setIsSubmitting(false);
+            }
+          }
+        };
+        const rzp = new (window as any).Razorpay(options);
+        rzp.open();
+      } catch (err: any) {
+        alert("Payment initialization failed: " + err.message);
+        setIsSubmitting(false);
+      }
     } else {
       await submitBooking("Unpaid");
     }
@@ -471,6 +671,10 @@ function CustomerDashboard() {
         },
         body: JSON.stringify({ date: rescheduleDate, time: rescheduleTime })
       });
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || "Could not reschedule shift.");
@@ -491,6 +695,10 @@ function CustomerDashboard() {
         method: "PUT",
         headers: { "Authorization": `Bearer ${token}` }
       });
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || "Could not cancel shift.");
@@ -502,13 +710,16 @@ function CustomerDashboard() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("ammaseva_user_token");
-    localStorage.removeItem("ammaseva_user_details");
-    localStorage.removeItem("ammaseva_caretaker_token");
-    localStorage.removeItem("ammaseva_caretaker_details");
-    navigate({ to: "/login" });
-  };
+  if (!isAuthenticated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-3">
+          <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground font-medium">Verifying credentials...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (isCaretaker) {
     return (
@@ -1590,28 +1801,54 @@ function CustomerDashboard() {
                     <select
                       value={selectedServiceId}
                       onChange={(e) => setSelectedServiceId(e.target.value)}
-                      className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                      disabled={hasServiceParam}
+                      className={`w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold ${
+                        hasServiceParam ? 'bg-slate-100/80 cursor-not-allowed text-slate-500' : ''
+                      }`}
                     >
-                      {servicesList.map(s => (
-                        <option key={s.id} value={s.id}>{s.title} (₹{s.rate}/{s.unit})</option>
-                      ))}
+                      {servicesList
+                        .filter(s => !hasServiceParam || s.id === selectedServiceId)
+                        .map(s => (
+                          <option key={s.id} value={s.id}>{s.title} (₹{s.rate}/{s.unit})</option>
+                        ))
+                      }
                     </select>
                     <p className="text-[10px] text-slate-400 mt-1.5">{currentService?.desc}</p>
                   </div>
 
                   {/* Duration Selector */}
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Shift Duration</label>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Billing Option</label>
                     <select
                       value={bookingDuration}
-                      onChange={(e) => setBookingDuration(e.target.value)}
+                      onChange={(e) => {
+                        setBookingDuration(e.target.value);
+                        setDurationCount(1);
+                      }}
                       className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
                     >
                       <option value="Hourly">Hourly</option>
-                      <option value="Daily">Daily (24 Hours shift)</option>
-                      <option value="Weekly">Weekly Contract</option>
-                      <option value="Monthly">Monthly Contract</option>
+                      <option value="Daily">Daily</option>
+                      <option value="Weekly">Weekly</option>
+                      <option value="Monthly">Monthly</option>
                     </select>
+                  </div>
+
+                  {/* Duration Count Multiplier */}
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                      {bookingDuration === "Hourly" ? "Number of Hours" :
+                       bookingDuration === "Daily" ? "Number of Days" :
+                       bookingDuration === "Weekly" ? "Number of Weeks" : "Number of Months"}
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      required
+                      value={durationCount}
+                      onChange={(e) => setDurationCount(Math.max(1, Number(e.target.value)))}
+                      className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                    />
                   </div>
 
                   {/* Date selection */}
@@ -1731,9 +1968,19 @@ function CustomerDashboard() {
                     </button>
                   </div>
                   {bookingGoogleMapLocation && (
-                    <p className="text-[10px] text-emerald-600 mt-1 flex items-center gap-1">
-                      ✓ Geolocation fetched exactly!
-                    </p>
+                    <div className="flex justify-between items-center text-[10px] mt-1.5">
+                      <span className="text-emerald-600 font-semibold flex items-center gap-1">
+                        ✓ Exact Geolocation fetched successfully!
+                      </span>
+                      <a
+                        href={bookingGoogleMapLocation}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-indigo-600 hover:underline font-semibold"
+                      >
+                        Preview Map Pin
+                      </a>
+                    </div>
                   )}
                 </div>
 
@@ -1755,7 +2002,7 @@ function CustomerDashboard() {
                 {/* Payment selection */}
                 <div className="border-t border-slate-100 pt-6">
                   <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Choose Payment Method</label>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <button
                       type="button"
                       onClick={() => setPaymentMethod("pay_later")}
@@ -1771,94 +2018,19 @@ function CustomerDashboard() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setPaymentMethod("card")}
+                      onClick={() => setPaymentMethod("razorpay")}
                       className={`p-4 border rounded-xl text-left transition-all cursor-pointer ${
-                        paymentMethod === "card" 
+                        paymentMethod === "razorpay" 
                           ? "border-gold bg-gold/5 text-gold shadow-sm" 
                           : "border-slate-200 text-slate-600 hover:bg-slate-50"
                       }`}
                     >
                       <CreditCard className="h-6 w-6 mb-1.5" />
-                      <span className="block text-xs font-bold">Credit/Debit Card</span>
-                      <span className="text-[10px] text-slate-400 block mt-0.5">Instant online payment</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod("upi")}
-                      className={`p-4 border rounded-xl text-left transition-all cursor-pointer ${
-                        paymentMethod === "upi" 
-                          ? "border-gold bg-gold/5 text-gold shadow-sm" 
-                          : "border-slate-200 text-slate-600 hover:bg-slate-50"
-                      }`}
-                    >
-                      <QrCode className="h-6 w-6 mb-1.5" />
-                      <span className="block text-xs font-bold">UPI QR Code</span>
-                      <span className="text-[10px] text-slate-400 block mt-0.5">Scan to pay instantly</span>
+                      <span className="block text-xs font-bold">Pay Online</span>
+                      <span className="text-[10px] text-slate-400 block mt-0.5">Secure payment via Razorpay</span>
                     </button>
                   </div>
                 </div>
-
-                {/* Mock Card Form Details */}
-                {paymentMethod === "card" && (
-                  <div className="grid gap-4 md:grid-cols-3 bg-slate-50 p-6 rounded-2xl border border-slate-200/60 animate-in fade-in duration-300">
-                    <div className="md:col-span-3">
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Card Number</label>
-                      <input
-                        type="text"
-                        required
-                        maxLength={19}
-                        placeholder="4111 2222 3333 4444"
-                        value={cardNumber}
-                        onChange={(e) => setCardNumber(e.target.value)}
-                        className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Expiry Date</label>
-                      <input
-                        type="text"
-                        required
-                        maxLength={5}
-                        placeholder="MM/YY"
-                        value={cardExpiry}
-                        onChange={(e) => setCardExpiry(e.target.value)}
-                        className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">CVV</label>
-                      <input
-                        type="password"
-                        required
-                        maxLength={3}
-                        placeholder="•••"
-                        value={cardCvv}
-                        onChange={(e) => setCardCvv(e.target.value)}
-                        className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Cardholder Name</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="Cardholder Name"
-                        value={cardHolder}
-                        onChange={(e) => setCardHolder(e.target.value)}
-                        className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Mock UPI Code Details */}
-                {paymentMethod === "upi" && (
-                  <div className="flex flex-col items-center justify-center p-6 bg-slate-50 rounded-2xl border border-slate-200/60 animate-in fade-in duration-300 text-center">
-                    <QrCode className="h-28 w-28 text-slate-800 mb-2 border p-2 bg-white rounded-xl" />
-                    <span className="text-xs font-bold text-slate-800">Scan QR Code via PhonePe / GPay / BHIM</span>
-                    <span className="text-[10px] text-slate-400 block mt-1">Payee: ammasevahomecare@okaxis</span>
-                  </div>
-                )}
 
                 {/* Terms and Conditions of Patient booking */}
                 <div className="border border-slate-200/60 rounded-2xl p-4 bg-slate-50/50 space-y-3">
@@ -1958,7 +2130,23 @@ function CustomerDashboard() {
                   <div>
                     <span className="text-xs text-slate-400">Total Price Estimate</span>
                     <span className="block text-2xl font-extrabold text-primary font-display mt-0.5">₹{calculateTotal().toLocaleString()}</span>
-                    <span className="text-[10px] text-slate-400">Includes all nursing charges and platform taxes.</span>
+                    <p className="text-[10px] text-indigo-600 font-semibold mt-1">
+                      Rate: ₹{
+                        bookingDuration === "Hourly" ? getServiceRates().hourly :
+                        bookingDuration === "Daily" ? getServiceRates().daily :
+                        bookingDuration === "Weekly" ? getServiceRates().weekly :
+                        getServiceRates().monthly
+                      } / {
+                        bookingDuration === "Hourly" ? "Hour" :
+                        bookingDuration === "Daily" ? "Day" :
+                        bookingDuration === "Weekly" ? "Week" : "Month"
+                      } x {durationCount} {
+                        bookingDuration === "Hourly" ? (durationCount === 1 ? "Hour" : "Hours") :
+                        bookingDuration === "Daily" ? (durationCount === 1 ? "Day" : "Days") :
+                        bookingDuration === "Weekly" ? (durationCount === 1 ? "Week" : "Weeks") :
+                        (durationCount === 1 ? "Month" : "Months")
+                      }
+                    </p>
                   </div>
                   
                   <button
@@ -1997,6 +2185,7 @@ function CustomerDashboard() {
             <div className="bg-slate-50 border border-slate-100 p-4 rounded-xl text-left text-xs space-y-2">
               <div className="flex justify-between"><span className="text-slate-400">Booking ID</span><span className="font-bold text-slate-800">#{successBooking.id}</span></div>
               <div className="flex justify-between"><span className="text-slate-400">Service</span><span className="font-semibold text-slate-800">{successBooking.service}</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">Duration</span><span className="font-semibold text-slate-800">{successBooking.duration}</span></div>
               <div className="flex justify-between"><span className="text-slate-400">Scheduled Date</span><span className="font-semibold text-slate-800">{successBooking.date}</span></div>
               <div className="flex justify-between"><span className="text-slate-400">Total Price</span><span className="font-bold text-slate-800">₹{successBooking.amount}</span></div>
             </div>

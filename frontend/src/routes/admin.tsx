@@ -126,6 +126,12 @@ function AdminPage() {
   // Auth state
   const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem("ammaseva_admin_token"));
 
+  const handleLogout = () => {
+    localStorage.removeItem("ammaseva_admin_token");
+    setIsLoggedIn(false);
+    navigate({ to: "/login" });
+  };
+
   // Navigation and Search
   const [activeTab, setActiveTab] = useState<"overview" | "bookings" | "caregivers" | "enquiries" | "services" | "users" | "notifications" | "payments" | "blogs">("overview");
   const [searchQuery, setSearchQuery] = useState("");
@@ -205,6 +211,7 @@ function AdminPage() {
   const [blogImage, setBlogImage] = useState("");
   const [blogCategory, setBlogCategory] = useState("General");
   const [blogAuthor, setBlogAuthor] = useState("Amma Seva Care Team");
+  const [blogDate, setBlogDate] = useState("");
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setFileState: (val: string) => void) => {
     const file = e.target.files?.[0];
@@ -238,14 +245,24 @@ function AdminPage() {
     setIsLoading(true);
     setError(null);
     const token = localStorage.getItem("ammaseva_admin_token");
+
+    const fetchWithAuth = async (url: string) => {
+      const res = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
+      if (res.status === 401) {
+        handleLogout();
+        throw new Error("Unauthorized");
+      }
+      return res.json();
+    };
+
     try {
       const [bookingsRes, caregiversRes, enquiriesRes, usersRes, servicesRes, notificationsRes, blogsRes] = await Promise.all([
-        fetch("/api/bookings", { headers: { "Authorization": `Bearer ${token}` } }).then(res => res.json()),
-        fetch("/api/caregivers", { headers: { "Authorization": `Bearer ${token}` } }).then(res => res.json()),
-        fetch("/api/enquiries", { headers: { "Authorization": `Bearer ${token}` } }).then(res => res.json()),
-        fetch("/api/admin/users", { headers: { "Authorization": `Bearer ${token}` } }).then(res => res.json()),
-        fetch("/api/services", { headers: { "Authorization": `Bearer ${token}` } }).then(res => res.json()),
-        fetch("/api/notifications", { headers: { "Authorization": `Bearer ${token}` } }).then(res => res.json()),
+        fetchWithAuth("/api/bookings"),
+        fetchWithAuth("/api/caregivers"),
+        fetchWithAuth("/api/enquiries"),
+        fetchWithAuth("/api/admin/users"),
+        fetchWithAuth("/api/services"),
+        fetchWithAuth("/api/notifications"),
         fetch("/api/blogs").then(res => res.json())
       ]);
       setBookings(Array.isArray(bookingsRes) ? bookingsRes : []);
@@ -257,6 +274,9 @@ function AdminPage() {
       setBlogs(Array.isArray(blogsRes) ? blogsRes : []);
     } catch (err) {
       console.error(err);
+      if (err instanceof Error && err.message === "Unauthorized") {
+        return; // Redirect handled by handleLogout
+      }
       setError("Failed to sync database logs. Please verify backend state.");
     } finally {
       setIsLoading(false);
@@ -269,12 +289,7 @@ function AdminPage() {
     }
   }, [isLoggedIn]);
 
-  // Handle Logout
-  const handleLogout = () => {
-    localStorage.removeItem("ammaseva_admin_token");
-    setIsLoggedIn(false);
-    navigate({ to: "/login" });
-  };
+
 
   // Quick verify/reject for caregivers
   const handleUpdateCaregiverStatus = (id: number, status: "Verified" | "Rejected") => {
@@ -402,7 +417,7 @@ function AdminPage() {
   };
 
   // Open modal forms
-  const openAddModal = (type: "booking" | "caregiver" | "service" | "notification") => {
+  const openAddModal = (type: "booking" | "caregiver" | "service" | "notification" | "blog") => {
     setModalType(type);
     setModalMode("add");
     setSelectedId(null);
@@ -463,6 +478,7 @@ function AdminPage() {
       setBlogImage("");
       setBlogCategory("General");
       setBlogAuthor("Amma Seva Care Team");
+      setBlogDate(new Date().toISOString().split("T")[0]);
     } else if (type === "notification") {
       setNotifRecipient("All Users");
       setNotifMessage("");
@@ -535,6 +551,7 @@ function AdminPage() {
       setBlogImage(record.image || "");
       setBlogCategory(record.category || "General");
       setBlogAuthor(record.author || "Amma Seva Care Team");
+      setBlogDate(record.date || new Date().toISOString().split("T")[0]);
     }
   };
 
@@ -623,7 +640,8 @@ function AdminPage() {
         content: blogContent,
         image: blogImage,
         category: blogCategory,
-        author: blogAuthor
+        author: blogAuthor,
+        date: blogDate
       };
     } else if (modalType === "notification") {
       url = "/api/notifications";
@@ -1728,9 +1746,7 @@ function AdminPage() {
                 </div>
                 <button
                   onClick={() => {
-                    resetForm("blog");
-                    setModalMode("add");
-                    setModalType("blog");
+                    openAddModal("blog");
                   }}
                   className="px-4 py-2.5 rounded-xl bg-primary hover:bg-[#1a2d5e] text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
                 >
@@ -2341,19 +2357,28 @@ function AdminPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Blog Banner Image (Upload file OR Enter URL)</label>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          {blogImage && (
-                            <img 
-                              src={blogImage} 
-                              className="h-10 w-10 rounded-lg object-cover border border-slate-200 shrink-0" 
-                              alt="Blog Preview" 
-                            />
-                          )}
-                          <input 
-                            type="file" 
-                            accept="image/*" 
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Publication Date</label>
+                      <input 
+                        type="date" required value={blogDate} onChange={e => setBlogDate(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 text-slate-800 text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Blog Banner Image (Upload file OR Enter URL)</label>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        {blogImage && (
+                          <img 
+                            src={blogImage} 
+                            className="h-10 w-10 rounded-lg object-cover border border-slate-200 shrink-0" 
+                            alt="Blog Preview" 
+                          />
+                        )}
+                        <input 
+                          type="file" 
+                          accept="image/*" 
                             onChange={e => handleFileChange(e, setBlogImage)}
                             className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer"
                           />
@@ -2366,7 +2391,6 @@ function AdminPage() {
                           className="w-full pl-3 pr-2 py-1 text-xs border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 text-slate-800"
                         />
                       </div>
-                    </div>
                   </div>
 
                   <div>

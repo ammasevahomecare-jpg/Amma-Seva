@@ -47,8 +47,6 @@ function Header() {
     { to: "/blog", label: "Blog" },
     { to: "/careers", label: "Careers" },
     { to: "/contact", label: "Contact" },
-    ...(isUser ? [{ to: "/dashboard", label: "Dashboard" }] : []),
-    ...(isCaretaker ? [{ to: "/dashboard", label: "Profile" }] : []),
   ];
 
   return (
@@ -111,10 +109,10 @@ function Header() {
             </Link>
           ))}
         </nav>
-        <div className="hidden items-center gap-2.5 lg:flex">
+        <div className="hidden items-center gap-2.5 lg:flex shrink-0">
           <a
             href={`tel:${PHONE_TEL}`}
-            className={`btn-outline text-sm ${
+            className={`btn-outline text-sm shrink-0 whitespace-nowrap ${
               isScrolled
                 ? "text-white! border-white/50! hover:bg-white! hover:text-primary! hover:shadow-white/10"
                 : ""
@@ -123,15 +121,15 @@ function Header() {
             <Phone className="h-4 w-4" /> Call Now
           </a>
           {isUser ? (
-            <Link to="/dashboard" className={`text-sm ${isScrolled ? "btn-gold" : "btn-primary"}`}>
+            <Link to="/dashboard" className={`text-sm shrink-0 whitespace-nowrap ${isScrolled ? "btn-gold" : "btn-primary"}`}>
               My Dashboard
             </Link>
           ) : isCaretaker ? (
-            <Link to="/dashboard" className={`text-sm ${isScrolled ? "btn-gold" : "btn-primary"}`}>
+            <Link to="/dashboard" className={`text-sm shrink-0 whitespace-nowrap ${isScrolled ? "btn-gold" : "btn-primary"}`}>
               My Profile
             </Link>
           ) : (
-            <Link to="/login" className={`text-sm ${isScrolled ? "btn-gold" : "btn-primary"}`}>
+            <Link to="/login" className={`text-sm shrink-0 whitespace-nowrap ${isScrolled ? "btn-gold" : "btn-primary"}`}>
               Book &amp; Login
             </Link>
           )}

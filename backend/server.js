@@ -7,11 +7,19 @@ import nodemailer from 'nodemailer'
 import { db } from './db.js'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
+import Razorpay from 'razorpay'
+import crypto from 'crypto'
 
 import { v2 as cloudinary } from 'cloudinary'
 
 // Load environment variables
 dotenv.config()
+
+// Configure Razorpay
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_SwedUUn1KgRMs0',
+  key_secret: process.env.RAZORPAY_KEY_SECRET || 'xdW2Ry7T67sUK4zMKb3oOsZh'
+})
 
 // Configure Cloudinary
 cloudinary.config({
@@ -857,13 +865,54 @@ app.get('/api/bookings', authenticateAdmin, async (req, res) => {
     res.status(500).json({ error: 'Failed to retrieve bookings list.' })
   }
 })
+// POST create Razorpay order
+app.post('/api/payment/order', async (req, res) => {
+  const { amount } = req.body
+  if (!amount) {
+    return res.status(400).json({ error: 'Amount is required.' })
+  }
+  try {
+    const options = {
+      amount: Math.round(Number(amount) * 100), // convert to paise
+      currency: 'INR',
+      receipt: `receipt_${Date.now()}`
+    }
+    const order = await razorpay.orders.create(options)
+    res.json({
+      success: true,
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency
+    })
+  } catch (err) {
+    console.error('Razorpay order creation error:', err)
+    res.status(500).json({ error: 'Failed to create payment order.' })
+  }
+})
 
 // POST create booking
 app.post('/api/booking', async (req, res) => {
-  const { name, phone, service, date, time, duration, address, amount, userId, patientName, patientAge, patientNeeds, paymentMethod, email, prescription, googleMapLocation } = req.body
+  const { 
+    name, phone, service, date, time, duration, address, amount, userId, 
+    patientName, patientAge, patientNeeds, paymentMethod, email, prescription, 
+    googleMapLocation, razorpay_order_id, razorpay_payment_id, razorpay_signature 
+  } = req.body
 
   if (!name || !phone || !service || !date || !time || !duration || !address) {
     return res.status(400).json({ error: 'Missing required booking details.' })
+  }
+
+  if (paymentMethod === 'razorpay') {
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ error: 'Missing Razorpay payment parameters.' })
+    }
+    const generated_signature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || 'xdW2Ry7T67sUK4zMKb3oOsZh')
+      .update(razorpay_order_id + '|' + razorpay_payment_id)
+      .digest('hex')
+    if (generated_signature !== razorpay_signature) {
+      return res.status(400).json({ error: 'Payment signature verification failed.' })
+    }
   }
 
   // Parse authorization header if present
@@ -900,7 +949,11 @@ app.post('/api/booking', async (req, res) => {
       patientAge: patientAge || '',
       patientNeeds: patientNeeds || '',
       prescription: uploadedPrescription,
-      googleMapLocation: googleMapLocation || ''
+      googleMapLocation: googleMapLocation || '',
+      paymentStatus: paymentMethod === 'razorpay' ? 'Paid' : 'Unpaid',
+      paymentMethod: paymentMethod || 'pay_later',
+      transactionId: razorpay_payment_id || '',
+      paymentDate: paymentMethod === 'razorpay' ? new Date().toISOString() : ''
     })
 
     // Prepare notification mock logs
@@ -1261,7 +1314,7 @@ app.get('/api/blogs', async (req, res) => {
 
 // POST add blog (Admin Panel)
 app.post('/api/blogs', authenticateAdmin, async (req, res) => {
-  const { title, slug, description, content, image, category, author } = req.body
+  const { title, slug, description, content, image, category, author, date } = req.body
   if (!title || !content) {
     return res.status(400).json({ success: false, error: 'Title and content are required fields.' })
   }
@@ -1275,7 +1328,8 @@ app.post('/api/blogs', authenticateAdmin, async (req, res) => {
       content,
       image: uploadedImage,
       category: category || 'General',
-      author: author || 'Amma Seva Care Team'
+      author: author || 'Amma Seva Care Team',
+      date
     })
     res.status(201).json({ success: true, message: 'Blog successfully created.', data: newBlog })
   } catch (err) {
@@ -1286,7 +1340,7 @@ app.post('/api/blogs', authenticateAdmin, async (req, res) => {
 
 // PUT update blog (Admin Panel)
 app.put('/api/blogs/:id', authenticateAdmin, async (req, res) => {
-  const { title, slug, description, content, image, category, author } = req.body
+  const { title, slug, description, content, image, category, author, date } = req.body
   if (!title || !content) {
     return res.status(400).json({ success: false, error: 'Title and content are required fields.' })
   }
@@ -1300,7 +1354,8 @@ app.put('/api/blogs/:id', authenticateAdmin, async (req, res) => {
       content,
       image: uploadedImage,
       category: category || 'General',
-      author: author || 'Amma Seva Care Team'
+      author: author || 'Amma Seva Care Team',
+      date
     })
     if (updated) {
       res.json({ success: true, message: 'Blog successfully updated.' })

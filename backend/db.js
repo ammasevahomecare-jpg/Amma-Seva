@@ -20,45 +20,204 @@ const DEFAULT_MOCK_DATA = {
   enquiries: [],
   bookings: [],
   caregivers: [],
-  services: [],
-  notifications: [],
-  reviews: [],
-  announcements: [],
-  blogs: [
+  services: [
     {
       id: 1,
-      title: "5 things to prepare before bringing your newborn home",
-      slug: "prepare-before-bringing-newborn-home",
-      description: "A calm, well-prepared home makes those first weeks so much easier — here's a gentle checklist.",
-      content: "Bringing a newborn home is one of the most beautiful and overwhelming moments of life. To help you transition smoothly, here are 5 key things to prepare:\n\n1. Set up a dedicated nursing and diapering station.\n2. Stock up on postpartum recovery essentials for the mother.\n3. Prepare a safe sleep space (like a certified crib or bassinet).\n4. Sterilize bottles, pump parts, and newborn clothes ahead of time.\n5. Keep a list of contact numbers for your pediatrician and lactation advisor.\n\nAmma Seva's trained maternal caregivers are always ready to support you with professional, motherly care.",
-      image: "service-mother-baby.jpg",
-      category: "Maternal",
-      author: "Amma Seva Care Team",
-      date: "2026-08-17"
+      slug: "elderly-care",
+      title: "Elderly Care at Home",
+      short: "Compassionate, respectful care for seniors in the comfort of home.",
+      description: "Trained caregivers assist your elderly loved ones with daily activities, mobility, medication reminders, meals, and companionship — always with dignity and warmth.",
+      benefits: ["Personal hygiene & grooming", "Medication reminders", "Meal preparation", "Mobility assistance", "Companionship"],
+      duration: "Hourly, Daily, or Live-in",
+      price: "Starting ₹500 / visit",
+      category: "Elderly Care",
+      comingSoon: false,
+      image: "",
+      about: "",
+      highlights: [],
+      images: []
     },
     {
       id: 2,
-      title: "Caring for a bedridden parent: a family guide",
-      slug: "caring-for-bedridden-parent-family-guide",
-      description: "Simple daily routines that keep your loved one comfortable, safe and dignified.",
-      content: "Caring for a bedridden loved one requires patience, empathy, and proper technique. This guide offers essential routines:\n\n1. Prevent pressure sores (bedsores) by shifting positions every 2 hours.\n2. Ensure proper hygiene with gentle sponge baths and skin moisturizing.\n3. Pay close attention to hydration and a balanced soft-diet.\n4. Perform passive range-of-motion exercises to maintain joint flexibility.\n5. Maintain a positive, cheerful atmosphere in their room to support mental health.\n\nOur professional patient care attendants at Amma Seva are trained specifically in caring for bedridden patients with high dignity.",
-      image: "service-elderly.jpg",
-      category: "Elderly Care",
-      author: "Dr. Lakshmi Prasad",
-      date: "2026-08-15"
+      slug: "mother-baby-care",
+      title: "Mother & Baby Care",
+      short: "Postnatal support for new mothers and their newborns.",
+      description: "Experienced maternity attendants and nurses help new mothers with recovery, feeding guidance, baby bathing, and round-the-clock newborn care.",
+      benefits: ["Postnatal recovery support", "Breastfeeding guidance", "Baby bathing & massage", "Sleep scheduling", "Emotional wellness"],
+      duration: "Daily, Weekly, or Monthly",
+      price: "Starting ₹18,000 / month",
+      category: "Maternal",
+      comingSoon: false,
+      image: "",
+      about: "",
+      highlights: [],
+      images: []
     },
     {
       id: 3,
-      title: "Post-surgery recovery at home: what to expect",
-      slug: "post-surgery-recovery-home-expectations",
-      description: "Wound care, nutrition and mobility — a week-by-week overview for families.",
-      content: "Recovering from surgery at home can feel challenging, but knowing what to expect makes a significant difference:\n\n1. Week 1 is all about rest and strict pain management as prescribed.\n2. Week 2 focuses on gentle mobility and tracking wound healing/infections.\n3. Week 3 shifts to building strength through light therapy and nutrition.\n\nAlways ensure you have a trained nurse for complex tasks like IV injections, dressing, and catheter management. Amma Seva provides full-scope home nursing for post-surgery recovery.",
-      image: "service-nursing.jpg",
+      slug: "pregnancy-care",
+      title: "Pregnancy Care",
+      short: "Attentive prenatal support for expectant mothers at home.",
+      description: "Qualified nurses provide antenatal check-ins, wellness monitoring, and comforting care throughout pregnancy — so you can rest, recover and prepare in peace.",
+      benefits: ["Vitals monitoring", "Diet & nutrition guidance", "Wellness check-ins", "Mobility support", "Doctor coordination"],
+      duration: "Hourly, Daily, or Monthly",
+      price: "Starting ₹700 / visit",
+      category: "Prenatal",
+      comingSoon: false,
+      image: "",
+      about: "",
+      highlights: [],
+      images: []
+    },
+    {
+      id: 4,
+      slug: "newborn-baby-care",
+      title: "Newborn Baby Care",
+      short: "Specialist care for babies in their most delicate first weeks.",
+      description: "Trained newborn caregivers handle feeding, sleep routines, bathing, and gentle massages so parents can rest while their little one is in expert hands.",
+      benefits: ["Feeding & burping", "Bathing & massage", "Sleep routines", "Vaccination reminders", "Overnight care"],
+      duration: "Daily, Weekly, or Monthly",
+      price: "Starting ₹20,000 / month",
+      category: "Pediatric",
+      comingSoon: false,
+      image: "",
+      about: "",
+      highlights: [],
+      images: []
+    },
+    {
+      id: 5,
+      slug: "home-nursing",
+      title: "Home Nursing Services",
+      short: "Qualified nurses delivering hospital-grade care at home.",
+      description: "Registered nurses provide wound care, IV therapy, catheter care, tracheostomy care, and general nursing tailored to your medical needs.",
+      benefits: ["Wound dressing", "IV / injection therapy", "Catheter & tube care", "Vitals monitoring", "Doctor coordination"],
+      duration: "Hourly, 12-hour, or 24-hour",
+      price: "Starting ₹800 / visit",
       category: "Clinical",
-      author: "Nurse Mercy K.",
-      date: "2026-08-10"
+      comingSoon: false,
+      image: "",
+      about: "",
+      highlights: [],
+      images: []
+    },
+    {
+      id: 6,
+      slug: "injection-services",
+      title: "Injection Services",
+      short: "Safe, sterile injections administered by trained nurses at home.",
+      description: "On-demand injection service for insulin, antibiotics, vitamin shots, and prescribed medication — quick, hygienic, and pain-conscious.",
+      benefits: ["Sterile procedure", "Trained nurses only", "Same-day availability", "Safe disposal", "Doctor prescription verified"],
+      duration: "Per visit",
+      price: "Starting ₹299 / visit",
+      category: "Clinical",
+      comingSoon: false,
+      image: "",
+      about: "",
+      highlights: [],
+      images: []
+    },
+    {
+      id: 7,
+      slug: "post-surgery-care",
+      title: "Post-Surgery Care",
+      short: "Guided recovery care after hospital discharge.",
+      description: "Nurses and attendants support post-operative healing with wound care, medication schedules, mobility help, and gentle physical support.",
+      benefits: ["Wound & suture care", "Pain management support", "Mobility assistance", "Diet planning", "Progress reporting"],
+      duration: "Daily or 24-hour",
+      price: "Starting ₹1,500 / day",
+      category: "Recovery",
+      comingSoon: false,
+      image: "",
+      about: "",
+      highlights: [],
+      images: []
+    },
+    {
+      id: 8,
+      slug: "patient-care-attendant",
+      title: "Patient Care Attendant",
+      short: "Dedicated attendants for personal and daily patient needs.",
+      description: "Trained attendants assist with feeding, hygiene, positioning and companionship so families can focus on being together.",
+      benefits: ["Feeding assistance", "Personal hygiene", "Turning & positioning", "Household support", "Emotional companionship"],
+      duration: "12-hour or 24-hour",
+      price: "Starting ₹900 / day",
+      category: "Assistance",
+      comingSoon: false,
+      image: "",
+      about: "",
+      highlights: [],
+      images: []
+    },
+    {
+      id: 9,
+      slug: "bedridden-patient-care",
+      title: "Bedridden Patient Care",
+      short: "Specialist care for patients confined to bed.",
+      description: "Attendants and nurses trained in bedsore prevention, position changes, sponge baths, catheter care, and full daily support for bedridden patients.",
+      benefits: ["Bedsore prevention", "Sponge bath & hygiene", "Position changes", "Diaper care", "Catheter care"],
+      duration: "12-hour or 24-hour",
+      price: "Starting ₹1,200 / day",
+      category: "Specialized",
+      comingSoon: false,
+      image: "",
+      about: "",
+      highlights: [],
+      images: []
+    },
+    {
+      id: 10,
+      slug: "icu-home-recovery",
+      title: "ICU / Home Recovery Support",
+      short: "ICU-level home support for critical recovery.",
+      description: "Critical-care trained nurses handle ventilator monitoring, tracheostomy care, and intensive recovery routines under doctor guidance.",
+      benefits: ["Critical-care nurses", "Ventilator monitoring", "Tracheostomy care", "24/7 vitals tracking", "Doctor coordination"],
+      duration: "24-hour",
+      price: "Starting ₹2,500 / day",
+      category: "Intensive",
+      comingSoon: false,
+      image: "",
+      about: "",
+      highlights: [],
+      images: []
+    },
+    {
+      id: 11,
+      slug: "physiotherapy",
+      title: "Physiotherapy",
+      short: "Home physiotherapy sessions for recovery and mobility.",
+      description: "Professional physiotherapists visit your home for orthopaedic, neurological and post-surgery rehabilitation programs.",
+      benefits: ["Custom rehab plans", "Orthopaedic care", "Neuro rehab", "Post-surgery recovery", "Progress reviews"],
+      duration: "Per session",
+      price: "Coming Soon",
+      category: "Therapy",
+      comingSoon: true,
+      image: "",
+      about: "",
+      highlights: [],
+      images: []
+    },
+    {
+      id: 12,
+      slug: "doctor-consultation",
+      title: "Doctor Consultation",
+      short: "Home visit and online consultations with trusted doctors.",
+      description: "Consult experienced general physicians and specialists from the comfort of your home — with follow-ups and prescriptions.",
+      benefits: ["Home visits", "Online consults", "Follow-ups", "e-Prescriptions", "Specialist referrals"],
+      duration: "Per consultation",
+      price: "Coming Soon",
+      category: "Medical",
+      comingSoon: true,
+      image: "",
+      about: "",
+      highlights: [],
+      images: []
     }
-  ]
+  ],
+  notifications: [],
+  reviews: [],
+  announcements: [],
+  blogs: []
 }
 
 // Initialize JSON database with default template
@@ -73,11 +232,11 @@ const initJSONDb = () => {
       if (!data.enquiries) { data.enquiries = DEFAULT_MOCK_DATA.enquiries; modified = true }
       if (!data.bookings) { data.bookings = DEFAULT_MOCK_DATA.bookings; modified = true }
       if (!data.caregivers) { data.caregivers = DEFAULT_MOCK_DATA.caregivers; modified = true }
-      if (!data.services) { data.services = DEFAULT_MOCK_DATA.services; modified = true }
+      if (!data.services || data.services.length === 0) { data.services = DEFAULT_MOCK_DATA.services; modified = true }
       if (!data.notifications) { data.notifications = DEFAULT_MOCK_DATA.notifications; modified = true }
       if (!data.reviews) { data.reviews = []; modified = true }
       if (!data.announcements) { data.announcements = []; modified = true }
-      if (!data.blogs) { data.blogs = DEFAULT_MOCK_DATA.blogs; modified = true }
+      if (!data.blogs || data.blogs.length === 0) { data.blogs = DEFAULT_MOCK_DATA.blogs; modified = true }
       if (modified) {
         fs.writeFileSync(JSON_DB_PATH, JSON.stringify(data, null, 2))
       }
@@ -417,6 +576,18 @@ export const db = {
               [e.name, e.phone, e.email, e.service, e.city, e.message, e.submittedAt]
             )
           }
+        }
+
+        // Clean up old default sample/mock services from the live database
+        try {
+          await connection.query(`
+            DELETE FROM services 
+            WHERE slug IN ('baby-care', 'injection-services', 'elderly-care-at-home', 'elderly-care') 
+               OR description IN ('wklbcbkfhip', 'IV, IM, and subcutaneous drug administrations', 'Assisting seniors with daily tasks and medication routine')
+          `)
+          console.log('🧹 Cleaned up old default mock/sample services from MySQL database.')
+        } catch (e) {
+          console.error('Failed to cleanup old mock services:', e)
         }
 
         const [servicesRows] = await connection.query('SELECT count(*) as count FROM services')
@@ -865,14 +1036,14 @@ export const db = {
 
   // User Bookings Operations
   addBookingForUser: async (bookingData) => {
-    const { name, phone, service, date, time, duration, address, amount = 1200, userId = null, patientName = '', patientAge = '', patientNeeds = '', prescription = '', googleMapLocation = '' } = bookingData
+    const { name, phone, service, date, time, duration, address, amount = 1200, userId = null, patientName = '', patientAge = '', patientNeeds = '', prescription = '', googleMapLocation = '', paymentStatus = 'Unpaid', paymentMethod = '', transactionId = '', paymentDate = '' } = bookingData
     const createdAt = new Date().toISOString()
     if (useMySQL) {
       const [result] = await pool.query(
-        'INSERT INTO bookings (name, phone, service, date, time, duration, address, amount, userId, createdAt, patientName, patientAge, patientNeeds, prescription, googleMapLocation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [name, phone, service, date, time, duration, address, amount, userId, createdAt, patientName, patientAge, patientNeeds, prescription, googleMapLocation]
+        'INSERT INTO bookings (name, phone, service, date, time, duration, address, amount, userId, createdAt, patientName, patientAge, patientNeeds, prescription, googleMapLocation, paymentStatus, paymentMethod, transactionId, paymentDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [name, phone, service, date, time, duration, address, amount, userId, createdAt, patientName, patientAge, patientNeeds, prescription, googleMapLocation, paymentStatus, paymentMethod, transactionId, paymentDate]
       )
-      return { id: result.insertId, name, phone, service, date, time, duration, address, status: 'Pending', assignedStaff: null, amount, paymentStatus: 'Unpaid', userId, createdAt, patientName, patientAge, patientNeeds, prescription, googleMapLocation }
+      return { id: result.insertId, name, phone, service, date, time, duration, address, status: 'Pending', assignedStaff: null, amount, paymentStatus, userId, createdAt, patientName, patientAge, patientNeeds, prescription, googleMapLocation, paymentMethod, transactionId, paymentDate }
     } else {
       const data = await readJSONDb()
       const newBooking = {
@@ -887,7 +1058,10 @@ export const db = {
         status: 'Pending',
         assignedStaff: null,
         amount,
-        paymentStatus: 'Unpaid',
+        paymentStatus,
+        paymentMethod,
+        transactionId,
+        paymentDate,
         userId: userId ? Number(userId) : null,
         patientName,
         patientAge,
@@ -1396,7 +1570,7 @@ export const db = {
   },
 
   addBlog: async (blog) => {
-    const date = new Date().toISOString().split('T')[0]
+    const date = blog.date || new Date().toISOString().split('T')[0]
     const author = blog.author || 'Amma Seva Care Team'
     if (useMySQL) {
       const [result] = await pool.query(
@@ -1420,18 +1594,19 @@ export const db = {
   },
 
   updateBlog: async (id, blog) => {
+    const date = blog.date || new Date().toISOString().split('T')[0]
     if (useMySQL) {
       await pool.query(
-        'UPDATE blogs SET title = ?, slug = ?, description = ?, content = ?, image = ?, category = ?, author = ? WHERE id = ?',
-        [blog.title, blog.slug, blog.description, blog.content, blog.image, blog.category, blog.author, Number(id)]
+        'UPDATE blogs SET title = ?, slug = ?, description = ?, content = ?, image = ?, category = ?, author = ?, date = ? WHERE id = ?',
+        [blog.title, blog.slug, blog.description, blog.content, blog.image, blog.category, blog.author, date, Number(id)]
       )
-      return { id: Number(id), ...blog }
+      return { id: Number(id), ...blog, date }
     } else {
       const data = await readJSONDb()
       if (!data.blogs) data.blogs = []
       const idx = data.blogs.findIndex(b => b.id === Number(id))
       if (idx !== -1) {
-        data.blogs[idx] = { ...data.blogs[idx], ...blog }
+        data.blogs[idx] = { ...data.blogs[idx], ...blog, date }
         await writeJSONDb(data)
         return data.blogs[idx]
       }

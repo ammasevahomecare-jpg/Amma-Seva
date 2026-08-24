@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
-import { Check, Phone, Clock, IndianRupee, Star, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, Phone, Clock, IndianRupee, Star, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { SiteLayout, contact } from "@/components/SiteLayout";
 import { fetchServices } from "@/lib/services";
 import motherBaby from "@/assets/service-mother-baby.jpg";
@@ -156,6 +156,7 @@ function ServicePage() {
   ].filter(Boolean);
 
   const [activeImage, setActiveImage] = useState(serviceImages[0] || details.image);
+  const [activeTab, setActiveTab] = useState<"enquiry" | "book">("enquiry");
   
   const others = allServices.filter((s: any) => s.slug !== service.slug).slice(0, 3);
 
@@ -300,8 +301,8 @@ function ServicePage() {
             </div>
 
             {/* Pricing Options Card */}
-            <div className="border border-border/85 bg-[#f8f9fc] rounded-2xl p-6 shadow-xs text-left flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="space-y-1">
+            <div className="border border-border/85 bg-[#f8f9fc] rounded-2xl p-6 shadow-xs text-left flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+              <div className="space-y-1 flex-1">
                 <h3 className="text-lg font-bold text-primary">Pricing Options</h3>
                 <p className="text-sm text-slate-500">Flexible packages tailored to your care timeline.</p>
               </div>
@@ -312,103 +313,186 @@ function ServicePage() {
                 </div>
                 <div className="text-xs text-slate-400 mt-0.5">{service.duration || "per shift"}</div>
               </div>
+              <div className="shrink-0 w-full sm:w-auto">
+                <a
+                  href={
+                    localStorage.getItem("ammaseva_user_token")
+                      ? `/dashboard?service=${service.slug}`
+                      : `/login?redirect=/dashboard?service=${service.slug}`
+                  }
+                  className="btn-primary w-full py-2.5 px-5 flex items-center justify-center gap-1.5 font-bold text-xs shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-white text-center"
+                >
+                  Book Care Now <ArrowRight className="h-3.5 w-3.5" />
+                </a>
+              </div>
             </div>
 
           </div>
 
-          {/* Sticky Enquiry form Sidebar */}
+          {/* Sticky Enquiry/Booking Sidebar */}
           <div className="lg:col-span-4">
             <aside className="rounded-2xl border border-border bg-background p-6 shadow-md sticky top-24 text-left space-y-4">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">Quick Enquiry</h3>
-                <p className="mt-1 text-xs text-slate-400 leading-relaxed">
-                  Have questions about our {service.title}? Fill out the form and our care coordinator will reach out shortly.
-                </p>
-              </div>
-              <form
-                className="space-y-4"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const form = e.target as HTMLFormElement;
-                  const formData = new FormData(form);
-                  const data = {
-                    name: formData.get("name") as string,
-                    phone: formData.get("phone") as string,
-                    date: formData.get("date") as string,
-                    message: formData.get("message") as string,
-                    service: service.title,
-                  };
-
-                  fetch("/api/enquiry", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(data),
-                  })
-                    .then((res) => res.json())
-                    .then((resData) => {
-                      if (resData.success) {
-                        alert("Thank you! Our care coordinator will contact you shortly.");
-                        form.reset();
-                      } else {
-                        alert("Error: " + (resData.error || "Failed to submit enquiry."));
-                      }
-                    })
-                    .catch((err) => {
-                      console.error(err);
-                      alert("Thank you! Our care coordinator will contact you shortly.");
-                      form.reset();
-                    });
-                }}
-              >
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 block mb-1">Full Name</label>
-                  <input
-                    name="name"
-                    type="text"
-                    required
-                    placeholder="Jane Doe"
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-gold focus:border-gold"
-                  />
-                </div>
-                
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 block mb-1">Phone Number</label>
-                  <input
-                    name="phone"
-                    type="tel"
-                    required
-                    placeholder="+91 98765 43210"
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-gold focus:border-gold"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 block mb-1">Expected Start Date (Optional)</label>
-                  <input
-                    name="date"
-                    type="date"
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-gold focus:border-gold text-slate-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 block mb-1">How can we help?</label>
-                  <textarea
-                    name="message"
-                    rows={3}
-                    placeholder="E.g., I need a night caregiver for 2 weeks..."
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-gold focus:border-gold"
-                  />
-                </div>
-                
-                <button type="submit" className="btn-primary w-full py-2.5 mt-2 flex items-center justify-center gap-1.5 font-semibold text-sm">
-                  Request Callback <ChevronRight className="h-4 w-4" />
+              
+              {/* Tab Selector */}
+              <div className="flex border-b border-slate-100 pb-1 mb-4">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("enquiry")}
+                  className={`flex-1 pb-2 text-center text-xs font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer ${
+                    activeTab === "enquiry" 
+                      ? "border-gold text-primary font-bold" 
+                      : "border-transparent text-slate-400 hover:text-slate-600"
+                  }`}
+                >
+                  Quick Enquiry
                 </button>
-                
-                <div className="text-[10px] text-slate-400 font-medium text-center flex items-center justify-center gap-1 mt-2">
-                  <span>🔒</span> Your information is secure.
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("book")}
+                  className={`flex-1 pb-2 text-center text-xs font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer ${
+                    activeTab === "book" 
+                      ? "border-gold text-primary font-bold" 
+                      : "border-transparent text-slate-400 hover:text-slate-600"
+                  }`}
+                >
+                  Book Care Shift
+                </button>
+              </div>
+
+              {activeTab === "book" ? (
+                <div className="space-y-5 py-2 animate-in fade-in duration-200">
+                  <div className="rounded-2xl bg-indigo-50/50 border border-indigo-100/40 p-4 text-center space-y-3.5">
+                    <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-inner mx-auto">
+                      <Clock className="h-6 w-6" />
+                    </span>
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-bold text-slate-800">Direct Online Booking</h4>
+                      <p className="text-[11px] text-slate-500 leading-relaxed">
+                        Skip callbacks and wait times. Set your care shift times, specify patient needs, and confirm caregivers online.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 flex justify-between items-center text-xs">
+                    <div>
+                      <span className="text-slate-400 block mb-0.5">Starting Rate</span>
+                      <span className="font-semibold text-slate-700">{service.pricing || "₹1,200"}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-slate-400 block mb-0.5">Billing Basis</span>
+                      <span className="font-bold text-primary">{service.duration || "Per shift"}</span>
+                    </div>
+                  </div>
+
+                  <a
+                    href={
+                      localStorage.getItem("ammaseva_user_token")
+                        ? `/dashboard?service=${service.slug}`
+                        : `/login?redirect=/dashboard?service=${service.slug}`
+                    }
+                    className="btn-primary w-full py-3 flex items-center justify-center gap-2 font-bold text-sm shadow-sm hover:shadow-md cursor-pointer text-center text-white"
+                  >
+                    Proceed to Booking Form <ArrowRight className="h-4 w-4" />
+                  </a>
+
+                  <p className="text-[10px] text-slate-400 text-center font-medium">
+                    🔒 Secure authentication &amp; encrypted payments.
+                  </p>
                 </div>
-              </form>
+              ) : (
+                <>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">Quick Enquiry</h3>
+                    <p className="mt-1 text-xs text-slate-400 leading-relaxed">
+                      Have questions about our {service.title}? Fill out the form and our care coordinator will reach out shortly.
+                    </p>
+                  </div>
+                  <form
+                    className="space-y-4"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const form = e.target as HTMLFormElement;
+                      const formData = new FormData(form);
+                      const data = {
+                        name: formData.get("name") as string,
+                        phone: formData.get("phone") as string,
+                        date: formData.get("date") as string,
+                        message: formData.get("message") as string,
+                        service: service.title,
+                      };
+
+                      fetch("/api/enquiry", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(data),
+                      })
+                        .then((res) => res.json())
+                        .then((resData) => {
+                          if (resData.success) {
+                            alert("Thank you! Our care coordinator will contact you shortly.");
+                            form.reset();
+                          } else {
+                            alert("Error: " + (resData.error || "Failed to submit enquiry."));
+                          }
+                        })
+                        .catch((err) => {
+                          console.error(err);
+                          alert("Thank you! Our care coordinator will contact you shortly.");
+                          form.reset();
+                        });
+                    }}
+                  >
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 block mb-1">Full Name</label>
+                      <input
+                        name="name"
+                        type="text"
+                        required
+                        placeholder="Jane Doe"
+                        className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-gold focus:border-gold"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 block mb-1">Phone Number</label>
+                      <input
+                        name="phone"
+                        type="tel"
+                        required
+                        placeholder="+91 98765 43210"
+                        className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-gold focus:border-gold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 block mb-1">Expected Start Date (Optional)</label>
+                      <input
+                        name="date"
+                        type="date"
+                        className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-gold focus:border-gold text-slate-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 block mb-1">How can we help?</label>
+                      <textarea
+                        name="message"
+                        rows={3}
+                        placeholder="E.g., I need a night caregiver for 2 weeks..."
+                        className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-gold focus:border-gold"
+                      />
+                    </div>
+                    
+                    <button type="submit" className="btn-primary w-full py-2.5 mt-2 flex items-center justify-center gap-1.5 font-semibold text-sm cursor-pointer">
+                      Request Callback <ChevronRight className="h-4 w-4" />
+                    </button>
+                    
+                    <div className="text-[10px] text-slate-400 font-medium text-center flex items-center justify-center gap-1 mt-2">
+                      <span>🔒</span> Your information is secure.
+                    </div>
+                  </form>
+                </>
+              )}
             </aside>
           </div>
         </div>
