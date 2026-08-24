@@ -149,24 +149,24 @@ function Home() {
   return (
     <SiteLayout>
       {/* Hero with dynamic premium styling */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#fbfbfe] to-white pb-12">
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#fbfbfe] to-white pb-6">
         {/* Floating background graphic elements */}
         <div className="absolute top-0 right-0 -z-10 h-96 w-96 rounded-full bg-gold/5 blur-3xl opacity-60" />
         <div className="absolute top-20 left-10 -z-10 h-80 w-80 rounded-full bg-primary/5 blur-3xl opacity-60" />
 
-        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-2 lg:gap-12 lg:px-8 lg:py-16">
+        <div className="mx-auto grid max-w-7xl gap-4 px-4 py-4 sm:px-6 lg:grid-cols-2 lg:gap-8 lg:px-8 lg:py-10">
           <div className="flex flex-col justify-center text-left">
-            <div className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/5 px-3 py-1 text-[11px] font-bold text-gold tracking-wider uppercase mb-5 max-w-fit">
+            <div className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/5 px-3 py-1 text-[11px] font-bold text-gold tracking-wider uppercase mb-3 max-w-fit">
               ✨ Hyderabad&apos;s Trusted Professional Care Network
             </div>
             <h1 className="text-4xl font-extrabold leading-tight text-primary sm:text-5xl lg:text-6xl font-display">
               Professional Care <br className="hidden sm:inline" />
               with a <span className="text-gold italic font-medium relative">Mother&apos;s Touch.</span>
             </h1>
-            <p className="mt-5 max-w-xl text-lg text-slate-500 leading-relaxed">
+            <p className="mt-3 max-w-xl text-lg text-slate-500 leading-relaxed">
               Qualified nurses and compassionate caregivers for elderly care, mothers, newborns, and patients — delivered to the comfort of your home.
             </p>
-            <div className="mt-8 flex flex-wrap gap-4">
+            <div className="mt-5 flex flex-wrap gap-3">
               <Link to="/contact" className="btn-primary shadow-lg shadow-primary/20 hover:shadow-xl transition-all">
                 <Calendar className="h-5 w-5" /> Book a Service
               </Link>
@@ -174,7 +174,7 @@ function Home() {
                 <Phone className="h-5 w-5" /> Call Now
               </a>
             </div>
-            <div className="mt-12 grid grid-cols-3 gap-6 border-t border-slate-100 pt-8">
+            <div className="mt-8 grid grid-cols-3 gap-6 border-t border-slate-100 pt-6">
               <Stat n="5,000+" l="Happy families" />
               <Stat n="500+" l="Verified staff" />
               <Stat n="24/7" l="Care helpline" />
@@ -212,15 +212,15 @@ function Home() {
       </section>
 
       {/* Services Section */}
-      <section className="border-t border-slate-100 bg-cream/35 py-12 sm:py-16">
+      <section className="border-t border-slate-100 bg-cream/35 py-6 sm:py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl text-left mb-10 sm:mb-12">
+          <div className="max-w-3xl text-left mb-6 sm:mb-8">
             <span className="gold-rule text-xs font-semibold uppercase tracking-[0.2em] text-gold">Our Services</span>
-            <h2 className="mt-4 text-3xl font-extrabold text-primary sm:text-4xl font-display">Care for every stage of life</h2>
-            <p className="mt-3 text-slate-500 text-base leading-relaxed">From newborns to seniors — comprehensive home healthcare tailored to your family.</p>
+            <h2 className="mt-3 text-3xl font-extrabold text-primary sm:text-4xl font-display">Care for every stage of life</h2>
+            <p className="mt-2 text-slate-500 text-base leading-relaxed">From newborns to seniors — comprehensive home healthcare tailored to your family.</p>
           </div>
           
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {services.slice(0, 6).map((s: any) => {
               const details = getServiceDetails(s.slug);
               return (
@@ -245,7 +245,7 @@ function Home() {
                     </div>
                   </div>
                   
-                  <div className="flex flex-1 flex-col p-6 text-left">
+                  <div className="flex flex-1 flex-col p-5 text-left">
                     <div className="flex">
                       <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider border ${details.badgeClass}`}>
                         {details.category}
@@ -254,17 +254,17 @@ function Home() {
                     <Link
                       to="/services/$slug"
                       params={{ slug: s.slug }}
-                      className="mt-3 block text-lg font-bold text-primary hover:text-gold transition-colors duration-300 font-display"
+                      className="mt-2 block text-lg font-bold text-primary hover:text-gold transition-colors duration-300 font-display"
                     >
                       {s.title}
                     </Link>
-                    <p className="mt-2.5 flex-1 text-sm text-slate-500 leading-relaxed line-clamp-3">
+                    <p className="mt-1.5 flex-1 text-sm text-slate-500 leading-relaxed line-clamp-3">
                       {s.short}
                     </p>
                     <Link
                       to="/services/$slug"
                       params={{ slug: s.slug }}
-                      className="mt-6 w-full btn-primary text-sm font-bold flex items-center justify-center gap-1.5 shadow-sm shadow-primary/10 group-hover:shadow-md transition-all duration-300"
+                      className="mt-4 w-full btn-primary text-sm font-bold flex items-center justify-center gap-1.5 shadow-sm shadow-primary/10 group-hover:shadow-md transition-all duration-300"
                     >
                       View Details <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                     </Link>
@@ -274,27 +274,27 @@ function Home() {
             })}
           </div>
           
-          <div className="mt-12 text-center">
-            <Link to="/services" className="btn-outline px-8 py-3">View all services</Link>
+          <div className="mt-6 text-center">
+            <Link to="/services" className="btn-outline px-8 py-2.5">View all services</Link>
           </div>
         </div>
       </section>
 
       {/* Why Choose Us */}
-      <section className="border-t border-slate-100 py-12 sm:py-16">
+      <section className="border-t border-slate-100 py-6 sm:py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl text-left mb-10">
+          <div className="max-w-3xl text-left mb-6">
             <span className="gold-rule text-xs font-semibold uppercase tracking-[0.2em] text-gold">Why Amma Seva</span>
-            <h2 className="mt-4 text-3xl font-extrabold text-primary sm:text-4xl font-display">A promise your family can lean on</h2>
+            <h2 className="mt-3 text-3xl font-extrabold text-primary sm:text-4xl font-display">A promise your family can lean on</h2>
           </div>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {WHY.map((w) => (
-              <div key={w.title} className="group rounded-3xl border border-slate-200/60 bg-background p-6 text-center shadow-sm hover:shadow-xl hover:border-gold/30 transition-all duration-500 hover:-translate-y-1">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gold/10 text-gold transition-all duration-500 group-hover:bg-primary group-hover:text-white group-hover:rotate-3 shadow-inner">
+              <div key={w.title} className="group rounded-3xl border border-slate-200/60 bg-background p-5 text-center shadow-sm hover:shadow-xl hover:border-gold/30 transition-all duration-500 hover:-translate-y-1">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gold/10 text-gold transition-all duration-500 group-hover:bg-primary group-hover:text-white group-hover:rotate-3 shadow-inner">
                   <w.icon className="h-6 w-6" />
                 </div>
-                <h3 className="mt-5 text-lg font-bold text-primary font-display">{w.title}</h3>
-                <p className="mt-2.5 text-sm text-slate-500 leading-relaxed">{w.desc}</p>
+                <h3 className="mt-3 text-lg font-bold text-primary font-display">{w.title}</h3>
+                <p className="mt-1.5 text-sm text-slate-500 leading-relaxed">{w.desc}</p>
               </div>
             ))}
           </div>
@@ -302,19 +302,19 @@ function Home() {
       </section>
 
       {/* How it works */}
-      <section className="border-t border-slate-100 bg-cream/35 py-12 sm:py-16">
+      <section className="border-t border-slate-100 bg-cream/35 py-6 sm:py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl text-left mb-10">
+          <div className="max-w-3xl text-left mb-6">
             <span className="gold-rule text-xs font-semibold uppercase tracking-[0.2em] text-gold">How It Works</span>
-            <h2 className="mt-4 text-3xl font-extrabold text-primary sm:text-4xl font-display">Care arranged in four simple steps</h2>
+            <h2 className="mt-3 text-3xl font-extrabold text-primary sm:text-4xl font-display">Care arranged in four simple steps</h2>
           </div>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {STEPS.map((s) => (
-              <div key={s.n} className="relative rounded-3xl border border-slate-200/60 bg-background p-6 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-1 text-left">
+              <div key={s.n} className="relative rounded-3xl border border-slate-200/60 bg-background p-5 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-1 text-left">
                 <div className="absolute top-4 right-6 font-display text-5xl font-extrabold text-gold/15 select-none">{s.n}</div>
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white font-bold text-sm shadow-sm">{s.n}</div>
-                <h3 className="mt-5 text-lg font-bold text-primary font-display">{s.t}</h3>
-                <p className="mt-2.5 text-sm text-slate-500 leading-relaxed">{s.d}</p>
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-white font-bold text-sm shadow-sm">{s.n}</div>
+                <h3 className="mt-3 text-lg font-bold text-primary font-display">{s.t}</h3>
+                <p className="mt-1.5 text-sm text-slate-500 leading-relaxed">{s.d}</p>
               </div>
             ))}
           </div>
@@ -322,23 +322,23 @@ function Home() {
       </section>
 
       {/* Testimonials */}
-      <section className="border-t border-slate-100 py-12 sm:py-16">
+      <section className="border-t border-slate-100 py-6 sm:py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl text-left mb-10">
+          <div className="max-w-3xl text-left mb-6">
             <span className="gold-rule text-xs font-semibold uppercase tracking-[0.2em] text-gold">Testimonials</span>
-            <h2 className="mt-4 text-3xl font-extrabold text-primary sm:text-4xl font-display">Loved by families across India</h2>
+            <h2 className="mt-3 text-3xl font-extrabold text-primary sm:text-4xl font-display">Loved by families across India</h2>
           </div>
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className="grid gap-4 lg:grid-cols-3">
             {TESTIMONIALS.map((t) => (
-              <figure key={t.name} className="relative rounded-3xl border border-slate-200/60 bg-background p-6 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-1 flex flex-col justify-between text-left">
+              <figure key={t.name} className="relative rounded-3xl border border-slate-200/60 bg-background p-5 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-1 flex flex-col justify-between text-left">
                 <div>
                   <div className="flex gap-1 text-gold">
                     {Array.from({ length: 5 }).map((_, i) => <Star key={i} className="h-4 w-4 fill-current" />)}
                   </div>
-                  <blockquote className="mt-4 text-slate-600 leading-relaxed italic">“{t.quote}”</blockquote>
+                  <blockquote className="mt-3 text-slate-600 leading-relaxed italic">“{t.quote}”</blockquote>
                 </div>
-                <figcaption className="mt-6 flex items-center gap-3.5 border-t border-slate-100 pt-4">
-                  <div className="h-10 w-10 rounded-full bg-gold/10 flex items-center justify-center font-bold text-gold text-sm border border-gold/20 uppercase shrink-0">
+                <figcaption className="mt-4 flex items-center gap-3.5 border-t border-slate-100 pt-3">
+                  <div className="h-8 w-8 rounded-full bg-gold/10 flex items-center justify-center font-bold text-gold text-xs border border-gold/20 uppercase shrink-0">
                     {t.name[0]}
                   </div>
                   <div className="text-sm">
@@ -353,20 +353,20 @@ function Home() {
       </section>
 
       {/* FAQ */}
-      <section className="border-t border-slate-100 bg-cream/35 py-12 sm:py-16">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <section className="border-t border-slate-100 bg-cream/35 py-6 sm:py-8">
+        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl text-left">
             <span className="gold-rule text-xs font-semibold uppercase tracking-[0.2em] text-gold">FAQs</span>
-            <h2 className="mt-4 text-3xl font-extrabold text-primary sm:text-4xl font-display">Answers to common questions</h2>
+            <h2 className="mt-3 text-3xl font-extrabold text-primary sm:text-4xl font-display">Answers to common questions</h2>
           </div>
-          <div className="mt-8 grid gap-4 md:grid-cols-2 items-start text-left">
+          <div className="mt-6 grid gap-3 md:grid-cols-2 items-start text-left">
             {faqs.map((f: any) => (
-              <details key={f.id} className="group rounded-2xl border border-slate-200/60 bg-background p-5 hover:border-gold/50 transition-all duration-300 open:border-gold open:shadow-md hover:shadow-sm">
+              <details key={f.id} className="group rounded-2xl border border-slate-200/60 bg-background p-4 hover:border-gold/50 transition-all duration-300 open:border-gold open:shadow-md hover:shadow-sm">
                 <summary className="flex cursor-pointer list-none items-center justify-between text-base font-bold text-primary transition-colors group-open:text-gold select-none outline-none">
                   <span>{f.question}</span>
                   <ChevronRight className="h-5 w-5 text-gold/70 transition-transform group-open:rotate-90 group-open:text-gold shrink-0" />
                 </summary>
-                <div className="mt-3 text-sm text-slate-600 leading-relaxed pl-3 border-l-2 border-gold/30">
+                <div className="mt-2 text-sm text-slate-600 leading-relaxed pl-3 border-l-2 border-gold/30">
                   {f.answer}
                 </div>
               </details>
