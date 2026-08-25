@@ -250,6 +250,19 @@ function AdminPage() {
   const [selectedCaregiverForReviews, setSelectedCaregiverForReviews] = useState<any | null>(null);
   const [expandedCaregiverId, setExpandedCaregiverId] = useState<number | null>(null);
 
+  // Local Page Search & Date Range Filters
+  const [bookingSearch, setBookingSearch] = useState("");
+  const [bookingStartDate, setBookingStartDate] = useState("");
+  const [bookingEndDate, setBookingEndDate] = useState("");
+
+  const [paymentSearch, setPaymentSearch] = useState("");
+  const [paymentStartDate, setPaymentStartDate] = useState("");
+  const [paymentEndDate, setPaymentEndDate] = useState("");
+
+  const [salarySearch, setSalarySearch] = useState("");
+  const [salaryStartDate, setSalaryStartDate] = useState("");
+  const [salaryEndDate, setSalaryEndDate] = useState("");
+
   // Check login status on mount
   useEffect(() => {
     const token = localStorage.getItem("ammaseva_admin_token");
@@ -1097,10 +1110,13 @@ function AdminPage() {
 
             return (
               <div className="space-y-6 text-left animate-in fade-in duration-200">
-                {/* Row 1: Four Premium Metric Cards */}
-                <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                {/* Row 1: Five Premium Metric Cards */}
+                <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
                   {/* Revenue Card */}
-                  <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm premium-card flex justify-between items-center relative overflow-hidden border-l-4 border-l-emerald-500">
+                  <div 
+                    onClick={() => setActiveTab("payments")}
+                    className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm premium-card flex justify-between items-center relative overflow-hidden border-l-4 border-l-emerald-500 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
+                  >
                     <div>
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Total Revenue</span>
                       <span className="text-2xl font-black font-display text-slate-950 mt-1 block">
@@ -1112,7 +1128,10 @@ function AdminPage() {
                   </div>
 
                   {/* Bookings Card */}
-                  <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm premium-card flex justify-between items-center relative overflow-hidden border-l-4 border-l-[#1e2a5a]">
+                  <div 
+                    onClick={() => setActiveTab("bookings")}
+                    className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm premium-card flex justify-between items-center relative overflow-hidden border-l-4 border-l-[#1e2a5a] cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
+                  >
                     <div>
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Active Bookings</span>
                       <span className="text-2xl font-black font-display text-slate-950 mt-1 block">
@@ -1124,7 +1143,10 @@ function AdminPage() {
                   </div>
 
                   {/* Patients Card */}
-                  <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm premium-card flex justify-between items-center relative overflow-hidden border-l-4 border-l-cyan-500">
+                  <div 
+                    onClick={() => setActiveTab("users")}
+                    className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm premium-card flex justify-between items-center relative overflow-hidden border-l-4 border-l-cyan-500 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
+                  >
                     <div>
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Patients Registered</span>
                       <span className="text-2xl font-black font-display text-slate-950 mt-1 block">
@@ -1135,8 +1157,32 @@ function AdminPage() {
                     {renderCircularProgress(90, "#06b6d4", `${users.length}`)}
                   </div>
 
+                  {/* Caretakers Card */}
+                  {(() => {
+                    const verifiedCgs = caregivers.filter(c => c.status === "Verified").length;
+                    const cgPercentage = caregivers.length > 0 ? Math.round((verifiedCgs / caregivers.length) * 100) : 100;
+                    return (
+                      <div 
+                        onClick={() => setActiveTab("caregivers")}
+                        className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm premium-card flex justify-between items-center relative overflow-hidden border-l-4 border-l-indigo-500 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
+                      >
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Total Caretakers</span>
+                          <span className="text-2xl font-black font-display text-slate-950 mt-1 block">
+                            {caregivers.length}
+                          </span>
+                          <span className="text-[9px] text-indigo-600 font-bold block mt-0.5">● Verified: {verifiedCgs} active</span>
+                        </div>
+                        {renderCircularProgress(cgPercentage, "#6366f1", `${cgPercentage}%`)}
+                      </div>
+                    );
+                  })()}
+
                   {/* Ratings Card */}
-                  <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm premium-card flex justify-between items-center relative overflow-hidden border-l-4 border-l-[#c9a24c]">
+                  <div 
+                    onClick={() => setActiveTab("caregivers")}
+                    className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm premium-card flex justify-between items-center relative overflow-hidden border-l-4 border-l-[#c9a24c] cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
+                  >
                     <div>
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Care Rating</span>
                       <span className="text-2xl font-black font-display text-slate-950 mt-1 block">
@@ -1301,120 +1347,202 @@ function AdminPage() {
                 </button>
               </div>
 
-              <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-md shadow-slate-100/30 premium-card">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm text-slate-700">
-                    <thead>
-                      <tr className="border-b border-slate-200/80 bg-[#1e2a5a]/5 text-xs text-[#1e2a5a] uppercase font-bold tracking-wider">
-                        <th className="py-4 px-6">Patient details</th>
-                        <th className="py-4 px-6">Service &amp; Shift</th>
-                        <th className="py-4 px-6">Date &amp; Time</th>
-                        <th className="py-4 px-6">Assigned Nurse</th>
-                        <th className="py-4 px-6">Status</th>
-                        <th className="py-4 px-6">Payment</th>
-                        <th className="py-4 px-6 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {filteredBookings.map((b) => (
-                        <tr key={b.id} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="py-4 px-6">
-                            <div className="font-bold text-[#1e2a5a] font-display text-base leading-tight">{b.name}</div>
-                            <div className="text-xs text-slate-400 mt-1 font-semibold">{b.phone}</div>
-                            <div className="text-xs text-slate-500 italic mt-0.5 truncate max-w-xs">{b.address}</div>
-                            
-                            {b.patientName && (
-                              <div className="inline-block text-[10px] text-[#1e2a5a] bg-[#1e2a5a]/5 border border-[#1e2a5a]/10 px-2 py-1 rounded font-bold mt-2">
-                                👤 Patient: {b.patientName} ({b.patientAge} years)
-                              </div>
-                            )}
-                            {b.patientNeeds && (
-                              <div className="text-[10px] text-slate-600 mt-1 bg-slate-50 p-2 rounded-lg border border-slate-100 max-w-xs whitespace-normal leading-relaxed">
-                                <span className="font-bold text-slate-700">Needs:</span> {b.patientNeeds}
-                              </div>
-                            )}
-                            <div className="flex gap-3 mt-2">
-                              {b.googleMapLocation && (
-                                <a href={b.googleMapLocation} target="_blank" rel="noopener noreferrer" className="text-[10px] text-[#c9a24c] font-bold hover:underline flex items-center gap-0.5">
-                                  🗺️ Open Map Location
-                                </a>
-                              )}
-                              {b.prescription && (
-                                <a href={b.prescription} target="_blank" rel="noopener noreferrer" className="text-[10px] text-teal-600 font-bold hover:underline flex items-center gap-0.5">
-                                  📄 Case File / Prescription
-                                </a>
-                              )}
+              {/* Local Filter Bar */}
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm premium-card grid gap-4 grid-cols-1 sm:grid-cols-4 items-center">
+                <div className="relative col-span-1 sm:col-span-2">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by Patient, Phone, Service, or Staff..."
+                    value={bookingSearch}
+                    onChange={(e) => setBookingSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-semibold text-slate-800"
+                  />
+                </div>
+                <div>
+                  <input
+                    type="date"
+                    value={bookingStartDate}
+                    onChange={(e) => setBookingStartDate(e.target.value)}
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-bold text-slate-500"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={bookingEndDate}
+                    onChange={(e) => setBookingEndDate(e.target.value)}
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-bold text-slate-500"
+                  />
+                  {(bookingSearch || bookingStartDate || bookingEndDate) && (
+                    <button
+                      onClick={() => {
+                        setBookingSearch("");
+                        setBookingStartDate("");
+                        setBookingEndDate("");
+                      }}
+                      className="px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-black transition-all cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {(() => {
+                  const filtered = bookings.filter((b) => {
+                    // Search query filter
+                    const q = bookingSearch.toLowerCase();
+                    const matchesSearch = !bookingSearch || 
+                      b.name.toLowerCase().includes(q) ||
+                      b.phone.includes(q) ||
+                      b.service.toLowerCase().includes(q) ||
+                      (b.assignedStaff && b.assignedStaff.toLowerCase().includes(q));
+
+                    // Date range filter
+                    let matchesDate = true;
+                    if (bookingStartDate || bookingEndDate) {
+                      const bDate = new Date(b.date);
+                      if (bookingStartDate) {
+                        const start = new Date(bookingStartDate);
+                        if (bDate < start) matchesDate = false;
+                      }
+                      if (bookingEndDate) {
+                        const end = new Date(bookingEndDate);
+                        if (bDate > end) matchesDate = false;
+                      }
+                    }
+
+                    return matchesSearch && matchesDate;
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="bg-white border border-slate-200/80 rounded-2xl p-8 text-center text-slate-400 text-sm font-semibold premium-card">
+                        No booking records matched your search and date filters.
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="grid gap-4 grid-cols-1">
+                      {filtered.map((b) => (
+                        <div key={b.id} className="bg-white border border-slate-200/70 hover:border-[#c9a24c]/45 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col lg:flex-row gap-5 justify-between items-start lg:items-center premium-card">
+                          
+                          {/* Patient profile details */}
+                          <div className="flex items-start gap-4 min-w-[260px] max-w-sm">
+                            <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-[#1e2a5a]/10 to-[#1e2a5a]/5 border border-[#1e2a5a]/10 flex items-center justify-center font-black text-lg text-[#1e2a5a] shrink-0">
+                              {b.name.charAt(0)}
                             </div>
-                          </td>
-                          <td className="py-4 px-6">
-                            <div className="font-semibold text-slate-800">{b.service}</div>
-                            <div className="text-[9px] text-[#c9a24c] bg-[#c9a24c]/10 border border-[#c9a24c]/20 font-extrabold uppercase tracking-wider mt-1.5 px-2 py-0.5 rounded-full w-fit">{b.duration}</div>
-                          </td>
-                          <td className="py-4 px-6 text-xs text-slate-500">
-                            <div className="font-bold text-slate-700">{b.date}</div>
-                            <div className="mt-1 font-medium">{b.time}</div>
-                          </td>
-                          <td className="py-4 px-6">
-                            <div>
-                              {b.assignedStaff ? (
-                                <span className="inline-flex items-center gap-1 text-xs font-bold text-[#1e2a5a] bg-[#1e2a5a]/5 border border-[#1e2a5a]/10 px-2 py-1 rounded-lg">
-                                  {b.assignedStaff}
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-400 bg-slate-100 border border-slate-200 px-2 py-1 rounded-lg">
-                                  🚫 Unassigned
-                                </span>
+                            <div className="space-y-1">
+                              <h4 className="font-extrabold text-[#1e2a5a] text-base leading-tight">{b.name}</h4>
+                              <div className="text-[11px] text-slate-400 font-extrabold">{b.phone}</div>
+                              <div className="text-[10px] text-slate-500 font-semibold italic truncate max-w-[200px]" title={b.address}>{b.address}</div>
+                              
+                              {b.patientName && (
+                                <div className="inline-block text-[9px] text-[#1e2a5a] bg-[#1e2a5a]/5 border border-[#1e2a5a]/10 px-2 py-0.5 rounded font-extrabold mt-1">
+                                  👤 Patient: {b.patientName} ({b.patientAge} years)
+                                </div>
                               )}
+                              {b.patientNeeds && (
+                                <div className="text-[9px] text-slate-650 bg-slate-50/50 border border-slate-100 rounded-lg p-2 mt-1 leading-relaxed max-w-[200px]">
+                                  <span className="font-bold text-slate-700">Needs:</span> {b.patientNeeds}
+                                </div>
+                              )}
+                              
+                              <div className="flex gap-2.5 mt-2">
+                                {b.googleMapLocation && (
+                                  <a href={b.googleMapLocation} target="_blank" rel="noopener noreferrer" className="text-[9px] text-[#c9a24c] font-black hover:underline flex items-center gap-0.5">
+                                    🗺️ Map Location
+                                  </a>
+                                )}
+                                {b.prescription && (
+                                  <a href={b.prescription} target="_blank" rel="noopener noreferrer" className="text-[9px] text-teal-600 font-black hover:underline flex items-center gap-0.5">
+                                    📄 Case File
+                                  </a>
+                                )}
+                              </div>
                             </div>
-                          </td>
-                          <td className="py-4 px-6">
-                            <span className={`text-[10px] uppercase font-black tracking-wider px-2.5 py-1 rounded-full border ${
-                              b.status === "Confirmed" ? "bg-emerald-50 text-emerald-700 border-emerald-200/60" :
-                              b.status === "Cancelled" ? "bg-rose-50 text-rose-700 border-rose-200/60" :
-                              "bg-amber-50 text-amber-700 border-amber-200/60"
-                            }`}>
-                              {b.status}
-                            </span>
-                          </td>
-                          <td className="py-4 px-6">
-                            <div>
-                              <div className="text-sm font-extrabold text-slate-900">₹{b.amount}</div>
-                              <span className={`text-[9px] font-extrabold uppercase tracking-wider mt-1 inline-block px-1.5 py-0.5 rounded border ${
+                          </div>
+
+                          {/* Service Details */}
+                          <div className="space-y-1 min-w-[150px]">
+                            <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">Service Category</span>
+                            <div className="font-bold text-slate-800 text-sm leading-snug">{b.service}</div>
+                            <span className="inline-block text-[9px] text-[#c9a24c] bg-[#c9a24c]/10 border border-[#c9a24c]/20 font-black uppercase tracking-wider px-2 py-0.5 rounded-full mt-1">{b.duration}</span>
+                          </div>
+
+                          {/* Date & Time */}
+                          <div className="space-y-1 min-w-[130px]">
+                            <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">Shift Date &amp; Time</span>
+                            <div className="font-bold text-slate-700 text-xs flex items-center gap-1">📅 {b.date}</div>
+                            <div className="text-[10px] text-slate-400 font-bold flex items-center gap-1">⏰ {b.time}</div>
+                          </div>
+
+                          {/* Assigned Nurse/Staff */}
+                          <div className="space-y-1.5 min-w-[150px]">
+                            <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">Assigned Nurse/Staff</span>
+                            {b.assignedStaff ? (
+                              <div className="flex items-center gap-2">
+                                <div className="h-7 w-7 rounded-full bg-[#1e2a5a]/10 border border-[#1e2a5a]/10 flex items-center justify-center font-bold text-xs text-[#1e2a5a]">
+                                  {b.assignedStaff.charAt(0)}
+                                </div>
+                                <span className="text-xs font-bold text-[#1e2a5a]">{b.assignedStaff}</span>
+                              </div>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-455 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-lg">
+                                🚫 Unassigned
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Status and Payouts */}
+                          <div className="flex flex-row lg:flex-col items-start gap-4 min-w-[130px]">
+                            <div className="space-y-1">
+                              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Booking Status</span>
+                              <span className={`inline-block text-[9px] uppercase font-black tracking-wider px-2.5 py-0.5 rounded-full border ${
+                                b.status === "Confirmed" ? "bg-emerald-50 text-emerald-700 border-emerald-200/60" :
+                                b.status === "Completed" ? "bg-blue-50 text-blue-700 border-blue-200/60" :
+                                b.status === "Cancelled" ? "bg-rose-50 text-rose-700 border-rose-200/60" :
+                                "bg-amber-50 text-amber-700 border-amber-200/60"
+                              }`}>
+                                {b.status}
+                              </span>
+                            </div>
+                            <div className="space-y-1">
+                              <div className="text-xs font-extrabold text-slate-900">₹{b.amount}</div>
+                              <span className={`inline-block text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${
                                 b.paymentStatus === "Paid" 
                                   ? "bg-emerald-50 text-emerald-700 border-emerald-200/60" 
                                   : "bg-amber-50 text-amber-700 border-amber-200/60"
                               }`}>
                                 {b.paymentStatus}
                               </span>
-                              {b.paymentStatus === "Paid" && b.paymentMethod && (
-                                <div className="text-[10px] text-slate-400 mt-1.5 font-medium leading-tight">
-                                  <span className="font-semibold text-slate-500">{b.paymentMethod}</span>
-                                  {b.transactionId && <span className="block text-[9px] font-mono text-slate-400 font-normal mt-0.5">{b.transactionId}</span>}
-                                </div>
-                              )}
                             </div>
-                          </td>
-                          <td className="py-4 px-6 text-right">
-                            <div className="flex gap-2 justify-end">
-                              <button
-                                onClick={() => openEditModal("booking", b)}
-                                className="px-2.5 py-1.5 rounded-lg bg-slate-50 hover:bg-[#c9a24c]/15 text-[#c9a24c] border border-slate-200 hover:border-[#c9a24c]/30 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
-                              >
-                                <Edit3 className="h-3.5 w-3.5" /> Edit
-                              </button>
-                              <button
-                                onClick={() => handleDeleteBooking(b.id)}
-                                className="p-2 rounded-lg bg-rose-50 hover:bg-rose-500 hover:text-white border border-rose-100 hover:border-rose-500 text-rose-500 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
+                          </div>
+
+                          {/* Action Controls */}
+                          <div className="flex gap-2 self-stretch lg:self-auto justify-end border-t lg:border-t-0 border-slate-100 pt-3 lg:pt-0 shrink-0">
+                            <button
+                              onClick={() => openEditModal("booking", b)}
+                              className="px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-[#c9a24c]/15 text-[#c9a24c] border border-slate-200 hover:border-[#c9a24c]/30 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
+                            >
+                              <Edit3 className="h-3.5 w-3.5" /> Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteBooking(b.id)}
+                              className="p-2.5 rounded-xl bg-rose-50 hover:bg-rose-500 hover:text-white border border-rose-100 hover:border-rose-500 text-rose-500 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+
+                        </div>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}
@@ -1690,6 +1818,48 @@ function AdminPage() {
                 </div>
               </div>
 
+              {/* Local Filter Bar */}
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm premium-card grid gap-4 grid-cols-1 sm:grid-cols-4 items-center">
+                <div className="relative col-span-1 sm:col-span-2">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by Customer, Phone, Service, or Status..."
+                    value={paymentSearch}
+                    onChange={(e) => setPaymentSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-semibold text-slate-800"
+                  />
+                </div>
+                <div>
+                  <input
+                    type="date"
+                    value={paymentStartDate}
+                    onChange={(e) => setPaymentStartDate(e.target.value)}
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-bold text-slate-500"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={paymentEndDate}
+                    onChange={(e) => setPaymentEndDate(e.target.value)}
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-bold text-slate-500"
+                  />
+                  {(paymentSearch || paymentStartDate || paymentEndDate) && (
+                    <button
+                      onClick={() => {
+                        setPaymentSearch("");
+                        setPaymentStartDate("");
+                        setPaymentEndDate("");
+                      }}
+                      className="px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-black transition-all cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+
               {/* Payments Table */}
               <div className="bg-white border border-slate-200/80 rounded-2xl shadow-md shadow-slate-100/30 overflow-hidden premium-card">
                 <div className="overflow-x-auto">
@@ -1705,20 +1875,44 @@ function AdminPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {bookings
-                        .filter(b => {
-                          if (!searchQuery) return true;
-                          const q = searchQuery.toLowerCase();
-                          if (q === "paid" || q === "unpaid") {
-                            return b.paymentStatus.toLowerCase() === q;
-                          }
-                          return (
+                      {(() => {
+                        const filtered = bookings.filter((b) => {
+                          // Search query filter
+                          const q = paymentSearch.toLowerCase();
+                          const matchesSearch = !paymentSearch || 
                             b.name.toLowerCase().includes(q) ||
                             b.phone.includes(q) ||
-                            b.service.toLowerCase().includes(q)
+                            b.service.toLowerCase().includes(q) ||
+                            b.paymentStatus.toLowerCase().includes(q);
+
+                          // Date range filter
+                          let matchesDate = true;
+                          if (paymentStartDate || paymentEndDate) {
+                            const bDate = new Date(b.date);
+                            if (paymentStartDate) {
+                              const start = new Date(paymentStartDate);
+                              if (bDate < start) matchesDate = false;
+                            }
+                            if (paymentEndDate) {
+                              const end = new Date(paymentEndDate);
+                              if (bDate > end) matchesDate = false;
+                            }
+                          }
+
+                          return matchesSearch && matchesDate;
+                        });
+
+                        if (filtered.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan={6} className="py-8 text-center text-slate-400 text-sm font-semibold">
+                                No payment logs matched your search and date filters.
+                              </td>
+                            </tr>
                           );
-                        })
-                        .map((b) => (
+                        }
+
+                        return filtered.map((b) => (
                           <tr key={b.id} className="hover:bg-slate-50/50 transition-colors">
                             <td className="py-4 px-6">
                               <div className="font-bold text-[#1e2a5a] font-display text-base leading-tight">{b.name}</div>
@@ -1759,8 +1953,9 @@ function AdminPage() {
                                 <Edit3 className="h-3.5 w-3.5" /> Record Payment
                               </button>
                             </td>
-                          </tr>
-                        ))}
+                        </tr>
+                      ));
+                    })()}
                       {bookings.length === 0 && (
                         <tr>
                           <td colSpan={6} className="py-8 text-center text-slate-400 text-sm font-semibold">
@@ -1774,7 +1969,6 @@ function AdminPage() {
               </div>
             </div>
           )}
-
           {activeTab === "salaries" && (() => {
             // Helper to get caretaker payout
             const getPayoutValue = (b: any) => {
@@ -1784,8 +1978,25 @@ function AdminPage() {
             };
 
             const completedBookings = bookings.filter(b => b.status === "Completed");
-            const totalCaretakerEarned = completedBookings.reduce((sum, b) => sum + getPayoutValue(b), 0);
-            const totalCaretakerPaid = completedBookings.filter(b => b.caretakerPayoutStatus === "Paid").reduce((sum, b) => sum + getPayoutValue(b), 0);
+            
+            // Filter completed bookings based on local dates
+            const filteredCompletedBookings = completedBookings.filter(b => {
+              if (salaryStartDate || salaryEndDate) {
+                const bDate = new Date(b.date);
+                if (salaryStartDate) {
+                  const start = new Date(salaryStartDate);
+                  if (bDate < start) return false;
+                }
+                if (salaryEndDate) {
+                  const end = new Date(salaryEndDate);
+                  if (bDate > end) return false;
+                }
+              }
+              return true;
+            });
+
+            const totalCaretakerEarned = filteredCompletedBookings.reduce((sum, b) => sum + getPayoutValue(b), 0);
+            const totalCaretakerPaid = filteredCompletedBookings.filter(b => b.caretakerPayoutStatus === "Paid").reduce((sum, b) => sum + getPayoutValue(b), 0);
             const totalCaretakerOutstanding = totalCaretakerEarned - totalCaretakerPaid;
 
             return (
@@ -1794,6 +2005,48 @@ function AdminPage() {
                   <div>
                     <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display">Staff Salaries & Payout Settlements</h3>
                     <p className="text-xs text-slate-400 mt-0.5 font-medium">Track payroll, salary status, and payout logs for all registered care staff.</p>
+                  </div>
+                </div>
+
+                {/* Local Filter Bar */}
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm premium-card grid gap-4 grid-cols-1 sm:grid-cols-4 items-center">
+                  <div className="relative col-span-1 sm:col-span-2">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Search by Caregiver name or specialty..."
+                      value={salarySearch}
+                      onChange={(e) => setSalarySearch(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-semibold text-slate-800"
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="date"
+                      value={salaryStartDate}
+                      onChange={(e) => setSalaryStartDate(e.target.value)}
+                      className="w-full px-3.5 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-bold text-slate-500"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="date"
+                      value={salaryEndDate}
+                      onChange={(e) => setSalaryEndDate(e.target.value)}
+                      className="w-full px-3.5 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-bold text-slate-500"
+                    />
+                    {(salarySearch || salaryStartDate || salaryEndDate) && (
+                      <button
+                        onClick={() => {
+                          setSalarySearch("");
+                          setSalaryStartDate("");
+                          setSalaryEndDate("");
+                        }}
+                        className="px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-black transition-all cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -1824,8 +2077,13 @@ function AdminPage() {
                   <h4 className="text-sm font-extrabold text-[#1e2a5a] uppercase tracking-wider">Employee Salaries Breakdown</h4>
                   
                   <div className="grid gap-4 grid-cols-1">
-                    {caregivers.map((cg) => {
-                      const cgBookings = completedBookings.filter(b => b.assignedStaff === cg.name);
+                    {caregivers
+                      .filter((cg) => {
+                        const q = salarySearch.toLowerCase();
+                        return !salarySearch || cg.name.toLowerCase().includes(q) || cg.specialty.toLowerCase().includes(q);
+                      })
+                      .map((cg) => {
+                      const cgBookings = filteredCompletedBookings.filter(b => b.assignedStaff === cg.name);
                       const earned = cgBookings.reduce((sum, b) => sum + getPayoutValue(b), 0);
                       const paid = cgBookings.filter(b => b.caretakerPayoutStatus === "Paid").reduce((sum, b) => sum + getPayoutValue(b), 0);
                       const unpaid = earned - paid;
