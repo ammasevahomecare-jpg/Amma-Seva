@@ -1071,149 +1071,219 @@ function AdminPage() {
         {/* Dashboard Main Content Area */}
         <main className="p-6 sm:p-8 flex-1 overflow-y-auto">
           
-          {/* Dashboard Overview tab */}
-          {activeTab === "overview" && (
-            <div className="space-y-6">
-              
-              {/* Row 1: Revenue Line Card & Metric widgets */}
-              <div className="grid gap-6 lg:grid-cols-3">
-                
-                {/* Revenue Sales Card */}
-                <div className="premium-card bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/40 col-span-1 lg:col-span-1 flex flex-col justify-between hover:shadow-lg transition-all">
-                  <div>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <span className="block text-3xl font-extrabold font-display text-[#1e2a5a]">₹{totalRevenue.toLocaleString()}</span>
-                        <span className="text-xs text-slate-400 mt-1 block font-semibold uppercase tracking-wider">Total Platform Revenue</span>
-                      </div>
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200/50 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                        <ArrowUpRight className="h-3 w-3" /> Live Sync
-                      </span>
-                    </div>
-                  </div>
-                  
-                  {/* SVG line chart representation of dynamic monthly revenues */}
-                  <div className="h-28 mt-6">
-                    <svg className="w-full h-full" viewBox="0 0 300 100" preserveAspectRatio="none">
-                      <defs>
-                        <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#c9a24c" stopOpacity="0.25"/>
-                          <stop offset="100%" stopColor="#c9a24c" stopOpacity="0"/>
-                        </linearGradient>
-                      </defs>
-                      <path
-                        d={`M 0 90 L ${monthlyRevenueChart.map((d, i) => `${i * 60} ${90 - d.height * 0.8}`).join(" L ")}`}
-                        fill="none"
-                        stroke="#c9a24c"
-                        strokeWidth="3.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                      <path
-                        d={`M 0 100 L 0 90 L ${monthlyRevenueChart.map((d, i) => `${i * 60} ${90 - d.height * 0.8}`).join(" L ")} L 300 100 Z`}
-                        fill="url(#chartGradient)"
-                      />
-                    </svg>
-                  </div>
-                </div>
-
-                {/* Grid of 4 horizontal cards */}
-                <div className="premium-card bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/40 col-span-1 lg:col-span-2 grid grid-cols-2 gap-4 border-slate-200/80">
-                  <HorizontalMetric icon={CalendarDays} iconColor="text-[#1e2a5a] bg-[#1e2a5a]/5" label="Bookings" value={bookings.length.toString()} />
-                  <HorizontalMetric icon={UserCheck} iconColor="text-[#c9a24c] bg-[#c9a24c]/10" label="Active Shifts" value={activeShiftsCount.toString()} />
-                  <HorizontalMetric icon={Users} iconColor="text-teal-600 bg-teal-50" label="Patients" value={users.length.toString()} />
-                  <HorizontalMetric icon={Star} iconColor="text-yellow-500 bg-yellow-50" label="Care Rating" value={`⭐ ${avgPlatformRating.toFixed(1)}`} />
+          {activeTab === "overview" && (() => {
+            // Helper to draw circular stats
+            const renderCircularProgress = (percentage: number, strokeColor: string, label: string) => (
+              <div className="relative w-12 h-12 shrink-0">
+                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                  <circle cx="18" cy="18" r="15.915" fill="none" stroke="#f8fafc" strokeWidth="3.5" />
+                  <circle 
+                    cx="18" cy="18" r="15.915" fill="none" 
+                    stroke={strokeColor} strokeWidth="3.5" 
+                    strokeDasharray={`${Math.min(100, Math.max(5, percentage))}, 100`} 
+                    strokeLinecap="round" 
+                    className="transition-all duration-500"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center text-[10px] font-extrabold text-[#1e2a5a] font-sans">
+                  {label}
                 </div>
               </div>
+            );
 
-              {/* Row 2: Sales comparison double bar chart & progress circles */}
-              <div className="grid gap-6 lg:grid-cols-3">
-                
-                {/* Popular Services utilization card */}
-                <div className="premium-card bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/40 col-span-1 flex flex-col justify-between gap-6 hover:shadow-lg transition-all">
-                  <div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-[#1e2a5a] mb-4">Service Distribution</h3>
-                    
-                    <div className="space-y-4">
-                      {serviceDistribution.map((item) => (
-                        <div key={item.name} className="space-y-1.5">
-                          <div className="flex justify-between text-xs font-semibold">
-                            <span className="text-slate-700 truncate max-w-[70%] font-medium">{item.name}</span>
-                            <span className="text-slate-400 font-bold">{item.percentage}% ({item.count})</span>
-                          </div>
-                          <div className="w-full bg-slate-100 rounded-full h-2">
-                            <div className="bg-[#1e2a5a] h-2 rounded-full transition-all duration-500" style={{ width: `${item.percentage}%` }} />
-                          </div>
-                        </div>
-                      ))}
-                      {serviceDistribution.length === 0 && (
-                        <p className="text-xs text-slate-400 italic">No bookings recorded yet.</p>
-                      )}
+            // Compute donut ring stats for service distribution
+            const topServices = serviceDistribution.slice(0, 3);
+            const totalServiceCount = topServices.reduce((sum, s) => sum + s.count, 0) || 1;
+
+            return (
+              <div className="space-y-6 text-left animate-in fade-in duration-200">
+                {/* Row 1: Four Premium Metric Cards */}
+                <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                  {/* Revenue Card */}
+                  <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm premium-card flex justify-between items-center relative overflow-hidden border-l-4 border-l-emerald-500">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Total Revenue</span>
+                      <span className="text-2xl font-black font-display text-slate-950 mt-1 block">
+                        ₹{totalRevenue.toLocaleString()}
+                      </span>
+                      <span className="text-[9px] text-emerald-600 font-extrabold block mt-0.5">● Collected Payouts</span>
+                    </div>
+                    {renderCircularProgress(85, "#10b981", "85%")}
+                  </div>
+
+                  {/* Bookings Card */}
+                  <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm premium-card flex justify-between items-center relative overflow-hidden border-l-4 border-l-[#1e2a5a]">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Active Bookings</span>
+                      <span className="text-2xl font-black font-display text-slate-950 mt-1 block">
+                        {bookings.length}
+                      </span>
+                      <span className="text-[9px] text-slate-400 font-bold block mt-0.5">● Total allocation request</span>
+                    </div>
+                    {renderCircularProgress(72, "#1e2a5a", `${bookings.length}`)}
+                  </div>
+
+                  {/* Patients Card */}
+                  <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm premium-card flex justify-between items-center relative overflow-hidden border-l-4 border-l-cyan-500">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Patients Registered</span>
+                      <span className="text-2xl font-black font-display text-slate-950 mt-1 block">
+                        {users.length}
+                      </span>
+                      <span className="text-[9px] text-slate-400 font-bold block mt-0.5">● Unique health profiles</span>
+                    </div>
+                    {renderCircularProgress(90, "#06b6d4", `${users.length}`)}
+                  </div>
+
+                  {/* Ratings Card */}
+                  <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm premium-card flex justify-between items-center relative overflow-hidden border-l-4 border-l-[#c9a24c]">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Care Rating</span>
+                      <span className="text-2xl font-black font-display text-slate-950 mt-1 block">
+                        {avgPlatformRating.toFixed(1)} ⭐
+                      </span>
+                      <span className="text-[9px] text-[#c9a24c] font-bold block mt-0.5">● Platform average score</span>
+                    </div>
+                    {renderCircularProgress(avgPlatformRating * 20, "#c9a24c", `${avgPlatformRating.toFixed(1)}`)}
+                  </div>
+                </div>
+
+                {/* Row 2: Analytics & Charts */}
+                <div className="grid gap-6 lg:grid-cols-12">
+                  {/* Service Distribution Pie/Donut Legend */}
+                  <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm lg:col-span-4 flex flex-col justify-between hover:shadow-md transition-all premium-card">
+                    <div>
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-[#1e2a5a] mb-4">Service distribution</h3>
+                      
+                      <div className="flex justify-center py-4 relative">
+                        {/* Custom visual Concentric Donut Rings */}
+                        <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 36 36">
+                          <circle cx="18" cy="18" r="15.915" fill="none" stroke="#f8fafc" strokeWidth="3" />
+                          {topServices.map((item, idx) => {
+                            const colors = ["#1e2a5a", "#c9a24c", "#06b6d4"];
+                            const radius = 15.915 - idx * 2.5;
+                            const percentage = Math.round((item.count / totalServiceCount) * 100);
+                            return (
+                              <circle 
+                                key={item.name}
+                                cx="18" cy="18" r={radius} fill="none" 
+                                stroke={colors[idx % colors.length]} strokeWidth="2.2" 
+                                strokeDasharray={`${percentage}, 100`} 
+                                strokeLinecap="round"
+                              />
+                            );
+                          })}
+                        </svg>
+                      </div>
+
+                      <div className="space-y-3.5 mt-4">
+                        {serviceDistribution.map((item, idx) => {
+                          const colors = ["bg-[#1e2a5a]", "bg-[#c9a24c]", "bg-[#06b6d4]", "bg-slate-400"];
+                          return (
+                            <div key={item.name} className="space-y-1">
+                              <div className="flex justify-between text-[11px] font-bold">
+                                <span className="text-slate-700 truncate max-w-[70%] font-semibold flex items-center gap-1.5">
+                                  <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${colors[idx % colors.length]}`} />
+                                  {item.name}
+                                </span>
+                                <span className="text-slate-400 font-extrabold">{item.percentage}% ({item.count})</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {serviceDistribution.length === 0 && (
+                          <p className="text-xs text-slate-400 italic">No service bookings found.</p>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Staff utilization rate */}
-                  <div className="border-t border-slate-100 pt-4 flex items-center justify-between gap-4">
-                    <div>
-                      <span className="block text-2xl font-black font-display text-slate-900">{caregiverUtilizationRate}%</span>
-                      <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Staff Utilization</span>
-                    </div>
-                    {/* SVG circular progress */}
-                    <div className="relative w-14 h-14 shrink-0">
-                      <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                        <path
-                          className="text-slate-100"
-                          strokeWidth="3.5"
-                          stroke="currentColor"
-                          fill="none"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                        <path
-                          className="text-[#c9a24c]"
-                          strokeWidth="3.5"
-                          strokeDasharray={`${caregiverUtilizationRate}, 100`}
-                          strokeLinecap="round"
-                          stroke="currentColor"
-                          fill="none"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-slate-700">
-                        {caregiverUtilizationRate}%
+                  {/* Financial Revenue Trends Column Chart */}
+                  <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm lg:col-span-8 flex flex-col justify-between hover:shadow-md transition-all premium-card">
+                    <div className="flex justify-between items-center mb-6">
+                      <div>
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-[#1e2a5a]">Financial Revenue Trends</h3>
+                        <span className="text-[10px] text-slate-400 font-medium block mt-0.5">Monthly platform earnings metrics based on completed shifts.</span>
                       </div>
+                      <button 
+                        onClick={() => window.print()}
+                        className="px-3.5 py-1.5 rounded-xl border border-[#1e2a5a]/25 bg-slate-50 hover:bg-slate-100 text-[#1e2a5a] text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-sm"
+                      >
+                        Generate Report PDF
+                      </button>
+                    </div>
+
+                    {/* SVG Column Chart with proper dynamic height rendering */}
+                    <div className="h-44 flex items-end justify-between gap-6 px-4">
+                      {monthlyRevenueChart.map((item, idx) => (
+                        <div key={idx} className="flex-1 flex flex-col items-center gap-2 group cursor-pointer">
+                          <div className="w-full flex items-end justify-center h-32 relative">
+                            {/* Payout hover tooltip indicator */}
+                            <div className="absolute bottom-full mb-1 opacity-0 group-hover:opacity-100 transition-opacity bg-[#1e2a5a] text-[#c9a24c] text-[9px] font-bold px-1.5 py-0.5 rounded shadow-md pointer-events-none z-10">
+                              ₹{item.value.toLocaleString()}
+                            </div>
+                            
+                            <div 
+                              style={{ height: `${item.height}%` }}
+                              className="bg-gradient-to-t from-[#1e2a5a]/80 to-[#1e2a5a] group-hover:from-[#c9a24c] group-hover:to-[#c9a24c] transition-all duration-300 rounded-t-lg w-8 sm:w-10 shadow-sm flex flex-col justify-end items-center text-[8px] text-white font-extrabold pb-1.5"
+                            >
+                              {item.value > 0 && <span className="mb-0.5 truncate px-0.5">₹{item.value > 999 ? `${(item.value/1000).toFixed(0)}k` : item.value}</span>}
+                            </div>
+                          </div>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{item.label}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
 
-                {/* Sales & Views Chart */}
-                <div className="premium-card bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/40 col-span-1 lg:col-span-2 flex flex-col justify-between hover:shadow-lg transition-all">
-                  <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-[#1e2a5a]">Financial Revenue Trends</h3>
-                    <button 
-                      onClick={() => window.print()}
-                      className="px-3.5 py-2 rounded-xl border border-[#1e2a5a]/20 bg-slate-50 hover:bg-slate-100 text-[#1e2a5a] text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all hover:-translate-y-0.5 shadow-sm"
+                {/* Row 3: Recently Registered Caregivers / Staff */}
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all premium-card">
+                  <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-5">
+                    <div>
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-[#1e2a5a]">Active staff &amp; caretakers</h3>
+                      <span className="text-[10px] text-slate-400 font-medium block mt-0.5">Recently registered health professionals and their current credentials.</span>
+                    </div>
+                    <button
+                      onClick={() => setActiveTab("caregivers")}
+                      className="text-xs font-bold text-[#c9a24c] hover:underline cursor-pointer"
                     >
-                      Generate Report PDF
+                      Manage Staff &rarr;
                     </button>
                   </div>
 
-                  {/* SVG Bar Chart mapped from actual database records */}
-                  <div className="h-44 flex items-end justify-between gap-6 px-2">
-                    {monthlyRevenueChart.map((item, idx) => (
-                      <div key={idx} className="flex-1 flex flex-col items-center gap-2">
-                        <div className="w-full flex items-end justify-center h-32">
-                          <div className="bg-[#1e2a5a] hover:bg-[#c9a24c] transition-all rounded-t-lg w-8 shadow-sm flex flex-col justify-end items-center text-[8px] text-white font-extrabold pb-1.5 h-0" style={{ height: `${item.height}%` }}>
-                            {item.value > 0 && <span className="mb-0.5 truncate px-0.5">₹{item.value > 999 ? `${(item.value/1000).toFixed(0)}k` : item.value}</span>}
-                          </div>
+                  <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                    {caregivers.slice(0, 4).map((cg) => (
+                      <div key={cg.id} className="border border-slate-100 hover:border-[#c9a24c]/40 rounded-xl p-4 bg-slate-50/30 flex flex-col justify-between items-center text-center gap-3 transition-colors">
+                        <div className="h-12 w-12 rounded-full bg-gradient-to-tr from-[#1e2a5a]/20 to-[#1e2a5a]/5 flex items-center justify-center font-bold text-[#1e2a5a] border border-[#1e2a5a]/10">
+                          {cg.name.charAt(0)}
                         </div>
-                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{item.label}</span>
+                        <div>
+                          <h4 className="font-bold text-slate-800 text-sm truncate max-w-[150px]">{cg.name}</h4>
+                          <span className="text-[10px] text-slate-400 font-semibold block mt-0.5">{cg.specialty}</span>
+                          <span className="text-[9px] text-slate-450 font-medium block mt-0.5">{cg.phone}</span>
+                        </div>
+                        <div>
+                          {cg.status === "Verified" ? (
+                            <span className="inline-flex items-center gap-1 text-[9px] text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full font-bold">
+                              ✓ Verified
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[9px] text-amber-700 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full font-bold">
+                              ● Pending
+                            </span>
+                          )}
+                        </div>
                       </div>
                     ))}
+                    {caregivers.length === 0 && (
+                      <p className="col-span-full py-6 text-center text-xs text-slate-400 italic">No registered staff found in records.</p>
+                    )}
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Bookings View panel */}
           {activeTab === "bookings" && (
