@@ -1536,9 +1536,9 @@ function CustomerDashboard() {
                   <div className="grid gap-5 grid-cols-1 sm:grid-cols-3">
                     <div className="rounded-3xl border border-[#c9a24c]/30 bg-gradient-to-tr from-[#1e2a5a] to-[#151c3e] p-6 text-white shadow-md relative overflow-hidden">
                       <div className="absolute top-0 right-0 w-24 h-24 bg-[#c9a24c]/10 rounded-full blur-xl pointer-events-none"></div>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#c9a24c]">Estimated Payout (85%)</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#c9a24c]">Earnings Payout</span>
                       <div className="text-3xl font-bold font-display mt-2">₹{estimatedEarnings.toLocaleString()}</div>
-                      <p className="text-[10px] text-slate-350 mt-1 leading-relaxed">After Amma Seva 15% platform matching convenience fee.</p>
+                      <p className="text-[10px] text-slate-350 mt-1 leading-relaxed">Total payout amount approved and scheduled by administrator.</p>
                     </div>
 
                     <div className="rounded-3xl border border-slate-200/60 bg-white p-6 shadow-sm">
