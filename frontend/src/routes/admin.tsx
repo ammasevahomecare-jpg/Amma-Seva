@@ -1875,23 +1875,23 @@ function AdminPage() {
                   .reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
 
                 return (
-                  <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl w-full max-w-3xl shadow-xl flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-250 text-left border border-slate-100">
+                  <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[80vh] overflow-hidden animate-in zoom-in-95 duration-200 text-left border border-slate-200">
                       
                       {/* Modal Header */}
-                      <div className="bg-[#1e2a5a] text-slate-100 p-6 flex justify-between items-start">
+                      <div className="bg-gradient-to-r from-[#1e2a5a] to-[#121936] p-6 flex justify-between items-center border-b border-[#c9a24c]/20">
                         <div className="flex items-center gap-4">
-                          <div className="h-14 w-14 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center font-black text-2xl text-white">
+                          <div className="h-14 w-14 rounded-2xl bg-gradient-to-tr from-[#c9a24c] to-[#e5c06b] flex items-center justify-center font-black text-2xl text-[#1e2a5a] shadow-md border border-white/20 shrink-0">
                             {u.name.charAt(0)}
                           </div>
                           <div>
-                            <h4 className="font-extrabold text-xl tracking-tight">{u.name}</h4>
-                            <p className="text-xs text-slate-300 mt-1 font-semibold">{u.email} • {u.phone}</p>
+                            <h4 className="font-extrabold text-xl tracking-tight text-white font-display">{u.name}</h4>
+                            <p className="text-xs text-slate-300 mt-1.5 font-semibold">{u.email} • {u.phone}</p>
                           </div>
                         </div>
                         <button 
                           onClick={() => setSelectedUserForDetails(null)}
-                          className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold cursor-pointer transition-all"
+                          className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold cursor-pointer transition-all border border-white/5"
                         >
                           ✕
                         </button>
@@ -1901,32 +1901,35 @@ function AdminPage() {
                       <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-slate-50/50">
                         {/* Quick Stats Grid */}
                         <div className="grid grid-cols-3 gap-4">
-                          <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm text-center">
-                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Total Bookings</span>
+                          <div className="bg-white border border-slate-200/80 border-l-4 border-l-[#1e2a5a] rounded-xl p-4 shadow-sm text-center">
+                            <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block">Total Bookings</span>
                             <span className="text-xl font-black text-[#1e2a5a] mt-1 block">{userBookings.length}</span>
                           </div>
-                          <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm text-center">
-                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Completed Shifts</span>
+                          <div className="bg-white border border-slate-200/80 border-l-4 border-l-emerald-500 rounded-xl p-4 shadow-sm text-center">
+                            <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block">Completed Shifts</span>
                             <span className="text-xl font-black text-emerald-600 mt-1 block">
                               {userBookings.filter(b => b.status === "Completed").length}
                             </span>
                           </div>
-                          <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm text-center">
-                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Total Paid Value</span>
+                          <div className="bg-white border border-slate-200/80 border-l-4 border-l-[#c9a24c] rounded-xl p-4 shadow-sm text-center">
+                            <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block">Total Paid Value</span>
                             <span className="text-xl font-black text-[#c9a24c] mt-1 block">₹{totalSpent.toLocaleString()}</span>
                           </div>
                         </div>
 
                         {/* Booking Logs History list */}
                         <div className="space-y-3">
-                          <h5 className="text-xs font-bold text-[#1e2a5a] uppercase tracking-wider">Historical Booking Logs</h5>
+                          <div className="border-b border-slate-100 pb-2 mb-3">
+                            <h5 className="text-xs font-bold text-[#1e2a5a] uppercase tracking-wider">Historical Booking Logs</h5>
+                            <span className="text-[10px] text-slate-400 font-medium block mt-0.5">Audit records of patient medical shift allocations.</span>
+                          </div>
                           
                           <div className="space-y-3">
                             {userBookings.map((b) => (
-                              <div key={b.id} className="bg-white border border-slate-150 rounded-2xl p-4 shadow-sm space-y-3">
+                              <div key={b.id} className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm space-y-3 hover:border-[#c9a24c]/30 transition-colors">
                                 <div className="flex justify-between items-start">
                                   <div>
-                                    <div className="font-extrabold text-slate-800 text-sm">{b.service}</div>
+                                    <div className="font-extrabold text-[#1e2a5a] text-sm">{b.service}</div>
                                     <div className="text-[10px] text-slate-400 mt-0.5 font-bold">📅 {b.date} • {b.time} ({b.duration})</div>
                                   </div>
                                   <div className="flex gap-2">
@@ -1954,12 +1957,12 @@ function AdminPage() {
                                 )}
 
                                 {b.patientNeeds && (
-                                  <div className="text-[10px] text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100 leading-relaxed">
+                                  <div className="text-[10px] text-slate-650 bg-slate-50 p-2.5 rounded-lg border border-slate-100 leading-relaxed">
                                     <span className="font-bold text-slate-700">Patient Needs:</span> {b.patientNeeds}
                                   </div>
                                 )}
 
-                                <div className="flex gap-3 text-[10px]">
+                                <div className="flex gap-3 text-[10px] border-t border-slate-50 pt-2">
                                   {b.googleMapLocation && (
                                     <a href={b.googleMapLocation} target="_blank" rel="noopener noreferrer" className="text-[#c9a24c] font-bold hover:underline">
                                       🗺️ Map Location
@@ -1975,7 +1978,7 @@ function AdminPage() {
                             ))}
 
                             {userBookings.length === 0 && (
-                              <p className="text-center text-xs text-slate-400 italic py-4 bg-white border border-slate-100 rounded-xl">No historical shift logs found for this patient.</p>
+                              <p className="text-center text-xs text-slate-400 italic py-6 bg-white border border-slate-200/80 rounded-2xl">No historical shift logs found for this patient.</p>
                             )}
                           </div>
                         </div>
@@ -1986,7 +1989,7 @@ function AdminPage() {
                       <div className="border-t border-slate-100 p-4 bg-slate-50 flex justify-end">
                         <button
                           onClick={() => setSelectedUserForDetails(null)}
-                          className="px-5 py-2 rounded-xl bg-slate-200 hover:bg-slate-350 text-slate-700 text-xs font-bold transition-all cursor-pointer"
+                          className="px-5 py-2 rounded-xl bg-[#1e2a5a] hover:bg-[#121936] text-white text-xs font-bold transition-all cursor-pointer shadow-sm"
                         >
                           Close Details
                         </button>
