@@ -880,7 +880,7 @@ function AdminPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-3">
-          <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+          <div className="w-8 h-8 border-3 border-[#1e2a5a] border-t-transparent rounded-full animate-spin"></div>
           <p className="text-sm text-muted-foreground font-medium">Verifying admin credentials...</p>
         </div>
       </div>
@@ -1004,7 +1004,11 @@ function AdminPage() {
               className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 relative transition-colors"
               title="Sync Database"
             >
-              <RefreshCw className={`h-5 w-5 ${isLoading ? "animate-spin" : ""}`} />
+              {isLoading ? (
+                <div className="w-5 h-5 border-2 border-[#1e2a5a] border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <RefreshCw className="h-5 w-5" />
+              )}
             </button>
             
             <div className="h-9 w-9 rounded-full bg-[#1e2a5a] border border-[#c9a24c]/40 flex items-center justify-center text-sm font-bold text-white uppercase select-none shadow-sm shadow-black/10">
@@ -2723,7 +2727,7 @@ function AdminPage() {
                 disabled={isLoading}
                 className="btn-primary w-full py-3 mt-6 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-md text-xs font-bold transition-all"
               >
-                {isLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                {isLoading ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0"></span> : <CheckCircle2 className="h-4 w-4" />}
                 {isLoading ? "Saving changes..." : "Save Record"}
               </button>
             </form>

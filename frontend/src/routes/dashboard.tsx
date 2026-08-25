@@ -314,8 +314,8 @@ function CustomerDashboard() {
       }
       const details = data.details;
       setCaretaker(details);
-      setCaretakerReviews(data.reviews || []);
-      setCaretakerAvgRating(data.avgRating !== undefined ? data.avgRating : 5);
+      setCaretakerReviews(details.reviews || []);
+      setCaretakerAvgRating(details.rating !== undefined ? details.rating : 0);
       setCaretakerName(details.name || "");
       setCaretakerPhone(details.phone || "");
       setCaretakerSpecialty(details.specialty || "Elderly Care");
@@ -908,7 +908,7 @@ function CustomerDashboard() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-3">
-          <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+          <div className="w-8 h-8 border-3 border-[#1e2a5a] border-t-transparent rounded-full animate-spin"></div>
           <p className="text-sm text-muted-foreground font-medium">Verifying credentials...</p>
         </div>
       </div>
@@ -951,9 +951,14 @@ function CustomerDashboard() {
                           <span className="inline-flex items-center justify-center gap-1.5 w-full py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-100 text-xs font-bold uppercase tracking-wider">
                             <CheckCircle2 className="h-3.5 w-3.5" /> Active Partner
                           </span>
-                          <div className="flex items-center justify-center gap-1 bg-amber-50/50 border border-amber-200/40 px-2.5 py-1 rounded-xl w-max mx-auto shadow-inner text-xs font-extrabold text-amber-700">
-                            ★ {caretakerAvgRating.toFixed(1)} <span className="text-[10px] text-slate-400 font-bold ml-0.5">({caretakerReviews.length})</span>
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setActiveCaregiverTab("reviews")}
+                            className="flex items-center justify-center gap-1 bg-amber-50/50 hover:bg-amber-100/70 border border-amber-200/40 px-2.5 py-1 rounded-xl w-max mx-auto shadow-inner text-xs font-extrabold text-amber-700 cursor-pointer transition-all hover:scale-105"
+                            title="View Customer Reviews"
+                          >
+                            ★ {caretakerReviews.length > 0 ? caretakerAvgRating.toFixed(1) : "0.0"} <span className="text-[10px] text-slate-400 font-bold ml-0.5">({caretakerReviews.length})</span>
+                          </button>
                         </div>
                       ) : caretaker?.status === "Rejected" ? (
                         <span className="inline-flex items-center justify-center gap-1.5 w-full py-1.5 rounded-xl bg-rose-50 text-rose-800 border border-rose-100 text-xs font-bold uppercase tracking-wider">
@@ -1155,7 +1160,7 @@ function CustomerDashboard() {
                       if (isLoading) {
                         return (
                           <div className="flex justify-center py-6">
-                            <RefreshCw className="h-6 w-6 text-indigo-600 animate-spin" />
+                            <div className="w-6 h-6 border-2 border-[#1e2a5a] border-t-transparent rounded-full animate-spin"></div>
                           </div>
                         );
                       }
@@ -1409,7 +1414,7 @@ function CustomerDashboard() {
                                     onClick={() => handleSaveVitalsAndLogs(shift.id, shift)}
                                     className="px-4 py-1.5 text-xs font-bold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 cursor-pointer flex items-center gap-1 shadow-sm disabled:opacity-50"
                                   >
-                                    {isSavingLog && <RefreshCw className="h-3 w-3 animate-spin" />}
+                                    {isSavingLog && <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0"></span>}
                                     {isSavingLog ? "Saving..." : "Save Vitals & Log Entry"}
                                   </button>
                                 </div>
@@ -1937,7 +1942,7 @@ function CustomerDashboard() {
                     disabled={isCaretakerSaving}
                     className="btn-primary py-2.5 px-8 font-semibold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 w-full sm:w-auto"
                   >
-                    {isCaretakerSaving && <RefreshCw className="h-4 w-4 animate-spin" />}
+                    {isCaretakerSaving && <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0"></span>}
                     {isCaretakerSaving ? "Saving profile details..." : "Save Profile Details"}
                   </button>
                 </div>
@@ -2094,7 +2099,7 @@ function CustomerDashboard() {
                 if (isLoading) {
                   return (
                     <div className="flex justify-center py-20">
-                      <RefreshCw className="h-10 w-10 text-gold animate-spin" />
+                      <div className="w-10 h-10 border-3 border-[#c9a24c] border-t-transparent rounded-full animate-spin"></div>
                     </div>
                   );
                 }
@@ -2517,7 +2522,7 @@ function CustomerDashboard() {
                                     disabled={isReviewSubmitting}
                                     className="btn-primary inline-flex items-center gap-1.5 text-xs py-2 px-4 shadow-sm"
                                   >
-                                    {isReviewSubmitting ? <RefreshCw className="h-3 w-3 animate-spin" /> : "Submit Care Review"}
+                                    {isReviewSubmitting ? <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0"></span> : "Submit Care Review"}
                                   </button>
                                 </div>
                               </div>
@@ -2979,7 +2984,7 @@ function CustomerDashboard() {
                           disabled={isSubmitting || isPaymentProcessing || !agreeTermsBooking}
                           className="btn-primary py-2.5 px-6 font-semibold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 w-1/2 sm:w-auto"
                         >
-                          {(isSubmitting || isPaymentProcessing) && <RefreshCw className="h-4 w-4 animate-spin" />}
+                          {(isSubmitting || isPaymentProcessing) && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0"></span>}
                           {isPaymentProcessing 
                             ? "Verifying..." 
                             : isSubmitting 
