@@ -170,6 +170,7 @@ function AdminPage() {
   const [bookingPaymentMethod, setBookingPaymentMethod] = useState("UPI");
   const [bookingTransactionId, setBookingTransactionId] = useState("");
   const [bookingPaymentDate, setBookingPaymentDate] = useState("");
+  const [bookingCaretakerPayout, setBookingCaretakerPayout] = useState("");
 
   // Form states - Caregiver
   const [caregiverName, setCaregiverName] = useState("");
@@ -489,6 +490,7 @@ function AdminPage() {
       setBookingPaymentMethod("UPI");
       setBookingTransactionId("");
       setBookingPaymentDate("");
+      setBookingCaretakerPayout("0");
     } else if (type === "caregiver") {
       setCaregiverName("");
       setCaregiverPhone("");
@@ -565,6 +567,7 @@ function AdminPage() {
       setBookingPaymentMethod(record.paymentMethod || "");
       setBookingTransactionId(record.transactionId || "");
       setBookingPaymentDate(record.paymentDate || "");
+      setBookingCaretakerPayout(record.caretakerPayout?.toString() || "0");
       setBookingPatientName(record.patientName || "");
       setBookingPatientAge(record.patientAge || "");
       setBookingPatientNeeds(record.patientNeeds || "");
@@ -661,6 +664,7 @@ function AdminPage() {
         duration: bookingDuration,
         address: bookingAddress,
         amount: Number(bookingAmount) || 1200,
+        caretakerPayout: Number(bookingCaretakerPayout) || 0,
         status: bookingStatus,
         assignedStaff: bookingAssignedStaff || null,
         paymentStatus: bookingPaymentStatus,
@@ -2149,6 +2153,16 @@ function AdminPage() {
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Booking Amount (₹)</label>
                       <input 
                         type="number" required value={bookingAmount} onChange={e => setBookingAmount(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Caretaker Payout Amount (₹)</label>
+                      <input 
+                        type="number" required value={bookingCaretakerPayout} onChange={e => setBookingCaretakerPayout(e.target.value)}
                         className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
                       />
                     </div>

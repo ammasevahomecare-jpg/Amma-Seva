@@ -1056,6 +1056,21 @@ function CustomerDashboard() {
                       </button>
                     )}
 
+                    {caretaker?.status === "Verified" && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveCaregiverTab("earnings")}
+                        className={`w-full py-3 px-4 rounded-2xl text-xs font-bold uppercase tracking-wider flex items-center gap-3 cursor-pointer transition-all ${
+                          activeCaregiverTab === "earnings"
+                            ? "bg-[#1e2a5a] text-white shadow-md shadow-[#1e2a5a]/20"
+                            : "text-slate-500 hover:text-[#1e2a5a] hover:bg-slate-50 border border-transparent hover:border-slate-200/50"
+                        }`}
+                      >
+                        <DollarSign className="h-4 w-4 shrink-0 text-[#c9a24c]" />
+                        <span className="text-left flex-1 font-sans">Earnings & Duty Logs</span>
+                      </button>
+                    )}
+
                     {caretaker?.status !== "Verified" && (
                         <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
                     )}
@@ -1501,6 +1516,112 @@ function CustomerDashboard() {
                 )}
               </>
             )}
+
+            {/* Earnings & Duty Logs tab */}
+            {activeCaregiverTab === "earnings" && (() => {
+              const completedShifts = caretakerBookings.filter(b => b.status === "Completed");
+              
+              const getShiftPayout = (b: any) => {
+                return b.caretakerPayout !== undefined && b.caretakerPayout !== null && Number(b.caretakerPayout) > 0
+                  ? Number(b.caretakerPayout)
+                  : Math.round(Number(b.amount || 0) * 0.85);
+              };
+
+              const estimatedEarnings = completedShifts.reduce((sum, b) => sum + getShiftPayout(b), 0);
+              const estimatedHours = completedShifts.length * 8; // Simulating 8 hours per completed shift duration
+
+              return (
+                <div className="space-y-6 text-left animate-in fade-in duration-300">
+                  {/* Earnings Metric Grid */}
+                  <div className="grid gap-5 grid-cols-1 sm:grid-cols-3">
+                    <div className="rounded-3xl border border-[#c9a24c]/30 bg-gradient-to-tr from-[#1e2a5a] to-[#151c3e] p-6 text-white shadow-md relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-[#c9a24c]/10 rounded-full blur-xl pointer-events-none"></div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#c9a24c]">Estimated Payout (85%)</span>
+                      <div className="text-3xl font-bold font-display mt-2">₹{estimatedEarnings.toLocaleString()}</div>
+                      <p className="text-[10px] text-slate-350 mt-1 leading-relaxed">After Amma Seva 15% platform matching convenience fee.</p>
+                    </div>
+
+                    <div className="rounded-3xl border border-slate-200/60 bg-white p-6 shadow-sm">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total Shifts Completed</span>
+                      <div className="text-3xl font-bold text-[#1e2a5a] font-display mt-2">{completedShifts.length}</div>
+                      <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">Active allocations assigned & delivered successfully.</p>
+                    </div>
+
+                    <div className="rounded-3xl border border-slate-200/60 bg-white p-6 shadow-sm">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Estimated On-Duty Hours</span>
+                      <div className="text-3xl font-bold text-[#1e2a5a] font-display mt-2">{estimatedHours} Hrs</div>
+                      <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">Calculated based on standard completed duty logs.</p>
+                    </div>
+                  </div>
+
+                  {/* Earnings Graph simulator using clean custom CSS */}
+                  <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/60 shadow-sm space-y-6">
+                    <div>
+                      <h3 className="text-base font-bold text-[#1e2a5a] font-display">Monthly Shift Activity Analytics</h3>
+                      <p className="text-xs text-slate-450 mt-0.5">Visual representation of shifts completed over recent booking intervals.</p>
+                    </div>
+
+                    {completedShifts.length > 0 ? (
+                      <div className="space-y-4">
+                        <div className="flex items-end justify-between gap-3 h-40 pt-4 px-2 border-b border-slate-100">
+                          {completedShifts.slice(-6).map((shift) => {
+                            const payout = getShiftPayout(shift);
+                            const maxPayout = Math.max(...completedShifts.map(s => getShiftPayout(s))) || 1;
+                            const barHeight = Math.min(100, Math.max(20, Math.round((payout / maxPayout) * 100)));
+                            return (
+                              <div key={shift.id} className="flex-1 flex flex-col items-center gap-2 group cursor-pointer">
+                                <div className="text-[9px] font-extrabold text-[#c9a24c] opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                  ₹{payout}
+                                </div>
+                                <div 
+                                  style={{ height: `${barHeight}%` }} 
+                                  className="w-full sm:w-12 rounded-t-lg bg-gradient-to-t from-[#1e2a5a]/70 to-[#1e2a5a] group-hover:from-[#c9a24c] group-hover:to-[#c9a24c] transition-all duration-300 shadow-sm"
+                                ></div>
+                                <span className="text-[9px] font-bold text-slate-400 uppercase truncate max-w-full">
+                                  Shift #{shift.id}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="flex justify-between text-[10px] text-slate-400 font-bold px-2">
+                          <span>Oldest Completed</span>
+                          <span>Most Recent Shift</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="py-8 text-center text-slate-450">
+                        <DollarSign className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                        <p className="text-xs font-bold">No completed shift transactions recorded to compile analytics.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Premium Shift Logs list */}
+                  <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/60 shadow-sm space-y-4">
+                    <h3 className="text-base font-bold text-[#1e2a5a] font-display border-b border-slate-100 pb-3">Historical Payout Records</h3>
+                    {completedShifts.length > 0 ? (
+                      <div className="divide-y divide-slate-100">
+                        {completedShifts.map((shift) => (
+                          <div key={shift.id} className="py-3.5 flex justify-between items-center text-xs">
+                            <div>
+                              <div className="font-bold text-slate-800">{shift.service}</div>
+                              <div className="text-slate-400 text-[10px] font-semibold mt-0.5">{shift.date} • Patient: {shift.patientName || shift.name}</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-extrabold text-emerald-600">+₹{getShiftPayout(shift)}</div>
+                              <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Approved Payout</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-450 italic">No historical shift logs found for your profile.</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Customer Reviews tab */}
             {activeCaregiverTab === "reviews" && (

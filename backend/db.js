@@ -763,7 +763,7 @@ export const db = {
   },
 
   addBooking: async (bookingData) => {
-    const { name, phone, service, date, time, duration, address, amount = 1200, paymentStatus = 'Unpaid', paymentMethod = '', transactionId = '', paymentDate = '', prescription = '', googleMapLocation = '' } = bookingData
+    const { name, phone, service, date, time, duration, address, amount = 1200, paymentStatus = 'Unpaid', paymentMethod = '', transactionId = '', paymentDate = '', prescription = '', googleMapLocation = '', caretakerPayout } = bookingData
     const createdAt = new Date().toISOString()
     if (useMySQL) {
       const [result] = await pool.query(
@@ -785,6 +785,7 @@ export const db = {
         status: 'Pending',
         assignedStaff: null,
         amount,
+        caretakerPayout: Number(caretakerPayout) || 0,
         paymentStatus,
         paymentMethod,
         transactionId,
@@ -1278,7 +1279,7 @@ export const db = {
 
   // Admin CRUD operations: Bookings (Full Edit & Delete)
   adminUpdateBooking: async (id, bookingData) => {
-    const { name, phone, service, date, time, duration, address, status, assignedStaff, amount, paymentStatus, paymentMethod = '', transactionId = '', paymentDate = '' } = bookingData
+    const { name, phone, service, date, time, duration, address, status, assignedStaff, amount, paymentStatus, paymentMethod = '', transactionId = '', paymentDate = '', caretakerPayout } = bookingData
     if (useMySQL) {
       const [result] = await pool.query(
         'UPDATE bookings SET name = ?, phone = ?, service = ?, date = ?, time = ?, duration = ?, address = ?, status = ?, assignedStaff = ?, amount = ?, paymentStatus = ?, paymentMethod = ?, transactionId = ?, paymentDate = ? WHERE id = ?',
@@ -1301,6 +1302,7 @@ export const db = {
           status,
           assignedStaff: assignedStaff || null,
           amount: Number(amount),
+          caretakerPayout: caretakerPayout !== undefined ? Number(caretakerPayout) : (data.bookings[idx].caretakerPayout || 0),
           paymentStatus,
           paymentMethod,
           transactionId,
