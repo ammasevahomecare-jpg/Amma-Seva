@@ -1430,14 +1430,14 @@ function CustomerDashboard() {
                     </div>
                     <div>
                       <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Google Map Location (GPS Link)</label>
-                      <div className="flex gap-3">
+                      <div className="flex flex-col sm:flex-row gap-3">
                         <input
                           type="text"
                           readOnly
                           required
                           value={caretakerGoogleMapLocation}
                           placeholder="Click button to fetch GPS coordinates..."
-                          className="flex-1 px-4 py-3 text-xs rounded-2xl border border-slate-200 bg-slate-100/50 outline-none truncate font-mono text-slate-600"
+                          className="flex-1 w-full px-4 py-3 text-xs rounded-2xl border border-slate-200 bg-slate-100/50 outline-none truncate font-mono text-slate-600"
                         />
                         <button
                           type="button"
@@ -1461,7 +1461,7 @@ function CustomerDashboard() {
                             );
                           }}
                           disabled={isFetchingLocation}
-                          className="px-5 py-3 bg-[#1e2a5a] hover:bg-[#1e2a5a]/90 text-white text-xs font-bold uppercase tracking-wider rounded-2xl flex items-center gap-2 shrink-0 disabled:opacity-50 cursor-pointer shadow-sm shadow-[#1e2a5a]/10 transition-all hover:translate-y-[-1px]"
+                          className="px-5 py-3 bg-[#1e2a5a] hover:bg-[#1e2a5a]/90 text-white text-xs font-bold uppercase tracking-wider rounded-2xl flex items-center justify-center gap-2 shrink-0 disabled:opacity-50 cursor-pointer shadow-sm shadow-[#1e2a5a]/10 transition-all hover:translate-y-[-1px] w-full sm:w-auto text-center"
                         >
                           {isFetchingLocation ? "Fetching..." : "Fetch GPS Location"}
                         </button>

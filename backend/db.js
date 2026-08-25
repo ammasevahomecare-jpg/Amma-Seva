@@ -7,7 +7,7 @@ import bcrypt from 'bcryptjs'
 // Resolve dirname
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-const JSON_DB_PATH = path.join(__dirname, 'db.json')
+const JSON_DB_PATH = process.env.DB_PATH || path.join(__dirname, 'db.json')
 
 let pool = null
 let useMySQL = false

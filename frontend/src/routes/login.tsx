@@ -489,14 +489,14 @@ function LoginPage() {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Google Map Location</label>
-                      <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <input
                           type="text"
                           readOnly
                           required
                           value={googleMapLocation}
                           placeholder="Fetch map coordinates..."
-                          className="flex-1 px-3 py-2 text-xs rounded-md border border-slate-200 bg-slate-100 outline-none truncate"
+                          className="flex-1 w-full px-3 py-2 text-xs rounded-md border border-slate-200 bg-slate-100 outline-none truncate"
                         />
                         <button
                           type="button"
@@ -520,7 +520,7 @@ function LoginPage() {
                             );
                           }}
                           disabled={isFetchingLocation}
-                          className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-md flex items-center gap-1 shrink-0 disabled:opacity-50 cursor-pointer"
+                          className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-md flex items-center justify-center gap-1 shrink-0 disabled:opacity-50 cursor-pointer w-full sm:w-auto text-center"
                         >
                           {isFetchingLocation ? "Fetching..." : "Fetch GPS Location"}
                         </button>
