@@ -2558,74 +2558,84 @@ function AdminPage() {
                     <div className="space-y-4">
                     <h4 className="text-sm font-extrabold text-[#1e2a5a] uppercase tracking-wider">Employee Salaries Breakdown</h4>
                     
-                    <div className="grid gap-4 grid-cols-1">
-                      {caregivers
-                        .filter((cg) => {
-                          const q = salarySearch.toLowerCase();
-                          return !salarySearch || 
-                            cg.name.toLowerCase().includes(q) || 
-                            cg.specialty.toLowerCase().includes(q) ||
-                            (cg.uniqueId && cg.uniqueId.toLowerCase().includes(q));
-                        })
-                        .map((cg) => {
-                          const cgBookings = bookings.filter(b => b.assignedStaff === cg.name);
-                          const completed = cgBookings.filter(b => b.status === "Completed");
-                          const earned = completed.reduce((sum, b) => sum + getPayoutValue(b), 0);
-                          const paid = completed.filter(b => b.caretakerPayoutStatus === "Paid").reduce((sum, b) => sum + getPayoutValue(b), 0);
-                          const unpaid = earned - paid;
+                    <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm premium-card">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm text-slate-700">
+                          <thead>
+                            <tr className="border-b border-slate-200/80 bg-[#1e2a5a]/5 text-xs text-[#1e2a5a] uppercase font-black tracking-wider">
+                              <th className="py-4 px-6">Staff Member</th>
+                              <th className="py-4 px-6">Total Earned</th>
+                              <th className="py-4 px-6">Total Settled (Paid)</th>
+                              <th className="py-4 px-6 text-amber-600">Outstanding (Unpaid)</th>
+                              <th className="py-4 px-6 text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {caregivers
+                              .filter((cg) => {
+                                const q = salarySearch.toLowerCase();
+                                return !salarySearch || 
+                                  cg.name.toLowerCase().includes(q) || 
+                                  cg.specialty.toLowerCase().includes(q) ||
+                                  (cg.uniqueId && cg.uniqueId.toLowerCase().includes(q));
+                              })
+                              .map((cg) => {
+                                const cgBookings = bookings.filter(b => b.assignedStaff === cg.name);
+                                const completed = cgBookings.filter(b => b.status === "Completed");
+                                const earned = completed.reduce((sum, b) => sum + getPayoutValue(b), 0);
+                                const paid = completed.filter(b => b.caretakerPayoutStatus === "Paid").reduce((sum, b) => sum + getPayoutValue(b), 0);
+                                const unpaid = earned - paid;
 
-                          return (
-                            <div key={cg.id} className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden premium-card">
-                              <div className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                <div className="flex items-center gap-4">
-                                  <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-[#1e2a5a]/10 to-[#1e2a5a]/5 flex items-center justify-center font-bold text-lg text-[#1e2a5a] border border-[#1e2a5a]/10 shrink-0">
-                                    {cg.name.charAt(0)}
-                                  </div>
-                                  <div>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-[#c9a24c]/10 text-[#c9a24c] border border-[#c9a24c]/20 shrink-0">
-                                        {cg.uniqueId}
-                                      </span>
-                                      <h5 className="font-bold text-[#1e2a5a] font-display text-base leading-tight">{cg.name}</h5>
-                                    </div>
-                                    <p className="text-[11px] text-slate-400 font-medium mt-1">{cg.phone} • {cg.specialty}</p>
-                                  </div>
-                                </div>
+                                return (
+                                  <tr key={cg.id} className="hover:bg-slate-50/50 transition-colors">
+                                    <td className="py-4 px-6">
+                                      <div className="flex items-center gap-4">
+                                        <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#1e2a5a]/10 to-[#1e2a5a]/5 flex items-center justify-center font-bold text-base text-[#1e2a5a] border border-[#1e2a5a]/10 shrink-0">
+                                          {cg.name.charAt(0)}
+                                        </div>
+                                        <div>
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-[#c9a24c]/10 text-[#c9a24c] border border-[#c9a24c]/20 shrink-0">
+                                              {cg.uniqueId}
+                                            </span>
+                                            <div className="font-extrabold text-[#1e2a5a] text-sm leading-tight">{cg.name}</div>
+                                          </div>
+                                          <p className="text-[10px] text-slate-400 font-semibold mt-1">{cg.phone} • {cg.specialty}</p>
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td className="py-4 px-6 font-bold text-slate-900">
+                                      ₹{earned.toLocaleString()}
+                                    </td>
+                                    <td className="py-4 px-6 font-bold text-emerald-600">
+                                      ₹{paid.toLocaleString()}
+                                    </td>
+                                    <td className="py-4 px-6 font-bold text-amber-600">
+                                      ₹{unpaid.toLocaleString()}
+                                    </td>
+                                    <td className="py-4 px-6 text-right">
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedCaregiverForLedger(cg)}
+                                        className="px-3.5 py-1.5 rounded-lg border border-[#c9a24c]/40 hover:bg-[#c9a24c]/10 text-[#c9a24c] text-xs font-extrabold tracking-wider uppercase transition-all cursor-pointer shadow-sm"
+                                      >
+                                        👁️ View Ledger ({cgBookings.length})
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
 
-                                <div className="flex flex-wrap gap-4 sm:gap-8 text-xs">
-                                  <div>
-                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Earned</span>
-                                    <div className="font-extrabold text-slate-900 mt-0.5">₹{earned.toLocaleString()}</div>
-                                  </div>
-                                  <div>
-                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Paid</span>
-                                    <div className="font-extrabold text-emerald-600 mt-0.5">₹{paid.toLocaleString()}</div>
-                                  </div>
-                                  <div>
-                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Outstanding</span>
-                                    <div className="font-extrabold text-amber-600 mt-0.5">₹{unpaid.toLocaleString()}</div>
-                                  </div>
-                                </div>
-
-                                <div className="flex gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => setSelectedCaregiverForLedger(cg)}
-                                    className="px-3.5 py-1.5 rounded-lg border border-[#c9a24c]/40 hover:bg-[#c9a24c]/10 text-[#c9a24c] text-xs font-extrabold tracking-wider uppercase transition-all cursor-pointer shadow-sm"
-                                  >
-                                    👁️ View Ledger ({cgBookings.length})
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-
-                      {caregivers.length === 0 && (
-                        <div className="bg-white border border-slate-200/80 rounded-2xl p-8 text-center text-slate-400 font-semibold">
-                          No caregivers registered to compile salary payroll.
-                        </div>
-                      )}
+                            {caregivers.length === 0 && (
+                              <tr>
+                                <td colSpan={5} className="py-8 text-center text-slate-400 text-xs italic font-semibold">
+                                  No caregivers registered to compile salary payroll.
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </div>
                   </>
