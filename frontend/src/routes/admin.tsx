@@ -176,6 +176,7 @@ function AdminPage() {
   const [bookingCaretakerPayoutRef, setBookingCaretakerPayoutRef] = useState("");
   const [payoutCalcMode, setPayoutCalcMode] = useState<"percentage" | "fixed">("percentage");
   const [payoutPercentValue, setPayoutPercentValue] = useState("85");
+  const [isRecordCaretakerPaymentMode, setIsRecordCaretakerPaymentMode] = useState(false);
 
   // Form states - Caregiver
   const [caregiverName, setCaregiverName] = useState("");
@@ -1549,7 +1550,10 @@ function AdminPage() {
                           {/* Action Controls */}
                           <div className="flex gap-2 self-stretch lg:self-auto justify-end border-t lg:border-t-0 border-slate-100 pt-3 lg:pt-0 shrink-0">
                             <button
-                              onClick={() => openEditModal("booking", b)}
+                              onClick={() => {
+                                setIsRecordCaretakerPaymentMode(false);
+                                openEditModal("booking", b);
+                              }}
                               className="px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-[#c9a24c]/15 text-[#c9a24c] border border-slate-200 hover:border-[#c9a24c]/30 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
                             >
                               <Edit3 className="h-3.5 w-3.5" /> Edit
@@ -2202,7 +2206,10 @@ function AdminPage() {
                             </td>
                             <td className="py-4 px-6 text-right">
                               <button
-                                onClick={() => openEditModal("booking", b)}
+                                onClick={() => {
+                                 setIsRecordCaretakerPaymentMode(false);
+                                 openEditModal("booking", b);
+                               }}
                                 className="px-3.5 py-2 rounded-lg border border-slate-200 hover:bg-[#c9a24c]/15 text-[#c9a24c] hover:border-[#c9a24c]/30 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors inline-flex"
                               >
                                 <Edit3 className="h-3.5 w-3.5" /> Record Payment
@@ -2529,7 +2536,10 @@ function AdminPage() {
                                     <td className="py-4 px-6 text-right">
                                       <button
                                         type="button"
-                                        onClick={() => openEditModal("booking", b)}
+                                        onClick={() => {
+                                          setIsRecordCaretakerPaymentMode(true);
+                                          openEditModal("booking", b);
+                                        }}
                                         className="px-3 py-1.5 rounded-lg border border-[#c9a24c]/40 hover:bg-[#c9a24c]/10 text-[#c9a24c] text-[10px] font-extrabold tracking-wider uppercase transition-all cursor-pointer"
                                       >
                                         {b.caretakerPayoutStatus === "Paid" ? "Edit Details" : "Record Payment"}
@@ -3035,7 +3045,8 @@ function AdminPage() {
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Customer Name</label>
                       <input 
                         type="text" required value={bookingName} onChange={e => setBookingName(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
+                        disabled={isRecordCaretakerPaymentMode}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
                       />
                     </div>
                     <div>
@@ -3043,7 +3054,8 @@ function AdminPage() {
                       <input 
                         type="tel" required value={bookingPhone} onChange={e => setBookingPhone(e.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
                         placeholder="10-digit number"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
+                        disabled={isRecordCaretakerPaymentMode}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
                       />
                     </div>
                   </div>
@@ -3052,7 +3064,8 @@ function AdminPage() {
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Select Service</label>
                     <select 
                       value={bookingService} onChange={e => setBookingService(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                      disabled={isRecordCaretakerPaymentMode}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
                     >
                       {services.map(s => (
                         <option key={s.id} value={s.title}>{s.title} ({s.price})</option>
@@ -3065,14 +3078,16 @@ function AdminPage() {
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Date</label>
                       <input 
                         type="date" required value={bookingDate} onChange={e => setBookingDate(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                        disabled={isRecordCaretakerPaymentMode}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
                       />
                     </div>
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Time</label>
                       <input 
                         type="text" required placeholder="e.g. 09:00" value={bookingTime} onChange={e => setBookingTime(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                        disabled={isRecordCaretakerPaymentMode}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
                       />
                     </div>
                   </div>
@@ -3082,7 +3097,8 @@ function AdminPage() {
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Duration</label>
                       <select 
                         value={bookingDuration} onChange={e => setBookingDuration(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                        disabled={isRecordCaretakerPaymentMode}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
                       >
                         <option value="Hourly">Hourly visit</option>
                         <option value="Daily">Daily shift</option>
@@ -3090,11 +3106,12 @@ function AdminPage() {
                         <option value="Monthly">Monthly companion</option>
                       </select>
                     </div>
-<div>
+                    <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Booking Amount (₹)</label>
                       <input 
                         type="number" required value={bookingAmount} onChange={e => setBookingAmount(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                        disabled={isRecordCaretakerPaymentMode}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
                       />
                     </div>
                   </div>
@@ -3226,7 +3243,8 @@ function AdminPage() {
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Caretaker Location Address</label>
                     <textarea 
                       required rows={3} value={bookingAddress} onChange={e => setBookingAddress(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                      disabled={isRecordCaretakerPaymentMode}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
                     />
                   </div>
 
@@ -3235,7 +3253,8 @@ function AdminPage() {
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Status</label>
                       <select 
                         value={bookingStatus} onChange={e => setBookingStatus(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                        disabled={isRecordCaretakerPaymentMode}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
                       >
                         <option value="Pending">Pending</option>
                         <option value="Confirmed">Confirmed</option>
@@ -3246,7 +3265,8 @@ function AdminPage() {
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Assign Staff</label>
                       <select 
                         value={bookingAssignedStaff} onChange={e => setBookingAssignedStaff(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                        disabled={isRecordCaretakerPaymentMode}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
                       >
                         <option value="">-- None --</option>
                         {caregivers
@@ -3260,7 +3280,8 @@ function AdminPage() {
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Payment Status</label>
                       <select 
                         value={bookingPaymentStatus} onChange={e => setBookingPaymentStatus(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                        disabled={isRecordCaretakerPaymentMode}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
                       >
                         <option value="Unpaid">Unpaid</option>
                         <option value="Paid">Paid</option>
@@ -3274,7 +3295,8 @@ function AdminPage() {
                         <label className="block text-xs font-bold uppercase tracking-wider text-emerald-800 mb-1">Payment Method</label>
                         <select 
                           value={bookingPaymentMethod} onChange={e => setBookingPaymentMethod(e.target.value)}
-                          className="w-full px-3 py-2 border border-emerald-200 rounded-lg outline-none bg-white text-emerald-950"
+                          disabled={isRecordCaretakerPaymentMode}
+                          className="w-full px-3 py-2 border border-emerald-200 rounded-lg outline-none bg-white text-emerald-950 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
                         >
                           <option value="UPI">UPI / GPay</option>
                           <option value="Cash">Cash</option>
@@ -3288,14 +3310,16 @@ function AdminPage() {
                         <input 
                           type="text" value={bookingTransactionId} onChange={e => setBookingTransactionId(e.target.value)}
                           placeholder="e.g. TXN98765"
-                          className="w-full px-3 py-2 border border-emerald-200 rounded-lg outline-none bg-white text-emerald-950 animate-in fade-in slide-in-from-top-1 duration-150"
+                          disabled={isRecordCaretakerPaymentMode}
+                          className="w-full px-3 py-2 border border-emerald-200 rounded-lg outline-none bg-white text-emerald-950 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
                         />
                       </div>
                       <div>
                         <label className="block text-xs font-bold uppercase tracking-wider text-emerald-800 mb-1">Payment Date</label>
                         <input 
                           type="date" value={bookingPaymentDate} onChange={e => setBookingPaymentDate(e.target.value)}
-                          className="w-full px-3 py-2 border border-emerald-200 rounded-lg outline-none bg-white text-emerald-950"
+                          disabled={isRecordCaretakerPaymentMode}
+                          className="w-full px-3 py-2 border border-emerald-200 rounded-lg outline-none bg-white text-emerald-950 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
                         />
                       </div>
                     </div>
