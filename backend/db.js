@@ -810,11 +810,38 @@ export const db = {
       const data = await readJSONDb()
       const bookingIdx = data.bookings.findIndex(b => b.id === Number(id))
       if (bookingIdx > -1) {
+        const oldBooking = data.bookings[bookingIdx]
+        const now = new Date().toISOString()
+        
+        let confirmedAt = oldBooking.confirmedAt
+        if ((status === 'Confirmed' || status === 'Active' || status === 'Completed') && !confirmedAt) {
+          confirmedAt = now
+        }
+        
+        let assignedAt = oldBooking.assignedAt
+        if (assignedStaff && assignedStaff !== oldBooking.assignedStaff && !assignedAt) {
+          assignedAt = now
+        }
+        
+        let completedAt = oldBooking.completedAt
+        if (status === 'Completed' && !completedAt) {
+          completedAt = now
+        }
+
+        let cancelledAt = oldBooking.cancelledAt
+        if (status === 'Cancelled' && !cancelledAt) {
+          cancelledAt = now
+        }
+
         data.bookings[bookingIdx] = {
-          ...data.bookings[bookingIdx],
+          ...oldBooking,
           status,
           assignedStaff,
-          paymentStatus
+          paymentStatus,
+          confirmedAt,
+          assignedAt,
+          completedAt,
+          cancelledAt
         }
         await writeJSONDb(data)
         return true
@@ -1562,7 +1589,31 @@ export const db = {
       const data = await readJSONDb()
       const idx = data.bookings.findIndex(b => b.id === Number(id))
       if (idx > -1) {
-        data.bookings[idx].status = status
+        const oldBooking = data.bookings[idx]
+        const now = new Date().toISOString()
+        
+        let confirmedAt = oldBooking.confirmedAt
+        if ((status === 'Confirmed' || status === 'Active' || status === 'Completed') && !confirmedAt) {
+          confirmedAt = now
+        }
+        
+        let completedAt = oldBooking.completedAt
+        if (status === 'Completed' && !completedAt) {
+          completedAt = now
+        }
+
+        let cancelledAt = oldBooking.cancelledAt
+        if (status === 'Cancelled' && !cancelledAt) {
+          cancelledAt = now
+        }
+
+        data.bookings[idx] = {
+          ...oldBooking,
+          status,
+          confirmedAt,
+          completedAt,
+          cancelledAt
+        }
         await writeJSONDb(data)
         return true
       }

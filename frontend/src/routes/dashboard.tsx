@@ -62,6 +62,19 @@ const filterShiftsOrBookings = (list: any[], search: string, startDate: string, 
   return filtered;
 };
 
+const formatStepTime = (isoString?: string) => {
+  if (!isoString) return "";
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return "";
+    return d.toLocaleDateString("en-IN", { month: "short", day: "numeric" }) + 
+           " at " + 
+           d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false });
+  } catch (e) {
+    return "";
+  }
+};
+
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
@@ -410,11 +423,11 @@ function CustomerDashboard() {
   const [caretakerEndDate, setCaretakerEndDate] = useState("");
   const [caretakerReviews, setCaretakerReviews] = useState<any[]>([]);
   const [caretakerAvgRating, setCaretakerAvgRating] = useState<number>(5);
-
   // Customer dashboard filter states
   const [customerSearch, setCustomerSearch] = useState("");
   const [customerStartDate, setCustomerStartDate] = useState("");
   const [customerEndDate, setCustomerEndDate] = useState("");
+  const [expandedBookingIds, setExpandedBookingIds] = useState<Record<number, boolean>>({});
 
   // New Booking State
   const [selectedServiceId, setSelectedServiceId] = useState("elderly");
@@ -2180,14 +2193,13 @@ function CustomerDashboard() {
                                   width: booking.status === "Completed" ? "76%" : 
                                          (booking.status === "Confirmed" || booking.status === "Active") && booking.assignedStaff ? "51%" :
                                          booking.status === "Confirmed" || booking.status === "Active" ? "25%" : "0%"
-                                }} 
-                              />
-                              {/* Step 1: Request Pending */}
+                                                {/* Step 1: Request Pending */}
                               <div className="text-center relative z-10">
                                 <div className="h-6 w-6 rounded-full bg-[#c9a24c] text-white flex items-center justify-center mx-auto text-xs font-bold shadow-sm border border-white">
                                   <Check className="h-3.5 w-3.5" />
                                 </div>
                                 <span className="block text-[9px] font-bold text-slate-650 mt-1">Requested</span>
+                                <span className="block text-[8px] text-slate-400 font-bold mt-0.5">{formatStepTime(booking.createdAt)}</span>
                               </div>
  
                               {/* Step 2: Confirmed */}
@@ -2200,6 +2212,7 @@ function CustomerDashboard() {
                                   {booking.status === "Confirmed" || booking.status === "Active" || booking.status === "Completed" ? <Check className="h-3.5 w-3.5" /> : "2"}
                                 </div>
                                 <span className="block text-[9px] font-bold text-slate-650 mt-1">Confirmed</span>
+                                <span className="block text-[8px] text-slate-400 font-bold mt-0.5">{booking.confirmedAt ? formatStepTime(booking.confirmedAt) : "Pending"}</span>
                               </div>
  
                               {/* Step 3: Caretaker Assigned */}
@@ -2214,6 +2227,7 @@ function CustomerDashboard() {
                                 <span className="block text-[9px] font-bold text-slate-650 mt-1">
                                   {booking.status === "Active" ? "Staff Active" : "Staff Assigned"}
                                 </span>
+                                <span className="block text-[8px] text-slate-400 font-bold mt-0.5">{booking.assignedAt ? formatStepTime(booking.assignedAt) : "Pending"}</span>
                               </div>
  
                               {/* Step 4: Completed */}
@@ -2226,6 +2240,7 @@ function CustomerDashboard() {
                                   {booking.status === "Completed" ? <Check className="h-3.5 w-3.5" /> : "4"}
                                 </div>
                                 <span className="block text-[9px] font-bold text-slate-650 mt-1">Delivered</span>
+                                <span className="block text-[8px] text-slate-400 font-bold mt-0.5">{booking.completedAt ? formatStepTime(booking.completedAt) : "Pending"}</span>
                               </div>
  
                             </div>
