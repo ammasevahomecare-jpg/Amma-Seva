@@ -6,7 +6,7 @@ import {
   Users, Calendar, DollarSign, ShieldAlert, LogOut, CheckCircle2, 
   XCircle, Edit3, Save, Check, LayoutDashboard, CalendarDays,
   UserCheck, MessageSquare, Sliders, Bell, Search, Plus, Send, TrendingDown,
-  ArrowUpRight, Star, BookOpen, HelpCircle, Menu, X, Image
+  ArrowUpRight, Star, BookOpen, HelpCircle, Menu, X, Image, Coins
 } from "lucide-react";
 
 const INDIAN_STATES = [
@@ -133,7 +133,7 @@ function AdminPage() {
   };
 
   // Navigation and Search
-  const [activeTab, setActiveTab] = useState<"overview" | "bookings" | "caregivers" | "enquiries" | "services" | "users" | "notifications" | "payments" | "blogs" | "faqs" | "gallery">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "bookings" | "caregivers" | "enquiries" | "services" | "users" | "notifications" | "payments" | "blogs" | "faqs" | "gallery" | "salaries">("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -248,6 +248,7 @@ function AdminPage() {
 
   // Collapsible Reviews modal state
   const [selectedCaregiverForReviews, setSelectedCaregiverForReviews] = useState<any | null>(null);
+  const [expandedCaregiverId, setExpandedCaregiverId] = useState<number | null>(null);
 
   // Check login status on mount
   useEffect(() => {
@@ -974,6 +975,7 @@ function AdminPage() {
               { id: "users", label: "Patients", icon: Users },
               { id: "services", label: "Services", icon: Sliders },
               { id: "payments", label: "Payment Status", icon: DollarSign },
+              { id: "salaries", label: "Staff Salaries", icon: Coins },
               { id: "notifications", label: "Alert Notifications", icon: Bell },
               { id: "enquiries", label: "Customer Leads", icon: MessageSquare },
               { id: "blogs", label: "Health Blogs", icon: BookOpen },
@@ -1702,6 +1704,164 @@ function AdminPage() {
               </div>
             </div>
           )}
+
+          {activeTab === "salaries" && (() => {
+            // Helper to get caretaker payout
+            const getPayoutValue = (b: any) => {
+              return b.caretakerPayout !== undefined && b.caretakerPayout !== null && Number(b.caretakerPayout) > 0
+                ? Number(b.caretakerPayout)
+                : Math.round(Number(b.amount || 0) * 0.85);
+            };
+
+            const completedBookings = bookings.filter(b => b.status === "Completed");
+            const totalCaretakerEarned = completedBookings.reduce((sum, b) => sum + getPayoutValue(b), 0);
+            const totalCaretakerPaid = completedBookings.filter(b => b.caretakerPayoutStatus === "Paid").reduce((sum, b) => sum + getPayoutValue(b), 0);
+            const totalCaretakerOutstanding = totalCaretakerEarned - totalCaretakerPaid;
+
+            return (
+              <div className="space-y-6 animate-in fade-in duration-200 text-left">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/40 premium-card gap-4">
+                  <div>
+                    <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display">Staff Salaries & Payout Settlements</h3>
+                    <p className="text-xs text-slate-400 mt-0.5 font-medium">Track payroll, salary status, and payout logs for all registered care staff.</p>
+                  </div>
+                </div>
+
+                {/* Salary Stats Cards */}
+                <div className="grid gap-6 grid-cols-1 sm:grid-cols-3">
+                  <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-md shadow-slate-100/30 premium-card">
+                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block">Total Caregiver Earnings</span>
+                    <span className="text-2xl font-extrabold font-display text-slate-950 mt-1 block">
+                      ₹{totalCaretakerEarned.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-md shadow-slate-100/30 premium-card">
+                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block">Total Settled (Paid)</span>
+                    <span className="text-2xl font-extrabold font-display text-emerald-600 mt-1 block">
+                      ₹{totalCaretakerPaid.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-md shadow-slate-100/30 premium-card">
+                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block">Total Outstanding (Unpaid)</span>
+                    <span className="text-2xl font-extrabold font-display text-amber-600 mt-1 block">
+                      ₹{totalCaretakerOutstanding.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Caregiver Payroll Listing */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-extrabold text-[#1e2a5a] uppercase tracking-wider">Employee Salaries Breakdown</h4>
+                  
+                  <div className="grid gap-4 grid-cols-1">
+                    {caregivers.map((cg) => {
+                      const cgBookings = completedBookings.filter(b => b.assignedStaff === cg.name);
+                      const earned = cgBookings.reduce((sum, b) => sum + getPayoutValue(b), 0);
+                      const paid = cgBookings.filter(b => b.caretakerPayoutStatus === "Paid").reduce((sum, b) => sum + getPayoutValue(b), 0);
+                      const unpaid = earned - paid;
+                      const isExpanded = expandedCaregiverId === cg.id;
+
+                      return (
+                        <div key={cg.id} className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden premium-card">
+                          <div className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                            <div className="flex items-center gap-4">
+                              <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-[#1e2a5a]/10 to-[#1e2a5a]/5 flex items-center justify-center font-bold text-lg text-[#1e2a5a] border border-[#1e2a5a]/10 shrink-0">
+                                {cg.name.charAt(0)}
+                              </div>
+                              <div>
+                                <h5 className="font-bold text-[#1e2a5a] font-display text-base leading-tight">{cg.name}</h5>
+                                <p className="text-[11px] text-slate-400 font-medium mt-0.5">{cg.phone} • {cg.specialty}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-4 sm:gap-8 text-xs">
+                              <div>
+                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Earned</span>
+                                <div className="font-extrabold text-slate-900 mt-0.5">₹{earned.toLocaleString()}</div>
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Paid</span>
+                                <div className="font-extrabold text-emerald-600 mt-0.5">₹{paid.toLocaleString()}</div>
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Outstanding</span>
+                                <div className="font-extrabold text-amber-600 mt-0.5">₹{unpaid.toLocaleString()}</div>
+                              </div>
+                            </div>
+
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setExpandedCaregiverId(isExpanded ? null : cg.id)}
+                                className="px-3.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-bold transition-all cursor-pointer"
+                              >
+                                {isExpanded ? "Hide Shifts" : `View Shifts (${cgBookings.length})`}
+                              </button>
+                            </div>
+                          </div>
+
+                          {isExpanded && (
+                            <div className="border-t border-slate-100 bg-slate-50/50 p-6 space-y-3">
+                              <h6 className="text-[10px] font-extrabold text-[#1e2a5a] uppercase tracking-widest">Shift Payout Log & Settlements</h6>
+                              {cgBookings.length > 0 ? (
+                                <div className="divide-y divide-slate-100 bg-white border border-slate-200/50 rounded-xl overflow-hidden shadow-sm">
+                                  {cgBookings.map((b) => (
+                                    <div key={b.id} className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs">
+                                      <div>
+                                        <div className="font-bold text-slate-800">{b.service}</div>
+                                        <div className="text-slate-450 text-[10px] font-medium mt-0.5">{b.date} • Customer: {b.name}</div>
+                                      </div>
+                                      <div className="flex items-center gap-6">
+                                        <div className="text-right">
+                                          <div className="font-bold text-slate-900">₹{getPayoutValue(b)}</div>
+                                          <div className="text-[9px] text-slate-450 font-semibold mt-0.5">Caretaker Share</div>
+                                        </div>
+                                        <div>
+                                          {b.caretakerPayoutStatus === "Paid" ? (
+                                            <div className="text-right space-y-0.5">
+                                              <span className="inline-flex items-center gap-1 text-[9px] text-emerald-700 bg-emerald-50 border border-emerald-200/50 font-bold px-2 py-0.5 rounded-md">
+                                                ✓ Paid
+                                              </span>
+                                              {b.caretakerPayoutMethod && (
+                                                <div className="text-[8px] text-slate-400 font-semibold">
+                                                  {b.caretakerPayoutMethod} {b.caretakerPayoutRef ? `(${b.caretakerPayoutRef})` : ''}
+                                                </div>
+                                              )}
+                                            </div>
+                                          ) : (
+                                            <span className="inline-flex items-center gap-1 text-[9px] text-amber-700 bg-amber-50 border border-amber-200/50 font-bold px-2 py-0.5 rounded-md">
+                                              ● Unpaid
+                                            </span>
+                                          )}
+                                        </div>
+                                        <button
+                                          onClick={() => openEditModal("booking", b)}
+                                          className="px-3 py-1.5 rounded-lg border border-[#c9a24c]/40 hover:bg-[#c9a24c]/10 text-[#c9a24c] text-[10px] font-extrabold tracking-wider uppercase transition-all cursor-pointer"
+                                        >
+                                          {b.caretakerPayoutStatus === "Paid" ? "Edit Details" : "Record Payment"}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-xs text-slate-450 italic">No completed shifts recorded for this caregiver.</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {caregivers.length === 0 && (
+                      <div className="bg-white border border-slate-200/80 rounded-2xl p-8 text-center text-slate-400 font-semibold">
+                        No caregivers registered to compile salary payroll.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {activeTab === "services" && (
             <div className="space-y-6">
