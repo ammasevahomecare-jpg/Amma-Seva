@@ -1,3 +1,4 @@
+import React from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { SiteLayout, contact } from "@/components/SiteLayout";
 import { HeartHandshake, ShieldCheck, Award, Clock, ArrowRight, Phone } from "lucide-react";
