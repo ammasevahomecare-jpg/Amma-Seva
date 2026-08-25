@@ -394,6 +394,7 @@ function CustomerDashboard() {
   const [vitalSugar, setVitalSugar] = useState("115");
   const [logMessage, setLogMessage] = useState("");
   const [isSavingLog, setIsSavingLog] = useState(false);
+  const [activeCaregiverTab, setActiveCaregiverTab] = useState("shifts");
   const hasServiceParam = !!(new URLSearchParams(window.location.search).get("service"));
  
   // Check login on mount
@@ -405,10 +406,16 @@ function CustomerDashboard() {
  
     if (caretakerToken && caretakerDetails) {
       setIsCaretaker(true);
-      setCaretaker(JSON.parse(caretakerDetails));
+      const parsedCaretaker = JSON.parse(caretakerDetails);
+      setCaretaker(parsedCaretaker);
       fetchCaretakerProfile();
       fetchCaretakerBookings();
       fetchAnnouncements('caretaker');
+      if (parsedCaretaker.status !== "Verified") {
+        setActiveCaregiverTab("profile");
+      } else {
+        setActiveCaregiverTab("shifts");
+      }
     } else if (userToken && userDetails) {
       setIsCaretaker(false);
       setUser(JSON.parse(userDetails));
@@ -940,269 +947,319 @@ function CustomerDashboard() {
               </div>
             )}
 
-            {/* My Assigned Patient Shifts Card */}
-            {caretaker?.status === "Verified" && (
-              <div className="bg-white p-8 sm:p-10 rounded-3xl border border-slate-200/60 shadow-sm space-y-6">
-                <div>
-                  <h2 className="text-xl font-bold text-primary font-display flex items-center gap-2">
-                    <Calendar className="h-5 w-5 text-indigo-600" /> My Assigned Patient Shifts
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Below are the patient homecare shifts you have been assigned to by the administrator.</p>
-                </div>
+            {/* Caretaker Navigation Tabs */}
+            <div className="flex border border-slate-200/80 p-1.5 bg-white rounded-2xl shadow-md shadow-slate-100/30 max-w-md mx-auto sm:mx-0">
+              <button
+                type="button"
+                onClick={() => setActiveCaregiverTab("shifts")}
+                className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                  activeCaregiverTab === "shifts"
+                    ? "bg-[#1e2a5a] text-white shadow-md shadow-[#1e2a5a]/10"
+                    : "text-slate-500 hover:text-[#1e2a5a] hover:bg-slate-50"
+                }`}
+              >
+                <Calendar className="h-4 w-4" /> Assigned Shifts
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveCaregiverTab("profile")}
+                className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                  activeCaregiverTab === "profile"
+                    ? "bg-[#1e2a5a] text-white shadow-md shadow-[#1e2a5a]/10"
+                    : "text-slate-500 hover:text-[#1e2a5a] hover:bg-slate-50"
+                }`}
+              >
+                <User className="h-4 w-4" /> My Profile
+              </button>
+            </div>
 
-                {isLoading ? (
-                  <div className="flex justify-center py-6">
-                    <RefreshCw className="h-6 w-6 text-indigo-600 animate-spin" />
-                  </div>
-                ) : caretakerBookings.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-8 text-center text-slate-500">
-                    <Clock className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                    <p className="text-sm font-semibold">No assigned shifts yet</p>
-                    <p className="text-xs text-slate-400 mt-0.5">You will be notified once a customer booking is allocated to your profile.</p>
+            {/* Shifts Content View */}
+            {activeCaregiverTab === "shifts" && (
+              <>
+                {caretaker?.status === "Verified" ? (
+                  <div className="bg-white p-8 sm:p-10 rounded-3xl border border-slate-200/60 shadow-sm space-y-6">
+                    <div>
+                      <h2 className="text-xl font-bold text-primary font-display flex items-center gap-2">
+                        <Calendar className="h-5 w-5 text-indigo-600" /> My Assigned Patient Shifts
+                      </h2>
+                      <p className="text-xs text-slate-400 mt-0.5">Below are the patient homecare shifts you have been assigned to by the administrator.</p>
+                    </div>
+
+                    {isLoading ? (
+                      <div className="flex justify-center py-6">
+                        <RefreshCw className="h-6 w-6 text-indigo-600 animate-spin" />
+                      </div>
+                    ) : caretakerBookings.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-8 text-center text-slate-500">
+                        <Clock className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                        <p className="text-sm font-semibold">No assigned shifts yet</p>
+                        <p className="text-xs text-slate-400 mt-0.5">You will be notified once a customer booking is allocated to your profile.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {caretakerBookings.map((shift: any) => (
+                          <div key={shift.id} className="rounded-2xl border border-slate-100 bg-slate-50/50 p-6 space-y-4 hover:border-indigo-100 transition-colors">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Shift #{shift.id}</span>
+                                <h4 className="text-base font-bold text-slate-800">{shift.service}</h4>
+                              </div>
+                              <span className={`text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border ${
+                                shift.status === "Confirmed" ? "bg-emerald-50 text-emerald-800 border-emerald-100" :
+                                shift.status === "Completed" ? "bg-indigo-50 text-indigo-800 border-indigo-100" :
+                                "bg-amber-50 text-amber-800 border-amber-100"
+                              }`}>
+                                {shift.status}
+                              </span>
+                            </div>
+
+                            {/* Patient & Care Details Grid */}
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs pt-3 border-t border-slate-100/80 text-left">
+                              <div>
+                                <span className="text-slate-400 block mb-0.5">Patient Name</span>
+                                <span className="font-semibold text-slate-800 flex items-center gap-1">
+                                  <User className="h-3.5 w-3.5 text-slate-400" /> {shift.patientName || shift.name || "N/A"}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 block mb-0.5">Patient Age</span>
+                                <span className="font-semibold text-slate-800">{shift.patientAge || "N/A"} yrs</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 block mb-0.5">Shift Date & Time</span>
+                                <span className="font-semibold text-slate-800 flex items-center gap-1">
+                                  <Calendar className="h-3.5 w-3.5 text-slate-400" /> {shift.date} at {shift.time}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 block mb-0.5">Duration Option</span>
+                                <span className="font-semibold text-slate-800">{shift.duration}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 block mb-0.5">Customer Contact</span>
+                                <a href={`tel:${shift.phone}`} className="font-semibold text-indigo-600 hover:underline flex items-center gap-1">
+                                  <Phone className="h-3.5 w-3.5" /> {shift.phone}
+                                </a>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 block mb-0.5">Shift Remuneration</span>
+                                <span className="font-bold text-slate-800">₹{shift.amount}</span>
+                              </div>
+                            </div>
+
+                            {shift.address && (
+                              <div className="text-xs pt-2 border-t border-slate-100/60 text-left">
+                                <span className="text-slate-400 block mb-0.5">Patient Care Address</span>
+                                <span className="text-slate-700 flex items-start gap-1">
+                                  <MapPin className="h-3.5 w-3.5 text-slate-400 mt-0.5 shrink-0" /> {shift.address}
+                                </span>
+                              </div>
+                            )}
+
+                            {shift.patientNeeds && (
+                              <div className="text-xs bg-indigo-50/30 border border-indigo-100/20 p-3 rounded-xl text-left">
+                                <span className="text-indigo-600 font-bold block mb-0.5 uppercase tracking-wider text-[10px]">Special Instructions & Patient Needs</span>
+                                <p className="text-slate-600 leading-relaxed italic">&ldquo;{shift.patientNeeds}&rdquo;</p>
+                              </div>
+                            )}
+
+                            {/* Check-In / Check-Out Shift Tracking actions */}
+                            {shift.status !== "Completed" && shift.status !== "Cancelled" && (
+                              <div className="flex gap-3 pt-3 border-t border-slate-100/60 justify-end">
+                                {shift.status === "Confirmed" ? (
+                                  <button
+                                    onClick={async () => {
+                                      const token = localStorage.getItem("ammaseva_caretaker_token");
+                                      if (!token) return;
+                                      try {
+                                        const res = await fetch(`/api/booking/${shift.id}/status`, {
+                                          method: "PUT",
+                                          headers: { 
+                                            "Content-Type": "application/json",
+                                            "Authorization": `Bearer ${token}` 
+                                          },
+                                          body: JSON.stringify({ status: "Active" })
+                                        });
+                                        if (res.ok) {
+                                          fetchCaretakerBookings();
+                                        }
+                                      } catch (err) {
+                                        console.error(err);
+                                      }
+                                    }}
+                                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-sm flex items-center gap-1.5"
+                                  >
+                                    <Check className="h-4 w-4" /> Start Shift (Check-In)
+                                  </button>
+                                ) : shift.status === "Active" ? (
+                                  <div className="flex gap-2.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (activeLogShiftId === shift.id) {
+                                          setActiveLogShiftId(null);
+                                        } else {
+                                          setActiveLogShiftId(shift.id);
+                                          if (shift.vitals) {
+                                            try {
+                                              const parsedVitals = typeof shift.vitals === 'string'
+                                                ? JSON.parse(shift.vitals)
+                                                : shift.vitals;
+                                              setVitalBP(parsedVitals.bloodPressure || "120/80");
+                                              setVitalPulse(parsedVitals.pulseRate?.replace(" bpm", "") || "72");
+                                              setVitalTemp(parsedVitals.bodyTemp?.replace(" °F", "") || "98.4");
+                                              setVitalSugar(parsedVitals.bloodGlucose?.replace(" mg/dL", "") || "115");
+                                            } catch (e) {
+                                              // Ignore
+                                            }
+                                          }
+                                        }
+                                      }}
+                                      className="px-4 py-2 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-sm flex items-center gap-1.5"
+                                    >
+                                      📝 {activeLogShiftId === shift.id ? "Hide Form" : "Record Vitals & Activity"}
+                                    </button>
+                                    <button
+                                      onClick={async () => {
+                                        const token = localStorage.getItem("ammaseva_caretaker_token");
+                                        if (!token) return;
+                                        try {
+                                          const res = await fetch(`/api/booking/${shift.id}/status`, {
+                                            method: "PUT",
+                                            headers: { 
+                                              "Content-Type": "application/json",
+                                              "Authorization": `Bearer ${token}` 
+                                            },
+                                            body: JSON.stringify({ status: "Completed" })
+                                          });
+                                          if (res.ok) {
+                                            fetchCaretakerBookings();
+                                          }
+                                        } catch (err) {
+                                          console.error(err);
+                                        }
+                                      }}
+                                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-sm flex items-center gap-1.5"
+                                    >
+                                      <CheckCircle2 className="h-4 w-4" /> Complete Shift (Check-Out)
+                                    </button>
+                                  </div>
+                                ) : null}
+                              </div>
+                            )}
+
+                            {/* Caregiver Vitals and Progress Logging Form */}
+                            {activeLogShiftId === shift.id && (
+                              <div className="mt-4 p-5 bg-white border border-indigo-150 rounded-2xl space-y-4 animate-fade-in text-left">
+                                <h5 className="text-xs font-bold text-indigo-700 uppercase tracking-wider border-b border-indigo-50 pb-1.5 flex items-center gap-1">
+                                  📝 Record Patient Vitals & Progress Log
+                                </h5>
+                                
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                  <div>
+                                    <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Blood Pressure</label>
+                                    <input
+                                      type="text"
+                                      value={vitalBP}
+                                      onChange={(e) => setVitalBP(e.target.value)}
+                                      placeholder="e.g. 120/80"
+                                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-gold"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Pulse Rate (bpm)</label>
+                                    <input
+                                      type="number"
+                                      value={vitalPulse}
+                                      onChange={(e) => setVitalPulse(e.target.value)}
+                                      placeholder="e.g. 72"
+                                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-gold"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Body Temp (°F)</label>
+                                    <input
+                                      type="text"
+                                      value={vitalTemp}
+                                      onChange={(e) => setVitalTemp(e.target.value)}
+                                      placeholder="e.g. 98.4"
+                                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-gold"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Blood Glucose (mg/dL)</label>
+                                    <input
+                                      type="number"
+                                      value={vitalSugar}
+                                      onChange={(e) => setVitalSugar(e.target.value)}
+                                      placeholder="e.g. 110"
+                                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-gold"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">New Shift Activity Log Entry</label>
+                                  <textarea
+                                    value={logMessage}
+                                    onChange={(e) => setLogMessage(e.target.value)}
+                                    placeholder="Describe current activity (e.g. Administered prescribed insulin dose, assisted with daily walk)"
+                                    rows={2}
+                                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-gold"
+                                  />
+                                </div>
+
+                                <div className="flex justify-end gap-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveLogShiftId(null)}
+                                    className="px-3.5 py-1.5 text-xs font-semibold border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={isSavingLog}
+                                    onClick={() => handleSaveVitalsAndLogs(shift.id, shift)}
+                                    className="px-4 py-1.5 text-xs font-bold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 cursor-pointer flex items-center gap-1 shadow-sm disabled:opacity-50"
+                                  >
+                                    {isSavingLog && <RefreshCw className="h-3 w-3 animate-spin" />}
+                                    {isSavingLog ? "Saving..." : "Save Vitals & Log Entry"}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {caretakerBookings.map((shift: any) => (
-                      <div key={shift.id} className="rounded-2xl border border-slate-100 bg-slate-50/50 p-6 space-y-4 hover:border-indigo-100 transition-colors">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Shift #{shift.id}</span>
-                            <h4 className="text-base font-bold text-slate-800">{shift.service}</h4>
-                          </div>
-                          <span className={`text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border ${
-                            shift.status === "Confirmed" ? "bg-emerald-50 text-emerald-800 border-emerald-100" :
-                            shift.status === "Completed" ? "bg-indigo-50 text-indigo-800 border-indigo-100" :
-                            "bg-amber-50 text-amber-800 border-amber-100"
-                          }`}>
-                            {shift.status}
-                          </span>
-                        </div>
-
-                        {/* Patient & Care Details Grid */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs pt-3 border-t border-slate-100/80">
-                          <div>
-                            <span className="text-slate-400 block mb-0.5">Patient Name</span>
-                            <span className="font-semibold text-slate-800 flex items-center gap-1">
-                              <User className="h-3.5 w-3.5 text-slate-400" /> {shift.patientName || shift.name || "N/A"}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-slate-400 block mb-0.5">Patient Age</span>
-                            <span className="font-semibold text-slate-800">{shift.patientAge || "N/A"} yrs</span>
-                          </div>
-                          <div>
-                            <span className="text-slate-400 block mb-0.5">Shift Date & Time</span>
-                            <span className="font-semibold text-slate-800 flex items-center gap-1">
-                              <Calendar className="h-3.5 w-3.5 text-slate-400" /> {shift.date} at {shift.time}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-slate-400 block mb-0.5">Duration Option</span>
-                            <span className="font-semibold text-slate-800">{shift.duration}</span>
-                          </div>
-                          <div>
-                            <span className="text-slate-400 block mb-0.5">Customer Contact</span>
-                            <a href={`tel:${shift.phone}`} className="font-semibold text-indigo-600 hover:underline flex items-center gap-1">
-                              <Phone className="h-3.5 w-3.5" /> {shift.phone}
-                            </a>
-                          </div>
-                          <div>
-                            <span className="text-slate-400 block mb-0.5">Shift Remuneration</span>
-                            <span className="font-bold text-slate-800">₹{shift.amount}</span>
-                          </div>
-                        </div>
-
-                        {shift.address && (
-                          <div className="text-xs pt-2 border-t border-slate-100/60">
-                            <span className="text-slate-400 block mb-0.5">Patient Care Address</span>
-                            <span className="text-slate-700 flex items-start gap-1">
-                              <MapPin className="h-3.5 w-3.5 text-slate-400 mt-0.5 shrink-0" /> {shift.address}
-                            </span>
-                          </div>
-                        )}
-
-                        {shift.patientNeeds && (
-                          <div className="text-xs bg-indigo-50/30 border border-indigo-100/20 p-3 rounded-xl">
-                            <span className="text-indigo-600 font-bold block mb-0.5 uppercase tracking-wider text-[10px]">Special Instructions & Patient Needs</span>
-                            <p className="text-slate-600 leading-relaxed italic">&ldquo;{shift.patientNeeds}&rdquo;</p>
-                          </div>
-                        )}
-
-                        {/* Check-In / Check-Out Shift Tracking actions */}
-                        {shift.status !== "Completed" && shift.status !== "Cancelled" && (
-                          <div className="flex gap-3 pt-3 border-t border-slate-100/60 justify-end">
-                            {shift.status === "Confirmed" ? (
-                              <button
-                                onClick={async () => {
-                                  const token = localStorage.getItem("ammaseva_caretaker_token");
-                                  if (!token) return;
-                                  try {
-                                    const res = await fetch(`/api/booking/${shift.id}/status`, {
-                                      method: "PUT",
-                                      headers: { 
-                                        "Content-Type": "application/json",
-                                        "Authorization": `Bearer ${token}` 
-                                      },
-                                      body: JSON.stringify({ status: "Active" })
-                                    });
-                                    if (res.ok) {
-                                      fetchCaretakerBookings();
-                                    }
-                                  } catch (err) {
-                                    console.error(err);
-                                  }
-                                }}
-                                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-sm flex items-center gap-1.5"
-                              >
-                                <Check className="h-4 w-4" /> Start Shift (Check-In)
-                              </button>
-                            ) : shift.status === "Active" ? (
-                              <div className="flex gap-2.5">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (activeLogShiftId === shift.id) {
-                                      setActiveLogShiftId(null);
-                                    } else {
-                                      setActiveLogShiftId(shift.id);
-                                      if (shift.vitals) {
-                                        try {
-                                          const parsedVitals = typeof shift.vitals === 'string'
-                                            ? JSON.parse(shift.vitals)
-                                            : shift.vitals;
-                                          setVitalBP(parsedVitals.bloodPressure || "120/80");
-                                          setVitalPulse(parsedVitals.pulseRate?.replace(" bpm", "") || "72");
-                                          setVitalTemp(parsedVitals.bodyTemp?.replace(" °F", "") || "98.4");
-                                          setVitalSugar(parsedVitals.bloodGlucose?.replace(" mg/dL", "") || "115");
-                                        } catch (e) {
-                                          // Ignore
-                                        }
-                                      }
-                                    }
-                                  }}
-                                  className="px-4 py-2 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-sm flex items-center gap-1.5"
-                                >
-                                  📝 {activeLogShiftId === shift.id ? "Hide Form" : "Record Vitals & Activity"}
-                                </button>
-                                <button
-                                  onClick={async () => {
-                                    const token = localStorage.getItem("ammaseva_caretaker_token");
-                                    if (!token) return;
-                                    try {
-                                      const res = await fetch(`/api/booking/${shift.id}/status`, {
-                                        method: "PUT",
-                                        headers: { 
-                                          "Content-Type": "application/json",
-                                          "Authorization": `Bearer ${token}` 
-                                        },
-                                        body: JSON.stringify({ status: "Completed" })
-                                      });
-                                      if (res.ok) {
-                                        fetchCaretakerBookings();
-                                      }
-                                    } catch (err) {
-                                      console.error(err);
-                                    }
-                                  }}
-                                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-sm flex items-center gap-1.5"
-                                >
-                                  <CheckCircle2 className="h-4 w-4" /> Complete Shift (Check-Out)
-                                </button>
-                              </div>
-                            ) : null}
-                          </div>
-                        )}
-
-                        {/* Caregiver Vitals and Progress Logging Form */}
-                        {activeLogShiftId === shift.id && (
-                          <div className="mt-4 p-5 bg-white border border-indigo-100 rounded-2xl space-y-4 animate-fade-in text-left">
-                            <h5 className="text-xs font-bold text-indigo-700 uppercase tracking-wider border-b border-indigo-50 pb-1.5 flex items-center gap-1">
-                              📝 Record Patient Vitals & Progress Log
-                            </h5>
-                            
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                              <div>
-                                <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Blood Pressure</label>
-                                <input
-                                  type="text"
-                                  value={vitalBP}
-                                  onChange={(e) => setVitalBP(e.target.value)}
-                                  placeholder="e.g. 120/80"
-                                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-gold"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Pulse Rate (bpm)</label>
-                                <input
-                                  type="number"
-                                  value={vitalPulse}
-                                  onChange={(e) => setVitalPulse(e.target.value)}
-                                  placeholder="e.g. 72"
-                                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-gold"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Body Temp (°F)</label>
-                                <input
-                                  type="text"
-                                  value={vitalTemp}
-                                  onChange={(e) => setVitalTemp(e.target.value)}
-                                  placeholder="e.g. 98.4"
-                                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-gold"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Blood Glucose (mg/dL)</label>
-                                <input
-                                  type="number"
-                                  value={vitalSugar}
-                                  onChange={(e) => setVitalSugar(e.target.value)}
-                                  placeholder="e.g. 110"
-                                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-gold"
-                                />
-                              </div>
-                            </div>
-
-                            <div>
-                              <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">New Shift Activity Log Entry</label>
-                              <textarea
-                                value={logMessage}
-                                onChange={(e) => setLogMessage(e.target.value)}
-                                placeholder="Describe current activity (e.g. Administered prescribed insulin dose, assisted with daily walk)"
-                                rows={2}
-                                className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-gold"
-                              />
-                            </div>
-
-                            <div className="flex justify-end gap-3">
-                              <button
-                                type="button"
-                                onClick={() => setActiveLogShiftId(null)}
-                                className="px-3.5 py-1.5 text-xs font-semibold border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer"
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                type="button"
-                                disabled={isSavingLog}
-                                onClick={() => handleSaveVitalsAndLogs(shift.id, shift)}
-                                className="px-4 py-1.5 text-xs font-bold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 cursor-pointer flex items-center gap-1 shadow-sm disabled:opacity-50"
-                              >
-                                {isSavingLog && <RefreshCw className="h-3 w-3 animate-spin" />}
-                                {isSavingLog ? "Saving..." : "Save Vitals & Log Entry"}
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                  <div className="bg-white p-8 sm:p-10 rounded-3xl border border-slate-200/60 shadow-sm text-center py-12 space-y-4">
+                    <div className="h-14 w-14 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 mx-auto">
+                      <Clock className="h-7 w-7" />
+                    </div>
+                    <div className="max-w-md mx-auto space-y-2">
+                      <h3 className="text-lg font-bold text-[#1e2a5a] font-display">Shifts Not Available</h3>
+                      <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                        Your profile must be fully verified and approved by the administrator before you can view or accept patient homecare shifts.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setActiveCaregiverTab("profile")}
+                        className="mt-2 text-xs font-bold text-[#c9a24c] hover:underline cursor-pointer"
+                      >
+                        Complete Profile Registration &rarr;
+                      </button>
+                    </div>
                   </div>
                 )}
-              </div>
+              </>
             )}
 
             {/* Profile Form Card */}
-            <div className="bg-white p-8 sm:p-10 rounded-3xl border border-slate-200/60 shadow-sm space-y-6">
+            {activeCaregiverTab === "profile" && (
+              <div className="bg-white p-8 sm:p-10 rounded-3xl border border-slate-200/60 shadow-sm space-y-6">
               <div>
                 <h2 className="text-xl font-bold text-primary font-display">Complete & Update Profile Details</h2>
                 <p className="text-xs text-slate-400 mt-0.5">Keep your details up-to-date to receive relevant shift opportunities.</p>
@@ -1577,6 +1634,7 @@ function CustomerDashboard() {
 
               </form>
             </div>
+          )}
 
           </div>
         </div>

@@ -59,7 +59,34 @@
       "createdAt": "2026-08-21T07:02:23.878Z"
     }
   ],
-  "caregivers": [],
+  "caregivers": [
+    {
+      "id": 1,
+      "name": "Pandu R.",
+      "email": "pandu@ammaseva.in",
+      "phone": "9876543210",
+      "password": "password123",
+      "specialty": "Elderly Care",
+      "experience": 5,
+      "status": "Verified",
+      "joinedAt": "2026-08-21T05:00:00.000Z",
+      "rating": 4.8,
+      "reviews": [],
+      "aadhaar": "",
+      "pan": "",
+      "certificates": "",
+      "profilePhoto": "",
+      "experienceDetails": "5 years of caring for senior citizens",
+      "workingLocations": "Hyderabad",
+      "availableTimings": "Full Day",
+      "state": "Telangana",
+      "city": "Hyderabad",
+      "googleMapLocation": "",
+      "experienceCertificate": "",
+      "policeVerification": "",
+      "additionalCertificates": ""
+    }
+  ],
   "services": [
     {
       "id": 1,
