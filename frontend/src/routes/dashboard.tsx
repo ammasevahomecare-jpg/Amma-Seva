@@ -1457,9 +1457,10 @@ function CustomerDashboard() {
                                   </button>
                                 </div>
                               </div>
-                                  </>
-                                )}
-                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
                             );
                           })}
                         </div>
@@ -2245,7 +2246,9 @@ function CustomerDashboard() {
                                   width: booking.status === "Completed" ? "76%" : 
                                          (booking.status === "Confirmed" || booking.status === "Active") && booking.assignedStaff ? "51%" :
                                          booking.status === "Confirmed" || booking.status === "Active" ? "25%" : "0%"
-                                                {/* Step 1: Request Pending */}
+                                }} 
+                              />
+                              {/* Step 1: Request Pending */}
                               <div className="text-center relative z-10">
                                 <div className="h-6 w-6 rounded-full bg-[#c9a24c] text-white flex items-center justify-center mx-auto text-xs font-bold shadow-sm border border-white">
                                   <Check className="h-3.5 w-3.5" />
@@ -2625,7 +2628,8 @@ function CustomerDashboard() {
                             <p className="text-xs text-slate-600 italic leading-relaxed">&ldquo;{booking.review.comment || "No written comments submitted."}&rdquo;</p>
                           </div>
                         )}
-
+                            </>
+                          )}
                       </div>
 
                       {/* Action buttons */}
@@ -2660,7 +2664,8 @@ function CustomerDashboard() {
                         </div>
                       )}
                     </div>
-                    ))}
+                    );
+                  })}
                   </div>
                 );
               })()}
