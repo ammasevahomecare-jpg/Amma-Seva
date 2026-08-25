@@ -691,10 +691,10 @@ export const db = {
         console.log(`✅ MySQL Tables verified and seeded successfully!`)
       } catch (err) {
         console.error(`❌ Failed to connect to MySQL database:`, err.message)
-        throw new Error(`CRITICAL: Failed to connect to MySQL database: ${err.message}`)
+        console.warn(`⚠️ Warning: MySQL database offline. Server will run but database operations will fail until MySQL is restored.`)
       }
     } else {
-      throw new Error(`CRITICAL: MySQL env variables (DB_HOST, DB_USER, DB_NAME) are not set. Cannot run without MySQL.`)
+      console.warn(`⚠️ Warning: MySQL environment variables (DB_HOST, DB_USER, DB_NAME) are not defined. Database operations will fail.`)
     }
   },
 

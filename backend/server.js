@@ -13,8 +13,11 @@ import crypto from 'crypto'
 
 import { v2 as cloudinary } from 'cloudinary'
 
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
 // Load environment variables
-dotenv.config()
+dotenv.config({ path: path.join(__dirname, '.env') })
 
 // Configure Razorpay
 const razorpay = new Razorpay({
@@ -1656,9 +1659,7 @@ app.post('/api/notifications', authenticateAdmin, async (req, res) => {
   }
 })
 
-// Resolve __dirname in ES Modules
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+
 
 // Serve frontend static assets in production with aggressive Cache-Control settings
 const frontendDistPath = path.join(__dirname, 'dist')
