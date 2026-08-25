@@ -2263,88 +2263,13 @@ function AdminPage() {
 
             return (
               <div className="space-y-6 animate-in fade-in duration-200 text-left">
-                <div className="flex flex-col sm:flex-row justify-between sm:items-center bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/40 premium-card gap-4">
-                  <div>
-                    <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display">Staff Salaries & Payout Settlements</h3>
-                    <p className="text-xs text-slate-400 mt-0.5 font-medium">Track payroll, salary status, and payout logs for all registered care staff.</p>
-                  </div>
-                </div>
-
-                {/* Local Filter Bar */}
-                <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm premium-card grid gap-4 grid-cols-1 sm:grid-cols-4 items-center">
-                  <div className="relative col-span-1 sm:col-span-2">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="Search by Caregiver name or specialty..."
-                      value={salarySearch}
-                      onChange={(e) => setSalarySearch(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-semibold text-slate-800"
-                    />
-                  </div>
-                  <div>
-                    <input
-                      type="date"
-                      value={salaryStartDate}
-                      onChange={(e) => setSalaryStartDate(e.target.value)}
-                      className="w-full px-3.5 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-bold text-slate-500"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="date"
-                      value={salaryEndDate}
-                      onChange={(e) => setSalaryEndDate(e.target.value)}
-                      className="w-full px-3.5 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-bold text-slate-500"
-                    />
-                    {(salarySearch || salaryStartDate || salaryEndDate) && (
-                      <button
-                        onClick={() => {
-                          setSalarySearch("");
-                          setSalaryStartDate("");
-                          setSalaryEndDate("");
-                        }}
-                        className="px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-black transition-all cursor-pointer"
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Salary Stats Cards */}
-                <div className="grid gap-6 grid-cols-1 sm:grid-cols-3">
-                  <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-md shadow-slate-100/30 premium-card">
-                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block">Total Caregiver Earnings</span>
-                    <span className="text-2xl font-extrabold font-display text-slate-950 mt-1 block">
-                      ₹{totalCaretakerEarned.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-md shadow-slate-100/30 premium-card">
-                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block">Total Settled (Paid)</span>
-                    <span className="text-2xl font-extrabold font-display text-emerald-600 mt-1 block">
-                      ₹{totalCaretakerPaid.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-md shadow-slate-100/30 premium-card">
-                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block">Total Outstanding (Unpaid)</span>
-                    <span className="text-2xl font-extrabold font-display text-amber-600 mt-1 block">
-                      ₹{totalCaretakerOutstanding.toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-
                 {selectedCaregiverForLedger ? (() => {
                   const cg = selectedCaregiverForLedger;
-                  // Get ALL bookings for this caregiver (past, present, future)
                   const cgBookings = bookings.filter(b => b.assignedStaff === cg.name);
-                  
-                  // Calculate completed shift totals
                   const earned = cgBookings.filter(b => b.status === "Completed").reduce((sum, b) => sum + getPayoutValue(b), 0);
                   const paid = cgBookings.filter(b => b.status === "Completed" && b.caretakerPayoutStatus === "Paid").reduce((sum, b) => sum + getPayoutValue(b), 0);
                   const unpaid = earned - paid;
 
-                  // Filter ledger records based on search and time filters
                   const filteredLedgerBookings = cgBookings.filter(b => {
                     const q = ledgerSearch.toLowerCase();
                     const matchesSearch = !ledgerSearch || 
@@ -2368,7 +2293,6 @@ function AdminPage() {
 
                   return (
                     <div className="space-y-6 animate-in fade-in duration-200">
-                      {/* Ledger Header Panel */}
                       <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/40 premium-card flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div className="flex items-center gap-4">
                           <button
@@ -2378,7 +2302,7 @@ function AdminPage() {
                               setLedgerSearch("");
                               setLedgerTimeFilter("all");
                             }}
-                            className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-705 text-xs font-bold transition-all cursor-pointer border border-slate-205"
+                            className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer border border-slate-200"
                           >
                             ← Back to Salaries
                           </button>
@@ -2394,7 +2318,6 @@ function AdminPage() {
                         </div>
                       </div>
 
-                      {/* Ledger Payout Summary Stats */}
                       <div className="grid gap-6 grid-cols-1 sm:grid-cols-3">
                         <div className="bg-white border border-slate-200/80 border-l-4 border-l-[#1e2a5a] rounded-2xl p-5 shadow-sm premium-card">
                           <span className="text-xs text-slate-400 font-extrabold uppercase tracking-wider block">Total Earned (Completed)</span>
@@ -2404,19 +2327,18 @@ function AdminPage() {
                         </div>
                         <div className="bg-white border border-slate-200/80 border-l-4 border-l-emerald-500 rounded-2xl p-5 shadow-sm premium-card">
                           <span className="text-xs text-slate-400 font-extrabold uppercase tracking-wider block">Total Settled (Paid)</span>
-                          <span className="text-2xl font-black text-emerald-650 mt-1 block">
+                          <span className="text-2xl font-black text-emerald-600 mt-1 block">
                             ₹{paid.toLocaleString()}
                           </span>
                         </div>
                         <div className="bg-white border border-slate-200/80 border-l-4 border-l-[#c9a24c] rounded-2xl p-5 shadow-sm premium-card">
                           <span className="text-xs text-slate-400 font-extrabold uppercase tracking-wider block">Outstanding (Unpaid)</span>
-                          <span className="text-2xl font-black text-amber-650 mt-1 block">
+                          <span className="text-2xl font-black text-amber-600 mt-1 block">
                             ₹{unpaid.toLocaleString()}
                           </span>
                         </div>
                       </div>
 
-                      {/* Ledger Filter Navigation */}
                       <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm premium-card flex flex-col md:flex-row gap-4 items-center justify-between">
                         <div className="relative w-full md:w-1/3">
                           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -2476,7 +2398,6 @@ function AdminPage() {
                         </div>
                       </div>
 
-                      {/* Ledger Statement Table */}
                       <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm premium-card">
                         <div className="overflow-x-auto">
                           <table className="w-full text-left text-sm text-slate-700">
@@ -2504,8 +2425,8 @@ function AdminPage() {
                                       <div className="text-[10px] text-slate-400 font-bold mt-0.5">📅 {b.date} • {b.time}</div>
                                     </td>
                                     <td className="py-4 px-6">
-                                      <div className="font-bold text-slate-805">{b.service}</div>
-                                      <div className="text-[10px] text-slate-450 mt-0.5 font-semibold">Duration: {b.duration || "Daily"}</div>
+                                      <div className="font-bold text-slate-800">{b.service}</div>
+                                      <div className="text-[10px] text-slate-400 mt-0.5 font-semibold">Duration: {b.duration || "Daily"}</div>
                                     </td>
                                     <td className="py-4 px-6 font-bold text-slate-900">
                                       ₹{(Number(b.amount) || 0).toLocaleString()}
@@ -2516,7 +2437,7 @@ function AdminPage() {
                                     <td className="py-4 px-6">
                                       <div className="flex flex-col gap-1 items-start">
                                         <span className={`text-[9px] uppercase font-black px-2 py-0.5 rounded ${
-                                          bType === "PAST" ? "bg-slate-150 text-slate-600 border border-slate-200/50" :
+                                          bType === "PAST" ? "bg-slate-100 text-slate-600 border border-slate-200/50" :
                                           bType === "PRESENT" ? "bg-emerald-50 text-emerald-700 border border-emerald-200/50" :
                                           "bg-blue-50 text-blue-700 border-blue-200/50"
                                         }`}>
@@ -2548,7 +2469,6 @@ function AdminPage() {
                                   </tr>
                                 );
                               })}
-
                               {filteredLedgerBookings.length === 0 && (
                                 <tr>
                                   <td colSpan={6} className="py-8 text-center text-slate-400 text-xs italic font-semibold">
@@ -2563,8 +2483,79 @@ function AdminPage() {
                     </div>
                   );
                 })() : (
-                  /* Caregiver Payroll Listing */
-                  <div className="space-y-4">
+                  <>
+                    <div className="flex flex-col sm:flex-row justify-between sm:items-center bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/40 premium-card gap-4">
+                      <div>
+                        <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display">Staff Salaries & Payout Settlements</h3>
+                        <p className="text-xs text-slate-400 mt-0.5 font-medium">Track payroll, salary status, and payout logs for all registered care staff.</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm premium-card grid gap-4 grid-cols-1 sm:grid-cols-4 items-center">
+                      <div className="relative col-span-1 sm:col-span-2">
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <input
+                          type="text"
+                          placeholder="Search by Caregiver name, specialty, or Unique ID..."
+                          value={salarySearch}
+                          onChange={(e) => setSalarySearch(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-semibold text-slate-800"
+                        />
+                      </div>
+                      <div>
+                        <input
+                          type="date"
+                          value={salaryStartDate}
+                          onChange={(e) => setSalaryStartDate(e.target.value)}
+                          className="w-full px-3.5 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-bold text-slate-500"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="date"
+                          value={salaryEndDate}
+                          onChange={(e) => setSalaryEndDate(e.target.value)}
+                          className="w-full px-3.5 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-bold text-slate-500"
+                        />
+                        {(salarySearch || salaryStartDate || salaryEndDate) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSalarySearch("");
+                              setSalaryStartDate("");
+                              setSalaryEndDate("");
+                            }}
+                            className="px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-black transition-all cursor-pointer"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid gap-6 grid-cols-1 sm:grid-cols-3">
+                      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-md shadow-slate-100/30 premium-card">
+                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block">Total Caregiver Earnings</span>
+                        <span className="text-2xl font-extrabold font-display text-slate-950 mt-1 block">
+                          ₹{totalCaretakerEarned.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-md shadow-slate-100/30 premium-card">
+                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block">Total Settled (Paid)</span>
+                        <span className="text-2xl font-extrabold font-display text-emerald-600 mt-1 block">
+                          ₹{totalCaretakerPaid.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-md shadow-slate-100/30 premium-card">
+                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block">Total Outstanding (Unpaid)</span>
+                        <span className="text-2xl font-extrabold font-display text-amber-600 mt-1 block">
+                          ₹{totalCaretakerOutstanding.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Caregiver Payroll Listing */}
+                    <div className="space-y-4">
                     <h4 className="text-sm font-extrabold text-[#1e2a5a] uppercase tracking-wider">Employee Salaries Breakdown</h4>
                     
                     <div className="grid gap-4 grid-cols-1">
@@ -2637,6 +2628,7 @@ function AdminPage() {
                       )}
                     </div>
                   </div>
+                  </>
                 )}
               </div>
             );
