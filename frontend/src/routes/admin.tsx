@@ -1516,7 +1516,10 @@ function AdminPage() {
                   </table>
                 </div>
               </div>
-                     {/* Payments & Transaction tracking panel */}
+            </div>
+          )}
+
+          {/* Payments & Transaction tracking panel */}
           {activeTab === "payments" && (
             <div className="space-y-6 animate-in fade-in duration-200">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/40 premium-card gap-4">
