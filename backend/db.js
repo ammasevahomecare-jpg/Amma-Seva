@@ -25,7 +25,7 @@ import os from 'os'
  const JSON_DB_PATH = PERSISTENT_DB_PATH
 
 let pool = null
-let useMySQL = false
+let useMySQL = true
 
 // Initial default data structure
 const DEFAULT_MOCK_DATA = {
@@ -691,12 +691,10 @@ export const db = {
         console.log(`✅ MySQL Tables verified and seeded successfully!`)
       } catch (err) {
         console.error(`❌ Failed to connect to MySQL database:`, err.message)
-        console.log(`⚠️ Falling back to local JSON database...`)
-        initJSONDb()
+        throw new Error(`CRITICAL: Failed to connect to MySQL database: ${err.message}`)
       }
     } else {
-      console.log(`ℹ️ MySQL env variables not set. Initializing local JSON database at backend/db.json...`)
-      initJSONDb()
+      throw new Error(`CRITICAL: MySQL env variables (DB_HOST, DB_USER, DB_NAME) are not set. Cannot run without MySQL.`)
     }
   },
 
