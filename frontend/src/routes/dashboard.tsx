@@ -5,7 +5,8 @@ import { fetchServices, type Service } from "../lib/services";
 import { 
   Calendar, Clock, MapPin, User, FileText, CheckCircle2, 
   AlertTriangle, RefreshCw, XCircle, Download, CreditCard, 
-  Phone, Briefcase, ChevronRight, Check, DollarSign, QrCode, Upload
+  Phone, Briefcase, ChevronRight, Check, DollarSign, QrCode, Upload,
+  Star, MessageSquare
 } from "lucide-react";
 
 const INDIAN_STATES = [
@@ -17,6 +18,49 @@ const INDIAN_STATES = [
   "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu", 
   "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
 ];
+
+const sortShiftsOrBookings = (list: any[]) => {
+  return [...list].sort((a, b) => {
+    const aFinished = (a.status === "Completed" || a.status === "Cancelled") ? 1 : 0;
+    const bFinished = (b.status === "Completed" || b.status === "Cancelled") ? 1 : 0;
+    if (aFinished !== bFinished) {
+      return aFinished - bFinished;
+    }
+    return b.id - a.id;
+  });
+};
+
+const filterShiftsOrBookings = (list: any[], search: string, startDate: string, endDate: string) => {
+  let filtered = list;
+
+  if (search.trim()) {
+    const q = search.toLowerCase();
+    filtered = filtered.filter(item => {
+      const service = (item.service || "").toLowerCase();
+      const name = (item.name || item.patientName || "").toLowerCase();
+      const phone = (item.phone || "").toLowerCase();
+      const email = (item.email || item.customerEmail || "").toLowerCase();
+      const address = (item.address || "").toLowerCase();
+      const needs = (item.patientNeeds || "").toLowerCase();
+      
+      return service.includes(q) || 
+             name.includes(q) || 
+             phone.includes(q) || 
+             email.includes(q) || 
+             address.includes(q) || 
+             needs.includes(q);
+    });
+  }
+
+  if (startDate) {
+    filtered = filtered.filter(item => item.date >= startDate);
+  }
+  if (endDate) {
+    filtered = filtered.filter(item => item.date <= endDate);
+  }
+
+  return filtered;
+};
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -270,6 +314,8 @@ function CustomerDashboard() {
       }
       const details = data.details;
       setCaretaker(details);
+      setCaretakerReviews(data.reviews || []);
+      setCaretakerAvgRating(data.avgRating !== undefined ? data.avgRating : 5);
       setCaretakerName(details.name || "");
       setCaretakerPhone(details.phone || "");
       setCaretakerSpecialty(details.specialty || "Elderly Care");
@@ -357,6 +403,18 @@ function CustomerDashboard() {
   const [reviewRating, setReviewRating] = useState<number>(5);
   const [reviewComment, setReviewComment] = useState<string>("");
   const [isReviewSubmitting, setIsReviewSubmitting] = useState(false);
+
+  // Caretaker dashboard filter states
+  const [caretakerSearch, setCaretakerSearch] = useState("");
+  const [caretakerStartDate, setCaretakerStartDate] = useState("");
+  const [caretakerEndDate, setCaretakerEndDate] = useState("");
+  const [caretakerReviews, setCaretakerReviews] = useState<any[]>([]);
+  const [caretakerAvgRating, setCaretakerAvgRating] = useState<number>(5);
+
+  // Customer dashboard filter states
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [customerStartDate, setCustomerStartDate] = useState("");
+  const [customerEndDate, setCustomerEndDate] = useState("");
 
   // New Booking State
   const [selectedServiceId, setSelectedServiceId] = useState("elderly");
@@ -889,9 +947,14 @@ function CustomerDashboard() {
 
                     <div className="mt-4 w-full">
                       {caretaker?.status === "Verified" ? (
-                        <span className="inline-flex items-center justify-center gap-1.5 w-full py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-100 text-xs font-bold uppercase tracking-wider">
-                          <CheckCircle2 className="h-3.5 w-3.5" /> Active Partner
-                        </span>
+                        <div className="space-y-2">
+                          <span className="inline-flex items-center justify-center gap-1.5 w-full py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-100 text-xs font-bold uppercase tracking-wider">
+                            <CheckCircle2 className="h-3.5 w-3.5" /> Active Partner
+                          </span>
+                          <div className="flex items-center justify-center gap-1 bg-amber-50/50 border border-amber-200/40 px-2.5 py-1 rounded-xl w-max mx-auto shadow-inner text-xs font-extrabold text-amber-700">
+                            ★ {caretakerAvgRating.toFixed(1)} <span className="text-[10px] text-slate-400 font-bold ml-0.5">({caretakerReviews.length})</span>
+                          </div>
+                        </div>
                       ) : caretaker?.status === "Rejected" ? (
                         <span className="inline-flex items-center justify-center gap-1.5 w-full py-1.5 rounded-xl bg-rose-50 text-rose-800 border border-rose-100 text-xs font-bold uppercase tracking-wider">
                           <AlertTriangle className="h-3.5 w-3.5 animate-pulse" /> Rejected
@@ -939,10 +1002,33 @@ function CustomerDashboard() {
                     >
                       <User className="h-4 w-4 shrink-0" />
                       <span className="text-left flex-1">Profile Details</span>
-                      {caretaker?.status !== "Verified" && (
-                        <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
-                      )}
                     </button>
+
+                    {caretaker?.status === "Verified" && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveCaregiverTab("reviews")}
+                        className={`w-full py-3 px-4 rounded-2xl text-xs font-bold uppercase tracking-wider flex items-center gap-3 cursor-pointer transition-all ${
+                          activeCaregiverTab === "reviews"
+                            ? "bg-[#1e2a5a] text-white shadow-md shadow-[#1e2a5a]/20"
+                            : "text-slate-500 hover:text-[#1e2a5a] hover:bg-slate-50 border border-transparent hover:border-slate-200/50"
+                        }`}
+                      >
+                        <Star className="h-4 w-4 shrink-0" />
+                        <span className="text-left flex-1">Customer Reviews</span>
+                        {caretakerReviews.length > 0 && (
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                            activeCaregiverTab === "reviews" ? "bg-[#c9a24c] text-[#1e2a5a]" : "bg-[#c9a24c]/20 text-[#c9a24c]"
+                          }`}>
+                            {caretakerReviews.length}
+                          </span>
+                        )}
+                      </button>
+                    )}
+
+                    {caretaker?.status !== "Verified" && (
+                        <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
+                    )}
                   </div>
 
                   <hr className="border-slate-100" />
@@ -1023,22 +1109,82 @@ function CustomerDashboard() {
                       </h2>
                       <p className="text-xs text-slate-400 mt-0.5">Below are the patient homecare shifts you have been assigned to by the administrator.</p>
                     </div>
+ 
+                    {/* Premium Filter Controls */}
+                    <div className="grid gap-4 md:grid-cols-3 bg-slate-50/50 p-4 rounded-2xl border border-slate-200/50 text-left">
+                      {/* Search Anything */}
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Search Anything</label>
+                        <input
+                          type="text"
+                          value={caretakerSearch}
+                          onChange={(e) => setCaretakerSearch(e.target.value)}
+                          placeholder="Search location, name, number, issue..."
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white outline-none focus:border-[#1e2a5a] focus:ring-2 focus:ring-[#1e2a5a]/5 transition-all text-slate-800"
+                        />
+                      </div>
+                      
+                      {/* Start Date */}
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">From Date</label>
+                        <input
+                          type="date"
+                          value={caretakerStartDate}
+                          onChange={(e) => setCaretakerStartDate(e.target.value)}
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white outline-none focus:border-[#1e2a5a] focus:ring-2 focus:ring-[#1e2a5a]/5 transition-all text-slate-850"
+                        />
+                      </div>
 
-                    {isLoading ? (
-                      <div className="flex justify-center py-6">
-                        <RefreshCw className="h-6 w-6 text-indigo-600 animate-spin" />
+                      {/* End Date */}
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">To Date</label>
+                        <input
+                          type="date"
+                          value={caretakerEndDate}
+                          onChange={(e) => setCaretakerEndDate(e.target.value)}
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white outline-none focus:border-[#1e2a5a] focus:ring-2 focus:ring-[#1e2a5a]/5 transition-all text-slate-850"
+                        />
                       </div>
-                    ) : caretakerBookings.length === 0 ? (
-                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-8 text-center text-slate-500">
-                        <Clock className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                        <p className="text-sm font-semibold">No assigned shifts yet</p>
-                        <p className="text-xs text-slate-400 mt-0.5">You will be notified once a customer booking is allocated to your profile.</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {caretakerBookings.map((shift: any) => (
-                          <div key={shift.id} className="rounded-3xl border border-slate-200/60 bg-gradient-to-br from-white to-slate-50/20 p-6 space-y-4 hover:border-[#c9a24c]/40 hover:shadow-md hover:shadow-slate-100/30 transition-all duration-300">
-                            <div className="flex justify-between items-start">
+                    </div>
+ 
+                    {(() => {
+                      const sortedFiltered = sortShiftsOrBookings(
+                        filterShiftsOrBookings(caretakerBookings, caretakerSearch, caretakerStartDate, caretakerEndDate)
+                      );
+                      
+                      if (isLoading) {
+                        return (
+                          <div className="flex justify-center py-6">
+                            <RefreshCw className="h-6 w-6 text-indigo-600 animate-spin" />
+                          </div>
+                        );
+                      }
+                      
+                      if (caretakerBookings.length === 0) {
+                        return (
+                          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-8 text-center text-slate-500">
+                            <Clock className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                            <p className="text-sm font-semibold">No assigned shifts yet</p>
+                            <p className="text-xs text-slate-400 mt-0.5">You will be notified once a customer booking is allocated to your profile.</p>
+                          </div>
+                        );
+                      }
+
+                      if (sortedFiltered.length === 0) {
+                        return (
+                          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-8 text-center text-slate-500">
+                            <Clock className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                            <p className="text-sm font-semibold">No matching shifts</p>
+                            <p className="text-xs text-slate-400 mt-0.5">Adjust your search query or date range filters to find other patient bookings.</p>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-4">
+                          {sortedFiltered.map((shift: any) => (
+                            <div key={shift.id} className="rounded-3xl border border-slate-200/60 bg-gradient-to-br from-white to-slate-50/20 p-6 space-y-4 hover:border-[#c9a24c]/40 hover:shadow-md hover:shadow-slate-100/30 transition-all duration-300">
+                              <div className="flex justify-between items-start">
                               <div>
                                 <span className="text-[10px] uppercase font-bold tracking-widest text-[#c9a24c]">Shift #{shift.id}</span>
                                 <h4 className="text-base font-bold text-[#1e2a5a] font-display">{shift.service}</h4>
@@ -1270,9 +1416,10 @@ function CustomerDashboard() {
                               </div>
                             )}
                           </div>
-                        ))}
-                      </div>
-                    )}
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
                 ) : (
                   <div className="bg-white p-8 sm:p-10 rounded-3xl border border-slate-200/60 shadow-sm text-center py-12 space-y-4">
@@ -1295,6 +1442,74 @@ function CustomerDashboard() {
                   </div>
                 )}
               </>
+            )}
+
+            {/* Customer Reviews tab */}
+            {activeCaregiverTab === "reviews" && (
+              <div className="bg-white p-8 sm:p-10 rounded-3xl border border-slate-200/60 shadow-sm space-y-6 text-left animate-in fade-in duration-300">
+                <div>
+                  <h2 className="text-xl font-bold text-primary font-display flex items-center gap-2">
+                    <Star className="h-5 w-5 text-[#c9a24c]" /> Customer Ratings &amp; Reviews
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Real-time feedback and ratings submitted by patients and families.</p>
+                </div>
+
+                <div className="grid gap-6 sm:grid-cols-3 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
+                  <div className="text-center space-y-1">
+                    <span className="text-4xl font-extrabold text-[#1e2a5a] font-display">{caretakerAvgRating.toFixed(1)}</span>
+                    <div className="flex justify-center text-amber-500 text-sm mt-1">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <span key={i}>{i < Math.round(caretakerAvgRating) ? "★" : "☆"}</span>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold mt-1">Average rating</p>
+                  </div>
+                  
+                  <div className="sm:col-span-2 space-y-2 border-t sm:border-t-0 sm:border-l border-slate-200/60 pt-4 sm:pt-0 sm:pl-6 text-xs text-slate-500 flex flex-col justify-center">
+                    <div className="flex items-center gap-2">
+                      <span className="w-12 text-right">Excellent</span>
+                      <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-500" style={{ width: `${(caretakerReviews.filter(r => r.rating >= 4.5).length / (caretakerReviews.length || 1)) * 100}%` }} />
+                      </div>
+                      <span className="w-8 text-right font-semibold">{caretakerReviews.filter(r => r.rating >= 4.5).length}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-12 text-right">Good</span>
+                      <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-indigo-500" style={{ width: `${(caretakerReviews.filter(r => r.rating >= 3.5 && r.rating < 4.5).length / (caretakerReviews.length || 1)) * 100}%` }} />
+                      </div>
+                      <span className="w-8 text-right font-semibold">{caretakerReviews.filter(r => r.rating >= 3.5 && r.rating < 4.5).length}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-12 text-right">Average</span>
+                      <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-amber-500" style={{ width: `${(caretakerReviews.filter(r => r.rating < 3.5).length / (caretakerReviews.length || 1)) * 100}%` }} />
+                      </div>
+                      <span className="w-8 text-right font-semibold">{caretakerReviews.filter(r => r.rating < 3.5).length}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {caretakerReviews.length === 0 ? (
+                  <div className="text-center text-slate-400 py-10">
+                    <MessageSquare className="h-10 w-10 text-slate-350 mx-auto mb-2" />
+                    <p className="text-sm font-semibold">No reviews submitted yet</p>
+                    <p className="text-xs">Feedback details will appear here once shift checkouts are rated.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {caretakerReviews.map((rev: any, idx: number) => (
+                      <div key={idx} className="p-5 bg-slate-50/50 border border-slate-200/50 rounded-2xl space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-bold text-slate-700">Patient Booking #{rev.bookingId || "N/A"}</span>
+                          <span className="text-xs text-amber-500 font-bold">{"★".repeat(rev.rating)}</span>
+                        </div>
+                        <p className="text-xs text-slate-650 italic leading-relaxed">&ldquo;{rev.comment || "No written comments."}&rdquo;</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Profile Form Card */}
@@ -1834,37 +2049,101 @@ function CustomerDashboard() {
                 <Calendar className="h-5 w-5 text-gold" /> My Healthcare Shifts
               </h2>
 
-              {isLoading ? (
-                <div className="flex justify-center py-20">
-                  <RefreshCw className="h-10 w-10 text-gold animate-spin" />
+              {/* Premium Filter Controls */}
+              <div className="grid gap-4 md:grid-cols-3 bg-slate-50/50 p-4 rounded-2xl border border-slate-200/50 text-left">
+                {/* Search Anything */}
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Search Anything</label>
+                  <input
+                    type="text"
+                    value={customerSearch}
+                    onChange={(e) => setCustomerSearch(e.target.value)}
+                    placeholder="Search location, name, number, issue..."
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white outline-none focus:border-[#1e2a5a] focus:ring-2 focus:ring-[#1e2a5a]/5 transition-all text-slate-800"
+                  />
                 </div>
-              ) : dashboardError ? (
-                <div className="rounded-2xl border border-destructive/20 bg-destructive/10 p-6 text-destructive flex gap-3 items-center">
-                  <AlertTriangle className="h-6 w-6 shrink-0" />
-                  <div>
-                    <span className="font-bold">Sync Error: </span>{dashboardError}
-                  </div>
+                
+                {/* Start Date */}
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">From Date</label>
+                  <input
+                    type="date"
+                    value={customerStartDate}
+                    onChange={(e) => setCustomerStartDate(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white outline-none focus:border-[#1e2a5a] focus:ring-2 focus:ring-[#1e2a5a]/5 transition-all text-slate-850"
+                  />
                 </div>
-              ) : bookings.length === 0 ? (
-                <div className="rounded-3xl border border-slate-200/60 bg-white p-12 text-center shadow-sm">
-                  <FileText className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-bold text-primary">No active bookings</h3>
-                  <p className="text-sm text-slate-400 mt-1 max-w-sm mx-auto">You haven't requested any care shifts yet. Get started by booking a verified homecare service.</p>
-                  <button
-                    onClick={() => setActiveView("new-booking")}
-                    className="btn-primary mt-6 text-xs py-2 px-4 cursor-pointer"
-                  >
-                    Request Booking Now
-                  </button>
+
+                {/* End Date */}
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">To Date</label>
+                  <input
+                    type="date"
+                    value={customerEndDate}
+                    onChange={(e) => setCustomerEndDate(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white outline-none focus:border-[#1e2a5a] focus:ring-2 focus:ring-[#1e2a5a]/5 transition-all text-slate-850"
+                  />
                 </div>
-              ) : (
-                <div className="grid gap-6">
-                  {bookings.map((booking) => (
-                    <div
-                      key={booking.id}
-                      className="rounded-3xl border border-slate-200/60 bg-gradient-to-br from-white to-slate-50/20 p-6 sm:p-8 shadow-sm hover:border-[#c9a24c]/40 hover:shadow-md hover:shadow-slate-100/30 transition-all duration-300 flex flex-col lg:flex-row justify-between gap-6"
-                    >
-                      <div className="space-y-4 flex-1">
+              </div>
+ 
+              {(() => {
+                const sortedFiltered = sortShiftsOrBookings(
+                  filterShiftsOrBookings(bookings, customerSearch, customerStartDate, customerEndDate)
+                );
+ 
+                if (isLoading) {
+                  return (
+                    <div className="flex justify-center py-20">
+                      <RefreshCw className="h-10 w-10 text-gold animate-spin" />
+                    </div>
+                  );
+                }
+ 
+                if (dashboardError) {
+                  return (
+                    <div className="rounded-2xl border border-destructive/20 bg-destructive/10 p-6 text-destructive flex gap-3 items-center text-left">
+                      <AlertTriangle className="h-6 w-6 shrink-0" />
+                      <div>
+                        <span className="font-bold">Sync Error: </span>{dashboardError}
+                      </div>
+                    </div>
+                  );
+                }
+ 
+                if (bookings.length === 0) {
+                  return (
+                    <div className="rounded-3xl border border-slate-200/60 bg-white p-12 text-center shadow-sm">
+                      <FileText className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+                      <h3 className="text-lg font-bold text-primary">No active bookings</h3>
+                      <p className="text-sm text-slate-400 mt-1 max-w-sm mx-auto">You haven't requested any care shifts yet. Get started by booking a verified homecare service.</p>
+                      <button
+                        onClick={() => setActiveView("new-booking")}
+                        className="btn-primary mt-6 text-xs py-2 px-4 cursor-pointer"
+                      >
+                        Request Booking Now
+                      </button>
+                    </div>
+                  );
+                }
+ 
+                if (sortedFiltered.length === 0) {
+                  return (
+                    <div className="rounded-3xl border border-slate-200/60 bg-white p-12 text-center shadow-sm">
+                      <FileText className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+                      <h3 className="text-lg font-bold text-[#1e2a5a] font-display">No matching bookings</h3>
+                      <p className="text-sm text-slate-400 mt-1 max-w-sm mx-auto">Adjust your search query or date range filters to find other requested shifts.</p>
+                    </div>
+                  );
+                }
+ 
+                return (
+                  <div className="grid gap-6">
+                    {sortedFiltered.map((booking) => (
+                      <div
+                        key={booking.id}
+                        className="rounded-3xl border border-slate-200/60 bg-gradient-to-br from-white to-slate-50/20 p-6 sm:p-8 shadow-sm hover:border-[#c9a24c]/40 hover:shadow-md hover:shadow-slate-100/30 transition-all duration-300 flex flex-col lg:flex-row justify-between gap-6"
+                      >
+                        <div className="space-y-4 flex-1">
                         {/* Summary Header */}
                         <div className="flex justify-between items-start">
                           <div>
@@ -2308,9 +2587,10 @@ function CustomerDashboard() {
                       </div>
 
                     </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           ) : (
             // NEW BOOKING VIEW
