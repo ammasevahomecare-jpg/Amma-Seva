@@ -856,10 +856,16 @@ export const db = {
   getCaregivers: async () => {
     if (useMySQL) {
       const [rows] = await pool.query('SELECT * FROM caregivers ORDER BY id DESC')
-      return rows
+      return rows.map(r => ({
+        ...r,
+        uniqueId: `AMMASEVA-${String(r.id).padStart(4, '0')}`
+      }))
     } else {
       const data = await readJSONDb()
-      return [...data.caregivers].reverse()
+      return [...data.caregivers].reverse().map(r => ({
+        ...r,
+        uniqueId: `AMMASEVA-${String(r.id).padStart(4, '0')}`
+      }))
     }
   },
 
@@ -974,10 +980,11 @@ export const db = {
   getCaregiverById: async (id) => {
     if (useMySQL) {
       const [rows] = await pool.query('SELECT * FROM caregivers WHERE id = ?', [id])
-      return rows[0] || null
+      return rows[0] ? { ...rows[0], uniqueId: `AMMASEVA-${String(rows[0].id).padStart(4, '0')}` } : null
     } else {
       const data = await readJSONDb()
-      return data.caregivers.find(c => c.id === Number(id)) || null
+      const c = data.caregivers.find(c => c.id === Number(id))
+      return c ? { ...c, uniqueId: `AMMASEVA-${String(c.id).padStart(4, '0')}` } : null
     }
   },
 

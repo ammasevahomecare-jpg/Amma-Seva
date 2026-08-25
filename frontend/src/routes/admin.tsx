@@ -174,6 +174,8 @@ function AdminPage() {
   const [bookingCaretakerPayoutStatus, setBookingCaretakerPayoutStatus] = useState("Unpaid");
   const [bookingCaretakerPayoutMethod, setBookingCaretakerPayoutMethod] = useState("");
   const [bookingCaretakerPayoutRef, setBookingCaretakerPayoutRef] = useState("");
+  const [payoutCalcMode, setPayoutCalcMode] = useState<"percentage" | "fixed">("percentage");
+  const [payoutPercentValue, setPayoutPercentValue] = useState("85");
 
   // Form states - Caregiver
   const [caregiverName, setCaregiverName] = useState("");
@@ -267,6 +269,9 @@ function AdminPage() {
   const [salarySearch, setSalarySearch] = useState("");
   const [salaryStartDate, setSalaryStartDate] = useState("");
   const [salaryEndDate, setSalaryEndDate] = useState("");
+  const [selectedCaregiverForLedger, setSelectedCaregiverForLedger] = useState<any | null>(null);
+  const [ledgerSearch, setLedgerSearch] = useState("");
+  const [ledgerTimeFilter, setLedgerTimeFilter] = useState<"all" | "past" | "present" | "future">("all");
 
   // Check login status on mount
   useEffect(() => {
@@ -516,6 +521,8 @@ function AdminPage() {
       setBookingCaretakerPayoutStatus("Unpaid");
       setBookingCaretakerPayoutMethod("");
       setBookingCaretakerPayoutRef("");
+      setPayoutCalcMode("percentage");
+      setPayoutPercentValue("85");
     } else if (type === "caregiver") {
       setCaregiverName("");
       setCaregiverPhone("");
@@ -596,6 +603,17 @@ function AdminPage() {
       setBookingCaretakerPayoutStatus(record.caretakerPayoutStatus || "Unpaid");
       setBookingCaretakerPayoutMethod(record.caretakerPayoutMethod || "");
       setBookingCaretakerPayoutRef(record.caretakerPayoutRef || "");
+      
+      const payoutVal = Number(record.caretakerPayout || 0);
+      const bookingAmt = Number(record.amount || 0);
+      if (bookingAmt > 0 && payoutVal > 0) {
+        const pct = Math.round((payoutVal / bookingAmt) * 100);
+        setPayoutPercentValue(pct.toString());
+        setPayoutCalcMode(pct === 85 || pct === 15 || pct > 0 ? "percentage" : "fixed");
+      } else {
+        setPayoutPercentValue("85");
+        setPayoutCalcMode("percentage");
+      }
       setBookingPatientName(record.patientName || "");
       setBookingPatientAge(record.patientAge || "");
       setBookingPatientNeeds(record.patientNeeds || "");
@@ -919,7 +937,8 @@ function AdminPage() {
   const filteredCaregivers = caregivers.filter(c => 
     c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.phone.includes(searchQuery) ||
-    c.specialty.toLowerCase().includes(searchQuery.toLowerCase())
+    c.specialty.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (c.uniqueId && c.uniqueId.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const filteredEnquiries = enquiries.filter(e => 
@@ -1593,8 +1612,13 @@ function AdminPage() {
                                 </div>
                               )}
                               <div>
-                                <div className="font-bold text-[#1e2a5a] font-display text-base leading-tight">{c.name}</div>
-                                <div className="text-xs text-slate-400 mt-1 font-semibold">{c.phone}</div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-[#c9a24c]/10 text-[#c9a24c] border border-[#c9a24c]/20 shrink-0">
+                                    {c.uniqueId}
+                                  </span>
+                                  <div className="font-bold text-[#1e2a5a] font-display text-base leading-tight">{c.name}</div>
+                                </div>
+                                <div className="text-xs text-slate-400 mt-1.5 font-semibold">{c.phone}</div>
                                 <div className="text-xs text-slate-500 font-medium mt-0.5">{c.email}</div>
                                 {Number(c.rating) > 0 ? (
                                   <button
@@ -2303,121 +2327,307 @@ function AdminPage() {
                   </div>
                 </div>
 
-                {/* Caregiver Payroll Listing */}
-                <div className="space-y-4">
-                  <h4 className="text-sm font-extrabold text-[#1e2a5a] uppercase tracking-wider">Employee Salaries Breakdown</h4>
+                {selectedCaregiverForLedger ? (() => {
+                  const cg = selectedCaregiverForLedger;
+                  // Get ALL bookings for this caregiver (past, present, future)
+                  const cgBookings = bookings.filter(b => b.assignedStaff === cg.name);
                   
-                  <div className="grid gap-4 grid-cols-1">
-                    {caregivers
-                      .filter((cg) => {
-                        const q = salarySearch.toLowerCase();
-                        return !salarySearch || cg.name.toLowerCase().includes(q) || cg.specialty.toLowerCase().includes(q);
-                      })
-                      .map((cg) => {
-                      const cgBookings = filteredCompletedBookings.filter(b => b.assignedStaff === cg.name);
-                      const earned = cgBookings.reduce((sum, b) => sum + getPayoutValue(b), 0);
-                      const paid = cgBookings.filter(b => b.caretakerPayoutStatus === "Paid").reduce((sum, b) => sum + getPayoutValue(b), 0);
-                      const unpaid = earned - paid;
-                      const isExpanded = expandedCaregiverId === cg.id;
+                  // Calculate completed shift totals
+                  const earned = cgBookings.filter(b => b.status === "Completed").reduce((sum, b) => sum + getPayoutValue(b), 0);
+                  const paid = cgBookings.filter(b => b.status === "Completed" && b.caretakerPayoutStatus === "Paid").reduce((sum, b) => sum + getPayoutValue(b), 0);
+                  const unpaid = earned - paid;
 
-                      return (
-                        <div key={cg.id} className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden premium-card">
-                          <div className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                            <div className="flex items-center gap-4">
-                              <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-[#1e2a5a]/10 to-[#1e2a5a]/5 flex items-center justify-center font-bold text-lg text-[#1e2a5a] border border-[#1e2a5a]/10 shrink-0">
-                                {cg.name.charAt(0)}
-                              </div>
-                              <div>
-                                <h5 className="font-bold text-[#1e2a5a] font-display text-base leading-tight">{cg.name}</h5>
-                                <p className="text-[11px] text-slate-400 font-medium mt-0.5">{cg.phone} • {cg.specialty}</p>
-                              </div>
-                            </div>
+                  // Filter ledger records based on search and time filters
+                  const filteredLedgerBookings = cgBookings.filter(b => {
+                    const q = ledgerSearch.toLowerCase();
+                    const matchesSearch = !ledgerSearch || 
+                      b.name.toLowerCase().includes(q) || 
+                      b.service.toLowerCase().includes(q) ||
+                      (b.phone && b.phone.includes(q));
 
-                            <div className="flex flex-wrap gap-4 sm:gap-8 text-xs">
-                              <div>
-                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Earned</span>
-                                <div className="font-extrabold text-slate-900 mt-0.5">₹{earned.toLocaleString()}</div>
-                              </div>
-                              <div>
-                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Paid</span>
-                                <div className="font-extrabold text-emerald-600 mt-0.5">₹{paid.toLocaleString()}</div>
-                              </div>
-                              <div>
-                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Outstanding</span>
-                                <div className="font-extrabold text-amber-600 mt-0.5">₹{unpaid.toLocaleString()}</div>
-                              </div>
-                            </div>
+                    let matchesTime = true;
+                    const today = new Date().toISOString().split('T')[0];
+                    const isCompleted = b.status === "Completed";
+                    if (ledgerTimeFilter === "past") {
+                      matchesTime = b.date < today || isCompleted;
+                    } else if (ledgerTimeFilter === "present") {
+                      matchesTime = b.date === today && !isCompleted;
+                    } else if (ledgerTimeFilter === "future") {
+                      matchesTime = b.date > today && !isCompleted;
+                    }
 
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => setExpandedCaregiverId(isExpanded ? null : cg.id)}
-                                className="px-3.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-bold transition-all cursor-pointer"
-                              >
-                                {isExpanded ? "Hide Shifts" : `View Shifts (${cgBookings.length})`}
-                              </button>
+                    return matchesSearch && matchesTime;
+                  });
+
+                  return (
+                    <div className="space-y-6 animate-in fade-in duration-200">
+                      {/* Ledger Header Panel */}
+                      <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/40 premium-card flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div className="flex items-center gap-4">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedCaregiverForLedger(null);
+                              setLedgerSearch("");
+                              setLedgerTimeFilter("all");
+                            }}
+                            className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-705 text-xs font-bold transition-all cursor-pointer border border-slate-205"
+                          >
+                            ← Back to Salaries
+                          </button>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded bg-[#c9a24c]/15 text-[#c9a24c] border border-[#c9a24c]/20 shrink-0">
+                                {cg.uniqueId}
+                              </span>
+                              <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display">{cg.name}</h3>
                             </div>
+                            <p className="text-xs text-slate-400 mt-1 font-semibold">{cg.specialty} • {cg.phone}</p>
                           </div>
-
-                          {isExpanded && (
-                            <div className="border-t border-slate-100 bg-slate-50/50 p-6 space-y-3">
-                              <h6 className="text-[10px] font-extrabold text-[#1e2a5a] uppercase tracking-widest">Shift Payout Log & Settlements</h6>
-                              {cgBookings.length > 0 ? (
-                                <div className="divide-y divide-slate-100 bg-white border border-slate-200/50 rounded-xl overflow-hidden shadow-sm">
-                                  {cgBookings.map((b) => (
-                                    <div key={b.id} className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs">
-                                      <div>
-                                        <div className="font-bold text-slate-800">{b.service}</div>
-                                        <div className="text-slate-450 text-[10px] font-medium mt-0.5">{b.date} • Customer: {b.name}</div>
-                                      </div>
-                                      <div className="flex items-center gap-6">
-                                        <div className="text-right">
-                                          <div className="font-bold text-slate-900">₹{getPayoutValue(b)}</div>
-                                          <div className="text-[9px] text-slate-450 font-semibold mt-0.5">Caretaker Share</div>
-                                        </div>
-                                        <div>
-                                          {b.caretakerPayoutStatus === "Paid" ? (
-                                            <div className="text-right space-y-0.5">
-                                              <span className="inline-flex items-center gap-1 text-[9px] text-emerald-700 bg-emerald-50 border border-emerald-200/50 font-bold px-2 py-0.5 rounded-md">
-                                                ✓ Paid
-                                              </span>
-                                              {b.caretakerPayoutMethod && (
-                                                <div className="text-[8px] text-slate-400 font-semibold">
-                                                  {b.caretakerPayoutMethod} {b.caretakerPayoutRef ? `(${b.caretakerPayoutRef})` : ''}
-                                                </div>
-                                              )}
-                                            </div>
-                                          ) : (
-                                            <span className="inline-flex items-center gap-1 text-[9px] text-amber-700 bg-amber-50 border border-amber-200/50 font-bold px-2 py-0.5 rounded-md">
-                                              ● Unpaid
-                                            </span>
-                                          )}
-                                        </div>
-                                        <button
-                                          onClick={() => openEditModal("booking", b)}
-                                          className="px-3 py-1.5 rounded-lg border border-[#c9a24c]/40 hover:bg-[#c9a24c]/10 text-[#c9a24c] text-[10px] font-extrabold tracking-wider uppercase transition-all cursor-pointer"
-                                        >
-                                          {b.caretakerPayoutStatus === "Paid" ? "Edit Details" : "Record Payment"}
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <p className="text-xs text-slate-450 italic">No completed shifts recorded for this caregiver.</p>
-                              )}
-                            </div>
-                          )}
                         </div>
-                      );
-                    })}
-
-                    {caregivers.length === 0 && (
-                      <div className="bg-white border border-slate-200/80 rounded-2xl p-8 text-center text-slate-400 font-semibold">
-                        No caregivers registered to compile salary payroll.
                       </div>
-                    )}
+
+                      {/* Ledger Payout Summary Stats */}
+                      <div className="grid gap-6 grid-cols-1 sm:grid-cols-3">
+                        <div className="bg-white border border-slate-200/80 border-l-4 border-l-[#1e2a5a] rounded-2xl p-5 shadow-sm premium-card">
+                          <span className="text-xs text-slate-400 font-extrabold uppercase tracking-wider block">Total Earned (Completed)</span>
+                          <span className="text-2xl font-black text-[#1e2a5a] mt-1 block">
+                            ₹{earned.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="bg-white border border-slate-200/80 border-l-4 border-l-emerald-500 rounded-2xl p-5 shadow-sm premium-card">
+                          <span className="text-xs text-slate-400 font-extrabold uppercase tracking-wider block">Total Settled (Paid)</span>
+                          <span className="text-2xl font-black text-emerald-650 mt-1 block">
+                            ₹{paid.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="bg-white border border-slate-200/80 border-l-4 border-l-[#c9a24c] rounded-2xl p-5 shadow-sm premium-card">
+                          <span className="text-xs text-slate-400 font-extrabold uppercase tracking-wider block">Outstanding (Unpaid)</span>
+                          <span className="text-2xl font-black text-amber-650 mt-1 block">
+                            ₹{unpaid.toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Ledger Filter Navigation */}
+                      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm premium-card flex flex-col md:flex-row gap-4 items-center justify-between">
+                        <div className="relative w-full md:w-1/3">
+                          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <input
+                            type="text"
+                            placeholder="Search ledger by patient, service..."
+                            value={ledgerSearch}
+                            onChange={(e) => setLedgerSearch(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-semibold text-slate-800"
+                          />
+                        </div>
+                        <div className="flex gap-2 w-full md:w-auto">
+                          <button
+                            type="button"
+                            onClick={() => setLedgerTimeFilter("all")}
+                            className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-extrabold transition-all border cursor-pointer ${
+                              ledgerTimeFilter === "all"
+                                ? "bg-[#1e2a5a] text-white border-[#1e2a5a]"
+                                : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                            }`}
+                          >
+                            All Shifts ({cgBookings.length})
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setLedgerTimeFilter("past")}
+                            className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-extrabold transition-all border cursor-pointer ${
+                              ledgerTimeFilter === "past"
+                                ? "bg-[#1e2a5a] text-white border-[#1e2a5a]"
+                                : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                            }`}
+                          >
+                            Past / Completed
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setLedgerTimeFilter("present")}
+                            className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-extrabold transition-all border cursor-pointer ${
+                              ledgerTimeFilter === "present"
+                                ? "bg-[#1e2a5a] text-white border-[#1e2a5a]"
+                                : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                            }`}
+                          >
+                            Present / Today
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setLedgerTimeFilter("future")}
+                            className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-extrabold transition-all border cursor-pointer ${
+                              ledgerTimeFilter === "future"
+                                ? "bg-[#1e2a5a] text-white border-[#1e2a5a]"
+                                : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                            }`}
+                          >
+                            Future / Scheduled
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Ledger Statement Table */}
+                      <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm premium-card">
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-sm text-slate-700">
+                            <thead>
+                              <tr className="border-b border-slate-200/80 bg-[#1e2a5a]/5 text-xs text-[#1e2a5a] uppercase font-black tracking-wider">
+                                <th className="py-4 px-6">Patient Name</th>
+                                <th className="py-4 px-6">Service Parameter</th>
+                                <th className="py-4 px-6">Customer Paid Amount</th>
+                                <th className="py-4 px-6">Nurse Payout Amount</th>
+                                <th className="py-4 px-6">Payout Status</th>
+                                <th className="py-4 px-6 text-right">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {filteredLedgerBookings.map((b) => {
+                                const calculatedPayout = getPayoutValue(b);
+                                const isCompleted = b.status === "Completed";
+                                const today = new Date().toISOString().split('T')[0];
+                                const bType = b.date < today || isCompleted ? "PAST" : b.date === today ? "PRESENT" : "FUTURE";
+
+                                return (
+                                  <tr key={b.id} className="hover:bg-slate-50/50 transition-colors">
+                                    <td className="py-4 px-6 font-bold text-[#1e2a5a]">
+                                      {b.name}
+                                      <div className="text-[10px] text-slate-400 font-bold mt-0.5">📅 {b.date} • {b.time}</div>
+                                    </td>
+                                    <td className="py-4 px-6">
+                                      <div className="font-bold text-slate-805">{b.service}</div>
+                                      <div className="text-[10px] text-slate-450 mt-0.5 font-semibold">Duration: {b.duration || "Daily"}</div>
+                                    </td>
+                                    <td className="py-4 px-6 font-bold text-slate-900">
+                                      ₹{(Number(b.amount) || 0).toLocaleString()}
+                                    </td>
+                                    <td className="py-4 px-6 font-bold text-[#c9a24c]">
+                                      ₹{calculatedPayout.toLocaleString()}
+                                    </td>
+                                    <td className="py-4 px-6">
+                                      <div className="flex flex-col gap-1 items-start">
+                                        <span className={`text-[9px] uppercase font-black px-2 py-0.5 rounded ${
+                                          bType === "PAST" ? "bg-slate-150 text-slate-600 border border-slate-200/50" :
+                                          bType === "PRESENT" ? "bg-emerald-50 text-emerald-700 border border-emerald-200/50" :
+                                          "bg-blue-50 text-blue-700 border-blue-200/50"
+                                        }`}>
+                                          {bType}
+                                        </span>
+                                        {isCompleted ? (
+                                          <span className={`text-[9px] uppercase font-black px-2 py-0.5 rounded border ${
+                                            b.caretakerPayoutStatus === "Paid" ? "bg-emerald-50 text-emerald-700 border-emerald-200/50" : "bg-amber-50 text-amber-700 border-amber-200/50"
+                                          }`}>
+                                            {b.caretakerPayoutStatus === "Paid" ? "Paid" : "Unpaid"}
+                                          </span>
+                                        ) : (
+                                          <span className="text-[9px] text-slate-400 italic font-semibold">Scheduled Shift</span>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="py-4 px-6 text-right">
+                                      <button
+                                        type="button"
+                                        onClick={() => openEditModal("booking", b)}
+                                        className="px-3 py-1.5 rounded-lg border border-[#c9a24c]/40 hover:bg-[#c9a24c]/10 text-[#c9a24c] text-[10px] font-extrabold tracking-wider uppercase transition-all cursor-pointer"
+                                      >
+                                        {b.caretakerPayoutStatus === "Paid" ? "Edit Details" : "Record Payment"}
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+
+                              {filteredLedgerBookings.length === 0 && (
+                                <tr>
+                                  <td colSpan={6} className="py-8 text-center text-slate-400 text-xs italic font-semibold">
+                                    No shifts found matching your filters.
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })() : (
+                  /* Caregiver Payroll Listing */
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-extrabold text-[#1e2a5a] uppercase tracking-wider">Employee Salaries Breakdown</h4>
+                    
+                    <div className="grid gap-4 grid-cols-1">
+                      {caregivers
+                        .filter((cg) => {
+                          const q = salarySearch.toLowerCase();
+                          return !salarySearch || 
+                            cg.name.toLowerCase().includes(q) || 
+                            cg.specialty.toLowerCase().includes(q) ||
+                            (cg.uniqueId && cg.uniqueId.toLowerCase().includes(q));
+                        })
+                        .map((cg) => {
+                          const cgBookings = bookings.filter(b => b.assignedStaff === cg.name);
+                          const completed = cgBookings.filter(b => b.status === "Completed");
+                          const earned = completed.reduce((sum, b) => sum + getPayoutValue(b), 0);
+                          const paid = completed.filter(b => b.caretakerPayoutStatus === "Paid").reduce((sum, b) => sum + getPayoutValue(b), 0);
+                          const unpaid = earned - paid;
+
+                          return (
+                            <div key={cg.id} className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden premium-card">
+                              <div className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                <div className="flex items-center gap-4">
+                                  <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-[#1e2a5a]/10 to-[#1e2a5a]/5 flex items-center justify-center font-bold text-lg text-[#1e2a5a] border border-[#1e2a5a]/10 shrink-0">
+                                    {cg.name.charAt(0)}
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-[#c9a24c]/10 text-[#c9a24c] border border-[#c9a24c]/20 shrink-0">
+                                        {cg.uniqueId}
+                                      </span>
+                                      <h5 className="font-bold text-[#1e2a5a] font-display text-base leading-tight">{cg.name}</h5>
+                                    </div>
+                                    <p className="text-[11px] text-slate-400 font-medium mt-1">{cg.phone} • {cg.specialty}</p>
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-wrap gap-4 sm:gap-8 text-xs">
+                                  <div>
+                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Earned</span>
+                                    <div className="font-extrabold text-slate-900 mt-0.5">₹{earned.toLocaleString()}</div>
+                                  </div>
+                                  <div>
+                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Paid</span>
+                                    <div className="font-extrabold text-emerald-600 mt-0.5">₹{paid.toLocaleString()}</div>
+                                  </div>
+                                  <div>
+                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Outstanding</span>
+                                    <div className="font-extrabold text-amber-600 mt-0.5">₹{unpaid.toLocaleString()}</div>
+                                  </div>
+                                </div>
+
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedCaregiverForLedger(cg)}
+                                    className="px-3.5 py-1.5 rounded-lg border border-[#c9a24c]/40 hover:bg-[#c9a24c]/10 text-[#c9a24c] text-xs font-extrabold tracking-wider uppercase transition-all cursor-pointer shadow-sm"
+                                  >
+                                    👁️ View Ledger ({cgBookings.length})
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                      {caregivers.length === 0 && (
+                        <div className="bg-white border border-slate-200/80 rounded-2xl p-8 text-center text-slate-400 font-semibold">
+                          No caregivers registered to compile salary payroll.
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             );
           })()}
@@ -2880,7 +3090,7 @@ function AdminPage() {
                         <option value="Monthly">Monthly companion</option>
                       </select>
                     </div>
-                    <div>
+<div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Booking Amount (₹)</label>
                       <input 
                         type="number" required value={bookingAmount} onChange={e => setBookingAmount(e.target.value)}
@@ -2889,19 +3099,103 @@ function AdminPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Caretaker Payout Amount (₹)</label>
-                      <input 
-                        type="number" required value={bookingCaretakerPayout} onChange={e => setBookingCaretakerPayout(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
-                      />
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-4 col-span-2">
+                    <label className="block text-xs font-extrabold uppercase tracking-wider text-[#1e2a5a] mb-1">Caretaker Payout Setup</label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5">Calculation Option</label>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPayoutCalcMode("percentage");
+                              const amt = Number(bookingAmount) || 0;
+                              const pct = Number(payoutPercentValue) || 85;
+                              setBookingCaretakerPayout(Math.round(amt * (pct / 100)).toString());
+                            }}
+                            className={`flex-1 py-2 rounded-lg border text-xs font-extrabold transition-all cursor-pointer ${
+                              payoutCalcMode === "percentage"
+                                ? "bg-[#1e2a5a] text-white border-[#1e2a5a] shadow-sm shadow-[#1e2a5a]/25"
+                                : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                            }`}
+                          >
+                            % Percentage Split
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPayoutCalcMode("fixed");
+                            }}
+                            className={`flex-1 py-2 rounded-lg border text-xs font-extrabold transition-all cursor-pointer ${
+                              payoutCalcMode === "fixed"
+                                ? "bg-[#1e2a5a] text-white border-[#1e2a5a] shadow-sm shadow-[#1e2a5a]/25"
+                                : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                            }`}
+                          >
+                            Flat Fixed Amount
+                          </button>
+                        </div>
+                      </div>
+
+                      {payoutCalcMode === "percentage" ? (
+                        <div>
+                          <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5">Split Percentage (%)</label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              value={payoutPercentValue}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setPayoutPercentValue(val);
+                                const amt = Number(bookingAmount) || 0;
+                                const pct = Number(val) || 0;
+                                setBookingCaretakerPayout(Math.round(amt * (pct / 100)).toString());
+                              }}
+                              className="w-24 px-3 py-1.5 border border-slate-200 rounded-lg outline-none bg-white text-xs font-bold text-slate-800 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c]"
+                              min="0"
+                              max="100"
+                            />
+                            <span className="text-[10px] text-slate-450 font-bold">
+                              ({payoutPercentValue}% of ₹{(Number(bookingAmount) || 0).toLocaleString()})
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5">Flat Payout Amount (₹)</label>
+                          <input
+                            type="number"
+                            value={bookingCaretakerPayout}
+                            onChange={(e) => setBookingCaretakerPayout(e.target.value)}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-lg outline-none bg-white text-xs font-bold text-[#1e2a5a] focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c]"
+                            placeholder="Enter flat payout amount"
+                          />
+                        </div>
+                      )}
                     </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-100 pt-3">
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Final Caretaker Payout (₹)</label>
+                        <div className="text-sm font-black text-[#c9a24c] mt-1">
+                          ₹{(Number(bookingCaretakerPayout) || 0).toLocaleString()}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Amma Seva Fee / Margin (₹)</label>
+                        <div className="text-sm font-bold text-slate-500 mt-1">
+                          ₹{Math.max(0, (Number(bookingAmount) || 0) - (Number(bookingCaretakerPayout) || 0)).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 col-span-2">
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Caretaker Payout Status</label>
                       <select 
                         value={bookingCaretakerPayoutStatus} onChange={e => setBookingCaretakerPayoutStatus(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 text-xs font-bold text-slate-700"
                       >
                         <option value="Unpaid">Unpaid / Settle Pending</option>
                         <option value="Paid">Paid / Settle Cleared</option>
