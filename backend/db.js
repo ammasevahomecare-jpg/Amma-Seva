@@ -3,11 +3,26 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import bcrypt from 'bcryptjs'
-
-// Resolve dirname
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-const JSON_DB_PATH = process.env.DB_PATH || path.join(__dirname, 'db.json')
+import os from 'os'
+ 
+ // Resolve dirname
+ const __filename = fileURLToPath(import.meta.url)
+ const __dirname = path.dirname(__filename)
+ 
+ const PERSISTENT_DB_PATH = process.env.DB_PATH || path.join(os.homedir(), '.ammaseva_db.json')
+ const LEGACY_DB_PATH = path.join(__dirname, 'db.json')
+ 
+ // Automatic migration of existing data on first startup
+ if (!fs.existsSync(PERSISTENT_DB_PATH) && fs.existsSync(LEGACY_DB_PATH)) {
+   try {
+     fs.copyFileSync(LEGACY_DB_PATH, PERSISTENT_DB_PATH)
+     console.log(`[Database Migration] Success: Migrated database to persistent location: ${PERSISTENT_DB_PATH}`)
+   } catch (err) {
+     console.error(`[Database Migration] Error: Failed to migrate database:`, err)
+   }
+ }
+ 
+ const JSON_DB_PATH = PERSISTENT_DB_PATH
 
 let pool = null
 let useMySQL = false
