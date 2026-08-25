@@ -1200,23 +1200,48 @@ function CustomerDashboard() {
 
                       return (
                         <div className="space-y-4">
-                          {sortedFiltered.map((shift: any) => (
-                            <div key={shift.id} className="rounded-3xl border border-slate-200/60 bg-gradient-to-br from-white to-slate-50/20 p-6 space-y-4 hover:border-[#c9a24c]/40 hover:shadow-md hover:shadow-slate-100/30 transition-all duration-300">
-                              <div className="flex justify-between items-start">
-                              <div>
-                                <span className="text-[10px] uppercase font-bold tracking-widest text-[#c9a24c]">Shift #{shift.id}</span>
-                                <h4 className="text-base font-bold text-[#1e2a5a] font-display">{shift.service}</h4>
-                              </div>
-                              <span className={`text-[9px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-xl border ${
-                                shift.status === "Confirmed" ? "bg-emerald-50 text-emerald-800 border-emerald-100" :
-                                shift.status === "Completed" ? "bg-indigo-50 text-indigo-800 border-indigo-100" :
-                                shift.status === "Active" ? "bg-amber-50 text-amber-800 border-amber-100" :
-                                "bg-slate-50 text-slate-700 border-slate-200"
-                              }`}>
-                                {shift.status}
-                              </span>
-                            </div>
+                          {sortedFiltered.map((shift: any) => {
+                            const isExpanded = expandedBookingIds[shift.id] !== undefined
+                              ? expandedBookingIds[shift.id]
+                              : (shift.status !== "Completed" && shift.status !== "Cancelled");
 
+                            return (
+                              <div key={shift.id} className="rounded-3xl border border-slate-200/60 bg-gradient-to-br from-white to-slate-50/20 p-6 space-y-4 hover:border-[#c9a24c]/40 hover:shadow-md hover:shadow-slate-100/30 transition-all duration-300 text-left">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <span className="text-[10px] uppercase font-bold tracking-widest text-[#c9a24c]">Shift #{shift.id}</span>
+                                    <h4 className="text-base font-bold text-[#1e2a5a] font-display">{shift.service}</h4>
+                                    {!isExpanded && (
+                                      <p className="text-xs text-slate-400 font-semibold mt-1 text-left">
+                                        Date: {shift.date} at {shift.time} • Patient: {shift.name || shift.patientName} • Contact: {shift.phone}
+                                      </p>
+                                    )}
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-3">
+                                    <span className={`text-[9px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-xl border ${
+                                      shift.status === "Confirmed" ? "bg-emerald-50 text-emerald-800 border-emerald-100" :
+                                      shift.status === "Active" ? "bg-indigo-50 text-indigo-850 border-indigo-100 animate-pulse" :
+                                      shift.status === "Completed" ? "bg-slate-50 text-slate-650 border-slate-200" :
+                                      "bg-rose-50 text-rose-800 border-rose-100"
+                                    }`}>
+                                      {shift.status}
+                                    </span>
+
+                                    {(shift.status === "Completed" || shift.status === "Cancelled") && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setExpandedBookingIds(prev => ({ ...prev, [shift.id]: !isExpanded }))}
+                                        className="px-3 py-1 border border-[#c9a24c]/40 hover:bg-[#c9a24c]/10 text-[#c9a24c] rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                      >
+                                        {isExpanded ? "Hide Details" : "View Details"}
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {isExpanded && (
+                                  <>
                             {/* Patient & Care Details Grid */}
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs pt-3 border-t border-slate-100/80 text-left">
                               <div>
@@ -1432,9 +1457,11 @@ function CustomerDashboard() {
                                   </button>
                                 </div>
                               </div>
-                            )}
-                          </div>
-                          ))}
+                                  </>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       );
                     })()}
@@ -2156,28 +2183,53 @@ function CustomerDashboard() {
  
                 return (
                   <div className="grid gap-6">
-                    {sortedFiltered.map((booking) => (
-                      <div
-                        key={booking.id}
-                        className="rounded-3xl border border-slate-200/60 bg-gradient-to-br from-white to-slate-50/20 p-6 sm:p-8 shadow-sm hover:border-[#c9a24c]/40 hover:shadow-md hover:shadow-slate-100/30 transition-all duration-300 flex flex-col lg:flex-row justify-between gap-6"
-                      >
-                        <div className="space-y-4 flex-1">
-                        {/* Summary Header */}
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <span className="text-[10px] uppercase font-bold tracking-widest text-[#c9a24c]">Shift #{booking.id}</span>
-                            <h3 className="text-xl font-bold text-[#1e2a5a] font-display">{booking.service}</h3>
-                          </div>
-                          
-                          <span className={`text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-xl border ${
-                            booking.status === "Confirmed" ? "bg-emerald-50 text-emerald-800 border-emerald-100" :
-                            booking.status === "Cancelled" ? "bg-rose-50 text-rose-800 border-rose-100" :
-                            booking.status === "Completed" ? "bg-indigo-50 text-indigo-800 border-indigo-100" :
-                            "bg-amber-50 text-amber-800 border-amber-100"
-                          }`}>
-                            {booking.status}
-                          </span>
-                        </div>
+                    {sortedFiltered.map((booking) => {
+                      const isExpanded = expandedBookingIds[booking.id] !== undefined
+                        ? expandedBookingIds[booking.id]
+                        : (booking.status !== "Completed" && booking.status !== "Cancelled");
+
+                      return (
+                        <div
+                          key={booking.id}
+                          className="rounded-3xl border border-slate-200/60 bg-gradient-to-br from-white to-slate-50/20 p-6 sm:p-8 shadow-sm hover:border-[#c9a24c]/40 hover:shadow-md hover:shadow-slate-100/30 transition-all duration-300 flex flex-col lg:flex-row justify-between gap-6 text-left"
+                        >
+                          <div className="space-y-4 flex-1">
+                            {/* Summary Header */}
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <span className="text-[10px] uppercase font-bold tracking-widest text-[#c9a24c]">Shift #{booking.id}</span>
+                                <h3 className="text-xl font-bold text-[#1e2a5a] font-display">{booking.service}</h3>
+                                {!isExpanded && (
+                                  <p className="text-xs text-slate-400 font-semibold mt-1.5 text-left">
+                                    Scheduled: {booking.date} at {booking.time} • Duration: {booking.duration} • Amount: ₹{booking.amount}
+                                  </p>
+                                )}
+                              </div>
+                              
+                              <div className="flex items-center gap-3">
+                                <span className={`text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-xl border ${
+                                  booking.status === "Confirmed" ? "bg-emerald-50 text-emerald-800 border-emerald-100" :
+                                  booking.status === "Cancelled" ? "bg-rose-50 text-rose-800 border-rose-100" :
+                                  booking.status === "Completed" ? "bg-indigo-50 text-indigo-800 border-indigo-100" :
+                                  "bg-amber-50 text-amber-800 border-amber-100"
+                                }`}>
+                                  {booking.status}
+                                </span>
+                                
+                                {(booking.status === "Completed" || booking.status === "Cancelled") && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setExpandedBookingIds(prev => ({ ...prev, [booking.id]: !isExpanded }))}
+                                    className="px-3 py-1 border border-[#c9a24c]/40 hover:bg-[#c9a24c]/10 text-[#c9a24c] rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                  >
+                                    {isExpanded ? "Hide Details" : "View Details"}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {isExpanded && (
+                              <>
  
                         {/* Booking Tracker Visual Pipeline (Stepper) */}
                         {booking.status !== "Cancelled" && (
@@ -2577,35 +2629,36 @@ function CustomerDashboard() {
                       </div>
 
                       {/* Action buttons */}
-                      <div className="flex flex-col sm:flex-row lg:flex-col justify-end gap-2.5 shrink-0 border-t lg:border-t-0 lg:border-l border-slate-100/80 pt-4 lg:pt-0 lg:pl-6">
-                        {booking.status !== "Cancelled" && booking.status !== "Completed" && (
-                          <>
-                            <button
-                              onClick={() => {
-                                setRescheduleBookingId(booking.id);
-                                setRescheduleDate(booking.date);
-                                setRescheduleTime(booking.time);
-                              }}
-                              className="px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold uppercase tracking-wider hover:bg-slate-100 cursor-pointer transition-all hover:translate-y-[-1px] text-center w-full sm:w-auto"
-                            >
-                              Reschedule Shift
-                            </button>
-                            <button
-                              onClick={() => handleCancel(booking.id)}
-                              className="px-4 py-2.5 rounded-xl bg-rose-50 border border-rose-100 text-rose-700 text-xs font-bold uppercase tracking-wider hover:bg-rose-500 hover:text-white cursor-pointer transition-all hover:translate-y-[-1px] text-center w-full sm:w-auto"
-                            >
-                              Cancel Booking
-                            </button>
-                          </>
-                        )}
-                        <button
-                          onClick={() => setActiveInvoice(booking)}
-                          className="px-4 py-2.5 rounded-xl bg-[#1e2a5a] border border-[#1e2a5a]/10 text-white text-xs font-bold uppercase tracking-wider hover:bg-[#1e2a5a]/90 cursor-pointer transition-all hover:translate-y-[-1px] flex items-center justify-center gap-1.5 w-full sm:w-auto"
-                        >
-                          <Download className="h-3.5 w-3.5" /> Invoice PDF
-                        </button>
-                      </div>
-
+                      {isExpanded && (
+                        <div className="flex flex-col sm:flex-row lg:flex-col justify-end gap-2.5 shrink-0 border-t lg:border-t-0 lg:border-l border-slate-100/80 pt-4 lg:pt-0 lg:pl-6">
+                          {booking.status !== "Cancelled" && booking.status !== "Completed" && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setRescheduleBookingId(booking.id);
+                                  setRescheduleDate(booking.date);
+                                  setRescheduleTime(booking.time);
+                                }}
+                                className="px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold uppercase tracking-wider hover:bg-slate-100 cursor-pointer transition-all hover:translate-y-[-1px] text-center w-full sm:w-auto"
+                              >
+                                Reschedule Shift
+                              </button>
+                              <button
+                                onClick={() => handleCancel(booking.id)}
+                                className="px-4 py-2.5 rounded-xl bg-rose-50 border border-rose-100 text-rose-700 text-xs font-bold uppercase tracking-wider hover:bg-rose-500 hover:text-white cursor-pointer transition-all hover:translate-y-[-1px] text-center w-full sm:w-auto"
+                              >
+                                Cancel Booking
+                              </button>
+                            </>
+                          )}
+                          <button
+                            onClick={() => setActiveInvoice(booking)}
+                            className="px-4 py-2.5 rounded-xl bg-[#1e2a5a] border border-[#1e2a5a]/10 text-white text-xs font-bold uppercase tracking-wider hover:bg-[#1e2a5a]/90 cursor-pointer transition-all hover:translate-y-[-1px] flex items-center justify-center gap-1.5 w-full sm:w-auto"
+                          >
+                            <Download className="h-3.5 w-3.5" /> Invoice PDF
+                          </button>
+                        </div>
+                      )}
                     </div>
                     ))}
                   </div>
