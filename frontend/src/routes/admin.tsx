@@ -630,7 +630,6 @@ function AdminPage() {
   // Submit forms
   const handleModalSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
 
     const token = localStorage.getItem("ammaseva_admin_token");
 
@@ -639,6 +638,18 @@ function AdminPage() {
     let bodyData: any = {};
 
     if (modalType === "booking") {
+      const trimmedPhone = bookingPhone.trim();
+      if (!trimmedPhone) {
+        alert("Please enter a valid 10-digit phone number.");
+        return;
+      }
+      const phoneRegex = /^[0-9]{10}$/;
+      if (!phoneRegex.test(trimmedPhone)) {
+        alert("Phone number must be exactly 10 digits and contain only numbers.");
+        return;
+      }
+
+      setIsLoading(true);
       url = modalMode === "add" ? "/api/admin/booking" : `/api/admin/booking/${selectedId}`;
       method = modalMode === "add" ? "POST" : "PUT";
       bodyData = {
@@ -658,6 +669,28 @@ function AdminPage() {
         paymentDate: bookingPaymentDate
       };
     } else if (modalType === "caregiver") {
+      const trimmedPhone = caregiverPhone.trim();
+      if (!trimmedPhone) {
+        alert("Please enter a valid 10-digit phone number.");
+        return;
+      }
+      const phoneRegex = /^[0-9]{10}$/;
+      if (!phoneRegex.test(trimmedPhone)) {
+        alert("Phone number must be exactly 10 digits and contain only numbers.");
+        return;
+      }
+      const trimmedEmail = caregiverEmail.trim();
+      if (!trimmedEmail) {
+        alert("Please enter caregiver's email address.");
+        return;
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(trimmedEmail)) {
+        alert("Please enter a valid email address.");
+        return;
+      }
+
+      setIsLoading(true);
       url = modalMode === "add" ? "/api/caregiver" : `/api/admin/caregiver/${selectedId}`;
       method = modalMode === "add" ? "POST" : "PUT";
       bodyData = {
@@ -2063,7 +2096,8 @@ function AdminPage() {
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Phone Number</label>
                       <input 
-                        type="text" required value={bookingPhone} onChange={e => setBookingPhone(e.target.value)}
+                        type="tel" required value={bookingPhone} onChange={e => setBookingPhone(e.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
+                        placeholder="10-digit number"
                         className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
                       />
                     </div>
@@ -2215,7 +2249,8 @@ function AdminPage() {
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Phone Number</label>
                       <input 
-                        type="text" required value={caregiverPhone} onChange={e => setCaregiverPhone(e.target.value)}
+                        type="tel" required value={caregiverPhone} onChange={e => setCaregiverPhone(e.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
+                        placeholder="10-digit number"
                         className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
                       />
                     </div>

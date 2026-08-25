@@ -356,9 +356,21 @@ function CustomerDashboard() {
   // Save caretaker details
   const handleCaretakerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsCaretakerSaving(true);
     setCaretakerError(null);
     setCaretakerSuccess(null);
+
+    const trimmedPhone = caretakerPhone.trim();
+    if (!trimmedPhone) {
+      setCaretakerError("Please enter your 10-digit phone number.");
+      return;
+    }
+    const phoneRegex = /^[0-9]{10}$/;
+    if (!phoneRegex.test(trimmedPhone)) {
+      setCaretakerError("Phone number must be exactly 10 digits and contain only numbers.");
+      return;
+    }
+
+    setIsCaretakerSaving(true);
     try {
       const token = localStorage.getItem("ammaseva_caretaker_token");
       const res = await fetch("/api/caretaker/profile", {
@@ -1623,8 +1635,8 @@ function CustomerDashboard() {
                       type="tel"
                       required
                       value={caretakerPhone}
-                      onChange={(e) => setCaretakerPhone(e.target.value)}
-                      placeholder="e.g. +91 XXXXX XXXXX"
+                      onChange={(e) => setCaretakerPhone(e.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
+                      placeholder="Enter 10-digit mobile number"
                       className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white outline-none transition-all hover:border-slate-300 focus:border-[#1e2a5a] focus:ring-4 focus:ring-[#1e2a5a]/5"
                     />
                   </div>
@@ -2007,8 +2019,11 @@ function CustomerDashboard() {
         <div className="mx-auto max-w-6xl">
           
           {/* Dashboard Header Bar */}
-          <div className="rounded-3xl border border-[#c9a24c]/30 bg-gradient-to-br from-[#1e2a5a] via-[#1b2550] to-[#121a3a] p-6 sm:p-8 shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 text-left">
-            <div className="flex items-center gap-4">
+          <div className="relative overflow-hidden rounded-3xl border border-[#c9a24c]/40 bg-gradient-to-tr from-[#1e2a5a] via-[#151c3e] to-[#0c1024] p-6 sm:p-8 shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 text-left">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-[#c9a24c]/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/5 rounded-full blur-2xl -ml-16 -mb-16 pointer-events-none"></div>
+            
+            <div className="flex items-center gap-4 relative z-10">
               <div className="h-14 w-14 rounded-full bg-[#c9a24c]/10 text-[#c9a24c] border-2 border-[#c9a24c]/35 font-display font-bold text-xl flex items-center justify-center shadow-inner shrink-0 uppercase select-none">
                 {(user?.name || "P").substring(0, 2)}
               </div>
@@ -2019,7 +2034,7 @@ function CustomerDashboard() {
               </div>
             </div>
             
-            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto shrink-0">
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto shrink-0 relative z-10">
               <button
                 onClick={() => setActiveView(activeView === "bookings" ? "new-booking" : "bookings")}
                 className="px-5 py-3 bg-[#c9a24c] hover:bg-[#c9a24c]/95 text-[#1e2a5a] text-xs font-bold uppercase tracking-wider rounded-2xl flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-[#c9a24c]/10 transition-all hover:translate-y-[-1px] font-sans w-full sm:w-auto"
@@ -2188,31 +2203,40 @@ function CustomerDashboard() {
                       const isExpanded = expandedBookingIds[booking.id] !== undefined
                         ? expandedBookingIds[booking.id]
                         : (booking.status !== "Completed" && booking.status !== "Cancelled");
+                      const isActive = booking.status !== "Completed" && booking.status !== "Cancelled";
 
                       return (
                         <div
                           key={booking.id}
-                          className="rounded-3xl border border-slate-200/60 bg-gradient-to-br from-white to-slate-50/20 p-6 sm:p-8 shadow-sm hover:border-[#c9a24c]/40 hover:shadow-md hover:shadow-slate-100/30 transition-all duration-300 flex flex-col lg:flex-row justify-between gap-6 text-left"
+                          className={`rounded-3xl border border-slate-200/60 p-6 sm:p-7 shadow-sm transition-all duration-300 flex flex-col lg:flex-row justify-between gap-6 text-left ${
+                            isActive
+                              ? "bg-white border-l-4 border-l-[#c9a24c] hover:shadow-md hover:shadow-slate-100/40 hover:border-[#c9a24c]/50"
+                              : booking.status === "Cancelled"
+                                ? "bg-gradient-to-br from-white to-rose-50/5 hover:border-slate-300"
+                                : "bg-gradient-to-br from-white to-slate-50/40 hover:border-slate-350"
+                          }`}
                         >
                           <div className="space-y-4 flex-1">
                             {/* Summary Header */}
                             <div className="flex justify-between items-start">
                               <div>
                                 <span className="text-[10px] uppercase font-bold tracking-widest text-[#c9a24c]">Shift #{booking.id}</span>
-                                <h3 className="text-xl font-bold text-[#1e2a5a] font-display">{booking.service}</h3>
+                                <h3 className="text-xl font-bold text-[#1e2a5a] font-display mt-0.5">{booking.service}</h3>
                                 {!isExpanded && (
-                                  <p className="text-xs text-slate-400 font-semibold mt-1.5 text-left">
-                                    Scheduled: {booking.date} at {booking.time} • Duration: {booking.duration} • Amount: ₹{booking.amount}
-                                  </p>
+                                  <div className="flex items-center gap-2 flex-wrap mt-2.5">
+                                    <span className="inline-flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded text-[10px] text-slate-500 font-bold">📅 {booking.date} at {booking.time}</span>
+                                    <span className="inline-flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded text-[10px] text-slate-500 font-bold">⏱ {booking.duration}</span>
+                                    <span className="inline-flex items-center gap-1 bg-[#c9a24c]/10 px-2 py-0.5 rounded text-[10px] text-[#c9a24c] font-extrabold">₹{booking.amount}</span>
+                                  </div>
                                 )}
                               </div>
                               
                               <div className="flex items-center gap-3">
                                 <span className={`text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-xl border ${
-                                  booking.status === "Confirmed" ? "bg-emerald-50 text-emerald-800 border-emerald-100" :
-                                  booking.status === "Cancelled" ? "bg-rose-50 text-rose-800 border-rose-100" :
-                                  booking.status === "Completed" ? "bg-indigo-50 text-indigo-800 border-indigo-100" :
-                                  "bg-amber-50 text-amber-800 border-amber-100"
+                                  booking.status === "Confirmed" ? "bg-emerald-50 text-emerald-800 border-emerald-100 shadow-sm" :
+                                  booking.status === "Cancelled" ? "bg-rose-50 text-rose-800 border-rose-100 shadow-sm" :
+                                  booking.status === "Completed" ? "bg-indigo-50 text-indigo-800 border-indigo-100 shadow-sm" :
+                                  "bg-amber-50 text-amber-800 border-amber-100 shadow-sm animate-pulse"
                                 }`}>
                                   {booking.status}
                                 </span>
@@ -2221,7 +2245,7 @@ function CustomerDashboard() {
                                   <button
                                     type="button"
                                     onClick={() => setExpandedBookingIds(prev => ({ ...prev, [booking.id]: !isExpanded }))}
-                                    className="px-3 py-1 border border-[#c9a24c]/40 hover:bg-[#c9a24c]/10 text-[#c9a24c] rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                    className="px-3 py-1.5 border border-[#c9a24c]/50 hover:bg-[#c9a24c] hover:text-white text-[#c9a24c] rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer shadow-sm active:scale-95"
                                   >
                                     {isExpanded ? "Hide Details" : "View Details"}
                                   </button>

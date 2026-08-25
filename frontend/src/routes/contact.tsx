@@ -102,10 +102,27 @@ function Contact() {
                 e.preventDefault();
                 const form = e.target as HTMLFormElement;
                 const formData = new FormData(form);
+                const phone = (formData.get("phone") as string) || "";
+                const email = (formData.get("email") as string) || "";
+
+                const phoneRegex = /^[0-9]{10}$/;
+                if (!phoneRegex.test(phone.trim())) {
+                  alert("Phone number must be exactly 10 digits and contain only numbers.");
+                  return;
+                }
+
+                if (email.trim()) {
+                  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                  if (!emailRegex.test(email.trim())) {
+                    alert("Please enter a valid email address.");
+                    return;
+                  }
+                }
+
                 const data = {
                   name: formData.get("name") as string,
-                  phone: formData.get("phone") as string,
-                  email: formData.get("email") as string,
+                  phone,
+                  email,
                   service: formData.get("service") as string,
                   message: formData.get("message") as string,
                 };
@@ -208,6 +225,7 @@ function ContactRow({ icon: Icon, label, value, subtext, href }: { icon: React.C
 }
 
 function Field({ label, name, type = "text", required, placeholder }: { label: string; name: string; type?: string; required?: boolean; placeholder?: string }) {
+  const [val, setVal] = React.useState("");
   return (
     <div className="text-left">
       <label className="text-xs font-semibold text-slate-500 block mb-1">{label}</label>
@@ -215,6 +233,14 @@ function Field({ label, name, type = "text", required, placeholder }: { label: s
         name={name}
         type={type}
         required={required}
+        value={val}
+        onChange={(e) => {
+          let value = e.target.value;
+          if (type === "tel") {
+            value = value.replace(/[^0-9]/g, "").slice(0, 10);
+          }
+          setVal(value);
+        }}
         placeholder={placeholder}
         className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-gold focus:border-gold text-slate-800"
       />

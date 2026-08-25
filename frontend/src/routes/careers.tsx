@@ -122,8 +122,27 @@ function Careers() {
                 className="space-y-4"
                 onSubmit={(e) => {
                   e.preventDefault();
+                  const formData = new FormData(e.target as HTMLFormElement);
+                  const phoneVal = (formData.get("phone") as string) || "";
+                  const emailVal = (formData.get("email") as string) || "";
+
+                  const phoneRegex = /^[0-9]{10}$/;
+                  if (!phoneRegex.test(phoneVal.trim())) {
+                    alert("Phone number must be exactly 10 digits and contain only numbers.");
+                    return;
+                  }
+
+                  if (emailVal.trim()) {
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!emailRegex.test(emailVal.trim())) {
+                      alert("Please enter a valid email address.");
+                      return;
+                    }
+                  }
+
                   alert("Thank you for applying! Our onboarding team will contact you shortly.");
                   (e.target as HTMLFormElement).reset();
+                  window.location.reload();
                 }}
               >
                 <div className="grid grid-cols-2 gap-4">
@@ -218,6 +237,7 @@ function TimelineStep({ number, title, desc }: { number: string; title: string; 
 }
 
 function Field({ label, name, type = "text", required, placeholder }: { label: string; name: string; type?: string; required?: boolean; placeholder?: string }) {
+  const [val, setVal] = React.useState("");
   return (
     <div className="text-left">
       <label className="text-xs font-semibold text-slate-500 block mb-1">{label}</label>
@@ -225,6 +245,14 @@ function Field({ label, name, type = "text", required, placeholder }: { label: s
         name={name}
         type={type}
         required={required}
+        value={val}
+        onChange={(e) => {
+          let value = e.target.value;
+          if (type === "tel") {
+            value = value.replace(/[^0-9]/g, "").slice(0, 10);
+          }
+          setVal(value);
+        }}
         placeholder={placeholder}
         className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-gold focus:border-gold text-slate-800"
       />

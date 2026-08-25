@@ -137,6 +137,72 @@ function LoginPage() {
     e.preventDefault();
     setError(null);
     setSuccessMsg(null);
+
+    const trimmedEmail = email.toLowerCase().trim();
+
+    if (mode === "register") {
+      if (!name.trim()) {
+        setError("Please enter your name.");
+        return;
+      }
+      if (!trimmedEmail) {
+        setError("Please enter your email.");
+        return;
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(trimmedEmail)) {
+        setError("Please enter a valid email address.");
+        return;
+      }
+      const trimmedPhone = phone.trim();
+      if (!trimmedPhone) {
+        setError("Please enter your 10-digit phone number.");
+        return;
+      }
+      const phoneRegex = /^[0-9]{10}$/;
+      if (!phoneRegex.test(trimmedPhone)) {
+        setError("Phone number must be exactly 10 digits and contain only numbers.");
+        return;
+      }
+
+      if (role === "caretaker") {
+        if (!experienceDetails.trim()) {
+          setError("Please enter experience details.");
+          return;
+        }
+        if (!workingLocations.trim()) {
+          setError("Please enter preferred working locations.");
+          return;
+        }
+        if (!availableTimings.trim()) {
+          setError("Please enter your available timings.");
+          return;
+        }
+        if (!stateName.trim()) {
+          setError("Please select/enter your State.");
+          return;
+        }
+        if (!cityName.trim()) {
+          setError("Please select/enter your City.");
+          return;
+        }
+        if (!agreeTerms) {
+          setError("You must agree to the Terms of Service & Privacy Policy.");
+          return;
+        }
+      }
+    } else {
+      if (!trimmedEmail) {
+        setError("Please enter your email address.");
+        return;
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(trimmedEmail)) {
+        setError("Please enter a valid email address.");
+        return;
+      }
+    }
+
     setIsLoading(true);
 
     if (mode === "register") {
@@ -444,8 +510,8 @@ function LoginPage() {
                       type="tel"
                       required
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+91 XXXXX XXXXX"
+                      onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
+                      placeholder="Enter 10-digit mobile number"
                       className="w-full pl-10 pr-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
                     />
                   </div>
