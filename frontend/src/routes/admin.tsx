@@ -888,27 +888,27 @@ function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col lg:flex-row">
+    <div className="lg:h-screen lg:overflow-hidden bg-[#fafafc] text-slate-800 font-sans flex flex-col lg:flex-row">
       
       {/* LEFT SIDEBAR Layout */}
-      <aside className="w-full lg:w-72 bg-white border-b lg:border-b-0 lg:border-r border-slate-200/60 flex flex-col shrink-0">
+      <aside className="w-full lg:w-72 bg-[#1e2a5a] text-slate-100 border-b lg:border-b-0 lg:border-r border-[#1e2a5a]/10 flex flex-col shrink-0 lg:h-full lg:overflow-y-auto z-30 shadow-xl shadow-black/10">
         
         {/* Brand Header */}
-        <div className="px-6 py-4 lg:py-6 border-b border-slate-100 flex items-center justify-between gap-3">
+        <div className="px-6 py-4 lg:py-6 border-b border-white/10 flex items-center justify-between gap-3 bg-[#172147]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-500 to-indigo-600 flex items-center justify-center font-bold text-xl text-white shadow-md">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#c9a24c] to-[#f4d793] flex items-center justify-center font-bold text-xl text-[#1e2a5a] shadow-md shadow-black/20">
               A
             </div>
             <div>
-              <span className="font-extrabold text-xl tracking-tight text-primary">
+              <span className="font-extrabold text-xl tracking-tight text-white font-display">
                 Amma Seva
               </span>
-              <p className="text-[9px] text-slate-400 tracking-widest uppercase font-semibold">Systems admin</p>
+              <p className="text-[9px] text-[#c9a24c] tracking-widest uppercase font-bold">Systems admin</p>
             </div>
           </div>
           <button
             type="button"
-            className="lg:hidden p-2 text-slate-600 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
+            className="lg:hidden p-2 text-slate-300 hover:bg-white/10 rounded-lg cursor-pointer transition-colors"
             onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
           >
             {isMobileNavOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -916,7 +916,7 @@ function AdminPage() {
         </div>
 
         {/* Sidebar Nav Items and bottom components - collapses on mobile */}
-        <div className={`flex-col flex-1 lg:flex ${isMobileNavOpen ? "flex" : "hidden lg:flex"}`}>
+        <div className={`flex-col flex-1 lg:flex ${isMobileNavOpen ? "flex bg-[#1e2a5a]" : "hidden lg:flex"}`}>
           <nav className="p-4 space-y-1.5 flex-1">
             {[
               { id: "overview", label: "Dashboard", icon: LayoutDashboard },
@@ -940,13 +940,13 @@ function AdminPage() {
                     setActiveTab(item.id as any);
                     setIsMobileNavOpen(false);
                   }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold transition-all cursor-pointer ${
                     isActive
-                      ? "bg-slate-100 text-primary"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                      ? "bg-white/10 text-[#c9a24c] border-l-4 border-[#c9a24c] rounded-r-xl rounded-l-none pl-3"
+                      : "text-slate-300 hover:bg-white/5 hover:text-white rounded-xl"
                   }`}
                 >
-                  <Icon className={`h-4.5 w-4.5 ${isActive ? "text-primary" : "text-slate-400"}`} />
+                  <Icon className={`h-4.5 w-4.5 ${isActive ? "text-[#c9a24c]" : "text-slate-400"}`} />
                   {item.label}
                 </button>
               );
@@ -954,23 +954,23 @@ function AdminPage() {
           </nav>
 
           {/* Status Indicators & Sign Out bottom */}
-          <div className="p-4 border-t border-slate-100 space-y-4">
-            <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100 text-xs space-y-2">
+          <div className="p-4 border-t border-white/10 space-y-4">
+            <div className="bg-white/5 rounded-xl p-3.5 border border-white/10 text-xs space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-slate-400">MySQL Database</span>
-                <span className="text-emerald-600 font-bold flex items-center gap-1">
+                <span className="text-[#59e3a6] font-bold flex items-center gap-1">
                   <Check className="h-3 w-3" /> Live
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-400">Environment</span>
-                <span className="font-semibold text-slate-700">Production</span>
+                <span className="font-semibold text-white">Production</span>
               </div>
             </div>
             
             <button
               onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-destructive/20 bg-destructive/5 hover:bg-destructive hover:text-white text-destructive text-xs font-bold transition-all cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500 hover:text-white text-rose-300 text-xs font-bold transition-all cursor-pointer"
             >
               <LogOut className="h-4 w-4" />
               Sign Out Session
@@ -980,10 +980,10 @@ function AdminPage() {
       </aside>
 
       {/* RIGHT MAIN PANEL Layout */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 lg:h-full lg:overflow-hidden">
         
         {/* Top Header Bar */}
-        <header className="h-20 bg-white border-b border-slate-200/60 px-6 sm:px-8 flex items-center justify-between gap-4 shrink-0">
+        <header className="sticky top-0 z-20 h-20 bg-white/80 backdrop-blur-md border-b border-slate-200/80 px-6 sm:px-8 flex items-center justify-between gap-4 shrink-0">
           
           {/* Search box */}
           <div className="relative max-w-md w-full">
@@ -993,7 +993,7 @@ function AdminPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search..."
-              className="w-full pl-10 pr-4 py-2 text-sm bg-slate-50 border border-slate-200/60 rounded-xl outline-none focus:bg-white focus:border-gold transition-colors text-slate-700"
+              className="w-full pl-10 pr-4 py-2 text-sm bg-slate-50 border border-slate-200/60 rounded-xl outline-none focus:bg-white focus:border-[#c9a24c] transition-colors text-slate-700"
             />
           </div>
 
@@ -1001,13 +1001,13 @@ function AdminPage() {
           <div className="flex items-center gap-4 shrink-0">
             <button 
               onClick={fetchDashboardData}
-              className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 relative"
+              className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 relative transition-colors"
               title="Sync Database"
             >
               <RefreshCw className={`h-5 w-5 ${isLoading ? "animate-spin" : ""}`} />
             </button>
             
-            <div className="h-9 w-9 rounded-full bg-slate-900 border border-slate-200 flex items-center justify-center text-sm font-bold text-white uppercase select-none">
+            <div className="h-9 w-9 rounded-full bg-[#1e2a5a] border border-[#c9a24c]/40 flex items-center justify-center text-sm font-bold text-white uppercase select-none shadow-sm shadow-black/10">
               A
             </div>
           </div>
@@ -1024,15 +1024,15 @@ function AdminPage() {
               <div className="grid gap-6 lg:grid-cols-3">
                 
                 {/* Revenue Sales Card */}
-                <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm col-span-1 lg:col-span-1 flex flex-col justify-between">
+                <div className="premium-card bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/40 col-span-1 lg:col-span-1 flex flex-col justify-between hover:shadow-lg transition-all">
                   <div>
                     <div className="flex justify-between items-start">
                       <div>
-                        <span className="block text-3xl font-bold font-display text-slate-900">₹{totalRevenue.toLocaleString()}</span>
-                        <span className="text-xs text-slate-400 mt-1 block">Total Platform Revenue</span>
+                        <span className="block text-3xl font-extrabold font-display text-[#1e2a5a]">₹{totalRevenue.toLocaleString()}</span>
+                        <span className="text-xs text-slate-400 mt-1 block font-semibold uppercase tracking-wider">Total Platform Revenue</span>
                       </div>
-                      <span className="inline-flex items-center gap-0.5 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full font-display">
-                        <ArrowUpRight className="h-3.5 w-3.5" /> Active
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200/50 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                        <ArrowUpRight className="h-3 w-3" /> Live Sync
                       </span>
                     </div>
                   </div>
@@ -1042,14 +1042,14 @@ function AdminPage() {
                     <svg className="w-full h-full" viewBox="0 0 300 100" preserveAspectRatio="none">
                       <defs>
                         <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#818cf8" stopOpacity="0.3"/>
-                          <stop offset="100%" stopColor="#818cf8" stopOpacity="0"/>
+                          <stop offset="0%" stopColor="#c9a24c" stopOpacity="0.25"/>
+                          <stop offset="100%" stopColor="#c9a24c" stopOpacity="0"/>
                         </linearGradient>
                       </defs>
                       <path
                         d={`M 0 90 L ${monthlyRevenueChart.map((d, i) => `${i * 60} ${90 - d.height * 0.8}`).join(" L ")}`}
                         fill="none"
-                        stroke="#4f46e5"
+                        stroke="#c9a24c"
                         strokeWidth="3.5"
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -1063,10 +1063,10 @@ function AdminPage() {
                 </div>
 
                 {/* Grid of 4 horizontal cards */}
-                <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm col-span-1 lg:col-span-2 grid grid-cols-2 gap-y-8 gap-x-6">
-                  <HorizontalMetric icon={CalendarDays} iconColor="text-indigo-500 bg-indigo-50" label="Bookings" value={bookings.length.toString()} />
-                  <HorizontalMetric icon={UserCheck} iconColor="text-amber-500 bg-amber-50" label="Active Shifts" value={activeShiftsCount.toString()} />
-                  <HorizontalMetric icon={Users} iconColor="text-rose-500 bg-rose-50" label="Patients" value={users.length.toString()} />
+                <div className="premium-card bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/40 col-span-1 lg:col-span-2 grid grid-cols-2 gap-4 border-slate-200/80">
+                  <HorizontalMetric icon={CalendarDays} iconColor="text-[#1e2a5a] bg-[#1e2a5a]/5" label="Bookings" value={bookings.length.toString()} />
+                  <HorizontalMetric icon={UserCheck} iconColor="text-[#c9a24c] bg-[#c9a24c]/10" label="Active Shifts" value={activeShiftsCount.toString()} />
+                  <HorizontalMetric icon={Users} iconColor="text-teal-600 bg-teal-50" label="Patients" value={users.length.toString()} />
                   <HorizontalMetric icon={Star} iconColor="text-yellow-500 bg-yellow-50" label="Care Rating" value={`⭐ ${avgPlatformRating.toFixed(1)}`} />
                 </div>
               </div>
@@ -1075,19 +1075,19 @@ function AdminPage() {
               <div className="grid gap-6 lg:grid-cols-3">
                 
                 {/* Popular Services utilization card */}
-                <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm col-span-1 flex flex-col justify-between gap-4">
+                <div className="premium-card bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/40 col-span-1 flex flex-col justify-between gap-6 hover:shadow-lg transition-all">
                   <div>
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3">Service Distribution</h3>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-[#1e2a5a] mb-4">Service Distribution</h3>
                     
-                    <div className="space-y-3.5">
+                    <div className="space-y-4">
                       {serviceDistribution.map((item) => (
-                        <div key={item.name} className="space-y-1">
+                        <div key={item.name} className="space-y-1.5">
                           <div className="flex justify-between text-xs font-semibold">
-                            <span className="text-slate-700 truncate max-w-[70%]">{item.name}</span>
-                            <span className="text-slate-400">{item.percentage}% ({item.count})</span>
+                            <span className="text-slate-700 truncate max-w-[70%] font-medium">{item.name}</span>
+                            <span className="text-slate-400 font-bold">{item.percentage}% ({item.count})</span>
                           </div>
-                          <div className="w-full bg-slate-100 rounded-full h-1.5">
-                            <div className="bg-indigo-600 h-1.5 rounded-full" style={{ width: `${item.percentage}%` }} />
+                          <div className="w-full bg-slate-100 rounded-full h-2">
+                            <div className="bg-[#1e2a5a] h-2 rounded-full transition-all duration-500" style={{ width: `${item.percentage}%` }} />
                           </div>
                         </div>
                       ))}
@@ -1100,12 +1100,12 @@ function AdminPage() {
                   {/* Staff utilization rate */}
                   <div className="border-t border-slate-100 pt-4 flex items-center justify-between gap-4">
                     <div>
-                      <span className="block text-2xl font-bold font-display text-slate-900">{caregiverUtilizationRate}%</span>
-                      <span className="text-xs text-slate-400">Staff Utilization</span>
+                      <span className="block text-2xl font-black font-display text-slate-900">{caregiverUtilizationRate}%</span>
+                      <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Staff Utilization</span>
                     </div>
                     {/* SVG circular progress */}
                     <div className="relative w-14 h-14 shrink-0">
-                      <svg className="w-full h-full" viewBox="0 0 36 36">
+                      <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                         <path
                           className="text-slate-100"
                           strokeWidth="3.5"
@@ -1114,7 +1114,7 @@ function AdminPage() {
                           d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                         />
                         <path
-                          className="text-indigo-600"
+                          className="text-[#c9a24c]"
                           strokeWidth="3.5"
                           strokeDasharray={`${caregiverUtilizationRate}, 100`}
                           strokeLinecap="round"
@@ -1123,17 +1123,20 @@ function AdminPage() {
                           d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                         />
                       </svg>
+                      <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-slate-700">
+                        {caregiverUtilizationRate}%
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Sales & Views Chart */}
-                <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm col-span-1 lg:col-span-2 flex flex-col justify-between">
+                <div className="premium-card bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/40 col-span-1 lg:col-span-2 flex flex-col justify-between hover:shadow-lg transition-all">
                   <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">Financial Revenue Trends</h3>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-[#1e2a5a]">Financial Revenue Trends</h3>
                     <button 
                       onClick={() => window.print()}
-                      className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                      className="px-3.5 py-2 rounded-xl border border-[#1e2a5a]/20 bg-slate-50 hover:bg-slate-100 text-[#1e2a5a] text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all hover:-translate-y-0.5 shadow-sm"
                     >
                       Generate Report PDF
                     </button>
@@ -1144,11 +1147,11 @@ function AdminPage() {
                     {monthlyRevenueChart.map((item, idx) => (
                       <div key={idx} className="flex-1 flex flex-col items-center gap-2">
                         <div className="w-full flex items-end justify-center h-32">
-                          <div className="bg-indigo-600 hover:bg-indigo-700 transition-colors rounded-t-lg w-7 shadow-sm flex flex-col justify-end items-center text-[8px] text-white font-bold" style={{ height: `${item.height}%` }}>
-                            {item.value > 0 && <span className="mb-1 truncate px-0.5">₹{item.value > 999 ? `${(item.value/1000).toFixed(0)}k` : item.value}</span>}
+                          <div className="bg-[#1e2a5a] hover:bg-[#c9a24c] transition-all rounded-t-lg w-8 shadow-sm flex flex-col justify-end items-center text-[8px] text-white font-extrabold pb-1.5 h-0" style={{ height: `${item.height}%` }}>
+                            {item.value > 0 && <span className="mb-0.5 truncate px-0.5">₹{item.value > 999 ? `${(item.value/1000).toFixed(0)}k` : item.value}</span>}
                           </div>
                         </div>
-                        <span className="text-[10px] text-slate-400 font-semibold">{item.label}</span>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{item.label}</span>
                       </div>
                     ))}
                   </div>
@@ -1159,25 +1162,25 @@ function AdminPage() {
 
           {/* Bookings View panel */}
           {activeTab === "bookings" && (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center bg-white border border-slate-200/60 rounded-2xl p-4 sm:p-6 shadow-sm">
+            <div className="space-y-6">
+              <div className="flex justify-between items-center bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/40 premium-card">
                 <div>
-                  <h3 className="text-lg font-bold text-primary font-display">Manage Bookings</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Total: {filteredBookings.length} booking records</p>
+                  <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display">Manage Bookings</h3>
+                  <p className="text-xs text-slate-400 mt-0.5 font-medium">Total: {filteredBookings.length} booking records</p>
                 </div>
                 <button
                   onClick={() => openAddModal("booking")}
-                  className="btn-primary py-2 px-4 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                  className="btn-primary py-2 px-4 text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md"
                 >
                   <Plus className="h-4 w-4" /> Add New Booking
                 </button>
               </div>
 
-              <div className="bg-white border border-slate-200/60 rounded-2xl overflow-hidden shadow-sm">
+              <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-md shadow-slate-100/30 premium-card">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm text-slate-700">
                     <thead>
-                      <tr className="border-b border-slate-200 bg-slate-50/55 text-xs text-slate-400 uppercase font-bold tracking-wider">
+                      <tr className="border-b border-slate-200/80 bg-[#1e2a5a]/5 text-xs text-[#1e2a5a] uppercase font-bold tracking-wider">
                         <th className="py-4 px-6">Patient details</th>
                         <th className="py-4 px-6">Service &amp; Shift</th>
                         <th className="py-4 px-6">Date &amp; Time</th>
@@ -1189,67 +1192,79 @@ function AdminPage() {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {filteredBookings.map((b) => (
-                        <tr key={b.id} className="hover:bg-slate-50/30 transition-colors">
+                        <tr key={b.id} className="hover:bg-slate-50/50 transition-colors">
                           <td className="py-4 px-6">
-                            <div className="font-semibold text-primary font-display text-base">{b.name}</div>
-                            <div className="text-xs text-slate-400 mt-0.5">{b.phone}</div>
-                            <div className="text-xs text-slate-400 italic mt-0.5 truncate max-w-xs">{b.address}</div>
+                            <div className="font-bold text-[#1e2a5a] font-display text-base leading-tight">{b.name}</div>
+                            <div className="text-xs text-slate-400 mt-1 font-semibold">{b.phone}</div>
+                            <div className="text-xs text-slate-500 italic mt-0.5 truncate max-w-xs">{b.address}</div>
                             
                             {b.patientName && (
-                              <div className="text-xs text-indigo-700 mt-1 font-semibold">
+                              <div className="inline-block text-[10px] text-[#1e2a5a] bg-[#1e2a5a]/5 border border-[#1e2a5a]/10 px-2 py-1 rounded font-bold mt-2">
                                 👤 Patient: {b.patientName} ({b.patientAge} years)
                               </div>
                             )}
                             {b.patientNeeds && (
-                              <div className="text-[10px] text-slate-600 mt-0.5 bg-slate-50 p-1.5 rounded-lg border border-slate-100 max-w-xs whitespace-normal">
-                                Needs: {b.patientNeeds}
+                              <div className="text-[10px] text-slate-600 mt-1 bg-slate-50 p-2 rounded-lg border border-slate-100 max-w-xs whitespace-normal leading-relaxed">
+                                <span className="font-bold text-slate-700">Needs:</span> {b.patientNeeds}
                               </div>
                             )}
-                            {b.googleMapLocation && (
-                              <a href={b.googleMapLocation} target="_blank" rel="noopener noreferrer" className="text-[10px] text-indigo-600 font-bold hover:underline block mt-1">
-                                🗺 Open Map Location
-                              </a>
-                            )}
-                            {b.prescription && (
-                              <a href={b.prescription} target="_blank" rel="noopener noreferrer" className="text-[10px] text-emerald-600 font-bold hover:underline block mt-0.5">
-                                📄 Doctor Prescription / Case File
-                              </a>
-                            )}
-                          </td>
-                          <td className="py-4 px-6">
-                            <div className="font-medium text-slate-800">{b.service}</div>
-                            <div className="text-[10px] text-gold font-extrabold uppercase tracking-wider mt-0.5">{b.duration}</div>
-                          </td>
-                          <td className="py-4 px-6 text-xs text-slate-500">
-                            <div>{b.date}</div>
-                            <div className="mt-0.5">{b.time} AM/PM</div>
-                          </td>
-                          <td className="py-4 px-6">
-                            <div className="text-xs font-semibold text-indigo-600">
-                              {b.assignedStaff || "🚫 Unassigned"}
+                            <div className="flex gap-3 mt-2">
+                              {b.googleMapLocation && (
+                                <a href={b.googleMapLocation} target="_blank" rel="noopener noreferrer" className="text-[10px] text-[#c9a24c] font-bold hover:underline flex items-center gap-0.5">
+                                  🗺️ Open Map Location
+                                </a>
+                              )}
+                              {b.prescription && (
+                                <a href={b.prescription} target="_blank" rel="noopener noreferrer" className="text-[10px] text-teal-600 font-bold hover:underline flex items-center gap-0.5">
+                                  📄 Case File / Prescription
+                                </a>
+                              )}
                             </div>
                           </td>
                           <td className="py-4 px-6">
-                            <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded ${
-                              b.status === "Confirmed" ? "bg-emerald-50 text-emerald-800 border border-emerald-100" :
-                              b.status === "Cancelled" ? "bg-rose-50 text-rose-800 border border-rose-100" :
-                              "bg-amber-50 text-amber-800 border border-amber-100"
+                            <div className="font-semibold text-slate-800">{b.service}</div>
+                            <div className="text-[9px] text-[#c9a24c] bg-[#c9a24c]/10 border border-[#c9a24c]/20 font-extrabold uppercase tracking-wider mt-1.5 px-2 py-0.5 rounded-full w-fit">{b.duration}</div>
+                          </td>
+                          <td className="py-4 px-6 text-xs text-slate-500">
+                            <div className="font-bold text-slate-700">{b.date}</div>
+                            <div className="mt-1 font-medium">{b.time}</div>
+                          </td>
+                          <td className="py-4 px-6">
+                            <div>
+                              {b.assignedStaff ? (
+                                <span className="inline-flex items-center gap-1 text-xs font-bold text-[#1e2a5a] bg-[#1e2a5a]/5 border border-[#1e2a5a]/10 px-2 py-1 rounded-lg">
+                                  {b.assignedStaff}
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-400 bg-slate-100 border border-slate-200 px-2 py-1 rounded-lg">
+                                  🚫 Unassigned
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-4 px-6">
+                            <span className={`text-[10px] uppercase font-black tracking-wider px-2.5 py-1 rounded-full border ${
+                              b.status === "Confirmed" ? "bg-emerald-50 text-emerald-700 border-emerald-200/60" :
+                              b.status === "Cancelled" ? "bg-rose-50 text-rose-700 border-rose-200/60" :
+                              "bg-amber-50 text-amber-700 border-amber-200/60"
                             }`}>
                               {b.status}
                             </span>
                           </td>
                           <td className="py-4 px-6">
                             <div>
-                              <div className="text-xs font-bold text-slate-800">₹{b.amount}</div>
-                              <span className={`text-[9px] font-bold ${
-                                b.paymentStatus === "Paid" ? "text-emerald-600" : "text-amber-600"
+                              <div className="text-sm font-extrabold text-slate-900">₹{b.amount}</div>
+                              <span className={`text-[9px] font-extrabold uppercase tracking-wider mt-1 inline-block px-1.5 py-0.5 rounded border ${
+                                b.paymentStatus === "Paid" 
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200/60" 
+                                  : "bg-amber-50 text-amber-700 border-amber-200/60"
                               }`}>
                                 {b.paymentStatus}
                               </span>
                               {b.paymentStatus === "Paid" && b.paymentMethod && (
-                                <div className="text-[10px] text-slate-400 mt-1 font-medium">
-                                  <span>{b.paymentMethod}</span>
-                                  {b.transactionId && <span className="block text-[9px] font-mono text-slate-400 font-normal">{b.transactionId}</span>}
+                                <div className="text-[10px] text-slate-400 mt-1.5 font-medium leading-tight">
+                                  <span className="font-semibold text-slate-500">{b.paymentMethod}</span>
+                                  {b.transactionId && <span className="block text-[9px] font-mono text-slate-400 font-normal mt-0.5">{b.transactionId}</span>}
                                 </div>
                               )}
                             </div>
@@ -1258,13 +1273,13 @@ function AdminPage() {
                             <div className="flex gap-2 justify-end">
                               <button
                                 onClick={() => openEditModal("booking", b)}
-                                className="p-2 rounded-xl bg-slate-50 hover:bg-gold/15 text-gold border border-slate-200 hover:border-gold/30 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                                className="px-2.5 py-1.5 rounded-lg bg-slate-50 hover:bg-[#c9a24c]/15 text-[#c9a24c] border border-slate-200 hover:border-[#c9a24c]/30 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
                               >
                                 <Edit3 className="h-3.5 w-3.5" /> Edit
                               </button>
                               <button
                                 onClick={() => handleDeleteBooking(b.id)}
-                                className="p-2 rounded-xl bg-rose-50 hover:bg-rose-500 hover:text-white border border-slate-200 text-rose-500 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                                className="p-2 rounded-lg bg-rose-50 hover:bg-rose-500 hover:text-white border border-rose-100 hover:border-rose-500 text-rose-500 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
@@ -1281,25 +1296,25 @@ function AdminPage() {
 
           {/* Employees & Staff panel */}
           {activeTab === "caregivers" && (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center bg-white border border-slate-200/60 rounded-2xl p-4 sm:p-6 shadow-sm">
+            <div className="space-y-6">
+              <div className="flex justify-between items-center bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/40 premium-card">
                 <div>
-                  <h3 className="text-lg font-bold text-primary font-display">Employees &amp; Staff</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Total: {filteredCaregivers.length} employees</p>
+                  <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display">Employees &amp; Staff</h3>
+                  <p className="text-xs text-slate-400 mt-0.5 font-medium">Total: {filteredCaregivers.length} employees</p>
                 </div>
                 <button
                   onClick={() => openAddModal("caregiver")}
-                  className="btn-primary py-2 px-4 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                  className="btn-primary py-2 px-4 text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md"
                 >
                   <Plus className="h-4 w-4" /> Add New Staff
                 </button>
               </div>
 
-              <div className="bg-white border border-slate-200/60 rounded-2xl overflow-hidden shadow-sm">
+              <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-md shadow-slate-100/30 premium-card">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm text-slate-700">
                     <thead>
-                      <tr className="border-b border-slate-200 bg-slate-50/55 text-xs text-slate-400 uppercase font-bold tracking-wider">
+                      <tr className="border-b border-slate-200/80 bg-[#1e2a5a]/5 text-xs text-[#1e2a5a] uppercase font-bold tracking-wider">
                         <th className="py-4 px-6">Staff details</th>
                         <th className="py-4 px-6">Specialty &amp; Locations</th>
                         <th className="py-4 px-6">Verification Documents</th>
@@ -1309,38 +1324,38 @@ function AdminPage() {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {filteredCaregivers.map((c) => (
-                        <tr key={c.id} className="hover:bg-slate-50/30 transition-colors">
+                        <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
                           <td className="py-4 px-6">
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-4">
                               {c.profilePhoto ? (
-                                <img src={c.profilePhoto} className="h-10 w-10 rounded-full object-cover border border-slate-200" alt="profile" />
+                                <img src={c.profilePhoto} className="h-12 w-12 rounded-xl object-cover border border-slate-200 shadow-sm" alt="profile" />
                               ) : (
-                                <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-primary font-bold">
+                                <div className="h-12 w-12 rounded-xl bg-[#1e2a5a]/5 border border-[#1e2a5a]/10 flex items-center justify-center text-[#1e2a5a] font-bold text-lg shadow-sm">
                                   {c.name.charAt(0)}
                                 </div>
                               )}
                               <div>
-                                <div className="font-semibold text-primary font-display text-base">{c.name}</div>
-                                <div className="text-xs text-slate-400 mt-0.5">{c.phone}</div>
-                                <div className="text-xs text-slate-400 mt-0.5">{c.email}</div>
+                                <div className="font-bold text-[#1e2a5a] font-display text-base leading-tight">{c.name}</div>
+                                <div className="text-xs text-slate-400 mt-1 font-semibold">{c.phone}</div>
+                                <div className="text-xs text-slate-500 font-medium mt-0.5">{c.email}</div>
                                 {Number(c.rating) > 0 ? (
                                   <button
                                     onClick={() => setSelectedCaregiverForReviews(c)}
-                                    className="text-[10px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200 mt-1 flex items-center gap-0.5 w-fit cursor-pointer"
+                                    className="text-[10px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200 mt-2 flex items-center gap-0.5 w-fit cursor-pointer"
                                   >
                                     ⭐ {c.rating} ({c.reviews?.length || 0} reviews)
                                   </button>
                                 ) : (
-                                  <span className="text-[10px] text-slate-400 block mt-1">No ratings yet</span>
+                                  <span className="text-[10px] text-slate-400 font-semibold block mt-1.5">No reviews</span>
                                 )}
                               </div>
                             </div>
                           </td>
                           <td className="py-4 px-6">
-                            <div className="font-medium text-slate-800">{c.specialty}</div>
-                            <div className="text-xs text-slate-400 mt-0.5">{c.experience} years experience</div>
+                            <div className="font-bold text-slate-800">{c.specialty}</div>
+                            <div className="text-xs text-slate-400 mt-1 font-bold">{c.experience} years experience</div>
                             {(c.city || c.state) && (
-                              <div className="text-xs text-slate-700 mt-1 flex items-center gap-1 font-medium">
+                              <div className="text-xs text-slate-700 mt-1.5 flex items-center gap-1 font-medium">
                                 🏠 {c.city ? c.city : ""}{c.state ? `, ${c.state}` : ""}
                               </div>
                             )}
@@ -1349,58 +1364,58 @@ function AdminPage() {
                                 href={c.googleMapLocation}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-[10px] text-indigo-600 hover:underline font-bold block mt-1"
+                                className="text-[10px] text-[#c9a24c] hover:underline font-bold block mt-1"
                               >
-                                🗺 Open Map Location
+                                🗺️ Open Map Location
                               </a>
                             )}
-                            {c.workingLocations && <div className="text-[10px] text-indigo-600 mt-1 font-semibold">📍 Pref: {c.workingLocations}</div>}
+                            {c.workingLocations && <div className="text-[10px] text-[#1e2a5a] mt-1 font-bold">📍 Pref: {c.workingLocations}</div>}
                             {c.availableTimings && <div className="text-[10px] text-slate-500 mt-0.5 font-medium">🕒 {c.availableTimings}</div>}
                           </td>
                           <td className="py-4 px-6 text-xs">
                             <div className="space-y-1">
                               {c.aadhaar ? (
-                                <a href={c.aadhaar} target="_blank" rel="noopener noreferrer" className="text-gold font-semibold hover:underline block">
-                                  📄 Aadhaar Card
+                                <a href={c.aadhaar} target="_blank" rel="noopener noreferrer" className="text-[#c9a24c] font-bold hover:underline block text-[10px]">
+                                  📄 Aadhaar Card Verified
                                 </a>
-                              ) : <span className="text-slate-300 block">❌ Aadhaar</span>}
+                              ) : <span className="text-slate-300 block text-[10px]">❌ Aadhaar Card</span>}
                               
                               {c.pan ? (
-                                <a href={c.pan} target="_blank" rel="noopener noreferrer" className="text-gold font-semibold hover:underline block">
-                                  📄 PAN Card
+                                <a href={c.pan} target="_blank" rel="noopener noreferrer" className="text-[#c9a24c] font-bold hover:underline block text-[10px]">
+                                  📄 PAN Card Verified
                                 </a>
-                              ) : <span className="text-slate-300 block">❌ PAN</span>}
+                              ) : <span className="text-slate-300 block text-[10px]">❌ PAN Card</span>}
                               
                               {c.certificates ? (
-                                <a href={c.certificates} target="_blank" rel="noopener noreferrer" className="text-gold font-semibold hover:underline block">
-                                  📄 Edu Certificate
+                                <a href={c.certificates} target="_blank" rel="noopener noreferrer" className="text-[#c9a24c] font-bold hover:underline block text-[10px]">
+                                  📄 Edu Certificate Verified
                                 </a>
-                              ) : <span className="text-slate-300 block">❌ Edu Cert</span>}
+                              ) : <span className="text-slate-300 block text-[10px]">❌ Edu Certificate</span>}
 
                               {c.experienceCertificate ? (
-                                <a href={c.experienceCertificate} target="_blank" rel="noopener noreferrer" className="text-gold font-semibold hover:underline block">
-                                  📄 Exp Certificate
+                                <a href={c.experienceCertificate} target="_blank" rel="noopener noreferrer" className="text-[#c9a24c] font-bold hover:underline block text-[10px]">
+                                  📄 Experience Certificate
                                 </a>
-                              ) : <span className="text-slate-300 block">❌ Exp Cert</span>}
+                              ) : <span className="text-slate-300 block text-[10px]">❌ Experience Cert</span>}
 
                               {c.policeVerification ? (
-                                <a href={c.policeVerification} target="_blank" rel="noopener noreferrer" className="text-gold font-semibold hover:underline block">
-                                  📄 Police Verification
+                                <a href={c.policeVerification} target="_blank" rel="noopener noreferrer" className="text-[#c9a24c] font-bold hover:underline block text-[10px]">
+                                  📄 Police Verification Cert
                                 </a>
-                              ) : <span className="text-slate-300 block">❌ Police Cert</span>}
+                              ) : <span className="text-slate-300 block text-[10px]">❌ Police verification</span>}
 
                               {c.additionalCertificates ? (
-                                <a href={c.additionalCertificates} target="_blank" rel="noopener noreferrer" className="text-gold font-semibold hover:underline block">
-                                  📄 Addit. Certs
+                                <a href={c.additionalCertificates} target="_blank" rel="noopener noreferrer" className="text-[#c9a24c] font-bold hover:underline block text-[10px]">
+                                  📄 Additional Docs
                                 </a>
                               ) : null}
                             </div>
                           </td>
                           <td className="py-4 px-6">
-                            <span className={`text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded ${
-                              c.status === "Verified" ? "bg-emerald-50 text-emerald-800 border border-emerald-100" :
-                              c.status === "Rejected" ? "bg-rose-50 text-rose-800 border border-rose-100" :
-                              "bg-amber-50 text-amber-800 border border-amber-100"
+                            <span className={`text-[10px] uppercase font-black tracking-wider px-2.5 py-1 rounded-full border ${
+                              c.status === "Verified" ? "bg-emerald-50 text-emerald-700 border-emerald-200/60" :
+                              c.status === "Rejected" ? "bg-rose-50 text-rose-700 border-rose-200/60" :
+                              "bg-amber-50 text-amber-700 border-amber-200/60"
                             }`}>
                               {c.status}
                             </span>
@@ -1410,8 +1425,8 @@ function AdminPage() {
                               {c.status !== "Verified" && (
                                 <button
                                   onClick={() => handleUpdateCaregiverStatus(c.id, "Verified")}
-                                  className="px-2 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-500 border border-slate-200 text-emerald-600 hover:text-white text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
-                                  title="Approve / Verify"
+                                  className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-500 border border-emerald-200 hover:border-emerald-500 text-emerald-600 hover:text-white text-xs font-semibold flex items-center transition-colors cursor-pointer"
+                                  title="Approve & Verify"
                                 >
                                   <Check className="h-4 w-4" />
                                 </button>
@@ -1419,23 +1434,23 @@ function AdminPage() {
                               {c.status !== "Rejected" && (
                                 <button
                                   onClick={() => handleUpdateCaregiverStatus(c.id, "Rejected")}
-                                  className="px-2 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-500 border border-slate-200 text-rose-600 hover:text-white text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
-                                  title="Reject"
+                                  className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-500 border border-rose-200 hover:border-rose-500 text-rose-600 hover:text-white text-xs font-semibold flex items-center transition-colors cursor-pointer"
+                                  title="Reject Application"
                                 >
                                   <XCircle className="h-4 w-4" />
                                 </button>
                               )}
                               <button
                                 onClick={() => openEditModal("caregiver", c)}
-                                className="px-2.5 py-1.5 rounded-xl bg-slate-50 hover:bg-gold/15 text-gold border border-slate-200 hover:border-gold/30 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
-                                title="Edit"
+                                className="px-2.5 py-1.5 rounded-lg bg-slate-50 hover:bg-[#c9a24c]/15 text-[#c9a24c] border border-slate-200 hover:border-[#c9a24c]/30 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                                title="Edit Staff"
                               >
                                 <Edit3 className="h-3.5 w-3.5" />
                               </button>
                               <button
                                 onClick={() => handleDeleteCaregiver(c.id)}
-                                className="px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-500 hover:text-white border border-slate-200 text-rose-500 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
-                                title="Delete"
+                                className="p-2 rounded-lg bg-rose-50 hover:bg-rose-500 hover:text-white border border-rose-100 hover:border-rose-500 text-rose-500 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                                title="Remove Staff"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
@@ -1452,19 +1467,19 @@ function AdminPage() {
 
           {/* Customer Base panel */}
           {activeTab === "users" && (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center bg-white border border-slate-200/60 rounded-2xl p-4 sm:p-6 shadow-sm">
+            <div className="space-y-6">
+              <div className="flex justify-between items-center bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/40 premium-card">
                 <div>
-                  <h3 className="text-lg font-bold text-primary font-display">Patients</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Total: {filteredUsers.length} registered patients</p>
+                  <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display">Patients</h3>
+                  <p className="text-xs text-slate-400 mt-0.5 font-medium">Total: {filteredUsers.length} registered patients</p>
                 </div>
               </div>
 
-              <div className="bg-white border border-slate-200/60 rounded-2xl overflow-hidden shadow-sm">
+              <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-md shadow-slate-100/30 premium-card">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm text-slate-700">
                     <thead>
-                      <tr className="border-b border-slate-200 bg-slate-50/55 text-xs text-slate-400 uppercase font-bold tracking-wider">
+                      <tr className="border-b border-slate-200/80 bg-[#1e2a5a]/5 text-xs text-[#1e2a5a] uppercase font-bold tracking-wider">
                         <th className="py-4 px-6">Patient Name</th>
                         <th className="py-4 px-6">Email Address</th>
                         <th className="py-4 px-6">Phone Number</th>
@@ -1474,23 +1489,23 @@ function AdminPage() {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {filteredUsers.map((u) => (
-                        <tr key={u.id} className="hover:bg-slate-50/30 transition-colors">
-                          <td className="py-4 px-6 font-semibold text-primary font-display text-base">
+                        <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="py-4 px-6 font-bold text-[#1e2a5a] font-display text-base">
                             {u.name}
                           </td>
-                          <td className="py-4 px-6 text-slate-600">
+                          <td className="py-4 px-6 text-slate-600 font-medium">
                             {u.email}
                           </td>
-                          <td className="py-4 px-6 text-slate-600">
+                          <td className="py-4 px-6 text-slate-600 font-semibold">
                             {u.phone}
                           </td>
-                          <td className="py-4 px-6 text-xs text-slate-500">
+                          <td className="py-4 px-6 text-xs text-slate-500 font-medium">
                             {new Date(u.createdAt).toLocaleDateString()}
                           </td>
                           <td className="py-4 px-6 text-right">
                             <button
                               onClick={() => handleDeleteUser(u.id)}
-                              className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-500 hover:text-white border border-slate-200 text-rose-500 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors ml-auto"
+                              className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-500 hover:text-white border border-rose-100 hover:border-rose-500 text-rose-500 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ml-auto shadow-sm"
                             >
                               <Trash2 className="h-3.5 w-3.5" /> Remove Account
                             </button>
@@ -1501,26 +1516,22 @@ function AdminPage() {
                   </table>
                 </div>
               </div>
-            </div>
-          )}
-
-          {/* Service Catalog & Pricing panel */}
-          {/* Payments & Transaction tracking panel */}
+                     {/* Payments & Transaction tracking panel */}
           {activeTab === "payments" && (
-            <div className="space-y-4 animate-in fade-in duration-200">
-              <div className="flex flex-col sm:flex-row justify-between sm:items-center bg-white border border-slate-200/60 rounded-2xl p-4 sm:p-6 shadow-sm gap-4">
+            <div className="space-y-6 animate-in fade-in duration-200">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/40 premium-card gap-4">
                 <div>
-                  <h3 className="text-lg font-bold text-primary font-display">Payment Status & Invoices</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Track and record payments for all customer bookings.</p>
+                  <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display">Payment Status & Invoices</h3>
+                  <p className="text-xs text-slate-400 mt-0.5 font-medium">Track and record payments for all customer bookings.</p>
                 </div>
-                <div className="flex gap-1.5 bg-slate-100 p-1 rounded-xl w-fit self-start sm:self-auto">
+                <div className="flex gap-1.5 bg-slate-100 p-1 rounded-xl w-fit self-start sm:self-auto border border-slate-200/50">
                   {["all", "Paid", "Unpaid"].map((filter) => {
                     const count = bookings.filter(b => filter === "all" ? true : b.paymentStatus === filter).length;
                     return (
                       <button
                         key={filter}
                         onClick={() => setSearchQuery(filter === "all" ? "" : filter)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-white hover:shadow-sm text-slate-600 hover:text-slate-900 transition-all cursor-pointer capitalize"
+                        className="px-3.5 py-1.5 rounded-lg text-xs font-bold hover:bg-white hover:shadow-sm text-slate-600 hover:text-[#1e2a5a] transition-all cursor-pointer capitalize"
                       >
                         {filter} ({count})
                       </button>
@@ -1530,33 +1541,33 @@ function AdminPage() {
               </div>
 
               {/* Payments Stats Summary Cards */}
-              <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
-                <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm">
-                  <span className="text-xs text-slate-400 font-medium uppercase tracking-wider block">Total Booked Value</span>
-                  <span className="text-2xl font-bold font-display text-slate-950 mt-1 block">
+              <div className="grid gap-6 grid-cols-1 sm:grid-cols-3">
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-md shadow-slate-100/30 premium-card">
+                  <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block">Total Booked Value</span>
+                  <span className="text-2xl font-extrabold font-display text-slate-950 mt-1 block">
                     ₹{bookings.reduce((sum, b) => sum + (Number(b.amount) || 0), 0).toLocaleString()}
                   </span>
                 </div>
-                <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm">
-                  <span className="text-xs text-slate-400 font-medium uppercase tracking-wider block">Total Paid (Collected)</span>
-                  <span className="text-2xl font-bold font-display text-emerald-600 mt-1 block">
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-md shadow-slate-100/30 premium-card">
+                  <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block">Total Paid (Collected)</span>
+                  <span className="text-2xl font-extrabold font-display text-emerald-600 mt-1 block">
                     ₹{bookings.filter(b => b.paymentStatus === "Paid").reduce((sum, b) => sum + (Number(b.amount) || 0), 0).toLocaleString()}
                   </span>
                 </div>
-                <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm">
-                  <span className="text-xs text-slate-400 font-medium uppercase tracking-wider block">Total Outstanding (Unpaid)</span>
-                  <span className="text-2xl font-bold font-display text-amber-600 mt-1 block">
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-md shadow-slate-100/30 premium-card">
+                  <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block">Total Outstanding (Unpaid)</span>
+                  <span className="text-2xl font-extrabold font-display text-amber-600 mt-1 block">
                     ₹{bookings.filter(b => b.paymentStatus !== "Paid").reduce((sum, b) => sum + (Number(b.amount) || 0), 0).toLocaleString()}
                   </span>
                 </div>
               </div>
 
               {/* Payments Table */}
-              <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm overflow-hidden">
+              <div className="bg-white border border-slate-200/80 rounded-2xl shadow-md shadow-slate-100/30 overflow-hidden premium-card">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-sm">
                     <thead>
-                      <tr className="bg-slate-50 border-b border-slate-100 text-slate-400 text-xs font-bold uppercase tracking-wider">
+                      <tr className="bg-[#1e2a5a]/5 border-b border-slate-200/80 text-[#1e2a5a] text-xs font-bold uppercase tracking-wider">
                         <th className="py-4 px-6">Customer Details</th>
                         <th className="py-4 px-6">Service Details</th>
                         <th className="py-4 px-6">Billable Amount</th>
@@ -1580,42 +1591,42 @@ function AdminPage() {
                           );
                         })
                         .map((b) => (
-                          <tr key={b.id} className="hover:bg-slate-50/30 transition-colors">
+                          <tr key={b.id} className="hover:bg-slate-50/50 transition-colors">
                             <td className="py-4 px-6">
-                              <div className="font-semibold text-primary font-display">{b.name}</div>
-                              <div className="text-xs text-slate-400 mt-0.5">{b.phone}</div>
+                              <div className="font-bold text-[#1e2a5a] font-display text-base leading-tight">{b.name}</div>
+                              <div className="text-xs text-slate-400 mt-1 font-semibold">{b.phone}</div>
                             </td>
                             <td className="py-4 px-6">
-                              <div className="font-medium text-slate-800">{b.service}</div>
-                              <div className="text-[10px] text-slate-400 mt-0.5">{b.date} • {b.time}</div>
+                              <div className="font-semibold text-slate-800">{b.service}</div>
+                              <div className="text-[10px] text-slate-400 mt-1 font-medium">{b.date} • {b.time}</div>
                             </td>
-                            <td className="py-4 px-6 font-bold text-slate-800">
+                            <td className="py-4 px-6 font-extrabold text-slate-900 text-sm">
                               ₹{Number(b.amount).toLocaleString()}
                             </td>
                             <td className="py-4 px-6">
-                              <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded ${
+                              <span className={`text-[9px] uppercase font-black tracking-wider px-2.5 py-1 rounded border ${
                                 b.paymentStatus === "Paid" 
-                                  ? "bg-emerald-50 text-emerald-800 border border-emerald-100" 
-                                  : "bg-amber-50 text-amber-800 border border-amber-100"
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200/60" 
+                                  : "bg-amber-50 text-amber-700 border-amber-200/60"
                               }`}>
                                 {b.paymentStatus}
                               </span>
                             </td>
                             <td className="py-4 px-6">
                               {b.paymentStatus === "Paid" ? (
-                                <div className="space-y-0.5">
+                                <div className="space-y-1">
                                   <div className="text-xs font-semibold text-slate-700">Method: <span className="font-bold text-slate-900">{b.paymentMethod || "N/A"}</span></div>
-                                  {b.transactionId && <div className="text-[10px] font-mono text-slate-500">Ref: {b.transactionId}</div>}
-                                  {b.paymentDate && <div className="text-[10px] text-slate-400">Date: {b.paymentDate}</div>}
+                                  {b.transactionId && <div className="text-[10px] font-mono text-slate-500 bg-slate-50 border border-slate-100 px-1.5 py-0.5 rounded w-fit">Ref: {b.transactionId}</div>}
+                                  {b.paymentDate && <div className="text-[10px] text-slate-400 font-medium">Date: {b.paymentDate}</div>}
                                 </div>
                               ) : (
-                                <span className="text-xs text-slate-400 italic">No transaction recorded</span>
+                                <span className="text-xs text-slate-400 italic font-medium">No transaction recorded</span>
                               )}
                             </td>
                             <td className="py-4 px-6 text-right">
                               <button
                                 onClick={() => openEditModal("booking", b)}
-                                className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-gold/15 text-gold hover:text-gold text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors inline-block"
+                                className="px-3.5 py-2 rounded-lg border border-slate-200 hover:bg-[#c9a24c]/15 text-[#c9a24c] hover:border-[#c9a24c]/30 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors inline-flex"
                               >
                                 <Edit3 className="h-3.5 w-3.5" /> Record Payment
                               </button>
@@ -1624,7 +1635,7 @@ function AdminPage() {
                         ))}
                       {bookings.length === 0 && (
                         <tr>
-                          <td colSpan={6} className="py-8 text-center text-slate-400 text-sm">
+                          <td colSpan={6} className="py-8 text-center text-slate-400 text-sm font-semibold">
                             No bookings found to display payment logs.
                           </td>
                         </tr>
@@ -1637,15 +1648,15 @@ function AdminPage() {
           )}
 
           {activeTab === "services" && (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center bg-white border border-slate-200/60 rounded-2xl p-4 sm:p-6 shadow-sm">
+            <div className="space-y-6">
+              <div className="flex justify-between items-center bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/40 premium-card">
                 <div>
-                  <h3 className="text-lg font-bold text-primary font-display">Active Services</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Total: {filteredServices.length} service offerings</p>
+                  <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display">Active Services</h3>
+                  <p className="text-xs text-slate-400 mt-0.5 font-medium">Total: {filteredServices.length} service offerings</p>
                 </div>
                 <button
                   onClick={() => openAddModal("service")}
-                  className="btn-primary py-2 px-4 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                  className="btn-primary py-2 px-4 text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md"
                 >
                   <Plus className="h-4 w-4" /> Add New Service
                 </button>
@@ -1653,35 +1664,35 @@ function AdminPage() {
 
               <div className="grid gap-6 md:grid-cols-2">
                 {filteredServices.map((service) => (
-                  <div key={service.id} className="rounded-2xl border border-slate-200/60 bg-white p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                  <div key={service.id} className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md shadow-slate-100/30 flex flex-col justify-between hover:shadow-lg transition-all premium-card">
                     <div>
                       <div className="flex gap-4">
                         {service.image && (
                           <img 
                             src={service.image} 
-                            className="h-20 w-20 rounded-xl object-cover border border-slate-200 shrink-0" 
+                            className="h-20 w-20 rounded-xl object-cover border border-slate-200/80 shrink-0 shadow-sm" 
                             alt={service.title} 
                           />
                         )}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex justify-between items-start gap-4">
-                            <h4 className="text-lg font-semibold text-primary font-display truncate">{service.title}</h4>
-                            <span className="text-sm font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-100 shrink-0">{service.price}</span>
+                        <div className="flex-1 min-w-0 text-left">
+                          <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-2">
+                            <h4 className="text-lg font-bold text-[#1e2a5a] font-display truncate">{service.title}</h4>
+                            <span className="text-xs font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded w-fit shrink-0">{service.price}</span>
                           </div>
-                          <p className="mt-2 text-sm text-slate-400 leading-relaxed line-clamp-3">{service.description}</p>
+                          <p className="mt-2 text-xs text-slate-400 leading-relaxed line-clamp-3 font-medium">{service.description}</p>
                         </div>
                       </div>
                     </div>
-                    <div className="mt-6 flex justify-end gap-2">
+                    <div className="mt-6 flex justify-end gap-2 border-t border-slate-100 pt-4">
                       <button 
                         onClick={() => openEditModal("service", service)}
-                        className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-gold/15 text-gold hover:text-gold text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
+                        className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-[#c9a24c]/15 text-[#c9a24c] hover:border-[#c9a24c]/30 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
                       >
                         <Edit3 className="h-3.5 w-3.5" /> Edit details
                       </button>
                       <button 
                         onClick={() => handleDeleteService(service.id)}
-                        className="px-3 py-1.5 rounded-xl border border-destructive/20 hover:bg-rose-500 hover:text-white text-rose-500 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
+                        className="px-3 py-1.5 rounded-lg border border-rose-100 bg-rose-50/50 hover:bg-rose-500 hover:text-white text-rose-500 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
                       >
                         <Trash2 className="h-3.5 w-3.5" /> Remove
                       </button>
@@ -1698,28 +1709,28 @@ function AdminPage() {
               <div className="grid gap-6 md:grid-cols-3">
                 
                 {/* Notification dispatcher form */}
-                <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm md:col-span-1 h-fit">
-                  <h3 className="text-lg font-bold text-primary font-display mb-4">Send Alert Notification</h3>
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/30 md:col-span-1 h-fit premium-card">
+                  <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display mb-4">Send Alert Notification</h3>
                   
                   <form onSubmit={handleModalSubmit} className="space-y-4">
                     <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Recipient Target</label>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Recipient Target</label>
                       <input 
                         type="text"
                         required
                         value={notifRecipient}
                         onChange={(e) => setNotifRecipient(e.target.value)}
                         placeholder="e.g. All Users, email@test.com"
-                        className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                        className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 bg-background outline-none focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] transition-all bg-slate-50/50"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Delivery Method</label>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Delivery Method</label>
                       <select
                         value={notifType}
                         onChange={(e) => setNotifType(e.target.value)}
-                        className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                        className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 bg-background outline-none focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] cursor-pointer bg-slate-50/50"
                       >
                         <option value="Email">Email Message</option>
                         <option value="SMS">SMS / WhatsApp Alert</option>
@@ -1728,14 +1739,14 @@ function AdminPage() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Alert Message</label>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Alert Message</label>
                       <textarea
                         required
                         rows={4}
                         value={notifMessage}
                         onChange={(e) => setNotifMessage(e.target.value)}
                         placeholder="Type alert notification details here..."
-                        className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-2 focus:ring-gold"
+                        className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 bg-background outline-none focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] bg-slate-50/50"
                       />
                     </div>
 
@@ -1743,7 +1754,7 @@ function AdminPage() {
                       type="submit"
                       disabled={isLoading}
                       onClick={() => setModalType("notification")}
-                      className="btn-primary w-full py-2.5 flex items-center justify-center gap-2 cursor-pointer"
+                      className="btn-primary w-full py-2.5 flex items-center justify-center gap-2 cursor-pointer shadow-md mt-2"
                     >
                       <Send className="h-4 w-4" /> Send Dispatch
                     </button>
@@ -1751,22 +1762,22 @@ function AdminPage() {
                 </div>
 
                 {/* Notifications Dispatch Logs */}
-                <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm md:col-span-2">
-                  <h3 className="text-lg font-bold text-primary font-display mb-4">Dispatched Alerts Log</h3>
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/30 md:col-span-2 premium-card">
+                  <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display mb-4">Dispatched Alerts Log</h3>
                   
                   <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1">
                     {filteredNotifications.map((notif) => (
-                      <div key={notif.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition-colors">
-                        <div className="flex justify-between items-center gap-2 text-xs font-bold text-slate-400 mb-2">
-                          <span className="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded uppercase tracking-wider">{notif.type}</span>
+                      <div key={notif.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50/30 hover:bg-slate-50 transition-colors">
+                        <div className="flex justify-between items-center gap-2 text-[10px] font-bold text-slate-400 mb-2">
+                          <span className="text-[#1e2a5a] bg-[#1e2a5a]/5 border border-[#1e2a5a]/10 px-2.5 py-0.5 rounded-full uppercase tracking-wider font-extrabold">{notif.type}</span>
                           <span>{new Date(notif.sentAt).toLocaleString()}</span>
                         </div>
-                        <div className="text-sm font-semibold text-primary mb-1">To: {notif.recipient}</div>
-                        <p className="text-xs text-slate-600 leading-relaxed font-sans">{notif.message}</p>
+                        <div className="text-sm font-bold text-[#1e2a5a] mb-1">To: {notif.recipient}</div>
+                        <p className="text-xs text-slate-600 leading-relaxed font-sans font-medium">{notif.message}</p>
                       </div>
                     ))}
                     {filteredNotifications.length === 0 && (
-                      <p className="text-center text-xs text-slate-400 py-10 font-semibold">No notification logs recorded.</p>
+                      <p className="text-center text-xs text-slate-400 py-10 font-bold">No notification logs recorded.</p>
                     )}
                   </div>
                 </div>
@@ -1781,39 +1792,39 @@ function AdminPage() {
               {filteredEnquiries.map((enq) => (
                 <div
                   key={enq.id}
-                  className="rounded-2xl border border-slate-200/60 bg-white p-6 shadow-sm hover:shadow-md transition-shadow duration-300 flex flex-col md:flex-row justify-between gap-6"
+                  className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md shadow-slate-100/30 hover:shadow-lg transition-all flex flex-col md:flex-row justify-between gap-6 premium-card"
                 >
-                  <div className="space-y-4 flex-1">
+                  <div className="space-y-4 flex-1 text-left">
                     <div className="flex flex-wrap items-center gap-3">
-                      <span className="text-xs font-mono font-bold text-slate-400 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded">
+                      <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-50 border border-slate-200/80 px-2 py-0.5 rounded">
                         ID: {enq.id}
                       </span>
                       {enq.service && (
-                        <span className="text-xs font-bold text-primary bg-gold/15 text-gold border border-gold/25 px-2.5 py-0.5 rounded-full">
+                        <span className="text-xs font-bold text-[#c9a24c] bg-[#c9a24c]/10 border border-[#c9a24c]/20 px-2.5 py-0.5 rounded-full">
                           {enq.service}
                         </span>
                       )}
-                      <span className="text-xs text-slate-400">
+                      <span className="text-xs text-slate-400 font-semibold">
                         {new Date(enq.submittedAt).toLocaleString()}
                       </span>
                     </div>
 
                     <div>
-                      <h3 className="text-lg font-semibold text-primary font-display">{enq.name}</h3>
-                      <div className="mt-2 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-500">
+                      <h3 className="text-lg font-bold text-[#1e2a5a] font-display">{enq.name}</h3>
+                      <div className="mt-2 flex flex-wrap gap-x-6 gap-y-2 text-xs text-slate-500 font-semibold">
                         <span className="flex items-center gap-1.5">
-                          <Phone className="h-4 w-4 text-gold shrink-0" />
+                          <Phone className="h-4 w-4 text-[#c9a24c] shrink-0" />
                           {enq.phone}
                         </span>
                         {enq.email && (
                           <span className="flex items-center gap-1.5">
-                            <Mail className="h-4 w-4 text-gold shrink-0" />
+                            <Mail className="h-4 w-4 text-[#c9a24c] shrink-0" />
                             {enq.email}
                           </span>
                         )}
                         {enq.city && (
                           <span className="flex items-center gap-1.5">
-                            <MapPin className="h-4 w-4 text-gold shrink-0" />
+                            <MapPin className="h-4 w-4 text-[#c9a24c] shrink-0" />
                             {enq.city}
                           </span>
                         )}
@@ -1821,16 +1832,16 @@ function AdminPage() {
                     </div>
 
                     {enq.message && (
-                      <div className="rounded-xl bg-slate-50 p-4 border border-slate-100 text-sm text-slate-600 italic leading-relaxed">
+                      <div className="rounded-xl bg-slate-50/50 p-4 border border-slate-100 text-xs text-slate-600 italic leading-relaxed font-medium">
                         &ldquo;{enq.message}&rdquo;
                       </div>
                     )}
                   </div>
 
-                  <div className="flex md:flex-col justify-end items-start md:items-end shrink-0">
+                  <div className="flex md:flex-col justify-end items-start md:items-end shrink-0 border-t md:border-t-0 border-slate-100 pt-4 md:pt-0">
                     <button
                       onClick={() => handleDeleteEnquiry(enq.id)}
-                      className="px-3.5 py-2 rounded-xl bg-destructive/10 hover:bg-destructive border border-destructive/20 hover:border-destructive text-destructive hover:text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                      className="px-3.5 py-2 rounded-lg bg-rose-50 hover:bg-rose-500 border border-rose-100 hover:border-rose-500 text-rose-500 hover:text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
                     >
                       <Trash2 className="h-4 w-4" />
                       Delete Lead
@@ -1844,16 +1855,16 @@ function AdminPage() {
           {/* Blogs Management Panel */}
           {activeTab === "blogs" && (
             <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-md shadow-slate-100/40 premium-card">
                 <div className="text-left">
-                  <h3 className="text-lg font-bold text-primary font-display">Health Articles &amp; Blogs</h3>
-                  <p className="text-xs text-slate-400 mt-1">Publish and manage clinical advice pages for the Amma Seva Blog.</p>
+                  <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display">Health Articles &amp; Blogs</h3>
+                  <p className="text-xs text-slate-400 mt-1 font-medium">Publish and manage clinical advice pages for the Amma Seva Blog.</p>
                 </div>
                 <button
                   onClick={() => {
                     openAddModal("blog");
                   }}
-                  className="px-4 py-2.5 rounded-xl bg-primary hover:bg-[#1a2d5e] text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                  className="btn-primary py-2.5 px-4 text-xs font-bold flex items-center gap-1.5 shadow-md"
                 >
                   <Plus className="h-4 w-4" /> Add Blog Post
                 </button>
@@ -1863,36 +1874,36 @@ function AdminPage() {
                 {blogs.filter(b => b.title.toLowerCase().includes(searchQuery.toLowerCase()) || b.category.toLowerCase().includes(searchQuery.toLowerCase())).map((b) => (
                   <div
                     key={b.id}
-                    className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col sm:flex-row gap-5 items-start sm:items-center"
+                    className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-md shadow-slate-100/30 hover:shadow-lg transition-all duration-300 flex flex-col sm:flex-row gap-5 items-start sm:items-center premium-card"
                   >
                     {b.image && (
-                      <div className="h-20 w-32 rounded-xl overflow-hidden shrink-0 border border-slate-100 bg-slate-50">
+                      <div className="h-20 w-32 rounded-xl overflow-hidden shrink-0 border border-slate-100 bg-slate-50 shadow-sm">
                         <img src={b.image} className="w-full h-full object-cover" alt="" />
                       </div>
                     )}
                     <div className="flex-1 text-left space-y-1.5">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[10px] font-bold uppercase tracking-wider bg-gold/10 text-gold border border-gold/20 px-2 py-0.5 rounded">
+                        <span className="text-[10px] font-bold uppercase tracking-wider bg-[#c9a24c]/10 text-[#c9a24c] border border-[#c9a24c]/20 px-2.5 py-0.5 rounded">
                           {b.category}
                         </span>
-                        <span className="text-[10px] text-slate-400 font-medium">
+                        <span className="text-[10px] text-slate-400 font-bold">
                           📅 {b.date} | ✍️ {b.author}
                         </span>
                       </div>
-                      <h4 className="text-base font-bold text-primary leading-snug">{b.title}</h4>
-                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{b.description}</p>
+                      <h4 className="text-base font-bold text-[#1e2a5a] leading-snug font-display">{b.title}</h4>
+                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed font-medium">{b.description}</p>
                     </div>
 
                     <div className="flex gap-2 shrink-0 w-full sm:w-auto justify-end">
                       <button
                         onClick={() => openEditModal("blog", b)}
-                        className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                        className="p-2 rounded-lg bg-slate-50 hover:bg-[#c9a24c]/15 text-[#c9a24c] border border-slate-200 hover:border-[#c9a24c]/30 transition-colors cursor-pointer"
                       >
                         <Edit3 className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => handleDeleteBlog(b.id)}
-                        className="p-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer"
+                        className="p-2 rounded-lg bg-rose-50 hover:bg-rose-500 hover:text-white border border-rose-100 hover:border-rose-500 text-rose-500 transition-colors cursor-pointer"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -1901,7 +1912,7 @@ function AdminPage() {
                 ))}
 
                 {blogs.length === 0 && (
-                  <div className="text-center py-16 border border-dashed border-slate-200 rounded-3xl bg-white p-6">
+                  <div className="text-center py-16 border border-dashed border-slate-200 rounded-3xl bg-white p-6 shadow-sm">
                     <p className="text-slate-400 text-sm font-semibold">No health articles loaded. Click "Add Blog Post" to publish the first guide!</p>
                   </div>
                 )}
@@ -1909,15 +1920,15 @@ function AdminPage() {
             </div>
           )}
           {activeTab === "faqs" && (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center bg-white border border-slate-200/60 rounded-2xl p-4 sm:p-6 shadow-sm">
+            <div className="space-y-6">
+              <div className="flex justify-between items-center bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/40 premium-card">
                 <div>
-                  <h3 className="text-lg font-bold text-primary font-display">Manage FAQs</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Total: {faqs.length} FAQ questions</p>
+                  <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display">Manage FAQs</h3>
+                  <p className="text-xs text-slate-400 mt-0.5 font-medium">Total: {faqs.length} FAQ questions</p>
                 </div>
                 <button
                   onClick={() => openAddModal("faq")}
-                  className="btn-primary py-2 px-4 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                  className="btn-primary py-2 px-4 text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md"
                 >
                   <Plus className="h-4 w-4" /> Add FAQ Item
                 </button>
@@ -1929,23 +1940,23 @@ function AdminPage() {
                   .map((f) => (
                     <div
                       key={f.id}
-                      className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col sm:flex-row gap-5 items-start sm:items-center text-left"
+                      className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-md shadow-slate-100/30 hover:shadow-lg transition-all duration-300 flex flex-col sm:flex-row gap-5 items-start sm:items-center text-left premium-card"
                     >
                       <div className="flex-1 text-left space-y-1.5">
-                        <h4 className="text-base font-bold text-primary leading-snug">{f.question}</h4>
-                        <p className="text-xs text-slate-500 leading-relaxed">{f.answer}</p>
+                        <h4 className="text-base font-bold text-[#1e2a5a] leading-snug font-display">{f.question}</h4>
+                        <p className="text-xs text-slate-500 leading-relaxed font-medium">{f.answer}</p>
                       </div>
 
                       <div className="flex gap-2 shrink-0 w-full sm:w-auto justify-end">
                         <button
                           onClick={() => openEditModal("faq", f)}
-                          className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                          className="p-2 rounded-lg bg-slate-50 hover:bg-[#c9a24c]/15 text-[#c9a24c] border border-slate-200 hover:border-[#c9a24c]/30 transition-colors cursor-pointer"
                         >
                           <Edit3 className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteFaq(f.id)}
-                          className="p-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer"
+                          className="p-2 rounded-lg bg-rose-50 hover:bg-rose-500 hover:text-white border border-rose-100 hover:border-rose-500 text-rose-500 transition-colors cursor-pointer"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -1954,7 +1965,7 @@ function AdminPage() {
                   ))}
 
                 {faqs.length === 0 && (
-                  <div className="text-center py-16 border border-dashed border-slate-200 rounded-3xl bg-white p-6">
+                  <div className="text-center py-16 border border-dashed border-slate-200 rounded-3xl bg-white p-6 shadow-sm">
                     <p className="text-slate-400 text-sm font-semibold">No FAQ items loaded. Click "Add FAQ Item" to publish the first guide!</p>
                   </div>
                 )}
@@ -1962,48 +1973,48 @@ function AdminPage() {
             </div>
           )}
           {activeTab === "gallery" && (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center bg-white border border-slate-200/60 rounded-2xl p-4 sm:p-6 shadow-sm">
+            <div className="space-y-6">
+              <div className="flex justify-between items-center bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/40 premium-card">
                 <div>
-                  <h3 className="text-lg font-bold text-primary font-display">Manage Photo Gallery</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Total: {gallery.length} photos</p>
+                  <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display">Manage Photo Gallery</h3>
+                  <p className="text-xs text-slate-400 mt-0.5 font-medium">Total: {gallery.length} photos</p>
                 </div>
                 <button
                   onClick={() => openAddModal("gallery")}
-                  className="btn-primary py-2 px-4 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                  className="btn-primary py-2 px-4 text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md"
                 >
                   <Plus className="h-4 w-4" /> Add Gallery Image
                 </button>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                 {gallery
                   .filter(g => g.title.toLowerCase().includes(searchQuery.toLowerCase()))
                   .map((g) => (
                     <div
                       key={g.id}
-                      className="bg-white border border-slate-200/60 rounded-2xl overflow-hidden shadow-sm flex flex-col justify-between"
+                      className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-md shadow-slate-100/30 flex flex-col justify-between hover:shadow-lg transition-all premium-card"
                     >
-                      <div className="relative aspect-video w-full overflow-hidden bg-slate-100 border-b border-slate-100">
+                      <div className="relative aspect-video w-full overflow-hidden bg-slate-100 border-b border-slate-150">
                         <img src={g.imageUrl} className="w-full h-full object-cover" alt={g.title} />
                       </div>
-                      <div className="p-4 text-left space-y-1">
-                        <h4 className="text-sm font-bold text-primary truncate">{g.title}</h4>
-                        <p className="text-[10px] text-slate-400">Added: {new Date(g.createdAt).toLocaleDateString()}</p>
+                      <div className="p-4 text-left space-y-1.5">
+                        <h4 className="text-sm font-bold text-[#1e2a5a] truncate font-display">{g.title}</h4>
+                        <p className="text-[10px] text-slate-400 font-semibold">Added: {new Date(g.createdAt).toLocaleDateString()}</p>
                       </div>
-                      <div className="px-4 pb-4 flex justify-end">
+                      <div className="px-4 pb-4 flex justify-end border-t border-slate-50 pt-2.5">
                         <button
                           onClick={() => handleDeleteGallery(g.id)}
-                          className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer text-xs font-semibold flex items-center gap-1"
+                          className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-500 hover:text-white border border-rose-100 hover:border-rose-500 text-rose-500 transition-colors cursor-pointer text-[10px] font-bold flex items-center gap-1"
                         >
-                          <Trash2 className="h-3.5 w-3.5" /> Delete
+                          <Trash2 className="h-3.5 w-3.5" /> Delete Image
                         </button>
                       </div>
                     </div>
                   ))}
 
                 {gallery.length === 0 && (
-                  <div className="col-span-full text-center py-16 border border-dashed border-slate-200 rounded-3xl bg-white p-6">
+                  <div className="col-span-full text-center py-16 border border-dashed border-slate-200 rounded-3xl bg-white p-6 shadow-sm">
                     <p className="text-slate-400 text-sm font-semibold">No images uploaded. Click "Add Gallery Image" to publish the first photo!</p>
                   </div>
                 )}
@@ -2015,15 +2026,15 @@ function AdminPage() {
 
       {/* DYNAMIC FORMS EDITING MODALS */}
       {modalType && modalType !== "notification" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-          <div className={`bg-white rounded-3xl border border-slate-200 shadow-xl w-full overflow-hidden animate-in fade-in zoom-in duration-200 ${modalType === 'service' ? 'max-w-3xl' : 'max-w-xl'}`}>
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-              <h3 className="text-lg font-bold text-primary font-display uppercase tracking-wide">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className={`bg-white rounded-3xl border border-slate-200/80 shadow-2xl w-full overflow-hidden animate-in fade-in zoom-in duration-200 ${modalType === 'service' ? 'max-w-3xl' : 'max-w-xl'} premium-card`}>
+            <div className="px-6 py-4.5 border-b border-slate-150 flex justify-between items-center bg-slate-50/40">
+              <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display uppercase tracking-wider">
                 {modalMode === "add" ? "Create New" : "Edit Details"} {modalType}
               </h3>
               <button 
                 onClick={() => setModalType(null)} 
-                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 cursor-pointer"
+                className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 cursor-pointer transition-colors"
               >
                 <XCircle className="h-6 w-6" />
               </button>
@@ -2707,7 +2718,7 @@ function AdminPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="btn-primary w-full py-2.5 mt-6 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className="btn-primary w-full py-3 mt-6 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-md text-xs font-bold transition-all"
               >
                 {isLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                 {isLoading ? "Saving changes..." : "Save Record"}
@@ -2719,18 +2730,18 @@ function AdminPage() {
 
       {/* Collapsible Caregiver Reviews Modal */}
       {selectedCaregiverForReviews && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-xl bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden flex flex-col max-h-[80vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col max-h-[80vh] premium-card">
             <div className="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-              <div>
-                <h3 className="text-lg font-bold text-primary font-display flex items-center gap-2">
+              <div className="text-left">
+                <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display flex items-center gap-2">
                   Reviews for {selectedCaregiverForReviews.name}
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">Overall rating: ⭐ {selectedCaregiverForReviews.rating || "N/A"} / 5.0</p>
+                <p className="text-xs text-slate-400 mt-1 font-semibold">Overall rating: ⭐ {selectedCaregiverForReviews.rating || "N/A"} / 5.0</p>
               </div>
               <button
                 onClick={() => setSelectedCaregiverForReviews(null)}
-                className="h-8 w-8 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 cursor-pointer"
+                className="h-8 w-8 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 cursor-pointer transition-colors"
               >
                 &times;
               </button>
@@ -2738,17 +2749,17 @@ function AdminPage() {
 
             <div className="p-6 overflow-y-auto space-y-4 flex-1">
               {!selectedCaregiverForReviews.reviews || selectedCaregiverForReviews.reviews.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-8">No feedback reviews submitted for this caregiver yet.</p>
+                <p className="text-sm text-slate-400 text-center py-8 font-semibold">No feedback reviews submitted for this caregiver yet.</p>
               ) : (
                 selectedCaregiverForReviews.reviews.map((r: any) => (
-                  <div key={r.id} className="p-4 bg-slate-50/50 border border-slate-100 rounded-2xl space-y-2">
+                  <div key={r.id} className="p-4 bg-slate-50/30 border border-slate-100 rounded-2xl space-y-2 text-left">
                     <div className="flex justify-between items-center">
-                      <span className="text-xs text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded border border-amber-100 font-bold">
+                      <span className="text-[10px] text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded border border-amber-200/60 font-black">
                         ⭐ {r.rating}.0
                       </span>
-                      <span className="text-[10px] text-slate-400">{new Date(r.createdAt).toLocaleDateString()}</span>
+                      <span className="text-[10px] text-slate-400 font-semibold">{new Date(r.createdAt).toLocaleDateString()}</span>
                     </div>
-                    <p className="text-xs text-slate-600 italic">&ldquo;{r.comment || "No written feedback."}&rdquo;</p>
+                    <p className="text-xs text-slate-600 italic font-medium">&ldquo;{r.comment || "No written feedback."}&rdquo;</p>
                   </div>
                 ))
               )}
@@ -2763,14 +2774,25 @@ function AdminPage() {
 
 // Side widget helper for Metric grids
 function HorizontalMetric({ icon: Icon, iconColor, label, value }: { icon: any; iconColor: string; label: string; value: string }) {
+  let finalColorClasses = iconColor;
+  if (iconColor.includes("indigo") || iconColor.includes("#1e2a5a")) {
+    finalColorClasses = "text-[#1e2a5a] bg-[#1e2a5a]/5 border border-[#1e2a5a]/10";
+  } else if (iconColor.includes("amber") || iconColor.includes("#c9a24c")) {
+    finalColorClasses = "text-[#c9a24c] bg-[#c9a24c]/10 border border-[#c9a24c]/25";
+  } else if (iconColor.includes("rose") || iconColor.includes("teal")) {
+    finalColorClasses = "text-teal-600 bg-teal-50 border border-teal-100";
+  } else if (iconColor.includes("yellow") || iconColor.includes("star")) {
+    finalColorClasses = "text-amber-500 bg-amber-500/5 border border-amber-200/50";
+  }
+
   return (
-    <div className="flex items-center gap-4">
-      <div className={`p-3 rounded-full shrink-0 ${iconColor}`}>
-        <Icon className="h-5 w-5" />
+    <div className="flex items-center gap-4 p-4 rounded-xl bg-slate-50/50 border border-slate-100 hover:bg-slate-50 transition-colors">
+      <div className={`p-3 rounded-xl shrink-0 ${finalColorClasses}`}>
+        <Icon className="h-5.5 w-5.5" />
       </div>
       <div>
-        <span className="block text-2xl font-bold font-display text-slate-900 leading-none">{value}</span>
-        <span className="block text-xs text-slate-400 mt-1 font-semibold uppercase tracking-wider">{label}</span>
+        <span className="block text-2xl font-black font-display text-slate-900 leading-none">{value}</span>
+        <span className="block text-[10px] text-slate-400 mt-1.5 font-bold uppercase tracking-wider">{label}</span>
       </div>
     </div>
   );
