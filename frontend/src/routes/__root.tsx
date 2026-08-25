@@ -94,37 +94,52 @@ function SplashScreen() {
   }, []);
 
   if (!visible) return null;
-
-  return (
-    <div
-      className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0c1a30] transition-opacity duration-500 ease-in-out ${
-        fade ? "opacity-0 pointer-events-none" : "opacity-100"
-      }`}
-    >
-      <div className="flex flex-col items-center gap-6 animate-pulse">
-        {/* Big circular logo with premium pulse rings */}
-        <div className="relative flex items-center justify-center">
-          <div className="absolute inset-0 rounded-full bg-gold/20 blur-md scale-110" />
-          <img
-            src={logoAsset}
-            alt="Amma Seva"
-            className="h-28 w-28 rounded-full bg-white p-2 border-2 border-gold object-contain shadow-2xl animate-spin"
-            style={{ animationDuration: "12s" }}
-          />
-        </div>
-
-        {/* Text bottom */}
-        <div className="text-center space-y-1">
-          <h1 className="font-display text-3xl font-bold tracking-wide text-white">
-            Amma <span className="text-gold">Seva</span>
-          </h1>
-          <p className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">
-            Home Healthcare &amp; Caregiving
-          </p>
-        </div>
-      </div>
-    </div>
-  );
+ 
+   return (
+     <div
+       className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-gradient-to-tr from-[#0a1128] via-[#101f42] to-[#0a1128] transition-opacity duration-700 ease-in-out ${
+         fade ? "opacity-0 pointer-events-none" : "opacity-100"
+       }`}
+     >
+       <div className="flex flex-col items-center gap-6 animate-in fade-in zoom-in-95 duration-500">
+         {/* Logo Container with rotating loading ring */}
+         <div className="relative flex items-center justify-center h-32 w-32">
+           {/* Pulsing glow background */}
+           <div className="absolute inset-0 rounded-full bg-[#c9a24c]/10 blur-xl scale-125 animate-pulse" />
+           
+           {/* Smooth spinning gold accent ring */}
+           <div className="absolute inset-0 rounded-full border-2 border-dashed border-[#c9a24c] animate-spin" style={{ animationDuration: "15s" }} />
+           
+           {/* Glowing outer progress ring */}
+           <div className="absolute inset-[-4px] rounded-full border-t-2 border-l-2 border-[#c9a24c] border-r-2 border-b-2 border-r-transparent border-b-transparent animate-spin" style={{ animationDuration: "2s" }} />
+ 
+           <img
+             src={logoAsset}
+             alt="Amma Seva"
+             className="h-24 w-24 rounded-full bg-white p-2 border-2 border-[#1e2a5a] object-contain shadow-2xl z-10 transition-transform duration-300 hover:scale-105"
+           />
+         </div>
+ 
+         {/* Text details */}
+         <div className="text-center space-y-2">
+           <h1 className="font-display text-4xl font-bold tracking-wide text-white">
+             Amma <span className="text-[#c9a24c]">Seva</span>
+           </h1>
+           <div className="flex flex-col items-center gap-1.5">
+             <p className="text-[10px] text-slate-300 uppercase tracking-[0.2em] font-bold">
+               Home Healthcare &amp; Caregiving
+             </p>
+             {/* Soft progress indicator dots */}
+             <div className="flex gap-1.5 mt-2">
+               <span className="h-1.5 w-1.5 rounded-full bg-[#c9a24c] animate-bounce" style={{ animationDelay: '0ms' }} />
+               <span className="h-1.5 w-1.5 rounded-full bg-[#c9a24c]/80 animate-bounce" style={{ animationDelay: '150ms' }} />
+               <span className="h-1.5 w-1.5 rounded-full bg-[#c9a24c]/40 animate-bounce" style={{ animationDelay: '300ms' }} />
+             </div>
+           </div>
+         </div>
+       </div>
+     </div>
+   );
 }
 
 function RootComponent() {
