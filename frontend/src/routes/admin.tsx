@@ -171,6 +171,9 @@ function AdminPage() {
   const [bookingTransactionId, setBookingTransactionId] = useState("");
   const [bookingPaymentDate, setBookingPaymentDate] = useState("");
   const [bookingCaretakerPayout, setBookingCaretakerPayout] = useState("");
+  const [bookingCaretakerPayoutStatus, setBookingCaretakerPayoutStatus] = useState("Unpaid");
+  const [bookingCaretakerPayoutMethod, setBookingCaretakerPayoutMethod] = useState("");
+  const [bookingCaretakerPayoutRef, setBookingCaretakerPayoutRef] = useState("");
 
   // Form states - Caregiver
   const [caregiverName, setCaregiverName] = useState("");
@@ -491,6 +494,9 @@ function AdminPage() {
       setBookingTransactionId("");
       setBookingPaymentDate("");
       setBookingCaretakerPayout("0");
+      setBookingCaretakerPayoutStatus("Unpaid");
+      setBookingCaretakerPayoutMethod("");
+      setBookingCaretakerPayoutRef("");
     } else if (type === "caregiver") {
       setCaregiverName("");
       setCaregiverPhone("");
@@ -568,6 +574,9 @@ function AdminPage() {
       setBookingTransactionId(record.transactionId || "");
       setBookingPaymentDate(record.paymentDate || "");
       setBookingCaretakerPayout(record.caretakerPayout?.toString() || "0");
+      setBookingCaretakerPayoutStatus(record.caretakerPayoutStatus || "Unpaid");
+      setBookingCaretakerPayoutMethod(record.caretakerPayoutMethod || "");
+      setBookingCaretakerPayoutRef(record.caretakerPayoutRef || "");
       setBookingPatientName(record.patientName || "");
       setBookingPatientAge(record.patientAge || "");
       setBookingPatientNeeds(record.patientNeeds || "");
@@ -665,6 +674,9 @@ function AdminPage() {
         address: bookingAddress,
         amount: Number(bookingAmount) || 1200,
         caretakerPayout: Number(bookingCaretakerPayout) || 0,
+        caretakerPayoutStatus: bookingCaretakerPayoutStatus,
+        caretakerPayoutMethod: bookingCaretakerPayoutMethod,
+        caretakerPayoutRef: bookingCaretakerPayoutRef,
         status: bookingStatus,
         assignedStaff: bookingAssignedStaff || null,
         paymentStatus: bookingPaymentStatus,
@@ -2166,7 +2178,36 @@ function AdminPage() {
                         className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
                       />
                     </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Caretaker Payout Status</label>
+                      <select 
+                        value={bookingCaretakerPayoutStatus} onChange={e => setBookingCaretakerPayoutStatus(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
+                      >
+                        <option value="Unpaid">Unpaid / Settle Pending</option>
+                        <option value="Paid">Paid / Settle Cleared</option>
+                      </select>
+                    </div>
                   </div>
+
+                  {bookingCaretakerPayoutStatus === "Paid" && (
+                    <div className="grid grid-cols-2 gap-4 p-4 rounded-2xl bg-[#c9a24c]/5 border border-[#c9a24c]/20">
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-[#c9a24c] mb-1">Payout Method (e.g. UPI, Bank)</label>
+                        <input 
+                          type="text" placeholder="GPay / PhonePe / Bank Trans" value={bookingCaretakerPayoutMethod} onChange={e => setBookingCaretakerPayoutMethod(e.target.value)}
+                          className="w-full px-3 py-2 border border-[#c9a24c]/30 rounded-lg outline-none bg-white text-slate-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-[#c9a24c] mb-1">Payout Transaction Ref #</label>
+                        <input 
+                          type="text" placeholder="TXN12948194..." value={bookingCaretakerPayoutRef} onChange={e => setBookingCaretakerPayoutRef(e.target.value)}
+                          className="w-full px-3 py-2 border border-[#c9a24c]/30 rounded-lg outline-none bg-white text-slate-900"
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Caretaker Location Address</label>

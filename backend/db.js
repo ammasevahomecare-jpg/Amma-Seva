@@ -763,7 +763,7 @@ export const db = {
   },
 
   addBooking: async (bookingData) => {
-    const { name, phone, service, date, time, duration, address, amount = 1200, paymentStatus = 'Unpaid', paymentMethod = '', transactionId = '', paymentDate = '', prescription = '', googleMapLocation = '', caretakerPayout } = bookingData
+    const { name, phone, service, date, time, duration, address, amount = 1200, paymentStatus = 'Unpaid', paymentMethod = '', transactionId = '', paymentDate = '', prescription = '', googleMapLocation = '', caretakerPayout, caretakerPayoutStatus = 'Unpaid', caretakerPayoutMethod = '', caretakerPayoutRef = '' } = bookingData
     const createdAt = new Date().toISOString()
     if (useMySQL) {
       const [result] = await pool.query(
@@ -786,6 +786,9 @@ export const db = {
         assignedStaff: null,
         amount,
         caretakerPayout: Number(caretakerPayout) || 0,
+        caretakerPayoutStatus,
+        caretakerPayoutMethod,
+        caretakerPayoutRef,
         paymentStatus,
         paymentMethod,
         transactionId,
@@ -1279,7 +1282,7 @@ export const db = {
 
   // Admin CRUD operations: Bookings (Full Edit & Delete)
   adminUpdateBooking: async (id, bookingData) => {
-    const { name, phone, service, date, time, duration, address, status, assignedStaff, amount, paymentStatus, paymentMethod = '', transactionId = '', paymentDate = '', caretakerPayout } = bookingData
+    const { name, phone, service, date, time, duration, address, status, assignedStaff, amount, paymentStatus, paymentMethod = '', transactionId = '', paymentDate = '', caretakerPayout, caretakerPayoutStatus, caretakerPayoutMethod, caretakerPayoutRef } = bookingData
     if (useMySQL) {
       const [result] = await pool.query(
         'UPDATE bookings SET name = ?, phone = ?, service = ?, date = ?, time = ?, duration = ?, address = ?, status = ?, assignedStaff = ?, amount = ?, paymentStatus = ?, paymentMethod = ?, transactionId = ?, paymentDate = ? WHERE id = ?',
@@ -1303,6 +1306,9 @@ export const db = {
           assignedStaff: assignedStaff || null,
           amount: Number(amount),
           caretakerPayout: caretakerPayout !== undefined ? Number(caretakerPayout) : (data.bookings[idx].caretakerPayout || 0),
+          caretakerPayoutStatus: caretakerPayoutStatus !== undefined ? caretakerPayoutStatus : (data.bookings[idx].caretakerPayoutStatus || 'Unpaid'),
+          caretakerPayoutMethod: caretakerPayoutMethod !== undefined ? caretakerPayoutMethod : (data.bookings[idx].caretakerPayoutMethod || ''),
+          caretakerPayoutRef: caretakerPayoutRef !== undefined ? caretakerPayoutRef : (data.bookings[idx].caretakerPayoutRef || ''),
           paymentStatus,
           paymentMethod,
           transactionId,

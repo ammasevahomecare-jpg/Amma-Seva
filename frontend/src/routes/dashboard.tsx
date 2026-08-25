@@ -1608,9 +1608,24 @@ function CustomerDashboard() {
                               <div className="font-bold text-slate-800">{shift.service}</div>
                               <div className="text-slate-400 text-[10px] font-semibold mt-0.5">{shift.date} • Patient: {shift.patientName || shift.name}</div>
                             </div>
-                            <div className="text-right">
+                            <div className="text-right space-y-1">
                               <div className="font-extrabold text-emerald-600">+₹{getShiftPayout(shift)}</div>
-                              <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Approved Payout</div>
+                              {shift.caretakerPayoutStatus === "Paid" ? (
+                                <div className="space-y-0.5">
+                                  <span className="inline-flex items-center gap-1 text-[9px] text-emerald-750 bg-emerald-50 border border-emerald-200/60 font-bold px-1.5 py-0.5 rounded-md">
+                                    ✓ Settled
+                                  </span>
+                                  {shift.caretakerPayoutMethod && (
+                                    <div className="text-[8px] text-slate-400 font-medium font-sans">
+                                      {shift.caretakerPayoutMethod} {shift.caretakerPayoutRef ? `(${shift.caretakerPayoutRef})` : ''}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-[9px] text-amber-750 bg-amber-50 border border-amber-200/60 font-bold px-1.5 py-0.5 rounded-md">
+                                  ● Pending Settle
+                                </span>
+                              )}
                             </div>
                           </div>
                         ))}

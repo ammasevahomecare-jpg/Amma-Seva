@@ -1222,7 +1222,7 @@ app.delete('/api/admin/user/:id', authenticateAdmin, async (req, res) => {
 
 // POST create booking directly as admin (Admin Panel)
 app.post('/api/admin/booking', authenticateAdmin, async (req, res) => {
-  const { name, phone, service, date, time, duration, address, amount, paymentStatus, paymentMethod, transactionId, paymentDate, caretakerPayout } = req.body
+  const { name, phone, service, date, time, duration, address, amount, paymentStatus, paymentMethod, transactionId, paymentDate, caretakerPayout, caretakerPayoutStatus, caretakerPayoutMethod, caretakerPayoutRef } = req.body
   if (!name || !phone || !service || !date || !time || !duration || !address) {
     return res.status(400).json({ error: 'Missing required booking details.' })
   }
@@ -1237,6 +1237,9 @@ app.post('/api/admin/booking', authenticateAdmin, async (req, res) => {
       address,
       amount: Number(amount),
       caretakerPayout: Number(caretakerPayout) || 0,
+      caretakerPayoutStatus: caretakerPayoutStatus || 'Unpaid',
+      caretakerPayoutMethod: caretakerPayoutMethod || '',
+      caretakerPayoutRef: caretakerPayoutRef || '',
       paymentStatus: paymentStatus || 'Unpaid',
       paymentMethod: paymentMethod || '',
       transactionId: transactionId || '',
