@@ -968,6 +968,86 @@ function CustomerDashboard() {
     }
   };
 
+  const handlePayBalance = async (booking: Booking) => {
+    if (!(window as any).Razorpay) {
+      alert("Razorpay payment SDK not loaded yet. Please try again in a few seconds.");
+      return;
+    }
+    const balanceVal = Number(booking.balanceAmount);
+    if (isNaN(balanceVal) || balanceVal <= 0) {
+      alert("No pending balance amount found for this booking.");
+      return;
+    }
+
+    try {
+      // 1. Create order for balance amount
+      const orderRes = await fetch("/api/payment/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: balanceVal })
+      });
+      const orderData = await orderRes.json();
+      if (!orderRes.ok) {
+        throw new Error(orderData.error || "Failed to initiate online payment order.");
+      }
+
+      // 2. Open Razorpay checkout modal
+      const options = {
+        key: "rzp_test_SwedUUn1KgRMs0",
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "Amma Seva",
+        description: `Balance Payment for Booking #${booking.id}`,
+        order_id: orderData.orderId,
+        handler: async function (response: any) {
+          try {
+            const token = localStorage.getItem("ammaseva_user_token");
+            const res = await fetch(`/api/booking/${booking.id}/pay-balance`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              })
+            });
+
+            if (res.status === 401) {
+              handleLogout();
+              return;
+            }
+
+            const data = await res.json();
+            if (!res.ok) {
+              throw new Error(data.error || "Verification of balance payment failed.");
+            }
+
+            alert("Balance payment completed and verified successfully!");
+            fetchBookings();
+          } catch (err: any) {
+            alert("Payment verification failed: " + err.message);
+          }
+        },
+        prefill: {
+          name: user?.name || "",
+          email: user?.email || "",
+          contact: user?.phone || ""
+        },
+        theme: {
+          color: "#0e2254"
+        }
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (err: any) {
+      alert("Payment initialization failed: " + err.message);
+    }
+  };
+
   const handleCancel = async (id: number) => {
     if (!window.confirm("Are you sure you want to cancel this booking?")) return;
     try {
