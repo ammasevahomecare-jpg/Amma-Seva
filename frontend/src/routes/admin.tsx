@@ -56,6 +56,11 @@ interface Booking {
     rating: number;
     comment?: string;
   };
+  advancePaid?: number;
+  balanceAmount?: number;
+  caretakerPayoutStatus?: string;
+  caretakerPayoutMethod?: string;
+  caretakerPayoutRef?: string;
 }
 
 interface Caregiver {
@@ -82,6 +87,7 @@ interface Caregiver {
   additionalCertificates?: string;
   rating?: number | string;
   reviews?: any[];
+  uniqueId?: string;
 }
 
 interface Enquiry {
@@ -177,6 +183,11 @@ function AdminPage() {
   const [payoutCalcMode, setPayoutCalcMode] = useState<"percentage" | "fixed">("percentage");
   const [payoutPercentValue, setPayoutPercentValue] = useState("85");
   const [isRecordCaretakerPaymentMode, setIsRecordCaretakerPaymentMode] = useState(false);
+  const [bookingPatientName, setBookingPatientName] = useState("");
+  const [bookingPatientAge, setBookingPatientAge] = useState("");
+  const [bookingPatientNeeds, setBookingPatientNeeds] = useState("");
+  const [bookingPrescription, setBookingPrescription] = useState("");
+  const [bookingGoogleMapLocation, setBookingGoogleMapLocation] = useState("");
 
   // Form states - Caregiver
   const [caregiverName, setCaregiverName] = useState("");

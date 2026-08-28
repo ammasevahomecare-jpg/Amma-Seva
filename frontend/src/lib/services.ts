@@ -16,6 +16,7 @@ export type Service = {
   highlights?: string[];
   images?: string[];
   category?: string;
+  advance?: number | string;
 };
 
 export const services: Service[] = [];

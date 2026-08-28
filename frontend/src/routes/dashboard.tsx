@@ -119,6 +119,11 @@ interface Booking {
     rating: number;
     comment?: string;
   };
+  advancePaid?: number;
+  balanceAmount?: number;
+  caretakerPayoutStatus?: string;
+  caretakerPayoutMethod?: string;
+  caretakerPayoutRef?: string;
   caregiverDetails?: {
     name: string;
     phone: string;
