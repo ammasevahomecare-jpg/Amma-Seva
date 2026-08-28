@@ -263,6 +263,9 @@ function AdminPage() {
 
   // Collapsible Reviews modal state
   const [selectedCaregiverForReviews, setSelectedCaregiverForReviews] = useState<any | null>(null);
+  const [isAllReviewsModalOpen, setIsAllReviewsModalOpen] = useState(false);
+  const [reviewsSortOrder, setReviewsSortOrder] = useState<"high-to-low" | "low-to-high">("high-to-low");
+  const [reviewsSearchQuery, setReviewsSearchQuery] = useState("");
   const [expandedCaregiverId, setExpandedCaregiverId] = useState<number | null>(null);
 
   // Local Page Search & Date Range Filters
@@ -897,6 +900,35 @@ function AdminPage() {
   const avgPlatformRating = verifiedCaregivers.length > 0
     ? Number((verifiedCaregivers.reduce((sum, c) => sum + Number(c.rating), 0) / verifiedCaregivers.length).toFixed(1))
     : 4.8;
+
+  // Collect, filter, and sort all caregiver reviews for the global Care Rating card view
+  const allPlatformReviews = caregivers.flatMap(cg => 
+    (cg.reviews || []).map((rev: any) => ({
+      ...rev,
+      caregiverId: cg.id,
+      caregiverName: cg.name,
+      caregiverSpecialty: cg.specialty,
+      caregiverPhoto: cg.profilePhoto
+    }))
+  );
+
+  const filteredAndSortedPlatformReviews = allPlatformReviews
+    .filter((rev: any) => {
+      const q = reviewsSearchQuery.toLowerCase();
+      const matchCg = rev.caregiverName.toLowerCase().includes(q);
+      const matchComment = rev.comment && rev.comment.toLowerCase().includes(q);
+      return !reviewsSearchQuery || matchCg || matchComment;
+    })
+    .sort((a: any, b: any) => {
+      const ratingA = Number(a.rating || 0);
+      const ratingB = Number(b.rating || 0);
+      if (reviewsSortOrder === "high-to-low") {
+        return ratingB - ratingA;
+      } else {
+        return ratingA - ratingB;
+      }
+    });
+
   const activeShiftsCount = bookings.filter(b => b.status === "Active").length;
 
   // Monthly Revenue Data (last 6 months)
@@ -1220,7 +1252,7 @@ function AdminPage() {
 
                   {/* Ratings Card */}
                   <div 
-                    onClick={() => setActiveTab("caregivers")}
+                    onClick={() => setIsAllReviewsModalOpen(true)}
                     className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm premium-card flex justify-between items-center relative overflow-hidden border-l-4 border-l-[#c9a24c] cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
                   >
                     <div>
@@ -4007,6 +4039,112 @@ function AdminPage() {
                 ))
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Global Care Rating & Reviews Modal */}
+      {isAllReviewsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col max-h-[85vh] premium-card">
+            
+            {/* Header */}
+            <div className="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center text-left">
+              <div>
+                <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display flex items-center gap-2">
+                  ⭐ Platform Feedback &amp; Reviews
+                </h3>
+                <p className="text-xs text-slate-400 mt-1 font-semibold">
+                  Platform Average Score: <span className="text-[#c9a24c] font-black">{avgPlatformRating.toFixed(1)} / 5.0</span> • Total: {allPlatformReviews.length} feedback logs
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setIsAllReviewsModalOpen(false);
+                  setReviewsSearchQuery("");
+                }}
+                className="h-8 w-8 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 cursor-pointer transition-colors font-bold"
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="p-4 bg-white border-b border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search by staff name or comment..."
+                  value={reviewsSearchQuery}
+                  onChange={(e) => setReviewsSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 text-xs font-semibold focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c]"
+                />
+              </div>
+
+              {/* Sorting */}
+              <div className="flex items-center gap-2 text-left justify-end">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Sort Rating:</span>
+                <select
+                  value={reviewsSortOrder}
+                  onChange={(e) => setReviewsSortOrder(e.target.value as any)}
+                  className="px-2.5 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 text-xs font-bold text-slate-650 cursor-pointer focus:ring-1 focus:ring-[#c9a24c]"
+                >
+                  <option value="high-to-low">⭐ Top Rated First</option>
+                  <option value="low-to-high">⭐ Lowest Rated First</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Content List */}
+            <div className="p-6 overflow-y-auto space-y-4 flex-1 bg-slate-50/20">
+              {filteredAndSortedPlatformReviews.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-12 font-semibold">
+                  No platform reviews match your search filter.
+                </p>
+              ) : (
+                <div className="grid gap-3.5 grid-cols-1">
+                  {filteredAndSortedPlatformReviews.map((r: any, idx: number) => (
+                    <div 
+                      key={r.id || idx} 
+                      className="p-4 bg-white border border-slate-100 hover:border-slate-200 rounded-2xl shadow-sm space-y-3 text-left transition-colors"
+                    >
+                      <div className="flex justify-between items-start">
+                        {/* Caretaker Info */}
+                        <div className="flex items-center gap-2.5">
+                          <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-[#1e2a5a] to-[#0f1530] border border-slate-200/50 flex items-center justify-center font-bold text-xs text-white shadow-sm shrink-0">
+                            {r.caregiverName.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <span className="block text-xs font-extrabold text-[#1e2a5a]">{r.caregiverName}</span>
+                            <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wide">{r.caregiverSpecialty}</span>
+                          </div>
+                        </div>
+
+                        {/* Rating Badges */}
+                        <div className="text-right">
+                          <span className="inline-block text-[10px] text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded border border-amber-200/60 font-black">
+                            ⭐ {Number(r.rating || 0).toFixed(1)}
+                          </span>
+                          <span className="block text-[8px] text-slate-400 font-bold mt-1">
+                            {new Date(r.createdAt || Date.now()).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Comment Message */}
+                      <div className="p-3 bg-slate-50/50 rounded-xl border border-slate-100">
+                        <p className="text-xs text-slate-600 leading-relaxed font-semibold italic">
+                          &ldquo;{r.comment || "No written feedback comments submitted."}&rdquo;
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
           </div>
         </div>
       )}
