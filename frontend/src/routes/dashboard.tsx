@@ -3290,21 +3290,41 @@ function CustomerDashboard() {
                     </div>
 
                     {/* Cost Summary & Actions */}
-                    <div className="border-t border-slate-100 pt-6 flex flex-col justify-between items-stretch gap-4 bg-slate-50 -mx-6 -mb-6 p-6 rounded-b-3xl text-left">
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-b border-slate-200/50 pb-4">
-                        <div>
-                          <span className="text-[10px] uppercase font-bold text-slate-400">Total Estimated Cost</span>
-                          <span className="block text-xl font-extrabold text-primary font-display mt-0.5">₹{calculateTotal().toLocaleString()}</span>
+                    <div className="border-t border-slate-100 pt-6 flex flex-col justify-between items-stretch gap-5 bg-slate-50 -mx-6 -mb-6 p-6 rounded-b-3xl text-left">
+                      {/* Step Progress visual indicator */}
+                      <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                        <span>Pay Advance</span>
+                        <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden flex">
+                          <div className="w-[20%] bg-emerald-500 h-full"></div>
+                          <div className="w-[80%] bg-slate-200 h-full"></div>
                         </div>
-                        <div>
-                          <span className="text-[10px] uppercase font-bold text-emerald-600">Advance to Pay Now</span>
-                          <span className="block text-xl font-extrabold text-emerald-600 font-display mt-0.5">₹{calculateAdvance().toLocaleString()}</span>
+                        <span>Pay Balance after service</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-b border-slate-200/50 pb-5">
+                        <div className="bg-white p-3 rounded-2xl border border-slate-200/40 shadow-sm">
+                          <span className="text-[9px] uppercase font-bold tracking-wider text-slate-400 block">Total Estimated Cost</span>
+                          <span className="block text-lg font-extrabold text-primary font-display mt-0.5">₹{calculateTotal().toLocaleString()}</span>
                         </div>
-                        <div>
-                          <span className="text-[10px] uppercase font-bold text-amber-600">Pending Balance Due</span>
-                          <span className="block text-xl font-extrabold text-amber-600 font-display mt-0.5">₹{(calculateTotal() - calculateAdvance()).toLocaleString()}</span>
+                        <div className="bg-emerald-50/50 p-3 rounded-2xl border border-emerald-100/40 shadow-sm">
+                          <span className="text-[9px] uppercase font-bold tracking-wider text-emerald-600 block">Advance to Pay Now</span>
+                          <span className="block text-lg font-extrabold text-emerald-600 font-display mt-0.5">₹{calculateAdvance().toLocaleString()}</span>
+                        </div>
+                        <div className="bg-amber-50/50 p-3 rounded-2xl border border-amber-100/40 shadow-sm">
+                          <span className="text-[9px] uppercase font-bold tracking-wider text-amber-600 block">Pending Balance Due</span>
+                          <span className="block text-lg font-extrabold text-amber-600 font-display mt-0.5">₹{(calculateTotal() - calculateAdvance()).toLocaleString()}</span>
                         </div>
                       </div>
+
+                      {/* Escrow Guarantee Trust Banner */}
+                      <div className="flex items-start gap-2.5 bg-emerald-50/60 border border-emerald-100/50 p-3.5 rounded-2xl text-emerald-800 text-[11px] leading-relaxed">
+                        <span className="text-sm shrink-0">🛡️</span>
+                        <div>
+                          <strong className="font-extrabold block text-emerald-950 mb-0.5">Amma Seva Trust Guarantee</strong>
+                          Pay only the advance of <span className="font-extrabold">₹{calculateAdvance().toLocaleString()}</span> now to secure your caregiver. Pay the remaining balance of <span className="font-extrabold">₹{(calculateTotal() - calculateAdvance()).toLocaleString()}</span> only after the caretaker closes the service shifts!
+                        </div>
+                      </div>
+
                       <div>
                         <p className="text-[10px] text-slate-550 leading-relaxed font-semibold">
                           Rate calculation: ₹{
@@ -3316,29 +3336,29 @@ function CustomerDashboard() {
                             bookingDuration === "Hourly" ? "Hour" :
                             bookingDuration === "Daily" ? "Day" :
                             bookingDuration === "Weekly" ? "Week" : "Month"
-                          } x {durationCount} units = ₹{calculateTotal().toLocaleString()} (Advance: ₹{calculateAdvance().toLocaleString()} | Balance due after service: ₹{(calculateTotal() - calculateAdvance()).toLocaleString()})
+                          } x {durationCount} units = ₹{calculateTotal().toLocaleString()} (Advance: ₹{calculateAdvance().toLocaleString()} | Balance: ₹{(calculateTotal() - calculateAdvance()).toLocaleString()})
                         </p>
                       </div>
 
-                      <div className="flex gap-3 w-full sm:w-auto">
+                      <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto pt-2">
                         <button
                           type="button"
                           onClick={() => setBookingStep(2)}
-                          className="btn-outline py-2.5 px-4 font-semibold cursor-pointer w-1/2 sm:w-auto"
+                          className="btn-outline py-3 px-4 font-bold uppercase tracking-wider text-[10px] cursor-pointer w-full sm:w-32 order-2 sm:order-1"
                         >
                           Back
                         </button>
                         <button
                           type="submit"
                           disabled={isSubmitting || isPaymentProcessing || !agreeTermsBooking}
-                          className="btn-primary py-2.5 px-6 font-semibold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 w-1/2 sm:w-auto"
+                          className="btn-primary py-3 px-6 font-bold uppercase tracking-wider text-[10px] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 w-full sm:w-auto flex-grow order-1 sm:order-2"
                         >
                           {(isSubmitting || isPaymentProcessing) && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0"></span>}
                           {isPaymentProcessing 
                             ? "Verifying..." 
                             : isSubmitting 
                               ? "Booking..." 
-                              : "Confirm & Book"}
+                              : `Pay Advance: ₹${calculateAdvance().toLocaleString()}`}
                         </button>
                       </div>
                     </div>
