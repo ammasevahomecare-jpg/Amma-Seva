@@ -6,7 +6,7 @@ import {
   Users, Calendar, DollarSign, ShieldAlert, LogOut, CheckCircle2, 
   XCircle, Edit3, Save, Check, LayoutDashboard, CalendarDays,
   UserCheck, MessageSquare, Sliders, Bell, Search, Plus, Send, TrendingDown,
-  ArrowUpRight, Star, BookOpen, HelpCircle, Menu, X, Image, Coins
+  ArrowUpRight, Star, BookOpen, HelpCircle, Menu, X, Image, Coins, Clock
 } from "lucide-react";
 
 const INDIAN_STATES = [
@@ -1387,6 +1387,55 @@ function AdminPage() {
                 </button>
               </div>
 
+              {/* Quick Bookings Stats Grid */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-left">
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm flex items-center gap-3">
+                  <div className="p-3 bg-indigo-50 text-[#1e2a5a] rounded-xl shrink-0">
+                    <Calendar className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Bookings</span>
+                    <span className="text-base font-extrabold text-[#1e2a5a] font-display">{bookings.length}</span>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm flex items-center gap-3">
+                  <div className="p-3 bg-amber-50 text-amber-800 rounded-xl shrink-0">
+                    <Clock className="h-5 w-5 animate-pulse" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Unassigned Shifts</span>
+                    <span className="text-base font-extrabold text-amber-800 font-display">
+                      {bookings.filter(b => !b.assignedStaff && b.status !== "Cancelled").length}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm flex items-center gap-3">
+                  <div className="p-3 bg-emerald-50 text-emerald-750 rounded-xl shrink-0">
+                    <CheckCircle2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Active Shifts</span>
+                    <span className="text-base font-extrabold text-emerald-700 font-display">
+                      {bookings.filter(b => b.status === "Confirmed" || b.status === "Active").length}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm flex items-center gap-3">
+                  <div className="p-3 bg-emerald-50 text-emerald-705 rounded-xl shrink-0">
+                    <DollarSign className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Advance Revenue</span>
+                    <span className="text-base font-extrabold text-emerald-800 font-display">
+                      ₹{bookings.reduce((sum, b) => sum + Number(b.advancePaid || 0), 0).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               {/* Local Filter Bar */}
               <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm premium-card grid gap-4 grid-cols-1 sm:grid-cols-4 items-center">
                 <div className="relative col-span-1 sm:col-span-2">
@@ -1468,30 +1517,46 @@ function AdminPage() {
                   return (
                     <div className="grid gap-4 grid-cols-1">
                       {filtered.map((b) => (
-                        <div key={b.id} className="bg-white border border-slate-200/70 hover:border-[#c9a24c]/45 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col lg:flex-row gap-5 justify-between items-start lg:items-center premium-card">
+                        <div key={b.id} className="bg-white border border-slate-200/70 hover:border-[#c9a24c]/45 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col lg:flex-row gap-5 justify-between items-start lg:items-center premium-card text-left">
                           
                           {/* Patient profile details */}
                           <div className="flex items-start gap-4 min-w-[260px] max-w-sm">
-                            <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-[#1e2a5a]/10 to-[#1e2a5a]/5 border border-[#1e2a5a]/10 flex items-center justify-center font-black text-lg text-[#1e2a5a] shrink-0">
-                              {b.name.charAt(0)}
+                            <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-[#1e2a5a] to-[#0f1530] text-white flex items-center justify-center font-black text-base shadow-md shadow-[#1e2a5a]/10 shrink-0 select-none">
+                              {b.name.charAt(0).toUpperCase()}
                             </div>
-                            <div className="space-y-1">
-                              <h4 className="font-extrabold text-[#1e2a5a] text-base leading-tight">{b.name}</h4>
-                              <div className="text-[11px] text-slate-400 font-extrabold">{b.phone}</div>
-                              <div className="text-[10px] text-slate-500 font-semibold italic truncate max-w-[200px]" title={b.address}>{b.address}</div>
+                            <div className="space-y-1.5 flex-1 min-w-[200px]">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-extrabold text-[#1e2a5a] text-sm sm:text-base leading-tight">{b.name}</h4>
+                                <span className="text-[8px] font-bold text-slate-450 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/50">
+                                  #{b.id}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
+                                <Phone className="h-3 w-3 text-slate-400 shrink-0" /> {b.phone}
+                              </div>
                               
-                              {b.patientName && (
-                                <div className="inline-block text-[9px] text-[#1e2a5a] bg-[#1e2a5a]/5 border border-[#1e2a5a]/10 px-2 py-0.5 rounded font-extrabold mt-1">
-                                  👤 Patient: {b.patientName} ({b.patientAge} years)
+                              {/* Address */}
+                              <div className="text-[10px] text-slate-500 font-semibold italic truncate max-w-[200px]" title={b.address}>
+                                {b.address}
+                              </div>
+                              
+                              {/* Metadata Mini Card */}
+                              {(b.patientName || b.patientNeeds) && (
+                                <div className="mt-2.5 p-3 rounded-xl bg-slate-50/50 border border-slate-200/40 text-left space-y-1.5 max-w-xs">
+                                  {b.patientName && (
+                                    <div className="text-[10px] text-[#1e2a5a] font-extrabold flex items-center gap-1">
+                                      👤 {b.patientName} ({b.patientAge} yrs)
+                                    </div>
+                                  )}
+                                  {b.patientNeeds && (
+                                    <div className="text-[9px] text-slate-500 leading-relaxed font-semibold italic">
+                                      &ldquo;{b.patientNeeds}&rdquo;
+                                    </div>
+                                  )}
                                 </div>
                               )}
-                              {b.patientNeeds && (
-                                <div className="text-[9px] text-slate-650 bg-slate-50/50 border border-slate-100 rounded-lg p-2 mt-1 leading-relaxed max-w-[200px]">
-                                  <span className="font-bold text-slate-700">Needs:</span> {b.patientNeeds}
-                                </div>
-                              )}
                               
-                              <div className="flex gap-2.5 mt-2">
+                              <div className="flex gap-3 pt-1">
                                 {b.googleMapLocation && (
                                   <a href={b.googleMapLocation} target="_blank" rel="noopener noreferrer" className="text-[9px] text-[#c9a24c] font-black hover:underline flex items-center gap-0.5">
                                     🗺️ Map Location
@@ -1507,39 +1572,43 @@ function AdminPage() {
                           </div>
 
                           {/* Service Details */}
-                          <div className="space-y-1 min-w-[150px]">
+                          <div className="space-y-1 min-w-[130px]">
                             <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">Service Category</span>
-                            <div className="font-bold text-slate-800 text-sm leading-snug">{b.service}</div>
-                            <span className="inline-block text-[9px] text-[#c9a24c] bg-[#c9a24c]/10 border border-[#c9a24c]/20 font-black uppercase tracking-wider px-2 py-0.5 rounded-full mt-1">{b.duration}</span>
+                            <div className="font-extrabold text-slate-800 text-xs sm:text-sm leading-snug">{b.service}</div>
+                            <span className="inline-block text-[9px] text-[#c9a24c] bg-[#c9a24c]/10 border border-[#c9a24c]/20 font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full mt-1.5">{b.duration}</span>
                           </div>
 
                           {/* Date & Time */}
-                          <div className="space-y-1 min-w-[130px]">
+                          <div className="space-y-1 min-w-[120px]">
                             <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">Shift Date &amp; Time</span>
-                            <div className="font-bold text-slate-700 text-xs flex items-center gap-1">📅 {b.date}</div>
-                            <div className="text-[10px] text-slate-400 font-bold flex items-center gap-1">⏰ {b.time}</div>
+                            <div className="font-extrabold text-slate-700 text-xs flex items-center gap-1.5">
+                              <Calendar className="h-3.5 w-3.5 text-slate-400" /> {b.date}
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-bold flex items-center gap-1.5">
+                              <Clock className="h-3.5 w-3.5 text-slate-400 animate-pulse" /> {b.time}
+                            </div>
                           </div>
 
                           {/* Assigned Nurse/Staff */}
-                          <div className="space-y-1.5 min-w-[150px]">
+                          <div className="space-y-1.5 min-w-[140px]">
                             <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">Assigned Nurse/Staff</span>
                             {b.assignedStaff ? (
                               <div className="flex items-center gap-2">
-                                <div className="h-7 w-7 rounded-full bg-[#1e2a5a]/10 border border-[#1e2a5a]/10 flex items-center justify-center font-bold text-xs text-[#1e2a5a]">
-                                  {b.assignedStaff.charAt(0)}
+                                <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-[#1e2a5a] to-[#0f1530] border border-slate-200/50 flex items-center justify-center font-bold text-xs text-white shadow-sm shrink-0">
+                                  {b.assignedStaff.charAt(0).toUpperCase()}
                                 </div>
-                                <span className="text-xs font-bold text-[#1e2a5a]">{b.assignedStaff}</span>
+                                <span className="text-xs font-extrabold text-[#1e2a5a]">{b.assignedStaff}</span>
                               </div>
                             ) : (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-455 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-lg">
+                              <span className="inline-flex items-center gap-1 text-[9px] font-extrabold text-rose-600 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-lg">
                                 🚫 Unassigned
                               </span>
                             )}
                           </div>
 
                           {/* Status and Payouts */}
-                          <div className="flex flex-row lg:flex-col items-start gap-4 min-w-[130px]">
-                            <div className="space-y-1">
+                          <div className="flex flex-row lg:flex-col items-center lg:items-start gap-4 min-w-[130px]">
+                            <div className="space-y-1 text-left">
                               <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Booking Status</span>
                               <span className={`inline-block text-[9px] uppercase font-black tracking-wider px-2.5 py-0.5 rounded-full border ${
                                 b.status === "Confirmed" ? "bg-emerald-50 text-emerald-700 border-emerald-200/60" :
@@ -1550,15 +1619,30 @@ function AdminPage() {
                                 {b.status}
                               </span>
                             </div>
-                            <div className="space-y-1">
-                              <div className="text-xs font-extrabold text-slate-900">₹{b.amount}</div>
-                              <span className={`inline-block text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${
-                                b.paymentStatus === "Paid" 
-                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200/60" 
-                                  : "bg-amber-50 text-amber-700 border-amber-200/60"
-                              }`}>
-                                {b.paymentStatus}
-                              </span>
+                            <div className="space-y-1 text-left">
+                              <div className="text-xs font-black text-slate-800">Total: ₹{b.amount.toLocaleString()}</div>
+                              
+                              {/* Custom Advance vs Balance badge */}
+                              {b.advancePaid !== undefined && Number(b.advancePaid) > 0 ? (
+                                <div className="space-y-0.5 mt-1">
+                                  <span className="inline-block text-[8px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                    Adv: ₹{b.advancePaid.toLocaleString()}
+                                  </span>
+                                  {Number(b.balanceAmount) > 0 && (
+                                    <span className="block text-[8px] font-extrabold uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-100 rounded px-1.5 py-0.5">
+                                      Bal: ₹{b.balanceAmount?.toLocaleString()}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className={`inline-block text-[8px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded border ${
+                                  b.paymentStatus === "Paid" 
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200/60" 
+                                    : "bg-amber-50 text-amber-700 border-amber-200/60"
+                                }`}>
+                                  {b.paymentStatus}
+                                </span>
+                              )}
                             </div>
                           </div>
 
@@ -1569,13 +1653,13 @@ function AdminPage() {
                                 setIsRecordCaretakerPaymentMode(false);
                                 openEditModal("booking", b);
                               }}
-                              className="px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-[#c9a24c]/15 text-[#c9a24c] border border-slate-200 hover:border-[#c9a24c]/30 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
+                              className="px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-[#c9a24c]/10 text-[#c9a24c] border border-slate-200 hover:border-[#c9a24c]/30 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all hover:translate-y-[-1px] shadow-sm"
                             >
                               <Edit3 className="h-3.5 w-3.5" /> Edit
                             </button>
                             <button
                               onClick={() => handleDeleteBooking(b.id)}
-                              className="p-2.5 rounded-xl bg-rose-50 hover:bg-rose-500 hover:text-white border border-rose-100 hover:border-rose-500 text-rose-500 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
+                              className="p-2.5 rounded-xl bg-rose-50 hover:bg-rose-500 hover:text-white border border-rose-100 hover:border-rose-500 text-rose-500 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all hover:translate-y-[-1px] shadow-sm"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
