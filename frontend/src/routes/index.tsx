@@ -246,22 +246,9 @@ function Home() {
             ))}
           </div>
           
-          <div className="relative group/carousel px-1">
-            {/* Left Scroll Navigation Button */}
-            <button
-              onClick={scrollLeft}
-              className="absolute -left-2.5 sm:-left-4 top-1/2 -translate-y-1/2 z-20 bg-white/95 text-primary p-2 sm:p-3 rounded-full shadow-lg border border-slate-200/50 hover:text-gold transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover/carousel:opacity-100 focus:opacity-100"
-              aria-label="Scroll left"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-
-            {/* Scroll snap flex container */}
-            <div
-              ref={carouselRef}
-              className="flex gap-6 overflow-x-auto snap-x snap-mandatory scrollbar-none pb-6"
-              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-            >
+          <div className="px-1">
+            {/* Grid container */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pb-6">
               {(() => {
                 const elderlySlugs = ["elderly-care", "patient-care-attendant", "bedridden-patient-care", "physiotherapy"];
                 const maternalSlugs = ["mother-baby-care", "pregnancy-care", "newborn-baby-care"];
@@ -275,68 +262,59 @@ function Home() {
                   return true;
                 });
 
-                return filteredServices.map((s: any) => {
+                return filteredServices.slice(0, 4).map((s: any) => {
                   const details = getServiceDetails(s.slug);
                   return (
-                  <div
-                    key={s.slug}
-                    className="carousel-card premium-card snap-start snap-always group/card flex flex-col overflow-hidden rounded-3xl bg-background shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-1.5"
-                  >
-                    <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100 block">
-                      <img 
-                        src={details.image} 
-                        alt={s.title} 
-                        width={1200} 
-                        height={900} 
-                        loading="lazy" 
-                        className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover/card:scale-108" 
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-primary/50 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500" />
+                    <div
+                      key={s.slug}
+                      className="premium-card group/card flex flex-col overflow-hidden rounded-3xl bg-background shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-1.5"
+                    >
+                      <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100 block">
+                        <img 
+                          src={details.image} 
+                          alt={s.title} 
+                          width={1200} 
+                          height={900} 
+                          loading="lazy" 
+                          className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover/card:scale-108" 
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-primary/50 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500" />
+                        
+                        {/* Floating Price Badge */}
+                        <div className="absolute top-4 right-4 bg-primary/95 backdrop-blur-sm text-white px-3.5 py-1 rounded-xl text-xs font-bold shadow-md border border-white/10">
+                          {s.price}
+                        </div>
+                      </div>
                       
-                      {/* Floating Price Badge */}
-                      <div className="absolute top-4 right-4 bg-primary/95 backdrop-blur-sm text-white px-3.5 py-1 rounded-xl text-xs font-bold shadow-md border border-white/10">
-                        {s.price}
+                      <div className="flex flex-1 flex-col p-5 text-left">
+                        <div className="flex">
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider border ${details.badgeClass}`}>
+                            {s.category || details.category}
+                          </span>
+                        </div>
+                        <Link
+                          to="/services/$slug"
+                          params={{ slug: s.slug }}
+                          className="mt-2 block text-lg font-bold text-primary hover:text-gold transition-colors duration-300 font-display"
+                        >
+                          {s.title}
+                        </Link>
+                        <p className="mt-1.5 flex-1 text-sm text-slate-500 leading-relaxed line-clamp-3">
+                          {s.short}
+                        </p>
+                        <Link
+                          to="/services/$slug"
+                          params={{ slug: s.slug }}
+                          className="mt-4 w-full btn-primary text-sm font-bold flex items-center justify-center gap-1.5 shadow-sm shadow-primary/10 group-hover/card:shadow-md transition-all duration-300"
+                        >
+                          View Details <ChevronRight className="h-4 w-4 transition-transform group-hover/card:translate-x-0.5" />
+                        </Link>
                       </div>
                     </div>
-                    
-                    <div className="flex flex-1 flex-col p-5 text-left">
-                      <div className="flex">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider border ${details.badgeClass}`}>
-                          {s.category || details.category}
-                        </span>
-                      </div>
-                      <Link
-                        to="/services/$slug"
-                        params={{ slug: s.slug }}
-                        className="mt-2 block text-lg font-bold text-primary hover:text-gold transition-colors duration-300 font-display"
-                      >
-                        {s.title}
-                      </Link>
-                      <p className="mt-1.5 flex-1 text-sm text-slate-500 leading-relaxed line-clamp-3">
-                        {s.short}
-                      </p>
-                      <Link
-                        to="/services/$slug"
-                        params={{ slug: s.slug }}
-                        className="mt-4 w-full btn-primary text-sm font-bold flex items-center justify-center gap-1.5 shadow-sm shadow-primary/10 group-hover/card:shadow-md transition-all duration-300"
-                      >
-                        View Details <ChevronRight className="h-4 w-4 transition-transform group-hover/card:translate-x-0.5" />
-                      </Link>
-                    </div>
-                  </div>
                   );
                 });
               })()}
             </div>
-
-            {/* Right Scroll Navigation Button */}
-            <button
-              onClick={scrollRight}
-              className="absolute -right-2.5 sm:-right-4 top-1/2 -translate-y-1/2 z-20 bg-white/95 text-primary p-2 sm:p-3 rounded-full shadow-lg border border-slate-200/50 hover:text-gold transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover/carousel:opacity-100 focus:opacity-100"
-              aria-label="Scroll right"
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
           </div>
           
           <div className="mt-4 text-center">

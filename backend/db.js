@@ -25,7 +25,7 @@ import os from 'os'
  const JSON_DB_PATH = PERSISTENT_DB_PATH
 
 let pool = null
-let useMySQL = true
+let useMySQL = false
 
 // Initial default data structure
 const DEFAULT_MOCK_DATA = {
@@ -256,6 +256,15 @@ const initJSONDb = () => {
       if (!data.bookings) { data.bookings = DEFAULT_MOCK_DATA.bookings; modified = true }
       if (!data.caregivers) { data.caregivers = DEFAULT_MOCK_DATA.caregivers; modified = true }
       if (!data.services || data.services.length === 0) { data.services = DEFAULT_MOCK_DATA.services; modified = true }
+      if (data.services) {
+        data.services.forEach(s => {
+          if (s.advance === undefined) {
+            const priceVal = Number(String(s.price).replace(/[^0-9]/g, '')) || 500
+            s.advance = Math.round(priceVal * 0.2)
+            modified = true
+          }
+        })
+      }
       if (!data.notifications) { data.notifications = DEFAULT_MOCK_DATA.notifications; modified = true }
       if (!data.reviews) { data.reviews = []; modified = true }
       if (!data.announcements) { data.announcements = []; modified = true }
@@ -360,7 +369,10 @@ export const db = {
             patientNeeds LONGTEXT,
             prescription LONGTEXT,
             googleMapLocation TEXT,
+            advancePaid DECIMAL(10,2) DEFAULT 0,
+            balanceAmount DECIMAL(10,2) DEFAULT 0,
             createdAt VARCHAR(255) NOT NULL
+          )
         `)
 
         try {
@@ -425,6 +437,7 @@ export const db = {
             price VARCHAR(50) NOT NULL,
             category VARCHAR(50),
             comingSoon TINYINT DEFAULT 0,
+            advance INT DEFAULT 0,
             image LONGTEXT,
             about TEXT,
             highlights TEXT,
@@ -577,6 +590,15 @@ export const db = {
         try {
           await connection.query(`ALTER TABLE bookings ADD COLUMN googleMapLocation TEXT`)
         } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE services ADD COLUMN advance INT DEFAULT 0`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE bookings ADD COLUMN advancePaid DECIMAL(10,2) DEFAULT 0`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE bookings ADD COLUMN balanceAmount DECIMAL(10,2) DEFAULT 0`)
+        } catch (e) {}
 
         // Migration queries for services table
         try {
@@ -657,9 +679,11 @@ export const db = {
         if (servicesRows[0].count === 0) {
           console.log('Inserting initial mock services into MySQL...')
           for (const s of DEFAULT_MOCK_DATA.services) {
+            const priceVal = Number(String(s.price).replace(/[^0-9]/g, '')) || 500
+            const advanceVal = s.advance || Math.round(priceVal * 0.2)
             await connection.query(
-              'INSERT INTO services (title, slug, short, description, benefits, duration, price, category, comingSoon) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-              [s.title, s.slug, s.short, s.description, JSON.stringify(s.benefits), s.duration, s.price, s.category, s.comingSoon ? 1 : 0]
+              'INSERT INTO services (title, slug, short, description, benefits, duration, price, category, comingSoon, advance) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+              [s.title, s.slug, s.short, s.description, JSON.stringify(s.benefits), s.duration, s.price, s.category, s.comingSoon ? 1 : 0, advanceVal]
             )
           }
         }
@@ -691,10 +715,12 @@ export const db = {
         console.log(`✅ MySQL Tables verified and seeded successfully!`)
       } catch (err) {
         console.error(`❌ Failed to connect to MySQL database:`, err.message)
-        console.warn(`⚠️ Warning: MySQL database offline. Server will run but database operations will fail until MySQL is restored.`)
+        console.warn(`⚠️ Warning: MySQL database offline. Falling back to JSON database.`)
+        useMySQL = false
       }
     } else {
-      console.warn(`⚠️ Warning: MySQL environment variables (DB_HOST, DB_USER, DB_NAME) are not defined. Database operations will fail.`)
+      console.warn(`⚠️ Warning: MySQL environment variables (DB_HOST, DB_USER, DB_NAME) are not defined. Falling back to JSON database.`)
+      useMySQL = false
     }
   },
 
@@ -761,14 +787,14 @@ export const db = {
   },
 
   addBooking: async (bookingData) => {
-    const { name, phone, service, date, time, duration, address, amount = 1200, paymentStatus = 'Unpaid', paymentMethod = '', transactionId = '', paymentDate = '', prescription = '', googleMapLocation = '', caretakerPayout, caretakerPayoutStatus = 'Unpaid', caretakerPayoutMethod = '', caretakerPayoutRef = '' } = bookingData
+    const { name, phone, service, date, time, duration, address, amount = 1200, paymentStatus = 'Unpaid', paymentMethod = '', transactionId = '', paymentDate = '', prescription = '', googleMapLocation = '', caretakerPayout, caretakerPayoutStatus = 'Unpaid', caretakerPayoutMethod = '', caretakerPayoutRef = '', advancePaid = 0, balanceAmount = 0 } = bookingData
     const createdAt = new Date().toISOString()
     if (useMySQL) {
       const [result] = await pool.query(
-        'INSERT INTO bookings (name, phone, service, date, time, duration, address, amount, paymentStatus, paymentMethod, transactionId, paymentDate, prescription, googleMapLocation, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [name, phone, service, date, time, duration, address, amount, paymentStatus, paymentMethod, transactionId, paymentDate, prescription, googleMapLocation, createdAt]
+        'INSERT INTO bookings (name, phone, service, date, time, duration, address, amount, paymentStatus, paymentMethod, transactionId, paymentDate, prescription, googleMapLocation, advancePaid, balanceAmount, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [name, phone, service, date, time, duration, address, amount, paymentStatus, paymentMethod, transactionId, paymentDate, prescription, googleMapLocation, advancePaid, balanceAmount, createdAt]
       )
-      return { id: result.insertId, name, phone, service, date, time, duration, address, status: 'Pending', assignedStaff: null, amount, paymentStatus, paymentMethod, transactionId, paymentDate, prescription, googleMapLocation, createdAt }
+      return { id: result.insertId, name, phone, service, date, time, duration, address, status: 'Pending', assignedStaff: null, amount, paymentStatus, paymentMethod, transactionId, paymentDate, prescription, googleMapLocation, advancePaid, balanceAmount, createdAt }
     } else {
       const data = await readJSONDb()
       const newBooking = {
@@ -793,6 +819,8 @@ export const db = {
         paymentDate,
         prescription,
         googleMapLocation,
+        advancePaid: Number(advancePaid) || 0,
+        balanceAmount: Number(balanceAmount) || 0,
         createdAt
       }
       data.bookings.push(newBooking)
@@ -844,6 +872,39 @@ export const db = {
           assignedAt,
           completedAt,
           cancelledAt
+        }
+        await writeJSONDb(data)
+        return true
+      }
+      return false
+    }
+  },
+
+  payBookingBalance: async (id, paymentMethod, transactionId) => {
+    const paymentDate = new Date().toISOString()
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT amount, advancePaid FROM bookings WHERE id = ?', [id])
+      if (rows[0]) {
+        await pool.query(
+          'UPDATE bookings SET paymentStatus = "Paid", advancePaid = amount, balanceAmount = 0, paymentMethod = ?, transactionId = ?, paymentDate = ? WHERE id = ?',
+          [paymentMethod, transactionId, paymentDate, id]
+        )
+        return true
+      }
+      return false
+    } else {
+      const data = await readJSONDb()
+      const idx = data.bookings.findIndex(b => b.id === Number(id))
+      if (idx > -1) {
+        const b = data.bookings[idx]
+        data.bookings[idx] = {
+          ...b,
+          paymentStatus: "Paid",
+          advancePaid: b.amount,
+          balanceAmount: 0,
+          paymentMethod,
+          transactionId,
+          paymentDate
         }
         await writeJSONDb(data)
         return true
@@ -1157,14 +1218,14 @@ export const db = {
 
   // User Bookings Operations
   addBookingForUser: async (bookingData) => {
-    const { name, phone, service, date, time, duration, address, amount = 1200, userId = null, patientName = '', patientAge = '', patientNeeds = '', prescription = '', googleMapLocation = '', paymentStatus = 'Unpaid', paymentMethod = '', transactionId = '', paymentDate = '' } = bookingData
+    const { name, phone, service, date, time, duration, address, amount = 1200, userId = null, patientName = '', patientAge = '', patientNeeds = '', prescription = '', googleMapLocation = '', paymentStatus = 'Unpaid', paymentMethod = '', transactionId = '', paymentDate = '', advancePaid = 0, balanceAmount = 0 } = bookingData
     const createdAt = new Date().toISOString()
     if (useMySQL) {
       const [result] = await pool.query(
-        'INSERT INTO bookings (name, phone, service, date, time, duration, address, amount, userId, createdAt, patientName, patientAge, patientNeeds, prescription, googleMapLocation, paymentStatus, paymentMethod, transactionId, paymentDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [name, phone, service, date, time, duration, address, amount, userId, createdAt, patientName, patientAge, patientNeeds, prescription, googleMapLocation, paymentStatus, paymentMethod, transactionId, paymentDate]
+        'INSERT INTO bookings (name, phone, service, date, time, duration, address, amount, userId, createdAt, patientName, patientAge, patientNeeds, prescription, googleMapLocation, paymentStatus, paymentMethod, transactionId, paymentDate, advancePaid, balanceAmount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [name, phone, service, date, time, duration, address, amount, userId, createdAt, patientName, patientAge, patientNeeds, prescription, googleMapLocation, paymentStatus, paymentMethod, transactionId, paymentDate, advancePaid, balanceAmount]
       )
-      return { id: result.insertId, name, phone, service, date, time, duration, address, status: 'Pending', assignedStaff: null, amount, paymentStatus, userId, createdAt, patientName, patientAge, patientNeeds, prescription, googleMapLocation, paymentMethod, transactionId, paymentDate }
+      return { id: result.insertId, name, phone, service, date, time, duration, address, status: 'Pending', assignedStaff: null, amount, paymentStatus, userId, createdAt, patientName, patientAge, patientNeeds, prescription, googleMapLocation, paymentMethod, transactionId, paymentDate, advancePaid, balanceAmount }
     } else {
       const data = await readJSONDb()
       const newBooking = {
@@ -1189,6 +1250,8 @@ export const db = {
         patientNeeds,
         prescription,
         googleMapLocation,
+        advancePaid: Number(advancePaid) || 0,
+        balanceAmount: Number(balanceAmount) || 0,
         createdAt
       }
       data.bookings.push(newBooking)
@@ -1465,7 +1528,8 @@ export const db = {
   addService: async (serviceData) => {
     const { 
       title, slug, short, description, benefits, duration, price, category, 
-      comingSoon = false, image = '', about = '', highlights = [], images = [] 
+      comingSoon = false, image = '', about = '', highlights = [], images = [],
+      advance = 0
     } = serviceData
     const benefitsStr = Array.isArray(benefits) ? JSON.stringify(benefits) : JSON.stringify([])
     const highlightsStr = Array.isArray(highlights) ? JSON.stringify(highlights) : JSON.stringify([])
@@ -1473,10 +1537,10 @@ export const db = {
     const comingSoonVal = comingSoon ? 1 : 0
     if (useMySQL) {
       const [result] = await pool.query(
-        'INSERT INTO services (title, slug, short, description, benefits, duration, price, category, comingSoon, image, about, highlights, images) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [title, slug, short, description, benefitsStr, duration, price, category, comingSoonVal, image, about, highlightsStr, imagesStr]
+        'INSERT INTO services (title, slug, short, description, benefits, duration, price, category, comingSoon, image, about, highlights, images, advance) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [title, slug, short, description, benefitsStr, duration, price, category, comingSoonVal, image, about, highlightsStr, imagesStr, advance]
       )
-      return { id: result.insertId, title, slug, short, description, benefits, duration, price, category, comingSoon, image, about, highlights, images }
+      return { id: result.insertId, title, slug, short, description, benefits, duration, price, category, comingSoon, image, about, highlights, images, advance }
     } else {
       const data = await readJSONDb()
       if (!data.services) data.services = []
@@ -1491,6 +1555,7 @@ export const db = {
         price,
         category,
         comingSoon: !!comingSoon,
+        advance: Number(advance) || 0,
         image,
         about,
         highlights: Array.isArray(highlights) ? highlights : [],
@@ -1505,7 +1570,7 @@ export const db = {
   updateService: async (id, serviceData) => {
     const { 
       title, slug, short, description, benefits, duration, price, category, 
-      comingSoon = false, image, about, highlights, images 
+      comingSoon = false, image, about, highlights, images, advance 
     } = serviceData
     const benefitsStr = Array.isArray(benefits) ? JSON.stringify(benefits) : JSON.stringify([])
     const highlightsStr = Array.isArray(highlights) ? JSON.stringify(highlights) : JSON.stringify([])
@@ -1513,8 +1578,8 @@ export const db = {
     const comingSoonVal = comingSoon ? 1 : 0
     if (useMySQL) {
       const [result] = await pool.query(
-        'UPDATE services SET title = ?, slug = ?, short = ?, description = ?, benefits = ?, duration = ?, price = ?, category = ?, comingSoon = ?, image = COALESCE(?, image), about = ?, highlights = ?, images = ? WHERE id = ?',
-        [title, slug, short, description, benefitsStr, duration, price, category, comingSoonVal, image !== undefined ? image : null, about, highlightsStr, imagesStr, id]
+        'UPDATE services SET title = ?, slug = ?, short = ?, description = ?, benefits = ?, duration = ?, price = ?, category = ?, comingSoon = ?, image = COALESCE(?, image), about = ?, highlights = ?, images = ?, advance = COALESCE(?, advance) WHERE id = ?',
+        [title, slug, short, description, benefitsStr, duration, price, category, comingSoonVal, image !== undefined ? image : null, about, highlightsStr, imagesStr, advance !== undefined ? Number(advance) : null, id]
       )
       return result.affectedRows > 0
     } else {
@@ -1532,6 +1597,7 @@ export const db = {
           price,
           category,
           comingSoon: !!comingSoon,
+          advance: advance !== undefined ? Number(advance) : data.services[idx].advance,
           image: image !== undefined ? image : data.services[idx].image,
           about: about !== undefined ? about : (data.services[idx].about || ''),
           highlights: Array.isArray(highlights) ? highlights : (data.services[idx].highlights || []),

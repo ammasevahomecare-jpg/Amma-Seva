@@ -1020,7 +1020,8 @@ app.post('/api/booking', async (req, res) => {
   const { 
     name, phone, service, date, time, duration, address, amount, userId, 
     patientName, patientAge, patientNeeds, paymentMethod, email, prescription, 
-    googleMapLocation, razorpay_order_id, razorpay_payment_id, razorpay_signature 
+    googleMapLocation, razorpay_order_id, razorpay_payment_id, razorpay_signature,
+    advancePaid = 0, balanceAmount = 0
   } = req.body
 
   if (!name || !phone || !service || !date || !time || !duration || !address) {
@@ -1075,10 +1076,12 @@ app.post('/api/booking', async (req, res) => {
       patientNeeds: patientNeeds || '',
       prescription: uploadedPrescription,
       googleMapLocation: googleMapLocation || '',
-      paymentStatus: paymentMethod === 'razorpay' ? 'Paid' : 'Unpaid',
+      paymentStatus: paymentMethod === 'razorpay' ? 'Advance Paid' : 'Unpaid',
       paymentMethod: paymentMethod || 'pay_later',
       transactionId: razorpay_payment_id || '',
-      paymentDate: paymentMethod === 'razorpay' ? new Date().toISOString() : ''
+      paymentDate: paymentMethod === 'razorpay' ? new Date().toISOString() : '',
+      advancePaid,
+      balanceAmount
     })
 
     // Prepare notification mock logs
@@ -1101,7 +1104,9 @@ app.post('/api/booking', async (req, res) => {
               <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; font-weight: bold;">Duration</td><td style="padding: 8px 0; text-align: right;">${duration}</td></tr>
               <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; font-weight: bold;">Patient</td><td style="padding: 8px 0; text-align: right;">${patientName || name} (Age: ${patientAge || 'N/A'})</td></tr>
               <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; font-weight: bold;">Address</td><td style="padding: 8px 0; text-align: right;">${address}</td></tr>
-              <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; font-weight: bold;">Amount</td><td style="padding: 8px 0; text-align: right; font-weight: bold; color: #0f172a;">₹${amount || 1200} (${paymentMethod || 'Pay Later'})</td></tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; font-weight: bold;">Total Amount</td><td style="padding: 8px 0; text-align: right; font-weight: bold; color: #0f172a;">₹${amount || 1200}</td></tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; font-weight: bold;">Advance Paid</td><td style="padding: 8px 0; text-align: right; color: #10b981; font-weight: bold;">₹${advancePaid}</td></tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; font-weight: bold;">Balance Due</td><td style="padding: 8px 0; text-align: right; color: #f59e0b; font-weight: bold;">₹${balanceAmount}</td></tr>
             </table>
             <p style="color: #94a3b8; font-size: 12px; margin-top: 24px; text-align: center;">We will assign a caregiver shortly. Thank you for choosing Amma Seva.</p>
           </div>
@@ -1122,6 +1127,37 @@ app.post('/api/booking', async (req, res) => {
     })
   } catch (err) {
     res.status(500).json({ error: 'Failed to create booking.' })
+  }
+})
+
+// POST pay booking balance
+app.post('/api/booking/:id/pay-balance', async (req, res) => {
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body
+  const { id } = req.params
+
+  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+    return res.status(400).json({ error: 'Missing Razorpay signature details.' })
+  }
+
+  try {
+    const generated_signature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || 'xdW2Ry7T67sUK4zMKb3oOsZh')
+      .update(razorpay_order_id + '|' + razorpay_payment_id)
+      .digest('hex')
+
+    if (generated_signature !== razorpay_signature) {
+      return res.status(400).json({ error: 'Signature verification failed.' })
+    }
+
+    const updated = await db.payBookingBalance(id, 'razorpay', razorpay_payment_id)
+    if (updated) {
+      res.json({ success: true, message: 'Balance paid successfully!' })
+    } else {
+      res.status(404).json({ error: 'Booking not found.' })
+    }
+  } catch (err) {
+    console.error('Balance payment error:', err)
+    res.status(500).json({ error: 'Failed to process balance payment.' })
   }
 })
 

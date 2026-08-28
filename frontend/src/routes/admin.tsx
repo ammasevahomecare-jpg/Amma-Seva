@@ -206,6 +206,7 @@ function AdminPage() {
   const [servicePrice, setServicePrice] = useState("");
   const [servicePriceVal, setServicePriceVal] = useState("1200");
   const [servicePriceUnit, setServicePriceUnit] = useState("day");
+  const [serviceAdvanceVal, setServiceAdvanceVal] = useState("300");
   const [serviceCategory, setServiceCategory] = useState("care");
   const [serviceShort, setServiceShort] = useState("");
   const [serviceBenefits, setServiceBenefits] = useState("");
@@ -553,6 +554,7 @@ function AdminPage() {
       setServicePrice("₹1,200/day");
       setServicePriceVal("1200");
       setServicePriceUnit("day");
+      setServiceAdvanceVal("300");
       setServiceCategory("care");
       setServiceComingSoon(false);
       setServiceImage("");
@@ -650,6 +652,7 @@ function AdminPage() {
       
       const matchPrice = record.price ? record.price.replace(/,/g, '').match(/\d+/) : null;
       setServicePriceVal(matchPrice ? matchPrice[0] : "1200");
+      setServiceAdvanceVal(record.advance !== undefined ? String(record.advance) : "300");
       const lowerPrice = (record.price || "").toLowerCase();
       let extractedUnit = "day";
       if (lowerPrice.includes("month")) extractedUnit = "month";
@@ -790,7 +793,8 @@ function AdminPage() {
         image: serviceImage,
         about: serviceAbout,
         highlights: serviceHighlights.split("\n").map(h => h.trim()).filter(Boolean),
-        images: serviceImages.split("\n").map(img => img.trim()).filter(Boolean)
+        images: serviceImages.split("\n").map(img => img.trim()).filter(Boolean),
+        advance: Number(serviceAdvanceVal) || 0
       };
     } else if (modalType === "blog") {
       url = modalMode === "add" ? "/api/blogs" : `/api/blogs/${selectedId}`;
@@ -3549,7 +3553,7 @@ function AdminPage() {
               {/* Form elements for Service */}
               {modalType === "service" && (
                 <>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Service Title</label>
                       <input 
@@ -3589,6 +3593,14 @@ function AdminPage() {
                           </select>
                         </div>
                       </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Advance Payment (₹)</label>
+                      <input 
+                        type="number" required value={serviceAdvanceVal} onChange={e => setServiceAdvanceVal(e.target.value)}
+                        placeholder="e.g. 300"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
+                      />
                     </div>
                   </div>
 

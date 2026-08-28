@@ -543,7 +543,8 @@ function CustomerDashboard() {
           title: s.title,
           rate: rate,
           unit: unit,
-          desc: s.short || s.description
+          desc: s.short || s.description,
+          advance: s.advance !== undefined ? Number(s.advance) : Math.round(rate * 0.2)
         };
       });
       if (formatted.length > 0) {
@@ -678,6 +679,14 @@ function CustomerDashboard() {
     }
   };
 
+  const calculateAdvance = () => {
+    const service = servicesList.find(s => s.id === selectedServiceId) || SERVICES_CATALOG.find(s => s.id === selectedServiceId) || servicesList[0] || SERVICES_CATALOG[0];
+    if (!service) return 300;
+    const baseAdvance = service.advance !== undefined ? Number(service.advance) : Math.round((service.rate || 1200) * 0.2);
+    const count = Number(durationCount) || 1;
+    return baseAdvance * count;
+  };
+
   const validateStep1 = () => {
     if (!bookingDate || !bookingTime) {
       alert("Please select the care shift starting Date and Time.");
@@ -736,7 +745,9 @@ function CustomerDashboard() {
             paymentStatus: payStatus,
             userId: user.id,
             prescription: prescriptionFile,
-            googleMapLocation: bookingGoogleMapLocation
+            googleMapLocation: bookingGoogleMapLocation,
+            advancePaid: 0,
+            balanceAmount: calculateTotal()
           })
         });
         if (res.status === 401) {
@@ -775,7 +786,7 @@ function CustomerDashboard() {
         const orderRes = await fetch("/api/payment/order", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: calculateTotal() })
+          body: JSON.stringify({ amount: calculateAdvance() })
         });
         const orderData = await orderRes.json();
         if (!orderRes.ok) {
@@ -825,7 +836,9 @@ function CustomerDashboard() {
                   googleMapLocation: bookingGoogleMapLocation,
                   razorpay_order_id: response.razorpay_order_id,
                   razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature
+                  razorpay_signature: response.razorpay_signature,
+                  advancePaid: calculateAdvance(),
+                  balanceAmount: calculateTotal() - calculateAdvance()
                 })
               });
               if (res.status === 401) {
@@ -2187,7 +2200,7 @@ function CustomerDashboard() {
           </div>
  
           {/* Quick Metrics Grid */}
-          <div className="grid gap-5 grid-cols-1 sm:grid-cols-3 mb-8">
+          <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-8">
             <div className="rounded-3xl border border-slate-200/60 bg-gradient-to-br from-white to-slate-50/30 p-5 text-left shadow-sm flex items-center gap-4 hover:border-[#c9a24c]/30 hover:shadow-md hover:shadow-slate-100/30 transition-all duration-300">
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#c9a24c]/15 text-[#c9a24c] border border-[#c9a24c]/30 shadow-inner">
                 <Calendar className="h-5.5 w-5.5" />
@@ -2215,9 +2228,21 @@ function CustomerDashboard() {
                 <DollarSign className="h-5.5 w-5.5" />
               </span>
               <div>
-                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Billing</div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Spend (Paid)</div>
                 <div className="text-xl font-bold text-slate-800 font-display mt-0.5 font-sans">
-                  ₹{bookings.filter(b => b.paymentStatus === "Paid").reduce((sum, b) => sum + Number(b.amount || 0), 0).toLocaleString()}
+                  ₹{bookings.reduce((sum, b) => sum + Number(b.advancePaid || 0), 0).toLocaleString()}
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200/60 bg-gradient-to-br from-white to-slate-50/30 p-5 text-left shadow-sm flex items-center gap-4 hover:border-[#c9a24c]/30 hover:shadow-md hover:shadow-slate-100/30 transition-all duration-300">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 shadow-inner">
+                <DollarSign className="h-5.5 w-5.5" />
+              </span>
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pending Balance</div>
+                <div className="text-xl font-bold text-slate-800 font-display mt-0.5 font-sans">
+                  ₹{bookings.filter(b => b.status !== "Cancelled" && b.paymentStatus !== "Paid").reduce((sum, b) => sum + Number(b.balanceAmount || 0), 0).toLocaleString()}
                 </div>
               </div>
             </div>
@@ -2485,8 +2510,11 @@ function CustomerDashboard() {
                           </div>
                           <div>
                             <span className="text-slate-400 block mb-0.5">Invoice Billing</span>
-                            <span className="font-bold text-slate-800">
-                              ₹{booking.amount} <span className="text-[10px] font-medium text-emerald-600">({booking.paymentStatus})</span>
+                            <span className="font-bold text-slate-800 text-[11px] block">
+                              Total: ₹{booking.amount} <span className="text-[9px] font-medium text-emerald-600">({booking.paymentStatus})</span>
+                            </span>
+                            <span className="block text-[10px] text-slate-500 font-medium">
+                              Paid: ₹{booking.advancePaid || 0} | Bal: ₹{booking.balanceAmount || 0}
                             </span>
                           </div>
                         </div>
@@ -2795,6 +2823,14 @@ function CustomerDashboard() {
                       {/* Action buttons */}
                       {isExpanded && (
                         <div className="flex flex-col sm:flex-row lg:flex-col justify-end gap-2.5 shrink-0 border-t lg:border-t-0 lg:border-l border-slate-100/80 pt-4 lg:pt-0 lg:pl-6">
+                          {booking.status === "Completed" && (booking.paymentStatus === "Advance Paid" || booking.paymentStatus === "Unpaid") && Number(booking.balanceAmount) > 0 && (
+                            <button
+                              onClick={() => handlePayBalance(booking)}
+                              className="px-4 py-2.5 rounded-xl bg-emerald-600 border border-emerald-700 text-white text-xs font-bold uppercase tracking-wider hover:bg-emerald-700 cursor-pointer transition-all hover:translate-y-[-1px] text-center w-full sm:w-auto"
+                            >
+                              Pay Balance (₹{booking.balanceAmount})
+                            </button>
+                          )}
                           {booking.status !== "Cancelled" && booking.status !== "Completed" && (
                             <>
                               <button
@@ -3181,26 +3217,33 @@ function CustomerDashboard() {
                     </div>
 
                     {/* Cost Summary & Actions */}
-                    <div className="border-t border-slate-100 pt-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50 -mx-6 -mb-6 p-6 rounded-b-3xl">
+                    <div className="border-t border-slate-100 pt-6 flex flex-col justify-between items-stretch gap-4 bg-slate-50 -mx-6 -mb-6 p-6 rounded-b-3xl text-left">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-b border-slate-200/50 pb-4">
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-slate-400">Total Estimated Cost</span>
+                          <span className="block text-xl font-extrabold text-primary font-display mt-0.5">₹{calculateTotal().toLocaleString()}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-emerald-600">Advance to Pay Now</span>
+                          <span className="block text-xl font-extrabold text-emerald-600 font-display mt-0.5">₹{calculateAdvance().toLocaleString()}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-amber-600">Pending Balance Due</span>
+                          <span className="block text-xl font-extrabold text-amber-600 font-display mt-0.5">₹{(calculateTotal() - calculateAdvance()).toLocaleString()}</span>
+                        </div>
+                      </div>
                       <div>
-                        <span className="text-xs text-slate-400">Total Price Estimate</span>
-                        <span className="block text-2xl font-extrabold text-primary font-display mt-0.5">₹{calculateTotal().toLocaleString()}</span>
-                        <p className="text-[10px] text-indigo-655 font-semibold mt-1">
-                          Rate: ₹{
+                        <p className="text-[10px] text-slate-550 leading-relaxed font-semibold">
+                          Rate calculation: ₹{
                             bookingDuration === "Hourly" ? getServiceRates().hourly :
                             bookingDuration === "Daily" ? getServiceRates().daily :
                             bookingDuration === "Weekly" ? getServiceRates().weekly :
                             getServiceRates().monthly
-                          } / {
+                          } per {
                             bookingDuration === "Hourly" ? "Hour" :
-                            bookingDuration === "Daily" ? "Day (24 hrs)" :
-                            bookingDuration === "Weekly" ? "Week (7 days)" : "Month (30 days)"
-                          } x {durationCount} {
-                            bookingDuration === "Hourly" ? (durationCount === 1 ? "Hour" : "Hours") :
-                            bookingDuration === "Daily" ? (durationCount === 1 ? "Day" : "Days") :
-                            bookingDuration === "Weekly" ? (durationCount === 1 ? "Week" : "Weeks") :
-                            (durationCount === 1 ? "Month" : "Months")
-                          }
+                            bookingDuration === "Daily" ? "Day" :
+                            bookingDuration === "Weekly" ? "Week" : "Month"
+                          } x {durationCount} units = ₹{calculateTotal().toLocaleString()} (Advance: ₹{calculateAdvance().toLocaleString()} | Balance due after service: ₹{(calculateTotal() - calculateAdvance()).toLocaleString()})
                         </p>
                       </div>
 
