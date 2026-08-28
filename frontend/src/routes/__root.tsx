@@ -148,7 +148,11 @@ function RootComponent() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, [location.pathname]);
+    const timer = setTimeout(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [location.pathname, location.search]);
 
   return (
     <QueryClientProvider client={queryClient}>
