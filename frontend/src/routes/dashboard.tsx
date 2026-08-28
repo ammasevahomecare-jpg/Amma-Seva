@@ -2882,7 +2882,7 @@ function CustomerDashboard() {
                       {/* Action buttons */}
                       {isExpanded && (
                         <div className="flex flex-col sm:flex-row lg:flex-col justify-end gap-2.5 shrink-0 border-t lg:border-t-0 lg:border-l border-slate-100/80 pt-4 lg:pt-0 lg:pl-6">
-                          {booking.status === "Completed" && (booking.paymentStatus === "Advance Paid" || booking.paymentStatus === "Unpaid") && Number(booking.balanceAmount) > 0 && (
+                          {booking.status !== "Cancelled" && (booking.paymentStatus === "Advance Paid" || booking.paymentStatus === "Unpaid") && Number(booking.balanceAmount) > 0 && (
                             <button
                               onClick={() => handlePayBalance(booking)}
                               className="px-4 py-2.5 rounded-xl bg-emerald-600 border border-emerald-700 text-white text-xs font-bold uppercase tracking-wider hover:bg-emerald-700 cursor-pointer transition-all hover:translate-y-[-1px] text-center w-full sm:w-auto"
