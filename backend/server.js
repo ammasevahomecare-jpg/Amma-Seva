@@ -1178,6 +1178,45 @@ app.put('/api/booking/:id', authenticateAdmin, async (req, res) => {
   }
 })
 
+// PUT update booking details (User Dashboard edit details)
+app.put('/api/booking/:id/details', authenticateUser, async (req, res) => {
+  const { id } = req.params
+  const { patientName, patientAge, patientNeeds, address, googleMapLocation } = req.body
+
+  try {
+    const booking = await db.getBookingById(id)
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found.' })
+    }
+
+    // Verify booking belongs to logged-in user
+    if (booking.userId !== req.userId && req.role !== 'admin') {
+      return res.status(403).json({ error: 'Access forbidden. You can only edit your own bookings.' })
+    }
+
+    if (booking.status === 'Completed' || booking.status === 'Cancelled') {
+      return res.status(400).json({ error: 'Cannot edit booking details of a closed or cancelled service.' })
+    }
+
+    const updated = await db.updateBookingDetails(id, {
+      patientName: patientName || '',
+      patientAge: patientAge || '',
+      patientNeeds: patientNeeds || '',
+      address: address || '',
+      googleMapLocation: googleMapLocation || ''
+    })
+
+    if (updated) {
+      res.json({ success: true, message: 'Booking details successfully updated.' })
+    } else {
+      res.status(500).json({ error: 'Failed to update booking details.' })
+    }
+  } catch (err) {
+    console.error('Failed to update booking details:', err)
+    res.status(500).json({ error: 'Failed to update booking details.' })
+  }
+})
+
 // GET all caregivers (Admin Panel)
 app.get('/api/caregivers', authenticateAdmin, async (req, res) => {
   try {

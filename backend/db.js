@@ -913,6 +913,33 @@ export const db = {
     }
   },
 
+  updateBookingDetails: async (id, details) => {
+    const { patientName, patientAge, patientNeeds, address, googleMapLocation } = details
+    if (useMySQL) {
+      await pool.query(
+        'UPDATE bookings SET patientName = ?, patientAge = ?, patientNeeds = ?, address = ?, googleMapLocation = ? WHERE id = ?',
+        [patientName, patientAge, patientNeeds, address, googleMapLocation, id]
+      )
+      return true
+    } else {
+      const data = await readJSONDb()
+      const idx = data.bookings.findIndex(b => b.id === Number(id))
+      if (idx > -1) {
+        data.bookings[idx] = {
+          ...data.bookings[idx],
+          patientName,
+          patientAge,
+          patientNeeds,
+          address,
+          googleMapLocation
+        }
+        await writeJSONDb(data)
+        return true
+      }
+      return false
+    }
+  },
+
   // Caregivers Operations
   getCaregivers: async () => {
     if (useMySQL) {

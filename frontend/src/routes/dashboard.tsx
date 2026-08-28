@@ -469,6 +469,15 @@ function CustomerDashboard() {
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleTime, setRescheduleTime] = useState("");
   
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editBookingId, setEditBookingId] = useState<number | null>(null);
+  const [editPatientName, setEditPatientName] = useState("");
+  const [editPatientAge, setEditPatientAge] = useState("");
+  const [editPatientNeeds, setEditPatientNeeds] = useState("");
+  const [editAddress, setEditAddress] = useState("");
+  const [editGoogleMapLocation, setEditGoogleMapLocation] = useState("");
+  const [isSavingDetails, setIsSavingDetails] = useState(false);
+
   const [activeInvoice, setActiveInvoice] = useState<Booking | null>(null);
   const [activeLogShiftId, setActiveLogShiftId] = useState<number | null>(null);
   const [vitalBP, setVitalBP] = useState("120/80");
@@ -915,7 +924,47 @@ function CustomerDashboard() {
       setRescheduleBookingId(null);
       fetchBookings();
     } catch (err: any) {
+      alert("Reschedule failed: " + err.message);
+    }
+  };
+
+  const handleSaveDetails = async () => {
+    if (!editBookingId) return;
+    setIsSavingDetails(true);
+    try {
+      const token = localStorage.getItem("ammaseva_user_token");
+      const res = await fetch(`/api/booking/${editBookingId}/details`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          patientName: editPatientName,
+          patientAge: editPatientAge,
+          patientNeeds: editPatientNeeds,
+          address: editAddress,
+          googleMapLocation: editGoogleMapLocation
+        })
+      });
+
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update details.");
+      }
+
+      alert("Booking details updated successfully!");
+      setIsEditModalOpen(false);
+      fetchBookings();
+    } catch (err: any) {
       alert("Error: " + err.message);
+    } finally {
+      setIsSavingDetails(false);
     }
   };
 
@@ -2841,8 +2890,22 @@ function CustomerDashboard() {
                               Pay Balance (₹{booking.balanceAmount})
                             </button>
                           )}
-                          {booking.status !== "Cancelled" && booking.status !== "Completed" && (
+                           {booking.status !== "Cancelled" && booking.status !== "Completed" && (
                             <>
+                              <button
+                                onClick={() => {
+                                  setEditBookingId(booking.id);
+                                  setEditPatientName(booking.patientName || "");
+                                  setEditPatientAge(booking.patientAge || "");
+                                  setEditPatientNeeds(booking.patientNeeds || "");
+                                  setEditAddress(booking.address || "");
+                                  setEditGoogleMapLocation(booking.googleMapLocation || "");
+                                  setIsEditModalOpen(true);
+                                }}
+                                className="px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold uppercase tracking-wider hover:bg-slate-100 cursor-pointer transition-all hover:translate-y-[-1px] text-center w-full sm:w-auto"
+                              >
+                                Edit Details
+                              </button>
                               <button
                                 onClick={() => {
                                   setRescheduleBookingId(booking.id);
@@ -3470,6 +3533,86 @@ function CustomerDashboard() {
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Booking EDIT DETAILS Modal Overlay */}
+      {isEditModalOpen && editBookingId && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 sm:p-8 border border-slate-200 shadow-2xl space-y-5 animate-in zoom-in duration-200">
+            <div>
+              <h3 className="text-xl font-bold text-primary font-display">Edit Care Details</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Update patient details and care address for booking #{editBookingId}.</p>
+            </div>
+
+            <div className="space-y-4 max-h-[350px] overflow-y-auto px-1">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Patient Name</label>
+                <input
+                  type="text"
+                  required
+                  value={editPatientName}
+                  onChange={(e) => setEditPatientName(e.target.value)}
+                  className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-1 focus:ring-gold"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Patient Age</label>
+                <input
+                  type="number"
+                  required
+                  value={editPatientAge}
+                  onChange={(e) => setEditPatientAge(e.target.value)}
+                  className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-1 focus:ring-gold"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Patient Specific Needs</label>
+                <textarea
+                  value={editPatientNeeds}
+                  onChange={(e) => setEditPatientNeeds(e.target.value)}
+                  placeholder="Describe patient health status and daily care needs..."
+                  className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-1 focus:ring-gold min-h-[60px]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Care Address</label>
+                <textarea
+                  required
+                  value={editAddress}
+                  onChange={(e) => setEditAddress(e.target.value)}
+                  className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-1 focus:ring-gold min-h-[60px]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Google Maps Location Link</label>
+                <input
+                  type="text"
+                  value={editGoogleMapLocation}
+                  onChange={(e) => setEditGoogleMapLocation(e.target.value)}
+                  placeholder="https://maps.google.com/..."
+                  className="w-full px-3 py-2 text-sm rounded-md border border-slate-200 bg-background outline-none focus:ring-1 focus:ring-gold"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                disabled={isSavingDetails}
+                className="btn-outline flex-1 py-2 text-xs font-semibold cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveDetails}
+                disabled={isSavingDetails}
+                className="btn-primary flex-1 py-2 text-xs font-semibold cursor-pointer flex items-center justify-center gap-1"
+              >
+                {isSavingDetails ? "Saving..." : "Save Details"}
+              </button>
+            </div>
           </div>
         </div>
       )}
