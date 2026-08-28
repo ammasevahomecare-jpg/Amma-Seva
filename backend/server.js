@@ -40,8 +40,14 @@ const uploadToCloudinary = async (base64Str) => {
     return base64Str
   }
   try {
+    // Check if the base64 string is a PDF or document format to force raw storage
+    const isDoc = base64Str.startsWith('data:application/pdf') || 
+                  base64Str.startsWith('data:application/msword') || 
+                  base64Str.startsWith('data:application/vnd.openxmlformats-officedocument') ||
+                  base64Str.includes('pdf'); // fallback match check
+                  
     const uploadResponse = await cloudinary.uploader.upload(base64Str, {
-      resource_type: 'auto', // Auto-detect image, pdf, raw, etc.
+      resource_type: isDoc ? 'raw' : 'auto', // Force raw for documents to bypass Ghostscript
       folder: 'ammaseva_verification'
     })
     return uploadResponse.secure_url
