@@ -2508,14 +2508,24 @@ function CustomerDashboard() {
                               {booking.assignedStaff || "Allocating staff..."}
                             </span>
                           </div>
-                          <div>
-                            <span className="text-slate-400 block mb-0.5">Invoice Billing</span>
-                            <span className="font-bold text-slate-800 text-[11px] block">
-                              Total: ₹{booking.amount} <span className="text-[9px] font-medium text-emerald-600">({booking.paymentStatus})</span>
-                            </span>
-                            <span className="block text-[10px] text-slate-500 font-medium">
-                              Paid: ₹{booking.advancePaid || 0} | Bal: ₹{booking.balanceAmount || 0}
-                            </span>
+                          <div className="bg-slate-50 border border-slate-200/50 p-2.5 rounded-2xl space-y-1">
+                            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Invoice Billing</span>
+                            <div className="flex justify-between items-center gap-1.5">
+                              <span className="text-xs font-extrabold text-[#1e2a5a]">
+                                ₹{Number(booking.amount).toLocaleString()}
+                              </span>
+                              <span className={`text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded-md border ${
+                                booking.paymentStatus === 'Paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                                booking.paymentStatus === 'Advance Paid' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                'bg-slate-100 text-slate-600 border-slate-200'
+                              }`}>
+                                {booking.paymentStatus}
+                              </span>
+                            </div>
+                            <div className="text-[9px] text-slate-500 border-t border-slate-200/60 pt-1 flex justify-between gap-2 font-medium">
+                              <span>Paid: <strong className="text-slate-700">₹{Number(booking.advancePaid || 0).toLocaleString()}</strong></span>
+                              <span>Bal: <strong className="text-amber-750">₹{Number(booking.balanceAmount || 0).toLocaleString()}</strong></span>
+                            </div>
                           </div>
                         </div>
 
