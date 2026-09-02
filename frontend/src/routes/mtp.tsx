@@ -65,18 +65,10 @@ export interface MTPTaskItem {
   active?: boolean;
 }
 
-const DEFAULT_MTP_TASKS: MTPTaskItem[] = [
-  { id: 1, icon: "🚗", title: "Patient Hospital Dropping & Escort", description: "Accompany patients/seniors safely to doctors, diagnostics & therapy", shiftType: "Part-time / On-Demand", earningEstimate: "₹300 - ₹1,500 / task" },
-  { id: 2, icon: "💊", title: "Medicine Delivery & Urgent Errands", description: "Doorstep delivery of prescriptions, pharmacy runs & emergency supplies", shiftType: "Part-time / On-Demand", earningEstimate: "₹300 - ₹1,500 / task" },
-  { id: 3, icon: "👴", title: "Senior Walking & Companionship", description: "Morning/evening walks, conversations, reading & mobility support", shiftType: "Part-time / On-Demand", earningEstimate: "₹300 - ₹1,500 / task" },
-  { id: 4, icon: "🍼", title: "Mother & Baby Support Helper", description: "Part-time help for new moms with nursery, baby care & household tasks", shiftType: "Part-time / On-Demand", earningEstimate: "₹300 - ₹1,500 / task" },
-  { id: 5, icon: "🩺", title: "Bedside & Post-Surgery Attendant", description: "Hourly shift-based patient recovery & home assistance", shiftType: "Part-time / On-Demand", earningEstimate: "₹300 - ₹1,500 / task" },
-  { id: 6, icon: "⚡", title: "Emergency On-Demand Task Force", description: "Immediate 2-4 hour assistance calls in your local neighborhood", shiftType: "Part-time / On-Demand", earningEstimate: "₹300 - ₹1,500 / task" }
-];
-
 function MTPPage() {
-  // Dynamic Tasks from Database
-  const [mtpTasks, setMtpTasks] = useState<MTPTaskItem[]>(DEFAULT_MTP_TASKS);
+  // Dynamic Tasks strictly fetched from Database
+  const [mtpTasks, setMtpTasks] = useState<MTPTaskItem[]>([]);
+  const [isLoadingTasks, setIsLoadingTasks] = useState(true);
 
   // Form State
   const [name, setName] = useState("");
@@ -85,10 +77,7 @@ function MTPPage() {
   const [gender, setGender] = useState("Male");
   const [age, setAge] = useState("");
   const [locality, setLocality] = useState(HYDERABAD_ZONES[0]);
-  const [selectedRoles, setSelectedRoles] = useState<string[]>([
-    "🚗 Patient Hospital Dropping & Escort",
-    "👴 Senior Walking & Companionship"
-  ]);
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [availability, setAvailability] = useState("Part-time (Flexible)");
   const [vehicle, setVehicle] = useState("Two-wheeler (Bike / Scooty)");
   const [drivingLicense, setDrivingLicense] = useState("Yes");
@@ -102,14 +91,20 @@ function MTPPage() {
 
   // Fetch dynamic MTP Tasks from DB
   useEffect(() => {
+    setIsLoadingTasks(true);
     fetch("/api/mtp/tasks")
       .then((res) => res.json())
       .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
-          setMtpTasks(data.filter((t) => t.active !== false));
+        if (Array.isArray(data)) {
+          const activeTasks = data.filter((t) => t.active !== false);
+          setMtpTasks(activeTasks);
+          if (activeTasks.length > 0 && selectedRoles.length === 0) {
+            setSelectedRoles([`${activeTasks[0].icon || "🚗"} ${activeTasks[0].title}`]);
+          }
         }
       })
-      .catch((err) => console.warn("Using default MTP tasks fallback:", err));
+      .catch((err) => console.error("Failed to fetch MTP tasks from database:", err))
+      .finally(() => setIsLoadingTasks(false));
   }, []);
 
   const toggleRole = (roleLabel: string) => {
@@ -262,24 +257,36 @@ function MTPPage() {
             </p>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {mtpTasks.map((item) => (
-              <div
-                key={item.id}
-                className="group relative rounded-2xl border border-slate-200/80 bg-background p-6 transition-all duration-300 hover:-translate-y-1 hover:border-gold hover:shadow-xl"
-              >
-                <div className="text-2xl mb-3">{item.icon || "🚗"}</div>
-                <h3 className="text-lg font-bold text-primary font-display mb-2 group-hover:text-gold transition-colors">
-                  {item.title}
-                </h3>
-                <p className="text-sm text-slate-500 leading-relaxed">{item.description}</p>
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-gold">
-                  <span>{item.shiftType || "Part-time / On-Demand"}</span>
-                  <span>{item.earningEstimate || "₹300 - ₹1,500 / task"}</span>
+          {isLoadingTasks ? (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 animate-pulse">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="h-44 rounded-2xl bg-slate-100 border border-slate-200" />
+              ))}
+            </div>
+          ) : mtpTasks.length === 0 ? (
+            <div className="p-8 text-center rounded-2xl border border-dashed border-slate-300 text-slate-400">
+              No active MTP task categories available currently.
+            </div>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {mtpTasks.map((item) => (
+                <div
+                  key={item.id}
+                  className="group relative rounded-2xl border border-slate-200/80 bg-background p-6 transition-all duration-300 hover:-translate-y-1 hover:border-gold hover:shadow-xl"
+                >
+                  <div className="text-2xl mb-3">{item.icon || "🚗"}</div>
+                  <h3 className="text-lg font-bold text-primary font-display mb-2 group-hover:text-gold transition-colors">
+                    {item.title}
+                  </h3>
+                  <p className="text-sm text-slate-500 leading-relaxed">{item.description}</p>
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-gold">
+                    <span>{item.shiftType || "Part-time / On-Demand"}</span>
+                    <span>{item.earningEstimate || "₹300 - ₹1,500 / task"}</span>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

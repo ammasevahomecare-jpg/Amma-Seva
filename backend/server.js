@@ -1105,6 +1105,29 @@ app.get('/api/mtp/tasks', async (req, res) => {
   }
 })
 
+// POST seed default MTP Tasks (Admin Panel)
+app.post('/api/admin/mtp/tasks/seed-defaults', authenticateAdmin, async (req, res) => {
+  try {
+    const defaultList = [
+      { icon: "🚗", title: "Patient Hospital Dropping & Escort", description: "Accompany patients/seniors safely to doctors, diagnostics & therapy", shiftType: "Part-time / On-Demand", earningEstimate: "₹300 - ₹1,500 / task" },
+      { icon: "💊", title: "Medicine Delivery & Urgent Errands", description: "Doorstep delivery of prescriptions, pharmacy runs & emergency supplies", shiftType: "Part-time / On-Demand", earningEstimate: "₹300 - ₹1,500 / task" },
+      { icon: "👴", title: "Senior Walking & Companionship", description: "Morning/evening walks, conversations, reading & mobility support", shiftType: "Part-time / On-Demand", earningEstimate: "₹300 - ₹1,500 / task" },
+      { icon: "🍼", title: "Mother & Baby Support Helper", description: "Part-time help for new moms with nursery, baby care & household tasks", shiftType: "Part-time / On-Demand", earningEstimate: "₹300 - ₹1,500 / task" },
+      { icon: "🩺", title: "Bedside & Post-Surgery Attendant", description: "Hourly shift-based patient recovery & home assistance", shiftType: "Part-time / On-Demand", earningEstimate: "₹300 - ₹1,500 / task" },
+      { icon: "⚡", title: "Emergency On-Demand Task Force", description: "Immediate 2-4 hour assistance calls in your local neighborhood", shiftType: "Part-time / On-Demand", earningEstimate: "₹300 - ₹1,500 / task" }
+    ]
+
+    for (const t of defaultList) {
+      await db.createMTPTask({ ...t, active: true })
+    }
+    const updatedList = await db.getMTPTasks()
+    res.json({ success: true, message: 'Default MTP task categories seeded into database.', data: updatedList })
+  } catch (err) {
+    console.error('Failed to seed default MTP tasks:', err)
+    res.status(500).json({ success: false, error: 'Failed to seed default MTP tasks.' })
+  }
+})
+
 // POST create new MTP Task (Admin Panel)
 app.post('/api/admin/mtp/tasks', authenticateAdmin, async (req, res) => {
   const { icon = '🚗', title, description, shiftType, earningEstimate, active = true } = req.body

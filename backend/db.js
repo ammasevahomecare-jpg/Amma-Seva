@@ -806,6 +806,17 @@ export const db = {
           }
         }
 
+        const [mtpTasksRows] = await connection.query('SELECT count(*) as count FROM mtp_tasks')
+        if (mtpTasksRows[0].count === 0) {
+          console.log('Inserting initial MTP tasks into MySQL...')
+          for (const t of DEFAULT_MOCK_DATA.mtpTasks) {
+            await connection.query(
+              'INSERT INTO mtp_tasks (icon, title, description, shiftType, earningEstimate, active, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
+              [t.icon, t.title, t.description, t.shiftType, t.earningEstimate, t.active ? 1 : 0, new Date().toISOString()]
+            )
+          }
+        }
+
         connection.release()
         useMySQL = true
         console.log(`✅ MySQL Tables verified and seeded successfully!`)
@@ -2234,10 +2245,23 @@ export const db = {
   getMTPTasks: async () => {
     if (useMySQL) {
       const [rows] = await pool.query('SELECT * FROM mtp_tasks ORDER BY id ASC')
+      if (rows.length === 0 && DEFAULT_MOCK_DATA.mtpTasks && DEFAULT_MOCK_DATA.mtpTasks.length > 0) {
+        for (const t of DEFAULT_MOCK_DATA.mtpTasks) {
+          await pool.query(
+            'INSERT INTO mtp_tasks (icon, title, description, shiftType, earningEstimate, active, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [t.icon, t.title, t.description, t.shiftType, t.earningEstimate, t.active ? 1 : 0, new Date().toISOString()]
+          )
+        }
+        const [seededRows] = await pool.query('SELECT * FROM mtp_tasks ORDER BY id ASC')
+        return seededRows
+      }
       return rows
     } else {
       const data = await readJSONDb()
-      if (!data.mtpTasks) data.mtpTasks = DEFAULT_MOCK_DATA.mtpTasks
+      if (!data.mtpTasks || data.mtpTasks.length === 0) {
+        data.mtpTasks = [...DEFAULT_MOCK_DATA.mtpTasks]
+        await writeJSONDb(data)
+      }
       return data.mtpTasks
     }
   },
@@ -2302,7 +2326,7 @@ export const db = {
              earningEstimate = COALESCE(?, earningEstimate),
              active = COALESCE(?, active)
          WHERE id = ?`,
-        [icon, title, description, shiftType, earningEstimate, active !== undefined ? (active ? 1 : 0) : null, Number(id)]
+        [icon || null, title || null, description || null, shiftType || null, earningEstimate || null, active !== undefined ? (active ? 1 : 0) : null, Number(id)]
       )
       const [rows] = await pool.query('SELECT * FROM mtp_tasks WHERE id = ?', [Number(id)])
       return rows[0] || null
