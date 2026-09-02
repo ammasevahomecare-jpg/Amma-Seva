@@ -43,7 +43,7 @@ function Header() {
 
   const dynamicNav = [
     { to: "/", label: "Home" },
-    { to: "/services", label: "Services" },
+    { to: "/services", label: "Services", hasDropdown: true },
     { to: "/mtp", label: "MTP (Multi Tasking)" },
     { to: "/about", label: "About" },
     { to: "/gallery", label: "Gallery" },
@@ -53,117 +53,166 @@ function Header() {
   ];
 
   return (
-    <header
-      className={`sticky top-0 z-40 w-full transition-all duration-300 ease-in-out border-b border-white/10 bg-primary shadow-lg shadow-primary/20 backdrop-blur-md ${
-        isScrolled ? "py-1.5" : "py-2.5"
-      }`}
-    >
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-        <Link to="/" className="group flex items-center gap-3.5">
-          <div className="relative flex items-center justify-center">
-            <img
-              src={logoAsset}
-              alt="Amma Seva"
-              className={`rounded-full bg-white p-1 border border-border/60 shadow-sm object-cover transition-all duration-300 ease-in-out ${
-                isScrolled ? "h-14 w-14" : "h-16 w-16"
-              }`}
-              width={isScrolled ? 56 : 64}
-              height={isScrolled ? 56 : 64}
-            />
-            <div className="absolute inset-0 -z-10 rounded-full bg-gold/20 opacity-0 blur-md transition-opacity duration-300 group-hover:opacity-100" />
+    <>
+      {/* Top Utility Bar (Dark Royal Navy) */}
+      <div className="bg-[#0b1426] text-white text-[11px] sm:text-xs py-2 px-4 sm:px-6 lg:px-8 border-b border-slate-800/80">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-4 sm:gap-6 flex-wrap text-slate-300">
+            <span className="flex items-center gap-1.5 hover:text-white transition-colors">
+              <MapPin className="h-3.5 w-3.5 text-gold" />
+              <span>Hyderabad, Telangana, India</span>
+            </span>
+            <span className="hidden sm:inline text-slate-700">|</span>
+            <a href={`tel:${PHONE_TEL}`} className="flex items-center gap-1.5 hover:text-gold transition-colors">
+              <Phone className="h-3.5 w-3.5 text-gold" />
+              <span>{PHONE}</span>
+            </a>
+            <span className="hidden sm:inline text-slate-700">|</span>
+            <a href={`mailto:${EMAIL}`} className="flex items-center gap-1.5 hover:text-gold transition-colors">
+              <Mail className="h-3.5 w-3.5 text-gold" />
+              <span>{EMAIL}</span>
+            </a>
           </div>
-          <div className="leading-tight">
-            <div className="font-display text-xl font-bold transition-all duration-300 text-white group-hover:text-gold">
-              Amma <span className="text-gold transition-colors duration-300 group-hover:text-white">Seva</span>
-            </div>
-            <div
-              className={`uppercase tracking-widest text-slate-300/85 transition-all duration-300 ease-in-out sm:block ${
-                isScrolled ? "h-0 opacity-0 overflow-hidden text-[0px] mt-0" : "hidden text-[10px] opacity-100 mt-0.5"
-              }`}
-            >
-              Professional Care with a Mother&apos;s Touch
-            </div>
+
+          <div className="hidden md:flex items-center gap-3 text-slate-400">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Follow Us:</span>
+            <a href="https://facebook.com" target="_blank" rel="noreferrer" className="hover:text-gold transition-colors p-1" aria-label="Facebook">
+              <Facebook className="h-3.5 w-3.5" />
+            </a>
+            <a href="https://instagram.com" target="_blank" rel="noreferrer" className="hover:text-gold transition-colors p-1" aria-label="Instagram">
+              <Instagram className="h-3.5 w-3.5" />
+            </a>
+            <a href="https://linkedin.com" target="_blank" rel="noreferrer" className="hover:text-gold transition-colors p-1" aria-label="LinkedIn">
+              <span className="font-bold text-[11px]">in</span>
+            </a>
           </div>
-        </Link>
-        <nav className="hidden items-center gap-2 lg:flex">
-          {dynamicNav.map((n) => (
-            <Link
-              key={n.label + n.to}
-              to={n.to}
-              className="px-4 py-1.5 text-sm font-medium rounded-tl-2xl rounded-br-2xl rounded-tr-sm rounded-bl-sm transition-all duration-300 flex items-center gap-1 text-white/80 hover:bg-white/10 hover:text-white"
-              activeProps={{
-                className: "bg-white/10 text-white font-semibold rounded-tl-2xl rounded-br-2xl rounded-tr-sm rounded-bl-sm border border-gold/70 shadow-sm shadow-gold/25"
-              }}
-              activeOptions={{ exact: n.to === "/" }}
-            >
-              {n.label}
-            </Link>
-          ))}
-        </nav>
-        <div className="hidden items-center gap-2.5 lg:flex shrink-0">
-          {isUser ? (
-            <Link to="/dashboard" className="text-sm shrink-0 whitespace-nowrap btn-gold">
-              My Dashboard
-            </Link>
-          ) : isCaretaker ? (
-            <Link to="/dashboard" className="text-sm shrink-0 whitespace-nowrap btn-gold">
-              My Profile
-            </Link>
-          ) : (
-            <Link to="/login" className="text-sm shrink-0 whitespace-nowrap btn-gold">
-              Book &amp; Login
-            </Link>
-          )}
         </div>
-        <button
-          type="button"
-          className="rounded-full p-2.5 transition-all duration-300 lg:hidden text-white hover:bg-white/10"
-          onClick={() => setOpen((v) => !v)}
-          aria-label="Toggle menu"
-        >
-          {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
       </div>
-      {open && (
-        <div className="border-t border-white/10 bg-primary/95 backdrop-blur-md lg:hidden">
-          <div className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-4">
+
+      {/* Main Luxury White Navigation Header */}
+      <header
+        className={`sticky top-0 z-40 w-full transition-all duration-300 ease-in-out bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-xs ${
+          isScrolled ? "py-2 shadow-md" : "py-3.5"
+        }`}
+      >
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+          
+          {/* Logo & Brand Name */}
+          <Link to="/" className="group flex items-center gap-3.5">
+            <div className="relative flex items-center justify-center shrink-0">
+              <img
+                src={logoAsset}
+                alt="Amma Seva"
+                className={`rounded-full bg-white p-0.5 border border-slate-200/80 shadow-xs object-cover transition-all duration-300 ease-in-out ${
+                  isScrolled ? "h-12 w-12" : "h-14 w-14"
+                }`}
+                width={isScrolled ? 48 : 56}
+                height={isScrolled ? 48 : 56}
+              />
+            </div>
+            <div className="leading-tight text-left">
+              <div className="font-display text-2xl sm:text-[26px] font-bold tracking-tight text-[#1e2a5a] transition-colors group-hover:text-gold">
+                Amma <span className="text-[#c9a24c]">Seva</span>
+              </div>
+              <div className="text-[9px] sm:text-[10px] uppercase font-bold tracking-[0.18em] text-slate-500 mt-0.5">
+                Professional Care with a Mother&apos;s Touch
+              </div>
+            </div>
+          </Link>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden items-center gap-1 sm:gap-2 lg:flex">
             {dynamicNav.map((n) => (
               <Link
                 key={n.label + n.to}
                 to={n.to}
-                onClick={() => setOpen(false)}
-                className="rounded-full px-4 py-2 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white transition-all duration-200"
-                activeProps={{ className: "bg-white/10 text-white font-semibold border border-gold/40" }}
+                className="px-3.5 py-1.5 text-xs sm:text-[13px] font-semibold text-slate-700 hover:text-[#c9a24c] transition-colors rounded-lg flex items-center gap-1"
+                activeProps={{
+                  className: "text-[#1e2a5a] font-extrabold border-b-2 border-gold pb-1 rounded-none"
+                }}
+                activeOptions={{ exact: n.to === "/" }}
               >
-                {n.label}
+                <span>{n.label}</span>
+                {n.hasDropdown && <span className="text-[10px] text-slate-400">▾</span>}
               </Link>
             ))}
-            <div className="mt-4 flex gap-2.5">
-              {isUser ? (
-                <Link to="/dashboard" onClick={() => setOpen(false)} className="btn-gold flex-1 text-sm text-center">
-                  Dashboard
+          </nav>
+
+          {/* Right Action Button */}
+          <div className="hidden items-center gap-3 lg:flex shrink-0">
+            {isUser ? (
+              <Link 
+                to="/dashboard" 
+                className="px-5 py-2.5 text-xs font-bold rounded-xl bg-gradient-to-r from-[#c9a24c] to-[#b38938] hover:from-[#b38938] hover:to-[#966b1a] text-white shadow-md shadow-gold/20 flex items-center gap-1.5 hover:scale-102 transition-all cursor-pointer"
+              >
+                <span>👤 My Dashboard</span>
+              </Link>
+            ) : isCaretaker ? (
+              <Link 
+                to="/dashboard" 
+                className="px-5 py-2.5 text-xs font-bold rounded-xl bg-gradient-to-r from-[#c9a24c] to-[#b38938] hover:from-[#b38938] hover:to-[#966b1a] text-white shadow-md shadow-gold/20 flex items-center gap-1.5 hover:scale-102 transition-all cursor-pointer"
+              >
+                <span>👤 Staff Portal</span>
+              </Link>
+            ) : (
+              <Link 
+                to="/login" 
+                className="px-5 py-2.5 text-xs font-bold rounded-xl bg-gradient-to-r from-[#c9a24c] to-[#b38938] hover:from-[#b38938] hover:to-[#966b1a] text-white shadow-md shadow-gold/20 flex items-center gap-1.5 hover:scale-102 transition-all cursor-pointer"
+              >
+                <span>👤 My Dashboard</span>
+              </Link>
+            )}
+          </div>
+
+          {/* Mobile Menu Toggle Button */}
+          <button
+            type="button"
+            className="rounded-xl p-2 transition-all duration-300 lg:hidden text-slate-700 hover:bg-slate-100"
+            onClick={() => setOpen((v) => !v)}
+            aria-label="Toggle menu"
+          >
+            {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </div>
+
+        {/* Mobile Dropdown Menu */}
+        {open && (
+          <div className="border-t border-slate-100 bg-white/98 backdrop-blur-xl lg:hidden shadow-xl animate-in fade-in">
+            <div className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-4 text-left">
+              {dynamicNav.map((n) => (
+                <Link
+                  key={n.label + n.to}
+                  to={n.to}
+                  onClick={() => setOpen(false)}
+                  className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-gold transition-colors"
+                  activeProps={{ className: "bg-gold/10 text-[#1e2a5a] font-bold border-l-4 border-gold" }}
+                  activeOptions={{ exact: n.to === "/" }}
+                >
+                  {n.label}
                 </Link>
-              ) : isCaretaker ? (
-                <Link to="/dashboard" onClick={() => setOpen(false)} className="btn-gold flex-1 text-sm text-center">
-                  Profile
+              ))}
+              <div className="mt-4 pt-3 border-t border-slate-100 flex gap-2.5">
+                <Link
+                  to="/login"
+                  onClick={() => setOpen(false)}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-[#c9a24c] to-[#b38938] text-white font-bold text-xs text-center shadow-md"
+                >
+                  👤 Access Dashboard / Login
                 </Link>
-              ) : (
-                <Link to="/login" onClick={() => setOpen(false)} className="btn-gold flex-1 text-sm text-center text-white!">
-                  Login / Book
-                </Link>
-              )}
+              </div>
             </div>
           </div>
+        )}
+
+        {/* Reading Progress Line */}
+        <div className="absolute bottom-0 left-0 h-[2px] w-full bg-slate-100">
+          <div
+            className="h-full bg-gold transition-all duration-150 ease-out"
+            style={{ width: `${scrollProgress}%` }}
+          />
         </div>
-      )}
-      {/* Scroll Reading Progress Bar */}
-      <div className="absolute bottom-0 left-0 h-[2px] w-full bg-white/10">
-        <div
-          className="h-full bg-gold transition-all duration-150 ease-out"
-          style={{ width: `${scrollProgress}%` }}
-        />
-      </div>
-    </header>
+      </header>
+    </>
   );
 }
 
