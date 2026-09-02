@@ -7,7 +7,7 @@ import {
   XCircle, Edit3, Save, Check, LayoutDashboard, CalendarDays,
   UserCheck, MessageSquare, Sliders, Bell, Search, Plus, Send, TrendingDown,
   ArrowUpRight, Star, BookOpen, HelpCircle, Menu, X, Image, Coins, Clock,
-  Briefcase, Car, Eye, MessageCircle, FileText
+  Briefcase, Car, Eye, MessageCircle, FileText, Sparkles
 } from "lucide-react";
 
 const INDIAN_STATES = [
