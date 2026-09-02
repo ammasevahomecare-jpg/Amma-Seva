@@ -987,6 +987,180 @@ app.delete('/api/enquiry/:id', authenticateAdmin, async (req, res) => {
   }
 })
 
+// MTP (Multi Tasking Professionals) Endpoints
+
+// POST register MTP (Public)
+app.post('/api/mtp/register', async (req, res) => {
+  const {
+    name,
+    phone,
+    email = '',
+    gender = '',
+    age = '',
+    city = 'Hyderabad',
+    locality = '',
+    roles = [],
+    availability = 'Part-time',
+    vehicle = 'No Vehicle',
+    drivingLicense = 'No',
+    experience = 'Fresher',
+    skillsSummary = '',
+    aadhaar = '',
+    emergencyContact = ''
+  } = req.body
+
+  if (!name || !phone) {
+    return res.status(400).json({ success: false, error: 'Full name and phone number are required.' })
+  }
+
+  try {
+    const newMTP = await db.createMTP({
+      name: name.trim(),
+      phone: phone.trim(),
+      email: email ? email.trim() : '',
+      gender,
+      age,
+      city,
+      locality,
+      roles,
+      availability,
+      vehicle,
+      drivingLicense,
+      experience,
+      skillsSummary,
+      aadhaar,
+      emergencyContact
+    })
+
+    console.log(`[MTP Registration] New applicant registered: ${name} (${phone}) for roles: ${Array.isArray(roles) ? roles.join(', ') : roles}`)
+
+    res.status(201).json({
+      success: true,
+      message: 'MTP registration submitted successfully! Our care coordination team will reach out shortly.',
+      data: newMTP
+    })
+  } catch (err) {
+    console.error('Failed to register MTP:', err)
+    res.status(500).json({ success: false, error: 'Failed to submit MTP registration. Please try again.' })
+  }
+})
+
+// GET all MTP applicants (Admin Panel)
+app.get('/api/admin/mtps', authenticateAdmin, async (req, res) => {
+  try {
+    const list = await db.getMTPs()
+    res.json(list)
+  } catch (err) {
+    console.error('Failed to retrieve MTPs:', err)
+    res.status(500).json({ error: 'Failed to retrieve MTP applicants list.' })
+  }
+})
+
+// PUT update MTP status (Admin Panel)
+app.put('/api/admin/mtp/:id/status', authenticateAdmin, async (req, res) => {
+  const { status, adminNotes } = req.body
+  const validStatuses = ['Pending', 'Verified', 'Contacted', 'Rejected']
+
+  if (!status || !validStatuses.includes(status)) {
+    return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` })
+  }
+
+  try {
+    const updated = await db.updateMTPStatus(req.params.id, status, adminNotes !== undefined ? adminNotes : null)
+    if (!updated) {
+      return res.status(404).json({ error: 'MTP applicant not found.' })
+    }
+    res.json({ success: true, message: `MTP status updated to ${status}.`, data: updated })
+  } catch (err) {
+    console.error('Failed to update MTP status:', err)
+    res.status(500).json({ error: 'Failed to update MTP applicant status.' })
+  }
+})
+
+// DELETE MTP applicant (Admin Panel)
+app.delete('/api/admin/mtp/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const deleted = await db.deleteMTP(req.params.id)
+    if (deleted) {
+      res.json({ success: true, message: 'MTP record deleted successfully.' })
+    } else {
+      res.status(404).json({ error: 'MTP record not found.' })
+    }
+  } catch (err) {
+    console.error('Failed to delete MTP record:', err)
+    res.status(500).json({ error: 'Failed to delete MTP record.' })
+  }
+})
+
+// MTP Tasks (Dynamic Fields & Role Categories)
+
+// GET all MTP Tasks (Public)
+app.get('/api/mtp/tasks', async (req, res) => {
+  try {
+    const list = await db.getMTPTasks()
+    res.json(list)
+  } catch (err) {
+    console.error('Failed to retrieve MTP tasks:', err)
+    res.status(500).json({ error: 'Failed to retrieve MTP tasks list.' })
+  }
+})
+
+// POST create new MTP Task (Admin Panel)
+app.post('/api/admin/mtp/tasks', authenticateAdmin, async (req, res) => {
+  const { icon = '🚗', title, description, shiftType, earningEstimate, active = true } = req.body
+
+  if (!title || !description) {
+    return res.status(400).json({ success: false, error: 'Task title and description are required.' })
+  }
+
+  try {
+    const newTask = await db.createMTPTask({
+      icon,
+      title: title.trim(),
+      description: description.trim(),
+      shiftType: shiftType || 'Part-time / On-Demand',
+      earningEstimate: earningEstimate || '₹300 - ₹1,500 / task',
+      active
+    })
+    res.status(201).json({ success: true, message: 'MTP task created successfully!', data: newTask })
+  } catch (err) {
+    console.error('Failed to create MTP task:', err)
+    res.status(500).json({ success: false, error: 'Failed to create MTP task.' })
+  }
+})
+
+// PUT update MTP Task (Admin Panel)
+app.put('/api/admin/mtp/tasks/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const updated = await db.updateMTPTask(req.params.id, req.body)
+    if (!updated) {
+      return res.status(404).json({ error: 'MTP task not found.' })
+    }
+    res.json({ success: true, message: 'MTP task updated successfully.', data: updated })
+  } catch (err) {
+    console.error('Failed to update MTP task:', err)
+    res.status(500).json({ error: 'Failed to update MTP task.' })
+  }
+})
+
+// DELETE MTP Task (Admin Panel)
+app.delete('/api/admin/mtp/tasks/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const deleted = await db.deleteMTPTask(req.params.id)
+    if (deleted) {
+      res.json({ success: true, message: 'MTP task deleted successfully.' })
+    } else {
+      res.status(404).json({ error: 'MTP task not found.' })
+    }
+  } catch (err) {
+    console.error('Failed to delete MTP task:', err)
+    res.status(500).json({ error: 'Failed to delete MTP task.' })
+  }
+})
+
+
+
+
 // GET all bookings (Admin Panel)
 app.get('/api/bookings', authenticateAdmin, async (req, res) => {
   try {

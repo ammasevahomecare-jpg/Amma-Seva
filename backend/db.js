@@ -35,6 +35,63 @@ const DEFAULT_MOCK_DATA = {
   enquiries: [],
   bookings: [],
   caregivers: [],
+  mtps: [],
+  mtpTasks: [
+    {
+      id: 1,
+      icon: "🚗",
+      title: "Patient Hospital Dropping & Escort",
+      description: "Accompany patients/seniors safely to doctors, diagnostics & therapy",
+      shiftType: "Part-time / On-Demand",
+      earningEstimate: "₹300 - ₹1,500 / task",
+      active: true
+    },
+    {
+      id: 2,
+      icon: "💊",
+      title: "Medicine Delivery & Urgent Errands",
+      description: "Doorstep delivery of prescriptions, pharmacy runs & emergency supplies",
+      shiftType: "Part-time / On-Demand",
+      earningEstimate: "₹300 - ₹1,500 / task",
+      active: true
+    },
+    {
+      id: 3,
+      icon: "👴",
+      title: "Senior Walking & Companionship",
+      description: "Morning/evening walks, conversations, reading & mobility support",
+      shiftType: "Part-time / On-Demand",
+      earningEstimate: "₹300 - ₹1,500 / task",
+      active: true
+    },
+    {
+      id: 4,
+      icon: "🍼",
+      title: "Mother & Baby Support Helper",
+      description: "Part-time help for new moms with nursery, baby care & household tasks",
+      shiftType: "Part-time / On-Demand",
+      earningEstimate: "₹300 - ₹1,500 / task",
+      active: true
+    },
+    {
+      id: 5,
+      icon: "🩺",
+      title: "Bedside & Post-Surgery Attendant",
+      description: "Hourly shift-based patient recovery & home assistance",
+      shiftType: "Part-time / On-Demand",
+      earningEstimate: "₹300 - ₹1,500 / task",
+      active: true
+    },
+    {
+      id: 6,
+      icon: "⚡",
+      title: "Emergency On-Demand Task Force",
+      description: "Immediate 2-4 hour assistance calls in your local neighborhood",
+      shiftType: "Part-time / On-Demand",
+      earningEstimate: "₹300 - ₹1,500 / task",
+      active: true
+    }
+  ],
   gallery: [],
   services: [
     {
@@ -268,6 +325,8 @@ const initJSONDb = () => {
       if (!data.notifications) { data.notifications = DEFAULT_MOCK_DATA.notifications; modified = true }
       if (!data.reviews) { data.reviews = []; modified = true }
       if (!data.announcements) { data.announcements = []; modified = true }
+      if (!data.mtps) { data.mtps = []; modified = true }
+      if (!data.mtpTasks || data.mtpTasks.length === 0) { data.mtpTasks = DEFAULT_MOCK_DATA.mtpTasks; modified = true }
       if (!data.blogs || data.blogs.length === 0) { data.blogs = DEFAULT_MOCK_DATA.blogs; modified = true }
       if (!data.faqs || data.faqs.length === 0) { data.faqs = DEFAULT_MOCK_DATA.faqs; modified = true }
       if (modified) {
@@ -512,6 +571,43 @@ export const db = {
             id INT AUTO_INCREMENT PRIMARY KEY,
             question TEXT NOT NULL,
             answer TEXT NOT NULL,
+            createdAt VARCHAR(255) NOT NULL
+          )
+        `)
+
+        await connection.query(`
+          CREATE TABLE IF NOT EXISTS mtps (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            phone VARCHAR(50) NOT NULL,
+            email VARCHAR(255),
+            gender VARCHAR(50),
+            age VARCHAR(50),
+            city VARCHAR(100) DEFAULT 'Hyderabad',
+            locality VARCHAR(255),
+            roles TEXT,
+            availability VARCHAR(100),
+            vehicle VARCHAR(100),
+            drivingLicense VARCHAR(50),
+            experience VARCHAR(100),
+            skillsSummary TEXT,
+            aadhaar VARCHAR(100),
+            emergencyContact VARCHAR(255),
+            status VARCHAR(50) DEFAULT 'Pending',
+            adminNotes TEXT,
+            createdAt VARCHAR(255) NOT NULL
+          )
+        `)
+
+        await connection.query(`
+          CREATE TABLE IF NOT EXISTS mtp_tasks (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            icon VARCHAR(50) DEFAULT '🚗',
+            title VARCHAR(255) NOT NULL,
+            description TEXT NOT NULL,
+            shiftType VARCHAR(100) DEFAULT 'Part-time / On-Demand',
+            earningEstimate VARCHAR(100) DEFAULT '₹300 - ₹1,500 / task',
+            active TINYINT DEFAULT 1,
             createdAt VARCHAR(255) NOT NULL
           )
         `)
@@ -2009,6 +2105,230 @@ export const db = {
       const data = await readJSONDb()
       if (!data.gallery) data.gallery = []
       data.gallery = data.gallery.filter(g => g.id !== Number(id))
+      await writeJSONDb(data)
+      return true
+    }
+  },
+
+  // MTP (Multi Tasking Professionals) Operations
+  getMTPs: async () => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM mtps ORDER BY id DESC')
+      return rows
+    } else {
+      const data = await readJSONDb()
+      if (!data.mtps) data.mtps = []
+      return [...data.mtps].reverse()
+    }
+  },
+
+  getMTPById: async (id) => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM mtps WHERE id = ?', [Number(id)])
+      return rows[0] || null
+    } else {
+      const data = await readJSONDb()
+      if (!data.mtps) data.mtps = []
+      return data.mtps.find(m => m.id === Number(id)) || null
+    }
+  },
+
+  createMTP: async (mtpData) => {
+    const createdAt = new Date().toISOString()
+    const {
+      name,
+      phone,
+      email = '',
+      gender = '',
+      age = '',
+      city = 'Hyderabad',
+      locality = '',
+      roles = [],
+      availability = 'Part-time',
+      vehicle = 'No Vehicle',
+      drivingLicense = 'No',
+      experience = 'Fresher',
+      skillsSummary = '',
+      aadhaar = '',
+      emergencyContact = '',
+      status = 'Pending',
+      adminNotes = ''
+    } = mtpData
+
+    const rolesString = Array.isArray(roles) ? roles.join(', ') : (roles || '')
+
+    if (useMySQL) {
+      const [result] = await pool.query(
+        `INSERT INTO mtps (name, phone, email, gender, age, city, locality, roles, availability, vehicle, drivingLicense, experience, skillsSummary, aadhaar, emergencyContact, status, adminNotes, createdAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [name, phone, email, gender, age, city, locality, rolesString, availability, vehicle, drivingLicense, experience, skillsSummary, aadhaar, emergencyContact, status, adminNotes, createdAt]
+      )
+      return { id: result.insertId, ...mtpData, roles: rolesString, createdAt, status }
+    } else {
+      const data = await readJSONDb()
+      if (!data.mtps) data.mtps = []
+      const newMTP = {
+        id: data.mtps.length > 0 ? Math.max(...data.mtps.map(m => m.id)) + 1 : 1,
+        name,
+        phone,
+        email,
+        gender,
+        age,
+        city,
+        locality,
+        roles: rolesString,
+        availability,
+        vehicle,
+        drivingLicense,
+        experience,
+        skillsSummary,
+        aadhaar,
+        emergencyContact,
+        status,
+        adminNotes,
+        createdAt
+      }
+      data.mtps.push(newMTP)
+      await writeJSONDb(data)
+      return newMTP
+    }
+  },
+
+  updateMTPStatus: async (id, status, adminNotes = null) => {
+    if (useMySQL) {
+      if (adminNotes !== null) {
+        await pool.query('UPDATE mtps SET status = ?, adminNotes = ? WHERE id = ?', [status, adminNotes, Number(id)])
+      } else {
+        await pool.query('UPDATE mtps SET status = ? WHERE id = ?', [status, Number(id)])
+      }
+      const [rows] = await pool.query('SELECT * FROM mtps WHERE id = ?', [Number(id)])
+      return rows[0] || null
+    } else {
+      const data = await readJSONDb()
+      if (!data.mtps) data.mtps = []
+      const index = data.mtps.findIndex(m => m.id === Number(id))
+      if (index === -1) return null
+      data.mtps[index].status = status
+      if (adminNotes !== null) {
+        data.mtps[index].adminNotes = adminNotes
+      }
+      await writeJSONDb(data)
+      return data.mtps[index]
+    }
+  },
+
+  deleteMTP: async (id) => {
+    if (useMySQL) {
+      await pool.query('DELETE FROM mtps WHERE id = ?', [Number(id)])
+      return true
+    } else {
+      const data = await readJSONDb()
+      if (!data.mtps) data.mtps = []
+      data.mtps = data.mtps.filter(m => m.id !== Number(id))
+      await writeJSONDb(data)
+      return true
+    }
+  },
+
+  // MTP Tasks (Dynamic Task Categories / Roles)
+  getMTPTasks: async () => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM mtp_tasks ORDER BY id ASC')
+      return rows
+    } else {
+      const data = await readJSONDb()
+      if (!data.mtpTasks) data.mtpTasks = DEFAULT_MOCK_DATA.mtpTasks
+      return data.mtpTasks
+    }
+  },
+
+  getMTPTaskById: async (id) => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM mtp_tasks WHERE id = ?', [Number(id)])
+      return rows[0] || null
+    } else {
+      const data = await readJSONDb()
+      if (!data.mtpTasks) data.mtpTasks = DEFAULT_MOCK_DATA.mtpTasks
+      return data.mtpTasks.find(t => t.id === Number(id)) || null
+    }
+  },
+
+  createMTPTask: async (taskData) => {
+    const createdAt = new Date().toISOString()
+    const {
+      icon = '🚗',
+      title,
+      description,
+      shiftType = 'Part-time / On-Demand',
+      earningEstimate = '₹300 - ₹1,500 / task',
+      active = true
+    } = taskData
+
+    if (useMySQL) {
+      const [result] = await pool.query(
+        `INSERT INTO mtp_tasks (icon, title, description, shiftType, earningEstimate, active, createdAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [icon, title, description, shiftType, earningEstimate, active ? 1 : 0, createdAt]
+      )
+      return { id: result.insertId, ...taskData, createdAt }
+    } else {
+      const data = await readJSONDb()
+      if (!data.mtpTasks) data.mtpTasks = [...DEFAULT_MOCK_DATA.mtpTasks]
+      const newTask = {
+        id: data.mtpTasks.length > 0 ? Math.max(...data.mtpTasks.map(t => t.id)) + 1 : 1,
+        icon,
+        title,
+        description,
+        shiftType,
+        earningEstimate,
+        active: Boolean(active),
+        createdAt
+      }
+      data.mtpTasks.push(newTask)
+      await writeJSONDb(data)
+      return newTask
+    }
+  },
+
+  updateMTPTask: async (id, taskData) => {
+    const { icon, title, description, shiftType, earningEstimate, active } = taskData
+    if (useMySQL) {
+      await pool.query(
+        `UPDATE mtp_tasks 
+         SET icon = COALESCE(?, icon),
+             title = COALESCE(?, title),
+             description = COALESCE(?, description),
+             shiftType = COALESCE(?, shiftType),
+             earningEstimate = COALESCE(?, earningEstimate),
+             active = COALESCE(?, active)
+         WHERE id = ?`,
+        [icon, title, description, shiftType, earningEstimate, active !== undefined ? (active ? 1 : 0) : null, Number(id)]
+      )
+      const [rows] = await pool.query('SELECT * FROM mtp_tasks WHERE id = ?', [Number(id)])
+      return rows[0] || null
+    } else {
+      const data = await readJSONDb()
+      if (!data.mtpTasks) data.mtpTasks = [...DEFAULT_MOCK_DATA.mtpTasks]
+      const index = data.mtpTasks.findIndex(t => t.id === Number(id))
+      if (index === -1) return null
+      data.mtpTasks[index] = {
+        ...data.mtpTasks[index],
+        ...taskData,
+        id: Number(id)
+      }
+      await writeJSONDb(data)
+      return data.mtpTasks[index]
+    }
+  },
+
+  deleteMTPTask: async (id) => {
+    if (useMySQL) {
+      await pool.query('DELETE FROM mtp_tasks WHERE id = ?', [Number(id)])
+      return true
+    } else {
+      const data = await readJSONDb()
+      if (!data.mtpTasks) data.mtpTasks = [...DEFAULT_MOCK_DATA.mtpTasks]
+      data.mtpTasks = data.mtpTasks.filter(t => t.id !== Number(id))
       await writeJSONDb(data)
       return true
     }

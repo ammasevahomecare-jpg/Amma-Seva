@@ -44,6 +44,7 @@ function Header() {
   const dynamicNav = [
     { to: "/", label: "Home" },
     { to: "/services", label: "Services" },
+    { to: "/mtp", label: "MTP (Multi Tasking)" },
     { to: "/about", label: "About" },
     { to: "/gallery", label: "Gallery" },
     { to: "/blog", label: "Blog" },
@@ -242,6 +243,7 @@ function Footer() {
           </h4>
           <ul className="space-y-2 text-sm text-slate-400">
             <li><Link to="/about" className="hover:text-gold transition-colors">About Us</Link></li>
+            <li><Link to="/mtp" className="hover:text-gold transition-colors text-gold font-medium">Join as MTP</Link></li>
             <li><Link to="/careers" className="hover:text-gold transition-colors">Careers</Link></li>
             <li><Link to="/blog" className="hover:text-gold transition-colors">Blog &amp; Insights</Link></li>
             <li><Link to="/contact" className="hover:text-gold transition-colors">Contact</Link></li>
@@ -301,10 +303,10 @@ function FloatingActions() {
       <a
         href={`tel:${PHONE_TEL}`}
         aria-label="Call Amma Seva"
-        className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-tr from-[#1e2a5a] to-[#0f1530] text-white shadow-lg border border-slate-700/20 transition-all hover:scale-110 active:scale-95 group relative"
+        className="flex h-14 w-14 items-center justify-center rounded-full bg-[#1e2a5a] text-white shadow-xl border border-white/20 transition-all hover:bg-[#151e40] hover:scale-110 active:scale-95 group relative"
       >
         <Phone className="h-6 w-6 text-white group-hover:animate-pulse" />
-        <span className="absolute right-16 bg-[#1e2a5a] text-white text-[10px] font-bold py-1 px-2.5 rounded-lg shadow-sm border border-slate-750 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap hidden sm:block">
+        <span className="absolute right-16 bg-[#1e2a5a] text-white text-[10px] font-bold py-1 px-2.5 rounded-lg shadow-sm border border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap hidden sm:block">
           Call Care Desk
         </span>
       </a>

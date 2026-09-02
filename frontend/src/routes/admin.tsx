@@ -6,7 +6,8 @@ import {
   Users, Calendar, DollarSign, ShieldAlert, LogOut, CheckCircle2, 
   XCircle, Edit3, Save, Check, LayoutDashboard, CalendarDays,
   UserCheck, MessageSquare, Sliders, Bell, Search, Plus, Send, TrendingDown,
-  ArrowUpRight, Star, BookOpen, HelpCircle, Menu, X, Image, Coins, Clock
+  ArrowUpRight, Star, BookOpen, HelpCircle, Menu, X, Image, Coins, Clock,
+  Briefcase, Car, Eye, MessageCircle, FileText
 } from "lucide-react";
 
 const INDIAN_STATES = [
@@ -139,7 +140,7 @@ function AdminPage() {
   };
 
   // Navigation and Search
-  const [activeTab, setActiveTab] = useState<"overview" | "bookings" | "caregivers" | "enquiries" | "services" | "users" | "notifications" | "payments" | "blogs" | "faqs" | "gallery" | "salaries">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "bookings" | "caregivers" | "mtps" | "enquiries" | "services" | "users" | "notifications" | "payments" | "blogs" | "faqs" | "gallery" | "salaries">("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -155,6 +156,26 @@ function AdminPage() {
   const [blogs, setBlogs] = useState<any[]>([]);
   const [faqs, setFaqs] = useState<any[]>([]);
   const [gallery, setGallery] = useState<any[]>([]);
+  const [mtps, setMTPs] = useState<any[]>([]);
+  const [mtpTasks, setMtpTasks] = useState<any[]>([]);
+  const [mtpSubTab, setMtpSubTab] = useState<"applicants" | "tasks">("applicants");
+
+  // MTP Filter & Detail state
+  const [mtpSearch, setMtpSearch] = useState("");
+  const [mtpStatusFilter, setMtpStatusFilter] = useState("All");
+  const [mtpLocalityFilter, setMtpLocalityFilter] = useState("All");
+  const [selectedMTPDetail, setSelectedMTPDetail] = useState<any | null>(null);
+  const [mtpAdminNotes, setMtpAdminNotes] = useState("");
+
+  // MTP Task Field Modal State
+  const [isMtpTaskModalOpen, setIsMtpTaskModalOpen] = useState(false);
+  const [mtpTaskModalMode, setMtpTaskModalMode] = useState<"add" | "edit">("add");
+  const [editingMtpTaskId, setEditingMtpTaskId] = useState<number | null>(null);
+  const [taskIcon, setTaskIcon] = useState("🚗");
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskDescription, setTaskDescription] = useState("");
+  const [taskShiftType, setTaskShiftType] = useState("Part-time / On-Demand");
+  const [taskEarningEstimate, setTaskEarningEstimate] = useState("₹300 - ₹1,500 / task");
 
   // Modal Control
   const [modalType, setModalType] = useState<"booking" | "caregiver" | "service" | "notification" | "blog" | "faq" | "gallery" | null>(null);
@@ -313,7 +334,7 @@ function AdminPage() {
     };
 
     try {
-      const [bookingsRes, caregiversRes, enquiriesRes, usersRes, servicesRes, notificationsRes, blogsRes, faqsRes, galleryRes] = await Promise.all([
+      const [bookingsRes, caregiversRes, enquiriesRes, usersRes, servicesRes, notificationsRes, blogsRes, faqsRes, galleryRes, mtpsRes, mtpTasksRes] = await Promise.all([
         fetchWithAuth("/api/bookings"),
         fetchWithAuth("/api/caregivers"),
         fetchWithAuth("/api/enquiries"),
@@ -322,7 +343,9 @@ function AdminPage() {
         fetchWithAuth("/api/notifications"),
         fetch("/api/blogs").then(res => res.json()),
         fetch("/api/faqs").then(res => res.json()),
-        fetch("/api/gallery").then(res => res.json())
+        fetch("/api/gallery").then(res => res.json()),
+        fetchWithAuth("/api/admin/mtps").catch(() => []),
+        fetch("/api/mtp/tasks").then(res => res.json()).catch(() => [])
       ]);
       setBookings(Array.isArray(bookingsRes) ? bookingsRes : []);
       setCaregivers(Array.isArray(caregiversRes) ? caregiversRes : []);
@@ -333,6 +356,8 @@ function AdminPage() {
       setBlogs(Array.isArray(blogsRes) ? blogsRes : []);
       setFaqs(Array.isArray(faqsRes) ? faqsRes : []);
       setGallery(Array.isArray(galleryRes) ? galleryRes : []);
+      setMTPs(Array.isArray(mtpsRes) ? mtpsRes : []);
+      setMtpTasks(Array.isArray(mtpTasksRes) ? mtpTasksRes : []);
     } catch (err) {
       console.error(err);
       if (err instanceof Error && err.message === "Unauthorized") {
@@ -420,6 +445,148 @@ function AdminPage() {
         .then(data => {
           if (data.success) {
             setUsers(prev => prev.filter(u => u.id !== id));
+          }
+        })
+        .catch(err => console.error(err));
+    }
+  };
+
+  // MTP Handlers
+  const handleUpdateMTPStatus = (id: number, status: "Pending" | "Verified" | "Contacted" | "Rejected", notes?: string) => {
+    const token = localStorage.getItem("ammaseva_admin_token");
+    fetch(`/api/admin/mtp/${id}/status`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ status, adminNotes: notes !== undefined ? notes : mtpAdminNotes })
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setMTPs(prev => prev.map(m => m.id === id ? { ...m, status, adminNotes: notes !== undefined ? notes : mtpAdminNotes } : m));
+          if (selectedMTPDetail && selectedMTPDetail.id === id) {
+            setSelectedMTPDetail((prev: any) => ({ ...prev, status, adminNotes: notes !== undefined ? notes : mtpAdminNotes }));
+          }
+        }
+      })
+      .catch(err => console.error(err));
+  };
+
+  const handleDeleteMTP = (id: number) => {
+    if (window.confirm("Are you sure you want to permanently delete this MTP applicant record?")) {
+      const token = localStorage.getItem("ammaseva_admin_token");
+      fetch(`/api/admin/mtp/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) {
+            setMTPs(prev => prev.filter(m => m.id !== id));
+            if (selectedMTPDetail && selectedMTPDetail.id === id) {
+              setSelectedMTPDetail(null);
+            }
+          }
+        })
+        .catch(err => console.error(err));
+    }
+  };
+
+  // MTP Task Management Handlers
+  const handleOpenAddMtpTask = () => {
+    setMtpTaskModalMode("add");
+    setEditingMtpTaskId(null);
+    setTaskIcon("🚗");
+    setTaskTitle("");
+    setTaskDescription("");
+    setTaskShiftType("Part-time / On-Demand");
+    setTaskEarningEstimate("₹300 - ₹1,500 / task");
+    setIsMtpTaskModalOpen(true);
+  };
+
+  const handleOpenEditMtpTask = (task: any) => {
+    setMtpTaskModalMode("edit");
+    setEditingMtpTaskId(task.id);
+    setTaskIcon(task.icon || "🚗");
+    setTaskTitle(task.title || "");
+    setTaskDescription(task.description || "");
+    setTaskShiftType(task.shiftType || "Part-time / On-Demand");
+    setTaskEarningEstimate(task.earningEstimate || "₹300 - ₹1,500 / task");
+    setIsMtpTaskModalOpen(true);
+  };
+
+  const handleSaveMtpTask = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!taskTitle.trim() || !taskDescription.trim()) {
+      alert("Please enter a title and description for this MTP task.");
+      return;
+    }
+
+    const token = localStorage.getItem("ammaseva_admin_token");
+    const payload = {
+      icon: taskIcon,
+      title: taskTitle.trim(),
+      description: taskDescription.trim(),
+      shiftType: taskShiftType.trim(),
+      earningEstimate: taskEarningEstimate.trim()
+    };
+
+    if (mtpTaskModalMode === "add") {
+      fetch("/api/admin/mtp/tasks", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setMtpTasks(prev => [...prev, data.data]);
+            setIsMtpTaskModalOpen(false);
+          } else {
+            alert(data.error || "Failed to create MTP task.");
+          }
+        })
+        .catch(err => console.error(err));
+    } else if (editingMtpTaskId) {
+      fetch(`/api/admin/mtp/tasks/${editingMtpTaskId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setMtpTasks(prev => prev.map(t => t.id === editingMtpTaskId ? data.data : t));
+            setIsMtpTaskModalOpen(false);
+          } else {
+            alert(data.error || "Failed to update MTP task.");
+          }
+        })
+        .catch(err => console.error(err));
+    }
+  };
+
+  const handleDeleteMtpTask = (id: number) => {
+    if (window.confirm("Are you sure you want to delete this MTP task category? It will no longer be visible on the public website.")) {
+      const token = localStorage.getItem("ammaseva_admin_token");
+      fetch(`/api/admin/mtp/tasks/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setMtpTasks(prev => prev.filter(t => t.id !== id));
+          } else {
+            alert(data.error || "Failed to delete MTP task.");
           }
         })
         .catch(err => console.error(err));
@@ -1057,6 +1224,7 @@ function AdminPage() {
               { id: "overview", label: "Dashboard", icon: LayoutDashboard },
               { id: "bookings", label: "Manage Bookings", icon: CalendarDays },
               { id: "caregivers", label: "Employees & Staff", icon: UserCheck },
+              { id: "mtps", label: "MTP Registrations", icon: Briefcase, badge: mtps.filter(m => m.status === "Pending").length },
               { id: "users", label: "Patients", icon: Users },
               { id: "services", label: "Services", icon: Sliders },
               { id: "payments", label: "Payment Status", icon: DollarSign },
@@ -1069,6 +1237,7 @@ function AdminPage() {
             ].map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
+              const pendingCount = (item as any).badge || 0;
               return (
                 <button
                   key={item.id}
@@ -1076,14 +1245,21 @@ function AdminPage() {
                     setActiveTab(item.id as any);
                     setIsMobileNavOpen(false);
                   }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between px-4 py-3 text-sm font-semibold transition-all cursor-pointer ${
                     isActive
                       ? "bg-white/10 text-[#c9a24c] border-l-4 border-[#c9a24c] rounded-r-xl rounded-l-none pl-3"
                       : "text-slate-300 hover:bg-white/5 hover:text-white rounded-xl"
                   }`}
                 >
-                  <Icon className={`h-4.5 w-4.5 ${isActive ? "text-[#c9a24c]" : "text-slate-400"}`} />
-                  {item.label}
+                  <div className="flex items-center gap-3">
+                    <Icon className={`h-4.5 w-4.5 ${isActive ? "text-[#c9a24c]" : "text-slate-400"}`} />
+                    {item.label}
+                  </div>
+                  {pendingCount > 0 && (
+                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-500 text-white shadow-xs">
+                      {pendingCount}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -2913,6 +3089,630 @@ function AdminPage() {
               </div>
             </div>
           )}
+
+          {/* MTP (Multi Tasking Professionals) Panel */}
+          {activeTab === "mtps" && (() => {
+            const filteredMTPs = mtps.filter((m) => {
+              const matchesSearch =
+                m.name?.toLowerCase().includes(mtpSearch.toLowerCase()) ||
+                m.phone?.includes(mtpSearch) ||
+                m.locality?.toLowerCase().includes(mtpSearch.toLowerCase()) ||
+                m.roles?.toLowerCase().includes(mtpSearch.toLowerCase());
+              const matchesStatus = mtpStatusFilter === "All" || m.status === mtpStatusFilter;
+              const matchesLocality = mtpLocalityFilter === "All" || m.locality === mtpLocalityFilter;
+              return matchesSearch && matchesStatus && matchesLocality;
+            });
+
+            const pendingCount = mtps.filter((m) => m.status === "Pending").length;
+            const verifiedCount = mtps.filter((m) => m.status === "Verified").length;
+            const withVehicleCount = mtps.filter((m) => m.vehicle?.toLowerCase().includes("wheeler") || m.vehicle?.toLowerCase().includes("car") || m.vehicle?.toLowerCase().includes("bike")).length;
+
+            return (
+              <div className="space-y-6 text-left">
+                
+                {/* Header Metrics */}
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Registered MTPs</div>
+                    <div className="mt-2 flex items-baseline justify-between">
+                      <span className="text-3xl font-extrabold text-[#1e2a5a] font-display">{mtps.length}</span>
+                      <Briefcase className="h-5 w-5 text-[#c9a24c]" />
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-amber-200/80 bg-amber-50/50 p-5 shadow-sm">
+                    <div className="text-xs font-bold text-amber-700 uppercase tracking-wider">Pending Review</div>
+                    <div className="mt-2 flex items-baseline justify-between">
+                      <span className="text-3xl font-extrabold text-amber-700 font-display">{pendingCount}</span>
+                      <Clock className="h-5 w-5 text-amber-600" />
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/50 p-5 shadow-sm">
+                    <div className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Verified / Active</div>
+                    <div className="mt-2 flex items-baseline justify-between">
+                      <span className="text-3xl font-extrabold text-emerald-700 font-display">{verifiedCount}</span>
+                      <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-sky-200/80 bg-sky-50/50 p-5 shadow-sm">
+                    <div className="text-xs font-bold text-sky-700 uppercase tracking-wider">Task Categories Live</div>
+                    <div className="mt-2 flex items-baseline justify-between">
+                      <span className="text-3xl font-extrabold text-sky-700 font-display">{mtpTasks.length}</span>
+                      <Sliders className="h-5 w-5 text-sky-600" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sub-Tabs: Applicants vs Task Categories */}
+                <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+                  <button
+                    onClick={() => setMtpSubTab("applicants")}
+                    className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
+                      mtpSubTab === "applicants"
+                        ? "bg-[#1e2a5a] text-white shadow-sm"
+                        : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                    }`}
+                  >
+                    <Users className="h-4 w-4" />
+                    Applicant Registrations ({mtps.length})
+                    {pendingCount > 0 && (
+                      <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-amber-500 text-white">
+                        {pendingCount}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => setMtpSubTab("tasks")}
+                    className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
+                      mtpSubTab === "tasks"
+                        ? "bg-[#1e2a5a] text-white shadow-sm"
+                        : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                    }`}
+                  >
+                    <Sliders className="h-4 w-4" />
+                    Manage MTP Tasks &amp; Roles ({mtpTasks.length})
+                  </button>
+                </div>
+
+                {/* VIEW 1: APPLICANTS */}
+                {mtpSubTab === "applicants" && (
+                  <div className="space-y-4">
+                    {/* Filters Row */}
+                    <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+                      <div className="relative w-full sm:w-80">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <input
+                          type="text"
+                          value={mtpSearch}
+                          onChange={(e) => setMtpSearch(e.target.value)}
+                          placeholder="Search name, phone, roles, zone..."
+                          className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-[#c9a24c] focus:bg-white transition-colors"
+                        />
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+                        <select
+                          value={mtpStatusFilter}
+                          onChange={(e) => setMtpStatusFilter(e.target.value)}
+                          className="px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-[#c9a24c]"
+                        >
+                          <option value="All">All Statuses</option>
+                          <option value="Pending">Pending Review</option>
+                          <option value="Verified">Verified</option>
+                          <option value="Contacted">Contacted</option>
+                          <option value="Rejected">Rejected</option>
+                        </select>
+
+                        <button
+                          onClick={fetchDashboardData}
+                          className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                          title="Refresh MTPs list"
+                        >
+                          <RefreshCw className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Applicants Grid / Table */}
+                    {filteredMTPs.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center text-slate-400">
+                        <Briefcase className="mx-auto h-12 w-12 text-slate-300 mb-3" />
+                        <div className="font-bold text-primary">No MTP applications found</div>
+                        <div className="text-xs mt-1">Try adjusting your search or status filter.</div>
+                      </div>
+                    ) : (
+                      <div className="grid gap-4">
+                        {filteredMTPs.map((m) => {
+                          const statusColor =
+                            m.status === "Verified"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : m.status === "Contacted"
+                              ? "bg-sky-50 text-sky-700 border-sky-200"
+                              : m.status === "Rejected"
+                              ? "bg-rose-50 text-rose-700 border-rose-200"
+                              : "bg-amber-50 text-amber-700 border-amber-200";
+
+                          return (
+                            <div
+                              key={m.id}
+                              className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm hover:shadow-md transition-all flex flex-col lg:flex-row justify-between gap-5"
+                            >
+                              <div className="space-y-3 flex-1">
+                                <div className="flex flex-wrap items-center gap-2.5">
+                                  <span className="text-[11px] font-mono font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
+                                    ID #{m.id}
+                                  </span>
+                                  <span className={`text-xs font-bold border px-2.5 py-0.5 rounded-full ${statusColor}`}>
+                                    {m.status || "Pending"}
+                                  </span>
+                                  {m.availability && (
+                                    <span className="text-[11px] font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
+                                      ⏱️ {m.availability}
+                                    </span>
+                                  )}
+                                  {m.vehicle && (
+                                    <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md">
+                                      🚗 {m.vehicle}
+                                    </span>
+                                  )}
+                                  <span className="text-[11px] text-slate-400 ml-auto">
+                                    Applied: {new Date(m.createdAt || Date.now()).toLocaleDateString()}
+                                  </span>
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                  <div>
+                                    <h3 className="text-lg font-bold text-[#1e2a5a] font-display flex items-center gap-2">
+                                      {m.name}
+                                      {m.gender && <span className="text-xs font-normal text-slate-400">({m.gender}{m.age ? `, ${m.age}y` : ""})</span>}
+                                    </h3>
+                                    <div className="mt-1 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-600 font-medium">
+                                      <span className="flex items-center gap-1">
+                                        <Phone className="h-3.5 w-3.5 text-[#c9a24c]" />
+                                        <a href={`tel:${m.phone}`} className="hover:underline font-bold text-primary">{m.phone}</a>
+                                      </span>
+                                      {m.email && (
+                                        <span className="flex items-center gap-1">
+                                          <Mail className="h-3.5 w-3.5 text-[#c9a24c]" />
+                                          {m.email}
+                                        </span>
+                                      )}
+                                      <span className="flex items-center gap-1">
+                                        <MapPin className="h-3.5 w-3.5 text-[#c9a24c]" />
+                                        {m.locality || "Hyderabad"}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Quick Call / WhatsApp actions */}
+                                  <div className="flex items-center gap-2 pt-1 sm:pt-0">
+                                    <a
+                                      href={`tel:${m.phone}`}
+                                      className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-[#1e2a5a] hover:text-white text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs"
+                                      title="Call Applicant"
+                                    >
+                                      <Phone className="h-3.5 w-3.5" /> Call
+                                    </a>
+                                    <a
+                                      href={`https://wa.me/91${m.phone.replace(/[^0-9]/g, "")}?text=Hi%20${encodeURIComponent(m.name)},%20this%20is%20Amma%20Seva%20regarding%20your%20MTP%20registration.`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 text-xs font-bold flex items-center gap-1.5 transition-all border border-emerald-200"
+                                      title="Chat on WhatsApp"
+                                    >
+                                      <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                                    </a>
+                                  </div>
+                                </div>
+
+                                {/* Roles / Skills tags */}
+                                {m.roles && (
+                                  <div className="flex flex-wrap gap-1.5 pt-1">
+                                    {m.roles.split(",").map((r: string, idx: number) => (
+                                      <span
+                                        key={idx}
+                                        className="text-[11px] font-semibold bg-gold/10 text-primary border border-gold/20 px-2.5 py-0.5 rounded-lg"
+                                      >
+                                        {r.trim()}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {m.adminNotes && (
+                                  <div className="text-xs bg-amber-50/70 border border-amber-200/60 p-2.5 rounded-xl text-amber-900 font-medium">
+                                    <strong>Admin Note:</strong> {m.adminNotes}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Action Buttons Column */}
+                              <div className="flex lg:flex-col justify-end items-end shrink-0 gap-2 border-t lg:border-t-0 border-slate-100 pt-3 lg:pt-0">
+                                <button
+                                  onClick={() => {
+                                    setSelectedMTPDetail(m);
+                                    setMtpAdminNotes(m.adminNotes || "");
+                                  }}
+                                  className="px-3.5 py-1.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+                                >
+                                  <Eye className="h-3.5 w-3.5" /> Full Details
+                                </button>
+
+                                <div className="flex gap-1.5">
+                                  {m.status !== "Verified" && (
+                                    <button
+                                      onClick={() => handleUpdateMTPStatus(m.id, "Verified")}
+                                      className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white text-xs font-bold transition-all border border-emerald-200 cursor-pointer"
+                                      title="Approve / Verify"
+                                    >
+                                      <Check className="h-3.5 w-3.5" />
+                                    </button>
+                                  )}
+                                  {m.status !== "Contacted" && (
+                                    <button
+                                      onClick={() => handleUpdateMTPStatus(m.id, "Contacted")}
+                                      className="px-2.5 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-600 text-sky-700 hover:text-white text-xs font-bold transition-all border border-sky-200 cursor-pointer"
+                                      title="Mark as Contacted"
+                                    >
+                                      <Phone className="h-3.5 w-3.5" />
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handleDeleteMTP(m.id)}
+                                    className="px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-500 text-rose-600 hover:text-white text-xs font-bold transition-all border border-rose-200 cursor-pointer"
+                                    title="Delete MTP Record"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* VIEW 2: MANAGE MTP TASKS / CARDS */}
+                {mtpSubTab === "tasks" && (
+                  <div className="space-y-5">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+                      <div>
+                        <h3 className="text-lg font-bold text-[#1e2a5a] font-display">
+                          Live MTP Task Categories ({mtpTasks.length})
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Create, edit, or remove task cards. These appear on the website and as selectable options in the registration form.
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={handleOpenAddMtpTask}
+                        className="btn-primary py-2 px-4 text-xs font-bold flex items-center gap-1.5 shrink-0 shadow-md cursor-pointer"
+                      >
+                        <Plus className="h-4 w-4" /> Add New Task Field
+                      </button>
+                    </div>
+
+                    {/* Task cards grid */}
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {mtpTasks.map((t) => (
+                        <div
+                          key={t.id}
+                          className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between gap-4"
+                        >
+                          <div className="space-y-2.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-3xl">{t.icon || "🚗"}</span>
+                              <span className="text-[10px] font-mono text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                                ID #{t.id}
+                              </span>
+                            </div>
+
+                            <h4 className="text-base font-bold text-[#1e2a5a] font-display">
+                              {t.title}
+                            </h4>
+
+                            <p className="text-xs text-slate-600 leading-relaxed">
+                              {t.description}
+                            </p>
+
+                            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-gold">
+                              <span className="bg-gold/10 px-2 py-0.5 rounded-md text-primary">
+                                {t.shiftType || "Part-time / On-Demand"}
+                              </span>
+                              <span>{t.earningEstimate || "₹300 - ₹1,500 / task"}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                            <button
+                              onClick={() => handleOpenEditMtpTask(t)}
+                              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-[#1e2a5a] hover:text-white text-slate-700 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
+                            >
+                              <Edit3 className="h-3.5 w-3.5" /> Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteMtpTask(t.id)}
+                              className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-500 hover:text-white text-rose-600 text-xs font-bold flex items-center gap-1 transition-all border border-rose-200 cursor-pointer"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" /> Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* MODAL: ADD / EDIT MTP TASK FIELD */}
+                {isMtpTaskModalOpen && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+                    <div className="w-full max-w-lg rounded-3xl bg-white p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-5 text-left">
+                      <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+                        <div>
+                          <span className="text-xs font-mono font-bold text-gold uppercase tracking-wider">
+                            {mtpTaskModalMode === "add" ? "Create New Field" : "Edit Task Field"}
+                          </span>
+                          <h3 className="text-xl font-bold text-[#1e2a5a] font-display mt-0.5">
+                            {mtpTaskModalMode === "add" ? "Add MTP Task Category" : `Edit Task #${editingMtpTaskId}`}
+                          </h3>
+                        </div>
+                        <button
+                          onClick={() => setIsMtpTaskModalOpen(false)}
+                          className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 cursor-pointer"
+                        >
+                          <X className="h-5 w-5" />
+                        </button>
+                      </div>
+
+                      <form onSubmit={handleSaveMtpTask} className="space-y-4">
+                        {/* Icon selection */}
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                            Icon / Emoji
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              required
+                              value={taskIcon}
+                              onChange={(e) => setTaskIcon(e.target.value)}
+                              className="w-16 text-center text-xl rounded-xl border border-slate-200 bg-slate-50 p-2 outline-none focus:border-[#c9a24c]"
+                            />
+                            <div className="flex flex-wrap gap-1">
+                              {["🚗", "💊", "👴", "🍼", "🩺", "⚡", "🛒", "🏢", "🤝", "🏥", "🦽", "👵"].map((emoji) => (
+                                <button
+                                  type="button"
+                                  key={emoji}
+                                  onClick={() => setTaskIcon(emoji)}
+                                  className={`p-1.5 rounded-lg text-base hover:bg-slate-100 cursor-pointer ${taskIcon === emoji ? "bg-gold/20 border border-gold" : ""}`}
+                                >
+                                  {emoji}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Title */}
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                            Task Title <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={taskTitle}
+                            onChange={(e) => setTaskTitle(e.target.value)}
+                            placeholder="e.g. Patient Hospital Dropping & Escort"
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-primary focus:bg-white focus:border-[#c9a24c] outline-none"
+                          />
+                        </div>
+
+                        {/* Description */}
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                            Description <span className="text-rose-500">*</span>
+                          </label>
+                          <textarea
+                            required
+                            rows={3}
+                            value={taskDescription}
+                            onChange={(e) => setTaskDescription(e.target.value)}
+                            placeholder="e.g. Accompany patients/seniors safely to doctors, diagnostics & therapy"
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-primary focus:bg-white focus:border-[#c9a24c] outline-none resize-none"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                              Shift / Type
+                            </label>
+                            <input
+                              type="text"
+                              value={taskShiftType}
+                              onChange={(e) => setTaskShiftType(e.target.value)}
+                              placeholder="e.g. Part-time / On-Demand"
+                              className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-primary focus:bg-white focus:border-[#c9a24c] outline-none"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                              Earning Estimate
+                            </label>
+                            <input
+                              type="text"
+                              value={taskEarningEstimate}
+                              onChange={(e) => setTaskEarningEstimate(e.target.value)}
+                              placeholder="e.g. ₹300 - ₹1,500 / task"
+                              className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-primary focus:bg-white focus:border-[#c9a24c] outline-none"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                          <button
+                            type="button"
+                            onClick={() => setIsMtpTaskModalOpen(false)}
+                            className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            className="btn-gold px-5 py-2 text-xs font-bold shadow-md cursor-pointer flex items-center gap-1.5"
+                          >
+                            <Save className="h-3.5 w-3.5" /> Save Task Category
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                )}
+
+                {/* MTP Applicant Full Detail Modal */}
+                {selectedMTPDetail && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+                    <div className="w-full max-w-2xl rounded-3xl bg-white p-6 sm:p-8 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto space-y-6 text-left">
+                      <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+                        <div>
+                          <span className="text-xs font-mono font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
+                            MTP Application #{selectedMTPDetail.id}
+                          </span>
+                          <h2 className="text-2xl font-bold text-[#1e2a5a] font-display mt-1">
+                            {selectedMTPDetail.name}
+                          </h2>
+                          <p className="text-xs text-slate-500">
+                            Applied on {new Date(selectedMTPDetail.createdAt || Date.now()).toLocaleString()}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setSelectedMTPDetail(null)}
+                          className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 cursor-pointer"
+                        >
+                          <X className="h-5 w-5" />
+                        </button>
+                      </div>
+
+                      {/* Detail fields */}
+                      <div className="grid sm:grid-cols-2 gap-4 text-xs">
+                        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60 space-y-1">
+                          <span className="text-slate-400 font-bold block uppercase tracking-wider text-[10px]">Contact</span>
+                          <div className="font-bold text-primary text-sm">{selectedMTPDetail.phone}</div>
+                          <div className="text-slate-500">{selectedMTPDetail.email || "No email provided"}</div>
+                        </div>
+
+                        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60 space-y-1">
+                          <span className="text-slate-400 font-bold block uppercase tracking-wider text-[10px]">Location &amp; Zone</span>
+                          <div className="font-bold text-primary text-sm">{selectedMTPDetail.locality || "Hyderabad"}</div>
+                          <div className="text-slate-500">{selectedMTPDetail.city || "Hyderabad"}</div>
+                        </div>
+
+                        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60 space-y-1">
+                          <span className="text-slate-400 font-bold block uppercase tracking-wider text-[10px]">Availability &amp; Transport</span>
+                          <div className="font-bold text-primary">{selectedMTPDetail.availability}</div>
+                          <div className="text-slate-500">Vehicle: {selectedMTPDetail.vehicle} (License: {selectedMTPDetail.drivingLicense || "N/A"})</div>
+                        </div>
+
+                        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60 space-y-1">
+                          <span className="text-slate-400 font-bold block uppercase tracking-wider text-[10px]">Experience &amp; ID</span>
+                          <div className="font-bold text-primary">{selectedMTPDetail.experience}</div>
+                          <div className="text-slate-500">Aadhaar: {selectedMTPDetail.aadhaar || "Not provided yet"}</div>
+                        </div>
+
+                        {selectedMTPDetail.emergencyContact && (
+                          <div className="sm:col-span-2 bg-slate-50 p-3.5 rounded-xl border border-slate-200/60 space-y-1">
+                            <span className="text-slate-400 font-bold block uppercase tracking-wider text-[10px]">Emergency Contact</span>
+                            <div className="font-semibold text-primary">{selectedMTPDetail.emergencyContact}</div>
+                          </div>
+                        )}
+
+                        {selectedMTPDetail.skillsSummary && (
+                          <div className="sm:col-span-2 bg-slate-50 p-3.5 rounded-xl border border-slate-200/60 space-y-1">
+                            <span className="text-slate-400 font-bold block uppercase tracking-wider text-[10px]">Languages &amp; Bio</span>
+                            <div className="text-slate-700 leading-relaxed">{selectedMTPDetail.skillsSummary}</div>
+                          </div>
+                        )}
+
+                        <div className="sm:col-span-2 bg-slate-50 p-3.5 rounded-xl border border-slate-200/60 space-y-2">
+                          <span className="text-slate-400 font-bold block uppercase tracking-wider text-[10px]">Roles &amp; Tasks Interested In</span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {selectedMTPDetail.roles ? (
+                              selectedMTPDetail.roles.split(",").map((r: string, idx: number) => (
+                                <span key={idx} className="bg-gold/15 text-primary border border-gold/30 px-2.5 py-1 rounded-lg text-xs font-bold">
+                                  {r.trim()}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-slate-400">No roles selected</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Admin Notes Section */}
+                      <div className="space-y-2 pt-2 border-t border-slate-100">
+                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                          Internal Admin Notes
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={mtpAdminNotes}
+                          onChange={(e) => setMtpAdminNotes(e.target.value)}
+                          placeholder="Add coordinator notes, interview outcome, ID verification status..."
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-primary focus:bg-white focus:border-[#c9a24c] outline-none"
+                        />
+                      </div>
+
+                      {/* Modal Actions */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-100">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleUpdateMTPStatus(selectedMTPDetail.id, "Verified")}
+                            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
+                          >
+                            Mark Verified
+                          </button>
+                          <button
+                            onClick={() => handleUpdateMTPStatus(selectedMTPDetail.id, "Contacted")}
+                            className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
+                          >
+                            Mark Contacted
+                          </button>
+                          <button
+                            onClick={() => handleUpdateMTPStatus(selectedMTPDetail.id, "Rejected")}
+                            className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
+                          >
+                            Reject
+                          </button>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              handleUpdateMTPStatus(selectedMTPDetail.id, selectedMTPDetail.status, mtpAdminNotes);
+                              setSelectedMTPDetail(null);
+                            }}
+                            className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 cursor-pointer"
+                          >
+                            Save &amp; Close
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Enquiries Leads panel */}
           {activeTab === "enquiries" && (

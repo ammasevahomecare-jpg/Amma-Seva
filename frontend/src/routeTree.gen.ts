@@ -18,6 +18,7 @@ import { Route as ContactRouteImport } from './routes/contact'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as MtpRouteImport } from './routes/mtp'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RefundRouteImport } from './routes/refund'
 import { Route as ServicesRouteImport } from './routes/services'
@@ -71,6 +72,11 @@ const GalleryRoute = GalleryRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MtpRoute = MtpRouteImport.update({
+  id: '/mtp',
+  path: '/mtp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -129,6 +135,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/gallery': typeof GalleryRoute
   '/login': typeof LoginRoute
+  '/mtp': typeof MtpRoute
   '/privacy': typeof PrivacyRoute
   '/refund': typeof RefundRoute
   '/services': typeof ServicesRouteWithChildren
@@ -148,6 +155,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/gallery': typeof GalleryRoute
   '/login': typeof LoginRoute
+  '/mtp': typeof MtpRoute
   '/privacy': typeof PrivacyRoute
   '/refund': typeof RefundRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -168,6 +176,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/gallery': typeof GalleryRoute
   '/login': typeof LoginRoute
+  '/mtp': typeof MtpRoute
   '/privacy': typeof PrivacyRoute
   '/refund': typeof RefundRoute
   '/services': typeof ServicesRouteWithChildren
@@ -190,6 +199,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/gallery'
     | '/login'
+    | '/mtp'
     | '/privacy'
     | '/refund'
     | '/services'
@@ -209,6 +219,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/gallery'
     | '/login'
+    | '/mtp'
     | '/privacy'
     | '/refund'
     | '/sitemap.xml'
@@ -228,6 +239,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/gallery'
     | '/login'
+    | '/mtp'
     | '/privacy'
     | '/refund'
     | '/services'
@@ -249,6 +261,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   GalleryRoute: typeof GalleryRoute
   LoginRoute: typeof LoginRoute
+  MtpRoute: typeof MtpRoute
   PrivacyRoute: typeof PrivacyRoute
   RefundRoute: typeof RefundRoute
   ServicesRoute: typeof ServicesRouteWithChildren
@@ -319,6 +332,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mtp': {
+      id: '/mtp'
+      path: '/mtp'
+      fullPath: '/mtp'
+      preLoaderRoute: typeof MtpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -423,6 +443,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   GalleryRoute: GalleryRoute,
   LoginRoute: LoginRoute,
+  MtpRoute: MtpRoute,
   PrivacyRoute: PrivacyRoute,
   RefundRoute: RefundRoute,
   ServicesRoute: ServicesRouteWithChildren,
