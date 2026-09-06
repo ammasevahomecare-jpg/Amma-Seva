@@ -593,6 +593,11 @@ export const db = {
             skillsSummary TEXT,
             aadhaar VARCHAR(100),
             emergencyContact VARCHAR(255),
+            aadhaarDoc LONGTEXT,
+            panDoc LONGTEXT,
+            drivingLicenseDoc LONGTEXT,
+            tenthCertificateDoc LONGTEXT,
+            policeVerificationDoc LONGTEXT,
             status VARCHAR(50) DEFAULT 'Pending',
             adminNotes TEXT,
             createdAt VARCHAR(255) NOT NULL
@@ -656,6 +661,21 @@ export const db = {
         } catch (e) {}
         try {
           await connection.query(`ALTER TABLE caregivers ADD COLUMN additionalCertificates LONGTEXT`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE mtps ADD COLUMN aadhaarDoc LONGTEXT`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE mtps ADD COLUMN panDoc LONGTEXT`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE mtps ADD COLUMN drivingLicenseDoc LONGTEXT`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE mtps ADD COLUMN tenthCertificateDoc LONGTEXT`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE mtps ADD COLUMN policeVerificationDoc LONGTEXT`)
         } catch (e) {}
         try {
           await connection.query(`ALTER TABLE bookings ADD COLUMN userId INT`)
@@ -2162,6 +2182,11 @@ export const db = {
       skillsSummary = '',
       aadhaar = '',
       emergencyContact = '',
+      aadhaarDoc = '',
+      panDoc = '',
+      drivingLicenseDoc = '',
+      tenthCertificateDoc = '',
+      policeVerificationDoc = '',
       status = 'Pending',
       adminNotes = ''
     } = mtpData
@@ -2170,9 +2195,9 @@ export const db = {
 
     if (useMySQL) {
       const [result] = await pool.query(
-        `INSERT INTO mtps (name, phone, email, gender, age, city, locality, roles, availability, vehicle, drivingLicense, experience, skillsSummary, aadhaar, emergencyContact, status, adminNotes, createdAt)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [name, phone, email, gender, age, city, locality, rolesString, availability, vehicle, drivingLicense, experience, skillsSummary, aadhaar, emergencyContact, status, adminNotes, createdAt]
+        `INSERT INTO mtps (name, phone, email, gender, age, city, locality, roles, availability, vehicle, drivingLicense, experience, skillsSummary, aadhaar, emergencyContact, aadhaarDoc, panDoc, drivingLicenseDoc, tenthCertificateDoc, policeVerificationDoc, status, adminNotes, createdAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [name, phone, email, gender, age, city, locality, rolesString, availability, vehicle, drivingLicense, experience, skillsSummary, aadhaar, emergencyContact, aadhaarDoc, panDoc, drivingLicenseDoc, tenthCertificateDoc, policeVerificationDoc, status, adminNotes, createdAt]
       )
       return { id: result.insertId, ...mtpData, roles: rolesString, createdAt, status }
     } else {
@@ -2195,6 +2220,11 @@ export const db = {
         skillsSummary,
         aadhaar,
         emergencyContact,
+        aadhaarDoc,
+        panDoc,
+        drivingLicenseDoc,
+        tenthCertificateDoc,
+        policeVerificationDoc,
         status,
         adminNotes,
         createdAt

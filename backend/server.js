@@ -1006,7 +1006,12 @@ app.post('/api/mtp/register', async (req, res) => {
     experience = 'Fresher',
     skillsSummary = '',
     aadhaar = '',
-    emergencyContact = ''
+    emergencyContact = '',
+    aadhaarDoc = '',
+    panDoc = '',
+    drivingLicenseDoc = '',
+    tenthCertificateDoc = '',
+    policeVerificationDoc = ''
   } = req.body
 
   if (!name || !phone) {
@@ -1014,6 +1019,12 @@ app.post('/api/mtp/register', async (req, res) => {
   }
 
   try {
+    const uploadedAadhaar = await uploadToCloudinary(aadhaarDoc)
+    const uploadedPan = await uploadToCloudinary(panDoc)
+    const uploadedDrivingLicense = await uploadToCloudinary(drivingLicenseDoc)
+    const uploadedTenthCert = await uploadToCloudinary(tenthCertificateDoc)
+    const uploadedPoliceVerification = await uploadToCloudinary(policeVerificationDoc)
+
     const newMTP = await db.createMTP({
       name: name.trim(),
       phone: phone.trim(),
@@ -1029,7 +1040,12 @@ app.post('/api/mtp/register', async (req, res) => {
       experience,
       skillsSummary,
       aadhaar,
-      emergencyContact
+      emergencyContact,
+      aadhaarDoc: uploadedAadhaar,
+      panDoc: uploadedPan,
+      drivingLicenseDoc: uploadedDrivingLicense,
+      tenthCertificateDoc: uploadedTenthCert,
+      policeVerificationDoc: uploadedPoliceVerification
     })
 
     console.log(`[MTP Registration] New applicant registered: ${name} (${phone}) for roles: ${Array.isArray(roles) ? roles.join(', ') : roles}`)

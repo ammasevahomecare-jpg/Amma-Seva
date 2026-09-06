@@ -293,13 +293,89 @@
 }
 
 .premium-card {
-  border: 1px solid rgba(30, 42, 90, 0.18) !important;
+  border: 1px solid rgba(30, 42, 90, 0.15) !important;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .premium-card:hover {
-  border-color: rgba(30, 42, 90, 0.85) !important;
-  box-shadow: 0 15px 30px -10px rgba(30, 42, 90, 0.15) !important;
+  border-color: rgba(201, 162, 76, 0.7) !important;
+  box-shadow: 0 20px 35px -10px rgba(30, 42, 90, 0.14), 0 0 25px -5px rgba(201, 162, 76, 0.25) !important;
+  transform: translateY(-6px) !important;
+}
+
+/* Luxury card with gentle gold ambient glow on hover */
+.luxury-card {
+  position: relative;
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 1.5rem;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.luxury-card:hover {
+  border-color: rgba(201, 162, 76, 0.65);
+  box-shadow: 0 22px 40px -12px rgba(30, 42, 90, 0.12), 0 0 24px 0 rgba(201, 162, 76, 0.2);
+  transform: translateY(-5px);
+}
+
+/* Light Sheen Sweep Effect on Card Hover */
+.card-sheen {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-sheen::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  transform: skewX(-20deg);
+  transition: left 0.75s ease;
+  pointer-events: none;
+}
+
+.card-sheen:hover::after {
+  left: 140%;
+}
+
+/* Dark Card Luxury Glow (for MTP & dark sections) */
+.dark-luxury-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 1.25rem;
+  backdrop-filter: blur(12px);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark-luxury-card:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(201, 162, 76, 0.6);
+  box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.5), 0 0 25px rgba(201, 162, 76, 0.25);
+  transform: translateY(-5px);
+}
+
+/* Subtle Floating Breathing Animation */
+@keyframes soft-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-soft-float {
+  animation: soft-float 4s ease-in-out infinite;
 }
 
 header {

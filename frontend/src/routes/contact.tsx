@@ -69,9 +69,15 @@ function Contact() {
               />
               <ContactRow 
                 icon={MapPin} 
-                label="Headquarters Office" 
-                value="LUXDHANA GLOBAL PRIVATE LIMITED" 
-                subtext="8-2-630/B/B/1, Mount Banjara complex, Road No. 12, Banjara Hills, Hyderabad - 500034, Telangana."
+                label="Head Office" 
+                value="Chennai, Tamil Nadu" 
+                subtext="Shop No. S101, Door No. 769, Spencer Plaza, Anna Salai, Anna Road, Chennai, Tamil Nadu, 600002, India"
+              />
+              <ContactRow 
+                icon={MapPin} 
+                label="Branches" 
+                value="Amaravathi &amp; Hyderabad" 
+                subtext="Amaravathi, Hyderabad"
               />
             </div>
 

@@ -4,7 +4,8 @@ import {
   Phone, Calendar, ShieldCheck, HeartHandshake, Clock, BadgeCheck, 
   Star, ChevronRight, Sparkles, Car, CheckCircle2, 
   UserCheck, MessageCircle, Activity, ArrowRight, 
-  Zap, Stethoscope, Search, Check, HelpCircle, Users, Headphones
+  Zap, Stethoscope, Check, HelpCircle, Users, Headphones,
+  Shield, Heart
 } from "lucide-react";
 import { SiteLayout, contact } from "@/components/SiteLayout";
 import { fetchServices } from "@/lib/services";
@@ -13,8 +14,11 @@ import hero from "@/assets/hero-care.jpg";
 import motherBaby from "@/assets/service-mother-baby.jpg";
 import nursing from "@/assets/service-nursing.jpg";
 import elderly from "@/assets/service-elderly.jpg";
+import physiotherapy from "@/assets/service-physiotherapy.jpg";
+import icuRecovery from "@/assets/service-icu-recovery.jpg";
+import bedsideAttendant from "@/assets/service-bedside-attendant.jpg";
 
-const HERO_IMAGES = [hero, motherBaby, nursing, elderly];
+const HERO_IMAGES = [hero, motherBaby, physiotherapy, elderly, icuRecovery, bedsideAttendant];
 
 export const Route = createFileRoute("/")({
   loader: async () => {
@@ -77,31 +81,31 @@ function getServiceDetails(slug: string) {
     "post-surgery-care": {
       category: "Recovery & Rehab",
       badgeClass: "bg-amber-50 text-amber-700 border-amber-200/80",
-      image: nursing,
+      image: icuRecovery,
       highlights: ["Surgical Wound Management", "Pain Monitoring", "Physiotherapy Alignment"],
     },
     "patient-care-attendant": {
       category: "Bedside Attendant",
       badgeClass: "bg-purple-50 text-purple-700 border-purple-200/80",
-      image: elderly,
+      image: bedsideAttendant,
       highlights: ["Feeding & Diaper Care", "Bed-to-Wheelchair Transfer", "24/7 Attendant Shifts"],
     },
     "bedridden-patient-care": {
       category: "Specialized Care",
       badgeClass: "bg-teal-50 text-teal-700 border-teal-200/80",
-      image: elderly,
+      image: bedsideAttendant,
       highlights: ["Bed Sore Prevention", "Tube Feeding & Sponge Bath", "Full Dignity Care"],
     },
     "icu-home-recovery": {
       category: "Intensive Care",
       badgeClass: "bg-red-50 text-red-700 border-red-200/80",
-      image: nursing,
+      image: icuRecovery,
       highlights: ["Tracheostomy & BiPAP Care", "Critical Vitals Logging", "ICU-Trained Nurse"],
     },
     "physiotherapy": {
       category: "Therapy & Rehab",
       badgeClass: "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200/80",
-      image: elderly,
+      image: physiotherapy,
       highlights: ["Stroke & Joint Rehab", "Geriatric Balance Training", "Custom Exercise Regimen"],
     },
     "doctor-consultation": {
@@ -122,8 +126,8 @@ function getServiceDetails(slug: string) {
 const WHY = [
   { 
     icon: BadgeCheck, 
-    title: "100% Background Verified", 
-    desc: "Every caregiver undergoes rigorous 3-tier police, Aadhaar, and medical background clearance." 
+    title: "100% Background Cleared", 
+    desc: "Every caregiver undergoes rigorous 3-tier police verification, Aadhaar authentication, and medical screening." 
   },
   { 
     icon: Stethoscope, 
@@ -132,8 +136,8 @@ const WHY = [
   },
   { 
     icon: Clock, 
-    title: "Punctual & Rapid Response", 
-    desc: "60-minute emergency dispatch with guaranteed staff punctuality and instant standby replacements." 
+    title: "Punctual 60-Min Response", 
+    desc: "Rapid emergency dispatch across Hyderabad with guaranteed staff punctuality and instant standby replacements." 
   },
   { 
     icon: HeartHandshake, 
@@ -142,13 +146,13 @@ const WHY = [
   },
   { 
     icon: ShieldCheck, 
-    title: "Transparent, Zero-Hidden Costs", 
+    title: "Transparent & Zero Hidden Costs", 
     desc: "Fixed affordable shift rates, clear GST invoices, and secure digital transaction protection." 
   },
   { 
     icon: UserCheck, 
     title: "Dedicated Care Manager", 
-    desc: "A personal coordinator on WhatsApp & phone ensuring seamless daily supervision and updates." 
+    desc: "A personal coordinator on WhatsApp & phone ensuring seamless daily supervision and patient vitals tracking." 
   },
 ];
 
@@ -181,29 +185,34 @@ const TESTIMONIALS = [
     location: "Banjara Hills, Hyderabad",
     role: "Daughter of Elderly Patient", 
     quote: "The caregiver treated my mother with the utmost patience and affection. Punctual, gentle, and highly skilled — Amma Seva gave our entire family true peace of mind.",
-    tag: "Elderly Care"
+    tag: "Elderly Care",
+    rating: 5
   },
   { 
     name: "Rahul M.", 
     location: "Gachibowli, Hyderabad",
     role: "New Father", 
     quote: "Our newborn caregiver was an absolute blessing. Calm, certified, and incredibly supportive during the postpartum recovery period for my wife and baby.",
-    tag: "Mother & Baby Care"
+    tag: "Mother & Baby Care",
+    rating: 5
   },
   { 
     name: "Dr. Anitha K.", 
     location: "Jubilee Hills, Hyderabad",
     role: "Consultant Physician", 
     quote: "I regularly recommend Amma Seva for post-surgical care. Their nurses follow sterile clinical protocols and maintain thorough vitals logs with total professionalism.",
-    tag: "Post-Surgery Nursing"
+    tag: "Post-Surgery Nursing",
+    rating: 5
   },
 ];
 
-const HYDERABAD_AREAS = [
-  "Banjara Hills", "Jubilee Hills", "Gachibowli", "Madhapur", "Kondapur",
-  "Kukatpally", "Miyapur", "Secunderabad", "Begumpet", "Hitec City",
-  "Manikonda", "Attapur", "Dilsukhnagar", "LB Nagar", "Kompally"
-];
+function getBookingUrl(serviceSlug?: string) {
+  const dest = serviceSlug ? `/dashboard?service=${serviceSlug}` : "/dashboard";
+  if (typeof window !== "undefined" && localStorage.getItem("ammaseva_user_token")) {
+    return dest;
+  }
+  return `/login?redirect=${encodeURIComponent(dest)}`;
+}
 
 function Home() {
   const { services, faqs } = Route.useLoaderData();
@@ -213,77 +222,80 @@ function Home() {
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentImageIndex((prev) => (prev + 1) % HERO_IMAGES.length);
-    }, 3500);
+    }, 4000);
     return () => clearInterval(timer);
   }, []);
 
   return (
     <SiteLayout>
       {/* ============================================================ */}
-      {/* 1. HERO SECTION (CURVED LUXURY ORGANIC LAYOUT)               */}
+      {/* 1. HERO SECTION (LUXURY RADIANT HEALTHCARE LAYOUT)            */}
       {/* ============================================================ */}
-      <section className="relative overflow-hidden bg-gradient-to-r from-[#fbf8f2] via-[#faf6ee] to-[#f5eee3] border-b border-slate-100">
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#faf8f5] via-[#f7f3ec]/60 to-white border-b border-slate-100">
         
         {/* Subtle background ambient glows */}
-        <div className="absolute top-0 left-0 -z-10 h-96 w-96 rounded-full bg-gold/10 blur-[130px] pointer-events-none" />
-        <div className="absolute bottom-0 right-0 -z-10 h-96 w-96 rounded-full bg-[#1e2a5a]/5 blur-[120px] pointer-events-none" />
+        <div className="absolute top-0 right-10 -z-10 h-96 w-96 rounded-full bg-gold/15 blur-[120px] pointer-events-none" />
+        <div className="absolute top-40 left-10 -z-10 h-96 w-96 rounded-full bg-[#0b183b]/5 blur-[120px] pointer-events-none" />
 
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-10 pb-20 sm:pb-24 lg:pt-14 lg:pb-32">
-          <div className="grid gap-10 lg:grid-cols-12 lg:gap-8 items-center">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-8 pb-16 sm:pb-20 lg:pt-12 lg:pb-28">
+          <div className="grid gap-12 lg:grid-cols-12 lg:gap-8 items-center">
             
-            {/* Left Column: Text & CTAs */}
-            <div className="flex flex-col justify-center text-left lg:col-span-6 space-y-5 z-10">
+            {/* Left Column: Text, Value Propositions & CTAs */}
+            <div className="flex flex-col justify-center text-left lg:col-span-6 space-y-6 z-10">
               
-              {/* Crown Badge */}
-              <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/80 bg-amber-50/90 px-3.5 py-1 text-[11px] font-extrabold text-[#966b1a] tracking-wider uppercase max-w-fit shadow-xs">
-                <span>👑</span>
-                <span>HYDERABAD&apos;S TRUSTED PROFESSIONAL CARE NETWORK</span>
+              {/* Premium Pill Badge */}
+              <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/80 bg-gradient-to-r from-amber-50 to-amber-100/60 px-4 py-1.5 text-[11px] font-extrabold text-[#8f6414] tracking-wider uppercase max-w-fit shadow-xs">
+                <Sparkles className="h-3.5 w-3.5 text-gold" />
+                <span>HYDERABAD&apos;S PREMIER HOME HEALTHCARE NETWORK</span>
               </div>
 
               {/* Main Headline */}
-              <h1 className="text-4xl sm:text-5xl lg:text-[56px] font-bold text-[#142247] font-display tracking-tight leading-[1.12]">
-                Professional Care <br />
-                with a <span className="text-[#c9a24c] italic font-medium">Mother&apos;s Touch.</span>
+              <h1 className="text-4xl sm:text-5xl lg:text-[58px] font-extrabold text-[#0b183b] font-display tracking-tight leading-[1.12]">
+                Professional Care, <br />
+                with a <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#c9a24c] via-[#dfba63] to-[#b38938] italic font-semibold">Mother&apos;s Touch.</span>
               </h1>
-
-              {/* Heart Divider */}
-              <div className="flex items-center gap-3 py-1">
-                <div className="h-[1.5px] w-12 bg-amber-200" />
-                <span className="text-sm text-gold">🤎</span>
-                <div className="h-[1.5px] w-24 bg-amber-200" />
-              </div>
 
               {/* Subtitle */}
               <p className="max-w-xl text-sm sm:text-base text-slate-600 leading-relaxed font-sans font-medium">
-                Qualified nurses and compassionate caregivers for elderly care, mothers, newborns, and patients — delivered to the comfort of your home.
+                Certified nurses, compassionate elderly attendants, newborn specialists, and on-demand MTP hospital escorts — delivering hospital-standard healthcare to the comfort of your home.
               </p>
+
+              {/* Verified Trust Badges */}
+              <div className="flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-700 pt-1">
+                <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-2xs">
+                  <ShieldCheck className="h-4 w-4 text-emerald-600" /> 100% Police &amp; Aadhaar Verified
+                </span>
+                <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-2xs">
+                  <Clock className="h-4 w-4 text-gold" /> 60-Min Quick Dispatch
+                </span>
+              </div>
 
               {/* Dual Action Buttons */}
               <div className="flex flex-wrap items-center gap-4 pt-2">
-                <Link 
-                  to="/contact" 
-                  className="px-7 py-3.5 rounded-2xl bg-[#0f1b3d] hover:bg-[#091228] text-white font-bold text-xs sm:text-sm shadow-xl shadow-slate-900/20 hover:scale-102 transition-all flex items-center gap-2.5 cursor-pointer"
+                <a 
+                  href={getBookingUrl()} 
+                  className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-[#0b183b] to-[#14234f] hover:from-[#07112b] hover:to-[#0f1b3f] text-white font-bold text-xs sm:text-sm shadow-xl shadow-[#0b183b]/25 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2.5 cursor-pointer"
                 >
                   <Calendar className="h-4 w-4 text-gold" />
-                  <span>Book a Service</span>
-                </Link>
+                  <span>Book a Verified Caregiver</span>
+                </a>
 
                 <a 
                   href={`tel:${contact.PHONE_TEL}`} 
-                  className="px-7 py-3.5 rounded-2xl bg-gradient-to-r from-[#c9a24c] to-[#b38938] hover:from-[#b38938] hover:to-[#966b1a] text-white font-bold text-xs sm:text-sm shadow-lg shadow-gold/25 hover:scale-102 transition-all flex items-center gap-2.5 cursor-pointer"
+                  className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-[#c9a24c] to-[#b38938] hover:from-[#b38938] hover:to-[#966b1a] text-white font-bold text-xs sm:text-sm shadow-lg shadow-gold/25 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2.5 cursor-pointer"
                 >
                   <Phone className="h-4 w-4" />
-                  <span>Call Now</span>
+                  <span>24/7 Care Helpline</span>
                 </a>
               </div>
 
             </div>
 
-            {/* Right Column: Hero Visual Container */}
+            {/* Right Column: Hero Visual with Glassmorphic Floating Cards */}
             <div className="relative flex items-center justify-center lg:col-span-6">
               
-              {/* Organic Curved Container */}
-              <div className="relative overflow-hidden rounded-[2.5rem] sm:rounded-[3rem] border-4 border-white/80 shadow-2xl aspect-[4/3] sm:aspect-[16/12] w-full bg-slate-100 group">
+              {/* Organic Curved Container with Shadow */}
+              <div className="relative overflow-hidden rounded-[2.5rem] sm:rounded-[3rem] border-4 border-white shadow-2xl shadow-slate-900/10 aspect-[4/3] sm:aspect-[16/12] w-full bg-slate-100 group">
                 {HERO_IMAGES.map((imgSrc, idx) => (
                   <img
                     key={imgSrc}
@@ -291,14 +303,53 @@ function Home() {
                     alt="Amma Seva professional home care"
                     width={1600}
                     height={1200}
-                    className={`absolute inset-0 h-full w-full object-cover transition-all duration-1000 ease-in-out group-hover:scale-104 ${
-                      idx === currentImageIndex ? "opacity-100 scale-100" : "opacity-0 scale-95 pointer-events-none"
+                    className={`absolute inset-0 h-full w-full object-cover transition-all duration-1000 ease-in-out ${
+                      idx === currentImageIndex ? "opacity-100 scale-100" : "opacity-0 scale-105 pointer-events-none"
                     }`}
                   />
                 ))}
 
                 {/* Subtle lighting overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent pointer-events-none" />
+
+                {/* Dot navigation indicator */}
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-20 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/20">
+                  {HERO_IMAGES.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setCurrentImageIndex(i)}
+                      className={`h-1.5 rounded-full transition-all duration-300 ${
+                        i === currentImageIndex ? "w-5 bg-gold" : "w-1.5 bg-white/60 hover:bg-white"
+                      }`}
+                      aria-label={`Slide ${i + 1}`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Floating Glassmorphic Badge 1 (Top Left) */}
+              <div className="absolute -top-4 -left-4 sm:-top-6 sm:-left-6 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-xl p-3.5 sm:p-4 text-left space-y-0.5 animate-in fade-in zoom-in duration-700 hidden sm:block z-20">
+                <div className="flex items-center gap-1.5 text-gold text-xs font-bold">
+                  <div className="flex">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star key={i} className="h-3.5 w-3.5 fill-gold text-gold" />
+                    ))}
+                  </div>
+                  <span className="text-slate-800 font-extrabold">4.9 / 5.0</span>
+                </div>
+                <div className="text-[11px] font-bold text-slate-600">5,000+ Happy Families Assisted</div>
+              </div>
+
+              {/* Floating Glassmorphic Badge 2 (Bottom Right) */}
+              <div className="absolute -bottom-4 -right-4 sm:-bottom-6 sm:-right-6 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-xl p-3.5 sm:p-4 text-left space-y-1 animate-in fade-in zoom-in duration-700 hidden sm:block z-20">
+                <div className="flex items-center gap-2 text-xs font-bold text-emerald-700">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                  </span>
+                  <span>Verified Staff On-Duty</span>
+                </div>
+                <div className="text-[11px] text-slate-500 font-medium">Quick 60-Min Hyderabad Dispatch</div>
               </div>
 
             </div>
@@ -306,57 +357,55 @@ function Home() {
           </div>
         </div>
 
-        {/* Bottom Curved Wave Transition */}
-        <div className="absolute bottom-0 left-0 right-0 h-10 bg-white pointer-events-none rounded-t-[3rem]" />
       </section>
 
       {/* ============================================================ */}
       {/* 2. FLOATING 4-METRIC STATS OVERLAY BAR                      */}
       {/* ============================================================ */}
-      <div className="relative z-20 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 -mt-12 sm:-mt-16">
-        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xl shadow-slate-200/60 p-6 sm:p-7 grid grid-cols-2 lg:grid-cols-4 gap-6 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 text-left">
+      <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 sm:-mt-14">
+        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xl shadow-slate-900/5 p-6 sm:p-7 grid grid-cols-2 lg:grid-cols-4 gap-6 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 text-left">
           
           {/* Stat 1 */}
-          <div className="flex items-center gap-3.5 pt-4 sm:pt-0 sm:pl-3">
-            <div className="h-12 w-12 rounded-full border border-amber-200 bg-amber-50/70 flex items-center justify-center text-gold shrink-0 shadow-xs">
-              <Users className="h-5 w-5 text-[#c9a24c]" />
+          <div className="flex items-center gap-4 pt-4 sm:pt-0 sm:pl-3">
+            <div className="h-13 w-13 rounded-2xl bg-gradient-to-br from-[#0b183b] to-[#1e2a5a] flex items-center justify-center text-gold shrink-0 shadow-md">
+              <Users className="h-6 w-6 text-gold" />
             </div>
             <div>
-              <div className="font-display text-2xl sm:text-3xl font-extrabold text-[#1e2a5a] tracking-tight">5,000+</div>
+              <div className="font-display text-2xl sm:text-3xl font-extrabold text-[#0b183b] tracking-tight">5,000+</div>
               <div className="text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">HAPPY FAMILIES</div>
             </div>
           </div>
 
           {/* Stat 2 */}
-          <div className="flex items-center gap-3.5 pt-4 sm:pt-0 sm:pl-6">
-            <div className="h-12 w-12 rounded-full border border-amber-200 bg-amber-50/70 flex items-center justify-center text-gold shrink-0 shadow-xs">
-              <BadgeCheck className="h-5 w-5 text-[#c9a24c]" />
+          <div className="flex items-center gap-4 pt-4 sm:pt-0 sm:pl-6">
+            <div className="h-13 w-13 rounded-2xl bg-gradient-to-br from-[#0b183b] to-[#1e2a5a] flex items-center justify-center text-gold shrink-0 shadow-md">
+              <BadgeCheck className="h-6 w-6 text-gold" />
             </div>
             <div>
-              <div className="font-display text-2xl sm:text-3xl font-extrabold text-[#1e2a5a] tracking-tight">500+</div>
+              <div className="font-display text-2xl sm:text-3xl font-extrabold text-[#0b183b] tracking-tight">500+</div>
               <div className="text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">VERIFIED STAFF</div>
             </div>
           </div>
 
           {/* Stat 3 */}
-          <div className="flex items-center gap-3.5 pt-4 sm:pt-0 sm:pl-6">
-            <div className="h-12 w-12 rounded-full border border-amber-200 bg-amber-50/70 flex items-center justify-center text-gold shrink-0 shadow-xs">
-              <Headphones className="h-5 w-5 text-[#c9a24c]" />
+          <div className="flex items-center gap-4 pt-4 sm:pt-0 sm:pl-6">
+            <div className="h-13 w-13 rounded-2xl bg-gradient-to-br from-[#0b183b] to-[#1e2a5a] flex items-center justify-center text-gold shrink-0 shadow-md">
+              <Headphones className="h-6 w-6 text-gold" />
             </div>
             <div>
-              <div className="font-display text-2xl sm:text-3xl font-extrabold text-[#1e2a5a] tracking-tight">24/7</div>
+              <div className="font-display text-2xl sm:text-3xl font-extrabold text-[#0b183b] tracking-tight">24/7</div>
               <div className="text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">CARE HELPLINE</div>
             </div>
           </div>
 
           {/* Stat 4 */}
-          <div className="flex items-center gap-3.5 pt-4 sm:pt-0 sm:pl-6">
-            <div className="h-12 w-12 rounded-full border border-amber-200 bg-amber-50/70 flex items-center justify-center text-gold shrink-0 shadow-xs">
-              <ShieldCheck className="h-5 w-5 text-[#c9a24c]" />
+          <div className="flex items-center gap-4 pt-4 sm:pt-0 sm:pl-6">
+            <div className="h-13 w-13 rounded-2xl bg-gradient-to-br from-[#0b183b] to-[#1e2a5a] flex items-center justify-center text-gold shrink-0 shadow-md">
+              <ShieldCheck className="h-6 w-6 text-gold" />
             </div>
             <div>
-              <div className="font-display text-2xl sm:text-3xl font-extrabold text-[#1e2a5a] tracking-tight">100%</div>
-              <div className="text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">TRUST &amp; SAFETY</div>
+              <div className="font-display text-2xl sm:text-3xl font-extrabold text-[#0b183b] tracking-tight">100%</div>
+              <div className="text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">POLICE VERIFIED</div>
             </div>
           </div>
 
@@ -364,175 +413,64 @@ function Home() {
       </div>
 
       {/* ============================================================ */}
-      {/* 3. 4-PILLAR FEATURE ROW (EXPERT, SAFE, COMPASSION, AVAILABLE)*/}
+      {/* 3. 4-PILLAR FEATURE ROW (EXPERT, SAFE, COMPASSION, RAPID)   */}
       {/* ============================================================ */}
-      <section className="py-10 sm:py-14 bg-white text-left">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <section className="py-12 sm:py-16 bg-white text-left">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             
             {/* Feature 1 */}
-            <div className="flex items-start gap-3.5">
-              <div className="h-11 w-11 rounded-full bg-slate-100 flex items-center justify-center text-lg shrink-0 mt-0.5 shadow-xs">
-                👩‍⚕️
+            <div className="group rounded-2xl border border-slate-100 bg-slate-50/50 p-5 space-y-3 hover:border-gold/50 hover:bg-white hover:shadow-lg transition-all duration-300">
+              <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100/80 border border-indigo-200/60 flex items-center justify-center text-indigo-700 shadow-2xs group-hover:scale-105 transition-transform">
+                <Stethoscope className="h-5 w-5" />
               </div>
               <div className="space-y-1">
-                <h4 className="font-bold text-[#1e2a5a] text-sm">Expert Caregivers</h4>
+                <h4 className="font-bold text-[#0b183b] text-sm font-display">Hospital-Trained Staff</h4>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  Trained and verified professionals you can trust for your loved ones.
+                  Qualified ANM/GNM nurses and trained attendants for clinical &amp; daily care.
                 </p>
               </div>
             </div>
 
             {/* Feature 2 */}
-            <div className="flex items-start gap-3.5">
-              <div className="h-11 w-11 rounded-full bg-slate-100 flex items-center justify-center text-lg shrink-0 mt-0.5 shadow-xs">
-                🛡️
+            <div className="group rounded-2xl border border-slate-100 bg-slate-50/50 p-5 space-y-3 hover:border-gold/50 hover:bg-white hover:shadow-lg transition-all duration-300">
+              <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/80 border border-emerald-200/60 flex items-center justify-center text-emerald-700 shadow-2xs group-hover:scale-105 transition-transform">
+                <Shield className="h-5 w-5" />
               </div>
               <div className="space-y-1">
-                <h4 className="font-bold text-[#1e2a5a] text-sm">Safe &amp; Reliable</h4>
+                <h4 className="font-bold text-[#0b183b] text-sm font-display">100% Background Cleared</h4>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  Background verified staff ensuring safety, hygiene &amp; punctuality.
+                  Rigorous 3-tier police, Aadhaar, and medical background verification.
                 </p>
               </div>
             </div>
 
             {/* Feature 3 */}
-            <div className="flex items-start gap-3.5">
-              <div className="h-11 w-11 rounded-full bg-slate-100 flex items-center justify-center text-lg shrink-0 mt-0.5 shadow-xs">
-                💖
+            <div className="group rounded-2xl border border-slate-100 bg-slate-50/50 p-5 space-y-3 hover:border-gold/50 hover:bg-white hover:shadow-lg transition-all duration-300">
+              <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-rose-50 to-rose-100/80 border border-rose-200/60 flex items-center justify-center text-rose-700 shadow-2xs group-hover:scale-105 transition-transform">
+                <Heart className="h-5 w-5" />
               </div>
               <div className="space-y-1">
-                <h4 className="font-bold text-[#1e2a5a] text-sm">Compassionate Care</h4>
+                <h4 className="font-bold text-[#0b183b] text-sm font-display">Compassionate Care</h4>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  Care with empathy, respect and a mother&apos;s warmth in every service.
+                  Dignifying, empathetic assistance with a warm mother&apos;s touch in every shift.
                 </p>
               </div>
             </div>
 
             {/* Feature 4 */}
-            <div className="flex items-start gap-3.5">
-              <div className="h-11 w-11 rounded-full bg-slate-100 flex items-center justify-center text-lg shrink-0 mt-0.5 shadow-xs">
-                ⏰
+            <div className="group rounded-2xl border border-slate-100 bg-slate-50/50 p-5 space-y-3 hover:border-gold/50 hover:bg-white hover:shadow-lg transition-all duration-300">
+              <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100/80 border border-amber-200/60 flex items-center justify-center text-amber-700 shadow-2xs group-hover:scale-105 transition-transform">
+                <Clock className="h-5 w-5" />
               </div>
               <div className="space-y-1">
-                <h4 className="font-bold text-[#1e2a5a] text-sm">Always Available</h4>
+                <h4 className="font-bold text-[#0b183b] text-sm font-display">Punctual &amp; On-Time</h4>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  Round-the-clock support whenever you need care, anytime anywhere.
+                  Guaranteed punctuality with 24/7 standby replacement coverage across Hyderabad.
                 </p>
               </div>
             </div>
 
-          </div>
-        </div>
-      </section>
-
-      {/* ============================================================ */}
-      {/* 3. SPOTLIGHT: MTP (MULTI-TASKING PROFESSIONALS) SERVICES    */}
-      {/* ============================================================ */}
-      <section className="py-12 sm:py-16 bg-gradient-to-br from-[#0c1427] via-[#101b38] to-[#1e2a5a] text-white relative overflow-hidden text-left">
-        {/* Glow circles */}
-        <div className="absolute top-0 right-1/4 w-96 h-96 rounded-full bg-gold/10 blur-[130px] pointer-events-none" />
-        <div className="absolute bottom-0 left-1/4 w-96 h-96 rounded-full bg-indigo-500/15 blur-[130px] pointer-events-none" />
-
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-10 border-b border-white/10 pb-8">
-            <div className="space-y-3 max-w-2xl">
-              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-gold/30 bg-gold/10 text-xs text-[#edd392] font-semibold uppercase tracking-wider">
-                <Car className="h-3.5 w-3.5 text-gold" /> Introducing MTP Services
-              </span>
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold font-display leading-tight tracking-tight">
-                Multi-Tasking Professionals <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#edd392] via-[#c9a24c] to-[#f5e6be]">
-                  For Flexible On-Demand Support
-                </span>
-              </h2>
-              <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
-                Need someone to escort a parent safely to the hospital, pick up urgent prescriptions, or assist a mother? Our verified MTP Task Force is on standby.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <Link 
-                to="/mtp" 
-                className="px-5 py-3 rounded-2xl bg-gradient-to-r from-[#c9a24c] to-[#b38938] hover:from-[#b38938] hover:to-[#966b1a] text-[#0d1427] font-extrabold text-xs shadow-lg shadow-gold/20 hover:scale-102 transition-all flex items-center gap-1.5"
-              >
-                <span>Book MTP Care Task</span>
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link 
-                to="/mtp" 
-                className="px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs backdrop-blur-md transition-all flex items-center gap-1.5"
-              >
-                <span>Join as MTP Partner</span>
-              </Link>
-            </div>
-          </div>
-
-          {/* 4 MTP Showcase Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-5 rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-md hover:bg-white/[0.09] transition-all flex flex-col justify-between space-y-4">
-              <div className="space-y-3">
-                <div className="h-12 w-12 rounded-2xl bg-gold/20 flex items-center justify-center text-2xl">
-                  🚗
-                </div>
-                <h3 className="text-lg font-bold font-display text-white">Hospital Escort &amp; Dropping</h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Safely escorting elderly &amp; patients to appointments, OPD queues, scans &amp; diagnostic visits.
-                </p>
-              </div>
-              <div className="text-[11px] font-bold text-[#edd392] pt-3 border-t border-white/10 flex items-center justify-between">
-                <span>Part-time / Hourly</span>
-                <span>From ₹300/task</span>
-              </div>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-md hover:bg-white/[0.09] transition-all flex flex-col justify-between space-y-4">
-              <div className="space-y-3">
-                <div className="h-12 w-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center text-2xl">
-                  💊
-                </div>
-                <h3 className="text-lg font-bold font-display text-white">Medicine &amp; Errand Delivery</h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Urgent pharmacy pickups, grocery support, and medical report fetching directly to your door.
-                </p>
-              </div>
-              <div className="text-[11px] font-bold text-[#edd392] pt-3 border-t border-white/10 flex items-center justify-between">
-                <span>Rapid Delivery</span>
-                <span>From ₹200/task</span>
-              </div>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-md hover:bg-white/[0.09] transition-all flex flex-col justify-between space-y-4">
-              <div className="space-y-3">
-                <div className="h-12 w-12 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-2xl">
-                  🚶‍♂️
-                </div>
-                <h3 className="text-lg font-bold font-display text-white">Senior Walking &amp; Companion</h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Morning/evening park strolls, uplifting conversations, mobility assistance &amp; reading support.
-                </p>
-              </div>
-              <div className="text-[11px] font-bold text-[#edd392] pt-3 border-t border-white/10 flex items-center justify-between">
-                <span>Morning / Evening</span>
-                <span>From ₹350/shift</span>
-              </div>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-md hover:bg-white/[0.09] transition-all flex flex-col justify-between space-y-4">
-              <div className="space-y-3">
-                <div className="h-12 w-12 rounded-2xl bg-rose-500/20 flex items-center justify-center text-2xl">
-                  🍼
-                </div>
-                <h3 className="text-lg font-bold font-display text-white">Mother &amp; Baby Helper</h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Support for new mothers with nursery setup, laundry, light baby tasks &amp; household assistance.
-                </p>
-              </div>
-              <div className="text-[11px] font-bold text-[#edd392] pt-3 border-t border-white/10 flex items-center justify-between">
-                <span>Flexible Hours</span>
-                <span>From ₹500/shift</span>
-              </div>
-            </div>
           </div>
         </div>
       </section>
@@ -548,7 +486,7 @@ function Home() {
               <div className="inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-widest text-[#966b1a]">
                 <Activity className="h-3.5 w-3.5 text-gold" /> Personalized Healthcare Solutions
               </div>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-[#1e2a5a] font-display">
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0b183b] font-display">
                 Tailored Home Healthcare Services
               </h2>
               <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-medium">
@@ -558,7 +496,7 @@ function Home() {
 
             <Link 
               to="/services" 
-              className="px-5 py-2.5 rounded-xl border border-[#1e2a5a] text-[#1e2a5a] hover:bg-[#1e2a5a] hover:text-white font-bold text-xs transition-all duration-200 flex items-center gap-1.5 shrink-0 max-w-fit"
+              className="px-5 py-2.5 rounded-xl border border-[#0b183b] text-[#0b183b] hover:bg-[#0b183b] hover:text-white font-bold text-xs transition-all duration-200 flex items-center gap-1.5 shrink-0 max-w-fit"
             >
               <span>Explore All 12+ Services</span>
               <ChevronRight className="h-4 w-4" />
@@ -578,7 +516,7 @@ function Home() {
                 onClick={() => setSelectedTag(tag.value)}
                 className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all duration-200 cursor-pointer ${
                   selectedTag === tag.value
-                    ? "bg-[#1e2a5a] text-white border-[#1e2a5a] shadow-md shadow-[#1e2a5a]/20 scale-[1.02]"
+                    ? "bg-[#0b183b] text-white border-[#0b183b] shadow-md shadow-[#0b183b]/20 scale-[1.02]"
                     : "bg-white text-slate-600 border-slate-200 hover:border-gold hover:text-gold"
                 }`}
               >
@@ -607,7 +545,7 @@ function Home() {
                 return (
                   <div
                     key={s.slug}
-                    className="group flex flex-col overflow-hidden rounded-3xl bg-white border border-slate-200/90 shadow-sm hover:shadow-2xl hover:border-gold/50 transition-all duration-300 hover:-translate-y-1.5 text-left"
+                    className="group flex flex-col overflow-hidden rounded-3xl bg-white border border-slate-200/90 shadow-sm hover:shadow-[0_22px_45px_-12px_rgba(201,162,76,0.25)] hover:border-gold/70 transition-all duration-500 ease-out hover:-translate-y-2 text-left relative"
                   >
                     {/* Card Image */}
                     <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100">
@@ -622,7 +560,7 @@ function Home() {
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       
                       {/* Price Pill */}
-                      <div className="absolute top-3.5 right-3.5 bg-[#1e2a5a]/95 backdrop-blur-xs text-white px-3 py-1 rounded-xl text-xs font-bold shadow-md border border-white/20">
+                      <div className="absolute top-3.5 right-3.5 bg-[#0b183b]/90 backdrop-blur-xs text-white px-3 py-1 rounded-xl text-xs font-bold shadow-md border border-white/20 group-hover:border-gold/50 transition-colors">
                         {s.price || "₹799 / Shift"}
                       </div>
 
@@ -642,7 +580,7 @@ function Home() {
                         <Link
                           to="/services/$slug"
                           params={{ slug: s.slug }}
-                          className="block text-lg font-bold text-[#1e2a5a] hover:text-gold transition-colors font-display"
+                          className="block text-lg font-bold text-[#0b183b] group-hover:text-gold transition-colors font-display"
                         >
                           {s.title}
                         </Link>
@@ -667,17 +605,17 @@ function Home() {
                         <Link
                           to="/services/$slug"
                           params={{ slug: s.slug }}
-                          className="flex-1 py-2 px-3 rounded-xl bg-slate-100 hover:bg-[#1e2a5a] hover:text-white text-[#1e2a5a] text-xs font-bold transition-all text-center"
+                          className="flex-1 py-2 px-3 rounded-xl bg-slate-100 hover:bg-[#0b183b] hover:text-white text-[#0b183b] text-xs font-bold transition-all text-center"
                         >
                           Details
                         </Link>
-                        <Link
-                          to="/contact"
-                          className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-[#1e2a5a] to-[#2b3c7b] hover:from-[#141d3e] hover:to-[#223068] text-white text-xs font-bold transition-all text-center shadow-xs flex items-center justify-center gap-1"
+                        <a
+                          href={getBookingUrl(s.slug)}
+                          className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-[#0b183b] to-[#1e2a5a] hover:from-[#07112b] hover:to-[#141f42] text-white text-xs font-bold transition-all text-center shadow-xs hover:shadow-md flex items-center justify-center gap-1 group/btn cursor-pointer"
                         >
                           <span>Book</span>
-                          <ChevronRight className="h-3.5 w-3.5" />
-                        </Link>
+                          <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-0.5" />
+                        </a>
                       </div>
                     </div>
                   </div>
@@ -690,7 +628,118 @@ function Home() {
       </section>
 
       {/* ============================================================ */}
-      {/* 5. 6 PILLARS OF TRUST (WHY AMMA SEVA)                        */}
+      {/* 5. SPOTLIGHT: MTP (MULTI-TASKING PROFESSIONALS) SERVICES    */}
+      {/* ============================================================ */}
+      <section className="py-14 sm:py-20 bg-gradient-to-br from-[#060b17] via-[#0f1a38] to-[#1e2a5a] text-white relative overflow-hidden text-left">
+        {/* Glow circles */}
+        <div className="absolute top-0 right-1/4 w-96 h-96 rounded-full bg-gold/15 blur-[130px] pointer-events-none" />
+        <div className="absolute bottom-0 left-1/4 w-96 h-96 rounded-full bg-indigo-500/15 blur-[130px] pointer-events-none" />
+
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-10 border-b border-white/10 pb-8">
+            <div className="space-y-3 max-w-2xl">
+              <span className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-gold/30 bg-gold/10 text-xs text-[#edd392] font-semibold uppercase tracking-wider">
+                <Car className="h-3.5 w-3.5 text-gold" /> Introducing MTP Services
+              </span>
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold font-display leading-tight tracking-tight">
+                Multi-Tasking Professionals <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#edd392] via-[#c9a24c] to-[#f5e6be]">
+                  For Flexible On-Demand Support
+                </span>
+              </h2>
+              <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
+                Need someone to escort a parent safely to the hospital, pick up urgent prescriptions, or assist a mother? Our verified MTP Task Force is on standby.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <Link 
+                to="/mtp" 
+                className="px-6 py-3 rounded-2xl bg-gradient-to-r from-[#c9a24c] to-[#b38938] hover:from-[#b38938] hover:to-[#966b1a] text-[#081023] font-extrabold text-xs shadow-lg shadow-gold/20 hover:scale-[1.02] transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>Book MTP Care Task</span>
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link 
+                to="/mtp" 
+                className="px-6 py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs backdrop-blur-md transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>Join as MTP Partner</span>
+              </Link>
+            </div>
+          </div>
+
+          {/* 4 MTP Showcase Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div className="p-6 rounded-3xl bg-white/[0.06] border border-white/15 backdrop-blur-md hover:bg-white/[0.12] hover:border-gold/70 transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_35px_-10px_rgba(0,0,0,0.5),0_0_25px_rgba(201,162,76,0.3)] flex flex-col justify-between space-y-4 relative group">
+              <div className="space-y-3">
+                <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-gold/30 to-gold/10 border border-gold/40 flex items-center justify-center text-gold group-hover:scale-110 transition-transform">
+                  <Car className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-bold font-display text-white group-hover:text-[#edd392] transition-colors">Hospital Escort &amp; Dropping</h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Safely escorting elderly &amp; patients to doctor appointments, OPD queues, scans &amp; diagnostic visits.
+                </p>
+              </div>
+              <div className="text-[11px] font-bold text-[#edd392] pt-3 border-t border-white/10 flex items-center justify-between">
+                <span>Part-time / Hourly</span>
+                <span>From ₹300 / task</span>
+              </div>
+            </div>
+
+            <div className="p-6 rounded-3xl bg-white/[0.06] border border-white/15 backdrop-blur-md hover:bg-white/[0.12] hover:border-gold/70 transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_35px_-10px_rgba(0,0,0,0.5),0_0_25px_rgba(201,162,76,0.3)] flex flex-col justify-between space-y-4 relative group">
+              <div className="space-y-3">
+                <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-emerald-500/30 to-emerald-500/10 border border-emerald-400/40 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
+                  <Zap className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-bold font-display text-white group-hover:text-[#edd392] transition-colors">Medicine &amp; Errand Delivery</h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Urgent pharmacy pickups, grocery support, and medical report fetching directly to your door.
+                </p>
+              </div>
+              <div className="text-[11px] font-bold text-[#edd392] pt-3 border-t border-white/10 flex items-center justify-between">
+                <span>Rapid Delivery</span>
+                <span>From ₹200 / task</span>
+              </div>
+            </div>
+
+            <div className="p-6 rounded-3xl bg-white/[0.06] border border-white/15 backdrop-blur-md hover:bg-white/[0.12] hover:border-gold/70 transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_35px_-10px_rgba(0,0,0,0.5),0_0_25px_rgba(201,162,76,0.3)] flex flex-col justify-between space-y-4 relative group">
+              <div className="space-y-3">
+                <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-indigo-500/30 to-indigo-500/10 border border-indigo-400/40 flex items-center justify-center text-indigo-300 group-hover:scale-110 transition-transform">
+                  <Users className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-bold font-display text-white group-hover:text-[#edd392] transition-colors">Senior Walking &amp; Companion</h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Morning/evening park strolls, uplifting conversations, mobility assistance &amp; reading support.
+                </p>
+              </div>
+              <div className="text-[11px] font-bold text-[#edd392] pt-3 border-t border-white/10 flex items-center justify-between">
+                <span>Morning / Evening</span>
+                <span>From ₹350 / shift</span>
+              </div>
+            </div>
+
+            <div className="p-6 rounded-3xl bg-white/[0.06] border border-white/15 backdrop-blur-md hover:bg-white/[0.12] hover:border-gold/70 transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_35px_-10px_rgba(0,0,0,0.5),0_0_25px_rgba(201,162,76,0.3)] flex flex-col justify-between space-y-4 relative group">
+              <div className="space-y-3">
+                <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-rose-500/30 to-rose-500/10 border border-rose-400/40 flex items-center justify-center text-rose-300 group-hover:scale-110 transition-transform">
+                  <HeartHandshake className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-bold font-display text-white group-hover:text-[#edd392] transition-colors">Mother &amp; Baby Helper</h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Support for new mothers with nursery setup, laundry, light baby tasks &amp; household assistance.
+                </p>
+              </div>
+              <div className="text-[11px] font-bold text-[#edd392] pt-3 border-t border-white/10 flex items-center justify-between">
+                <span>Flexible Hours</span>
+                <span>From ₹500 / shift</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================ */}
+      {/* 6. 6 PILLARS OF TRUST (WHY AMMA SEVA)                        */}
       {/* ============================================================ */}
       <section className="py-14 sm:py-20 bg-white border-t border-slate-100 text-left">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -699,7 +748,7 @@ function Home() {
             <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border border-gold/30 bg-gold/10 text-xs font-bold text-[#966b1a] uppercase tracking-wider">
               <ShieldCheck className="h-3.5 w-3.5 text-gold" /> The Amma Seva Assurance
             </span>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#1e2a5a] font-display">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#0b183b] font-display">
               Why 5,000+ Hyderabad Families Trust Us
             </h2>
             <p className="text-sm sm:text-base text-slate-500 font-medium">
@@ -711,17 +760,17 @@ function Home() {
             {WHY.map((w, index) => (
               <div 
                 key={w.title} 
-                className="group rounded-3xl border border-slate-200/90 bg-slate-50/50 p-6 shadow-sm hover:shadow-xl hover:border-gold/40 hover:bg-white transition-all duration-300 hover:-translate-y-1"
+                className="group rounded-3xl border border-slate-200/90 bg-slate-50/50 p-6 shadow-sm hover:shadow-[0_20px_40px_-10px_rgba(201,162,76,0.22)] hover:border-gold/70 hover:bg-white transition-all duration-500 hover:-translate-y-2 relative"
               >
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1e2a5a] to-[#2a3a78] text-gold shadow-md group-hover:scale-110 transition-transform">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0b183b] to-[#1e2a5a] text-gold shadow-md group-hover:scale-110 transition-transform">
                     <w.icon className="h-6 w-6" />
                   </div>
-                  <span className="text-xs font-mono font-bold text-slate-400 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
+                  <span className="text-xs font-mono font-bold text-slate-400 bg-white px-2.5 py-1 rounded-lg border border-slate-200 group-hover:border-gold/50 group-hover:text-gold transition-colors">
                     0{index + 1}
                   </span>
                 </div>
-                <h3 className="text-lg font-bold text-[#1e2a5a] font-display mb-2">
+                <h3 className="text-lg font-bold text-[#0b183b] font-display mb-2 group-hover:text-gold transition-colors">
                   {w.title}
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
@@ -735,16 +784,16 @@ function Home() {
       </section>
 
       {/* ============================================================ */}
-      {/* 6. HOW IT WORKS (SEAMLESS 4-STEP TIMELINE)                  */}
+      {/* 7. HOW IT WORKS (SEAMLESS 4-STEP TIMELINE)                  */}
       {/* ============================================================ */}
       <section className="py-14 sm:py-20 bg-gradient-to-b from-slate-50 to-amber-50/20 border-t border-slate-200/80 text-left">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           
           <div className="text-center max-w-2xl mx-auto mb-12 space-y-3">
-            <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border border-slate-200 bg-white text-xs font-bold text-[#1e2a5a] uppercase tracking-wider">
+            <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border border-slate-200 bg-white text-xs font-bold text-[#0b183b] uppercase tracking-wider">
               <Clock className="h-3.5 w-3.5 text-gold" /> Effortless Process
             </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-[#1e2a5a] font-display">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0b183b] font-display">
               Doorstep Care in 4 Simple Steps
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 font-medium">
@@ -756,18 +805,18 @@ function Home() {
             {STEPS.map((s, idx) => (
               <div 
                 key={s.n} 
-                className="relative rounded-3xl border border-slate-200/90 bg-white p-6 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between"
+                className="relative rounded-3xl border border-slate-200/90 bg-white p-6 shadow-sm hover:shadow-[0_20px_40px_-10px_rgba(201,162,76,0.2)] hover:border-gold/60 transition-all duration-500 hover:-translate-y-2 flex flex-col justify-between group"
               >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="h-10 w-10 rounded-2xl bg-[#1e2a5a] text-gold font-black text-sm flex items-center justify-center shadow-md">
+                    <span className="h-10 w-10 rounded-2xl bg-[#0b183b] text-gold font-black text-sm flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
                       {s.n}
                     </span>
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                       Step {idx + 1}
                     </span>
                   </div>
-                  <h3 className="text-base font-bold text-[#1e2a5a] font-display">
+                  <h3 className="text-base font-bold text-[#0b183b] font-display group-hover:text-gold transition-colors">
                     {s.t}
                   </h3>
                   <p className="text-xs text-slate-500 leading-relaxed">
@@ -786,7 +835,7 @@ function Home() {
       </section>
 
       {/* ============================================================ */}
-      {/* 7. VERIFIED REVIEWS & PATIENT TESTIMONIALS                  */}
+      {/* 8. VERIFIED REVIEWS & PATIENT TESTIMONIALS                  */}
       {/* ============================================================ */}
       <section className="py-14 sm:py-20 bg-white border-t border-slate-100 text-left">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -796,7 +845,7 @@ function Home() {
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-gold/30 bg-gold/10 text-xs font-bold text-[#966b1a] uppercase tracking-wider">
                 <Star className="h-3.5 w-3.5 fill-gold text-gold" /> Real Family Experiences
               </span>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-[#1e2a5a] font-display">
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0b183b] font-display">
                 Loved by Families Across Hyderabad
               </h2>
               <p className="text-sm text-slate-500 font-medium">
@@ -804,7 +853,7 @@ function Home() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2 text-sm font-bold text-[#1e2a5a]">
+            <div className="flex items-center gap-2 text-sm font-bold text-[#0b183b]">
               <div className="flex text-gold">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star key={i} className="h-4 w-4 fill-gold text-gold" />
@@ -818,7 +867,7 @@ function Home() {
             {TESTIMONIALS.map((t) => (
               <figure 
                 key={t.name} 
-                className="relative rounded-3xl border border-slate-200/80 bg-slate-50/50 p-6 shadow-sm hover:shadow-xl hover:bg-white hover:border-gold/40 transition-all duration-300 flex flex-col justify-between"
+                className="relative rounded-3xl border border-slate-200/90 bg-slate-50/50 p-6 shadow-sm hover:shadow-[0_20px_40px_-10px_rgba(201,162,76,0.2)] hover:bg-white hover:border-gold/60 transition-all duration-500 hover:-translate-y-2 flex flex-col justify-between group"
               >
                 <div>
                   <div className="flex items-center justify-between mb-3">
@@ -827,7 +876,7 @@ function Home() {
                         <Star key={i} className="h-3.5 w-3.5 fill-gold text-gold" />
                       ))}
                     </div>
-                    <span className="text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                    <span className="text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200 group-hover:border-gold/40 transition-colors">
                       {t.tag}
                     </span>
                   </div>
@@ -837,11 +886,11 @@ function Home() {
                 </div>
 
                 <figcaption className="mt-5 flex items-center gap-3 border-t border-slate-200/70 pt-3">
-                  <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#1e2a5a] to-[#2a3a78] flex items-center justify-center font-bold text-gold text-xs shrink-0 shadow-xs">
+                  <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#0b183b] to-[#1e2a5a] flex items-center justify-center font-bold text-gold text-xs shrink-0 shadow-xs group-hover:scale-110 transition-transform">
                     {t.name[0]}
                   </div>
                   <div className="text-xs">
-                    <div className="font-bold text-[#1e2a5a] font-display text-sm">{t.name}</div>
+                    <div className="font-bold text-[#0b183b] font-display text-sm group-hover:text-gold transition-colors">{t.name}</div>
                     <div className="text-slate-400 font-medium">{t.role} • <span className="text-slate-500">{t.location}</span></div>
                   </div>
                 </figcaption>
@@ -853,48 +902,148 @@ function Home() {
       </section>
 
       {/* ============================================================ */}
-      {/* 8. 24/7 EMERGENCY HELP & DIRECT WHATSAPP BANNER             */}
+      {/* 9. 24/7 EMERGENCY HELP & DIRECT WHATSAPP BANNER             */}
       {/* ============================================================ */}
-      <section className="py-12 sm:py-16 bg-gradient-to-r from-[#1e2a5a] via-[#23336c] to-[#1e2a5a] text-white text-left relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-gold/15 blur-[120px] pointer-events-none" />
+      <section className="py-16 sm:py-24 bg-gradient-to-br from-[#060b17] via-[#0f1a38] to-[#1e2a5a] text-white text-left relative overflow-hidden">
+        {/* Ambient Radial Glow Meshes */}
+        <div className="absolute -top-24 right-10 w-[500px] h-[500px] rounded-full bg-gold/15 blur-[140px] pointer-events-none" />
+        <div className="absolute -bottom-24 left-10 w-[500px] h-[500px] rounded-full bg-indigo-500/20 blur-[150px] pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[300px] bg-emerald-500/10 blur-[160px] pointer-events-none" />
+
+        {/* Decorative Grid Pattern */}
+        <div 
+          className="absolute inset-0 opacity-[0.03] pointer-events-none"
+          style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "32px 32px" }}
+        />
         
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 rounded-3xl bg-white/[0.07] border border-white/15 backdrop-blur-md p-8 sm:p-10 shadow-2xl">
+          <div className="relative rounded-[2.5rem] bg-gradient-to-r from-white/[0.09] via-white/[0.04] to-white/[0.08] border border-gold/35 shadow-[0_30px_70px_-15px_rgba(0,0,0,0.8),0_0_50px_rgba(201,162,76,0.18)] backdrop-blur-2xl p-8 sm:p-12 lg:p-14 overflow-hidden">
             
-            <div className="space-y-3 max-w-2xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
-                </span>
-                24/7 Care Coordination Desk Ready
+            {/* Ambient Gold Header Line */}
+            <div className="absolute top-0 left-12 right-12 h-px bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
+            
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+              
+              {/* Left Column: Heading, Badges, Value Guarantees */}
+              <div className="lg:col-span-7 space-y-6">
+                
+                {/* Live Radar Pill */}
+                <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-emerald-500/15 text-emerald-300 text-xs font-extrabold border border-emerald-400/30 shadow-[0_0_20px_rgba(16,185,129,0.25)]">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400"></span>
+                  </span>
+                  <span>24/7 RAPID CLINICAL DISPATCH HELPLINE</span>
+                </div>
+
+                {/* Headline */}
+                <div className="space-y-3">
+                  <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold font-display leading-[1.15] tracking-tight text-white">
+                    Need Immediate In-Home Care Assistance in Hyderabad?
+                  </h2>
+                  <p className="text-base sm:text-lg font-display text-transparent bg-clip-text bg-gradient-to-r from-[#edd392] via-[#c9a24c] to-[#fcefc7]">
+                    Qualified Nurses, Attendants &amp; ICU Care at Your Doorstep in 60 Minutes.
+                  </p>
+                </div>
+
+                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-xl font-normal">
+                  Whether it is post-operative recovery, urgent bedside elderly care, or new mother support, our clinical coordinators dispatch background-verified healthcare professionals immediately.
+                </p>
+
+                {/* 3 Value Guarantee Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                  <div className="p-3.5 rounded-2xl bg-white/[0.05] border border-white/10 backdrop-blur-md space-y-1 hover:border-gold/40 transition-colors">
+                    <div className="flex items-center gap-2 text-gold">
+                      <Zap className="h-4 w-4" />
+                      <span className="text-xs font-bold text-white">&lt; 60 Min Arrival</span>
+                    </div>
+                    <p className="text-[11px] text-slate-300">Fast doorstep deployment across all Hyderabad zones</p>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-white/[0.05] border border-white/10 backdrop-blur-md space-y-1 hover:border-gold/40 transition-colors">
+                    <div className="flex items-center gap-2 text-emerald-400">
+                      <ShieldCheck className="h-4 w-4" />
+                      <span className="text-xs font-bold text-white">100% Verified</span>
+                    </div>
+                    <p className="text-[11px] text-slate-300">Police-cleared &amp; hospital-trained healthcare staff</p>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-white/[0.05] border border-white/10 backdrop-blur-md space-y-1 hover:border-gold/40 transition-colors">
+                    <div className="flex items-center gap-2 text-indigo-300">
+                      <Headphones className="h-4 w-4" />
+                      <span className="text-xs font-bold text-white">24/7 Live Desk</span>
+                    </div>
+                    <p className="text-[11px] text-slate-300">Direct clinical supervision &amp; zero waiting time</p>
+                  </div>
+                </div>
+
               </div>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold font-display leading-tight">
-                Need Immediate In-Home Care Assistance in Hyderabad?
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-medium">
-                Our care coordinators can deploy qualified nurses or patient attendants to your doorstep in as little as 60 minutes.
-              </p>
-            </div>
 
-            <div className="flex flex-wrap gap-3.5 shrink-0">
-              <a
-                href={`tel:${contact.PHONE_TEL}`}
-                className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-[#c9a24c] to-[#b38938] hover:from-[#b38938] hover:to-[#966b1a] text-[#0d1427] font-extrabold text-sm shadow-xl shadow-gold/20 hover:scale-102 transition-all flex items-center gap-2"
-              >
-                <Phone className="h-4 w-4" />
-                <span>Call +91 94945 16543</span>
-              </a>
+              {/* Right Column: Luxury Action Hub */}
+              <div className="lg:col-span-5">
+                <div className="rounded-3xl bg-gradient-to-b from-[#091226]/90 to-[#0d1b3d]/90 border border-gold/30 p-6 sm:p-8 backdrop-blur-xl shadow-2xl space-y-5 text-left relative group">
+                  
+                  {/* Glowing ambient ring */}
+                  <div className="absolute -top-10 -right-10 w-40 h-40 bg-gold/10 rounded-full blur-2xl pointer-events-none" />
 
-              <a
-                href={`https://wa.me/${contact.WHATSAPP}?text=Hello%20Amma%20Seva%2C%20I%20need%20urgent%20home%20healthcare%20support`}
-                target="_blank"
-                rel="noreferrer"
-                className="px-6 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-xl shadow-emerald-950/20 hover:scale-102 transition-all flex items-center gap-2"
-              >
-                <MessageCircle className="h-4 w-4" />
-                <span>WhatsApp Care Desk</span>
-              </a>
+                  <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                    <div>
+                      <span className="text-[11px] uppercase tracking-wider text-gold font-bold block">Direct Care Hotline</span>
+                      <h3 className="text-lg font-bold text-white font-display">Speak to Coordinator Now</h3>
+                    </div>
+                    <div className="h-10 w-10 rounded-2xl bg-gold/15 border border-gold/30 flex items-center justify-center text-gold shadow-xs">
+                      <Phone className="h-5 w-5 animate-bounce" />
+                    </div>
+                  </div>
+
+                  {/* Primary CTA: Phone Button */}
+                  <a
+                    href={`tel:${contact.PHONE_TEL}`}
+                    className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-[#c9a24c] via-[#dfba63] to-[#b38938] hover:from-[#b38938] hover:to-[#966b1a] text-[#081023] font-black text-sm shadow-[0_10px_30px_rgba(201,162,76,0.35)] hover:shadow-[0_15px_35px_rgba(201,162,76,0.5)] hover:scale-102 transition-all flex items-center justify-between group/btn cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-xl bg-[#081023]/15 flex items-center justify-center">
+                        <Phone className="h-4 w-4 text-[#081023]" />
+                      </div>
+                      <div className="text-left">
+                        <div className="text-[10px] font-extrabold uppercase tracking-widest text-[#081023]/70">Tap to Call 24/7</div>
+                        <div className="text-sm font-black tracking-wide">+91 94945 16543</div>
+                      </div>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-[#081023] transition-transform group-hover/btn:translate-x-1" />
+                  </a>
+
+                  {/* Secondary CTA: WhatsApp Button */}
+                  <a
+                    href={`https://wa.me/${contact.WHATSAPP}?text=Hello%20Amma%20Seva%2C%20I%20need%20urgent%20home%20healthcare%20support`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full py-3.5 px-6 rounded-2xl bg-emerald-600/90 hover:bg-emerald-500 border border-emerald-400/40 text-white font-bold text-xs shadow-lg shadow-emerald-950/40 hover:scale-102 transition-all flex items-center justify-between group/wa cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-xl bg-white/20 flex items-center justify-center">
+                        <MessageCircle className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="text-left">
+                        <div className="text-[10px] uppercase tracking-wider text-emerald-200">Instant Consultation</div>
+                        <div className="text-xs font-bold">Chat on WhatsApp Care Desk</div>
+                      </div>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-white transition-transform group-hover/wa:translate-x-1" />
+                  </a>
+
+                  {/* Social Proof & Trust Footer */}
+                  <div className="pt-3 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-300">
+                    <div className="flex items-center gap-1 text-gold font-bold">
+                      <Star className="h-3.5 w-3.5 fill-gold" />
+                      <span>4.9 / 5 Trusted Score</span>
+                    </div>
+                    <span className="text-slate-400 font-medium">5,000+ Verified Shifts</span>
+                  </div>
+
+                </div>
+              </div>
+
             </div>
 
           </div>
@@ -902,16 +1051,16 @@ function Home() {
       </section>
 
       {/* ============================================================ */}
-      {/* 9. FREQUENTLY ASKED QUESTIONS                               */}
+      {/* 10. FREQUENTLY ASKED QUESTIONS                              */}
       {/* ============================================================ */}
       <section className="py-14 sm:py-20 bg-slate-50/70 border-t border-slate-200/80 text-left">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           
           <div className="text-center max-w-2xl mx-auto mb-12 space-y-3">
-            <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border border-slate-200 bg-white text-xs font-bold text-[#1e2a5a] uppercase tracking-wider">
+            <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border border-slate-200 bg-white text-xs font-bold text-[#0b183b] uppercase tracking-wider">
               <HelpCircle className="h-3.5 w-3.5 text-gold" /> Got Questions?
             </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-[#1e2a5a] font-display">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0b183b] font-display">
               Frequently Asked Questions
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 font-medium">
@@ -919,13 +1068,13 @@ function Home() {
             </p>
           </div>
 
-          <div className="grid gap-3.5 md:grid-cols-2 items-start">
+          <div className="grid gap-4 md:grid-cols-2 items-start">
             {faqs.map((f: any) => (
               <details 
                 key={f.id} 
-                className="group rounded-2xl border border-slate-200/90 bg-white p-5 hover:border-gold/60 transition-all duration-200 open:border-gold open:shadow-md hover:shadow-xs"
+                className="group rounded-2xl border border-slate-200/90 bg-white p-5 hover:border-gold/70 transition-all duration-300 open:border-gold/80 open:shadow-[0_10px_25px_-5px_rgba(201,162,76,0.15)] hover:shadow-md hover:-translate-y-0.5 cursor-pointer"
               >
-                <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-bold text-[#1e2a5a] transition-colors group-open:text-gold select-none outline-none">
+                <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-bold text-[#0b183b] transition-colors group-open:text-gold select-none outline-none">
                   <span className="pr-4">{f.question}</span>
                   <ChevronRight className="h-4 w-4 text-gold/80 transition-transform group-open:rotate-90 shrink-0" />
                 </summary>
@@ -942,3 +1091,4 @@ function Home() {
     </SiteLayout>
   );
 }
+

@@ -383,13 +383,17 @@ function ServicesPage() {
                         >
                           View Details
                         </Link>
-                        <Link
-                          to="/contact"
-                          className="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-[#1e2a5a] via-[#283870] to-[#1e2a5a] hover:from-[#151e42] hover:to-[#223068] text-white text-xs font-bold transition-all text-center shadow-md shadow-[#1e2a5a]/20 flex items-center justify-center gap-1 cursor-pointer"
+                        <a
+                          href={
+                            typeof window !== "undefined" && localStorage.getItem("ammaseva_user_token")
+                              ? `/dashboard?service=${s.slug}`
+                              : `/login?redirect=${encodeURIComponent(`/dashboard?service=${s.slug}`)}`
+                          }
+                          className="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-[#1e2a5a] via-[#283870] to-[#1e2a5a] hover:from-[#151e42] hover:to-[#223068] text-white text-xs font-bold transition-all text-center shadow-md shadow-[#1e2a5a]/20 flex items-center justify-center gap-1 cursor-pointer group/btn"
                         >
                           <span>Book Now</span>
-                          <ChevronRight className="h-3.5 w-3.5 text-gold" />
-                        </Link>
+                          <ChevronRight className="h-3.5 w-3.5 text-gold transition-transform group-hover/btn:translate-x-0.5" />
+                        </a>
                       </div>
 
                     </div>

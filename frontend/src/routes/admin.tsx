@@ -7,7 +7,8 @@ import {
   XCircle, Edit3, Save, Check, LayoutDashboard, CalendarDays,
   UserCheck, MessageSquare, Sliders, Bell, Search, Plus, Send, TrendingDown,
   ArrowUpRight, Star, BookOpen, HelpCircle, Menu, X, Image, Coins, Clock,
-  Briefcase, Car, Eye, MessageCircle, FileText, Sparkles
+  Briefcase, Car, Eye, MessageCircle, FileText, Sparkles,
+  GraduationCap, CreditCard, ShieldCheck, FileCheck
 } from "lucide-react";
 
 const INDIAN_STATES = [
@@ -3725,6 +3726,133 @@ function AdminPage() {
                               ))
                             ) : (
                               <span className="text-slate-400">No roles selected</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Uploaded Verification Documents */}
+                      <div className="space-y-3 pt-3 border-t border-slate-100">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-[#1e2a5a] uppercase tracking-wider flex items-center gap-1.5">
+                            <FileText className="h-4 w-4 text-gold" /> Uploaded KYC Documents
+                          </span>
+                          <span className="text-[10px] text-slate-400">Click to view/download original</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          {/* Aadhaar */}
+                          <div className="p-3 rounded-xl border border-slate-200/80 bg-slate-50/50 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FileCheck className="h-4 w-4 text-primary shrink-0" />
+                              <div className="min-w-0">
+                                <div className="font-bold text-xs text-primary truncate">Aadhaar Document</div>
+                                <div className="text-[10px] text-slate-500">{selectedMTPDetail.aadhaarDoc ? "Uploaded" : "Not Provided"}</div>
+                              </div>
+                            </div>
+                            {selectedMTPDetail.aadhaarDoc ? (
+                              <a
+                                href={selectedMTPDetail.aadhaarDoc}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shrink-0 transition-colors shadow-2xs flex items-center gap-1"
+                              >
+                                <Eye className="h-3 w-3" /> View
+                              </a>
+                            ) : (
+                              <span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded font-semibold">Missing</span>
+                            )}
+                          </div>
+
+                          {/* PAN */}
+                          <div className="p-3 rounded-xl border border-slate-200/80 bg-slate-50/50 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <CreditCard className="h-4 w-4 text-primary shrink-0" />
+                              <div className="min-w-0">
+                                <div className="font-bold text-xs text-primary truncate">PAN Card</div>
+                                <div className="text-[10px] text-slate-500">{selectedMTPDetail.panDoc ? "Uploaded" : "Not Provided"}</div>
+                              </div>
+                            </div>
+                            {selectedMTPDetail.panDoc ? (
+                              <a
+                                href={selectedMTPDetail.panDoc}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shrink-0 transition-colors shadow-2xs flex items-center gap-1"
+                              >
+                                <Eye className="h-3 w-3" /> View
+                              </a>
+                            ) : (
+                              <span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded font-semibold">Missing</span>
+                            )}
+                          </div>
+
+                          {/* Driving License */}
+                          <div className="p-3 rounded-xl border border-slate-200/80 bg-slate-50/50 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Car className="h-4 w-4 text-primary shrink-0" />
+                              <div className="min-w-0">
+                                <div className="font-bold text-xs text-primary truncate">Driving Licence</div>
+                                <div className="text-[10px] text-slate-500">{selectedMTPDetail.drivingLicenseDoc ? "Uploaded" : "Optional / None"}</div>
+                              </div>
+                            </div>
+                            {selectedMTPDetail.drivingLicenseDoc ? (
+                              <a
+                                href={selectedMTPDetail.drivingLicenseDoc}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shrink-0 transition-colors shadow-2xs flex items-center gap-1"
+                              >
+                                <Eye className="h-3 w-3" /> View
+                              </a>
+                            ) : (
+                              <span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded font-semibold">N/A</span>
+                            )}
+                          </div>
+
+                          {/* 10th Certificate */}
+                          <div className="p-3 rounded-xl border border-slate-200/80 bg-slate-50/50 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <GraduationCap className="h-4 w-4 text-primary shrink-0" />
+                              <div className="min-w-0">
+                                <div className="font-bold text-xs text-primary truncate">10th Certificate</div>
+                                <div className="text-[10px] text-slate-500">{selectedMTPDetail.tenthCertificateDoc ? "Uploaded" : "Optional / None"}</div>
+                              </div>
+                            </div>
+                            {selectedMTPDetail.tenthCertificateDoc ? (
+                              <a
+                                href={selectedMTPDetail.tenthCertificateDoc}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shrink-0 transition-colors shadow-2xs flex items-center gap-1"
+                              >
+                                <Eye className="h-3 w-3" /> View
+                              </a>
+                            ) : (
+                              <span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded font-semibold">N/A</span>
+                            )}
+                          </div>
+
+                          {/* Police Verification */}
+                          <div className="sm:col-span-2 p-3 rounded-xl border border-slate-200/80 bg-slate-50/50 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
+                              <div className="min-w-0">
+                                <div className="font-bold text-xs text-primary truncate">Police Verification Certificate (PCC)</div>
+                                <div className="text-[10px] text-slate-500">{selectedMTPDetail.policeVerificationDoc ? "Uploaded & Available" : "Not Provided"}</div>
+                              </div>
+                            </div>
+                            {selectedMTPDetail.policeVerificationDoc ? (
+                              <a
+                                href={selectedMTPDetail.policeVerificationDoc}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shrink-0 transition-colors shadow-2xs flex items-center gap-1"
+                              >
+                                <Eye className="h-3 w-3" /> View PCC
+                              </a>
+                            ) : (
+                              <span className="text-[10px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded font-bold">Missing</span>
                             )}
                           </div>
                         </div>

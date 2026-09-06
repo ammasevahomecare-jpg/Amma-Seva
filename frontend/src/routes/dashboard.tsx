@@ -421,7 +421,15 @@ function CustomerDashboard() {
   };
 
   // View states
-  const [activeView, setActiveView] = useState<"bookings" | "new-booking">("bookings");
+  const [activeView, setActiveView] = useState<"bookings" | "new-booking">(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get("service") || urlParams.get("book") === "true") {
+        return "new-booking";
+      }
+    }
+    return "bookings";
+  });
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [caretakerBookings, setCaretakerBookings] = useState<Booking[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
