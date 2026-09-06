@@ -3,7 +3,7 @@ import { useState, useEffect, type ReactNode } from "react";
 import { Menu, X, Phone, MessageCircle, Mail, MapPin, Building2, Award } from "lucide-react";
 import logoAsset from "@/assets/amma-seva-logo.png";
 import { fetchServices, type Service } from "@/lib/services";
-import { LaunchScreen, CommemorativeLaunchBanner } from "./LaunchScreen";
+import { CommemorativeLaunchBanner } from "./LaunchScreen";
 
 const PHONE = "+91 94945 16543";
 const PHONE_TEL = "+919494516543";
@@ -401,15 +401,9 @@ function FloatingActions() {
 }
 
 export function SiteLayout({ children }: { children: ReactNode }) {
-  const [showLaunchScreen, setShowLaunchScreen] = useState<boolean | undefined>(undefined);
-
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <LaunchScreen 
-        isOpen={showLaunchScreen} 
-        onLaunched={() => setShowLaunchScreen(false)} 
-      />
-      <CommemorativeLaunchBanner onReplayLaunch={() => setShowLaunchScreen(true)} />
+      <CommemorativeLaunchBanner />
       <Header />
       <main className="flex-1">{children}</main>
       <Footer />

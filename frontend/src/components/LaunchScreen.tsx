@@ -81,37 +81,37 @@ function triggerLaunchConfetti() {
   setTimeout(() => clearInterval(interval), 3500);
 }
 
-interface LaunchScreenProps {
-  onLaunched?: () => void;
-  isOpen?: boolean;
+// Global in-memory state: always starts false on fresh page load/reload, true once launched
+let isGlobalSiteLaunched = false;
+
+export function triggerReplayLaunch() {
+  window.dispatchEvent(new CustomEvent("ammaseva_open_launch"));
 }
 
-export function LaunchScreen({ onLaunched, isOpen }: LaunchScreenProps) {
-  const [isLaunched, setIsLaunched] = useState(false);
+export function LaunchScreen() {
+  const [isLaunched, setIsLaunched] = useState(isGlobalSiteLaunched);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [showPortal, setShowPortal] = useState(true);
+  const [showPortal, setShowPortal] = useState(!isGlobalSiteLaunched);
 
-  // Sync with isOpen prop
   useEffect(() => {
-    if (isOpen !== undefined) {
-      if (isOpen) {
-        setShowPortal(true);
-        setIsLaunched(false);
-      } else {
-        setShowPortal(false);
-        setIsLaunched(true);
-      }
-    }
-  }, [isOpen]);
+    const handleOpen = () => {
+      setShowPortal(true);
+      setIsLaunched(false);
+    };
+
+    window.addEventListener("ammaseva_open_launch", handleOpen);
+    return () => window.removeEventListener("ammaseva_open_launch", handleOpen);
+  }, []);
 
   const handleLaunch = () => {
     setIsAnimating(true);
     playFanfareChime();
     triggerLaunchConfetti();
 
+    isGlobalSiteLaunched = true;
+
     setTimeout(() => {
       setIsLaunched(true);
-      if (onLaunched) onLaunched();
     }, 900);
 
     setTimeout(() => {
@@ -279,6 +279,7 @@ export function LaunchScreen({ onLaunched, isOpen }: LaunchScreenProps) {
           <button
             type="button"
             onClick={() => {
+              isGlobalSiteLaunched = true;
               setShowPortal(false);
               setIsLaunched(true);
             }}
@@ -295,6 +296,14 @@ export function LaunchScreen({ onLaunched, isOpen }: LaunchScreenProps) {
 
 // Commemorative Top Ribbon to stay on top of the website
 export function CommemorativeLaunchBanner({ onReplayLaunch }: { onReplayLaunch?: () => void }) {
+  const handleReplay = () => {
+    if (onReplayLaunch) {
+      onReplayLaunch();
+    } else {
+      triggerReplayLaunch();
+    }
+  };
+
   return (
     <div className="relative z-30 bg-gradient-to-r from-[#060c1d] via-[#101e44] to-[#060c1d] text-white border-b border-[#ffd700]/50 px-3 py-2 text-xs shadow-md">
       <div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left px-2">
@@ -307,15 +316,13 @@ export function CommemorativeLaunchBanner({ onReplayLaunch }: { onReplayLaunch?:
           </span>
         </div>
 
-        {onReplayLaunch && (
-          <button
-            type="button"
-            onClick={onReplayLaunch}
-            className="inline-flex items-center gap-1.5 rounded-full border border-[#ffd700]/50 bg-[#ffd700]/15 px-2.5 py-0.5 text-[11px] font-semibold text-[#ffd700] hover:bg-[#ffd700] hover:text-slate-950 transition-all shrink-0 cursor-pointer shadow-sm"
-          >
-            <Sparkles className="h-3 w-3" /> Replay Launch Ceremony
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={handleReplay}
+          className="inline-flex items-center gap-1.5 rounded-full border border-[#ffd700]/50 bg-[#ffd700]/15 px-2.5 py-0.5 text-[11px] font-semibold text-[#ffd700] hover:bg-[#ffd700] hover:text-slate-950 transition-all shrink-0 cursor-pointer shadow-sm"
+        >
+          <Sparkles className="h-3 w-3" /> Replay Launch Ceremony
+        </button>
       </div>
     </div>
   );

@@ -73,6 +73,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
+import { LaunchScreen } from "@/components/LaunchScreen";
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const location = useLocation();
@@ -87,6 +89,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <LaunchScreen />
       <ScrollRestoration />
       <Outlet />
     </QueryClientProvider>
