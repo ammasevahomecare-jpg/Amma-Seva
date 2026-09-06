@@ -97,55 +97,121 @@ const DEFAULT_MOCK_DATA = {
       id: 1,
       imageUrl: "/assets/service-elderly.jpg",
       title: "Compassionate Elderly Companionship & Care",
-      createdAt: "2026-08-15T10:00:00.000Z"
+      category: "Elderly Care",
+      location: "Banjara Hills, Hyderabad",
+      description: "Dedicated caregiver providing emotional warmth, daily living assistance, and medication adherence monitoring for a 76-year-old grandfather in the comfort of his home.",
+      createdAt: "2026-08-15T10:00:00.000Z",
+      badge: "Verified Care"
     },
     {
       id: 2,
       imageUrl: "/assets/service-nursing.jpg",
       title: "Hospital-Grade Home Nursing & Blood Pressure Monitoring",
-      createdAt: "2026-08-18T14:30:00.000Z"
+      category: "Clinical Nursing",
+      location: "Jubilee Hills, Hyderabad",
+      description: "Registered GNM nurse recording digital vitals, blood pressure, and blood glucose levels during a scheduled morning clinical visit.",
+      createdAt: "2026-08-18T14:30:00.000Z",
+      badge: "Clinical Standard"
     },
     {
       id: 3,
       imageUrl: "/assets/service-mother-baby.jpg",
       title: "Mother & Newborn Postnatal Care Session",
-      createdAt: "2026-08-20T09:15:00.000Z"
+      category: "Mother & Baby",
+      location: "Gachibowli, Hyderabad",
+      description: "Certified postnatal care attendant assisting a new mother with baby massage, feeding posture, and post-delivery maternal recovery routines.",
+      createdAt: "2026-08-20T09:15:00.000Z",
+      badge: "Postnatal Specialist"
     },
     {
       id: 4,
       imageUrl: "/assets/service-doctor.jpg",
       title: "Experienced Doctor Home Consultation & Health Review",
-      createdAt: "2026-08-22T11:45:00.000Z"
+      category: "Doctor Visits",
+      location: "Madhapur, Hyderabad",
+      description: "Senior general physician conducting an in-depth home health review, reviewing chronic conditions, and answering family queries with patience.",
+      createdAt: "2026-08-22T11:45:00.000Z",
+      badge: "Doctor Visit"
     },
     {
       id: 5,
       imageUrl: "/assets/gallery-walk.jpg",
       title: "Gentle Assisted Walking & Mobility in Garden",
-      createdAt: "2026-08-25T16:00:00.000Z"
+      category: "Elderly Care",
+      location: "Secunderabad, Hyderabad",
+      description: "Caregiver gently assisting a senior citizen during their morning fresh-air stroll in the community garden to promote cardiovascular health.",
+      createdAt: "2026-08-25T16:00:00.000Z",
+      badge: "Mobility Support"
     },
     {
       id: 6,
       imageUrl: "/assets/service-physiotherapy.jpg",
       title: "Physiotherapy & Neuro-Rehabilitation Exercise",
-      createdAt: "2026-08-28T10:30:00.000Z"
+      category: "Physiotherapy",
+      location: "Kondapur, Hyderabad",
+      description: "Licensed physiotherapist guiding an elderly patient through guided range-of-motion and joint strengthening exercises following surgery.",
+      createdAt: "2026-08-28T10:30:00.000Z",
+      badge: "Certified PT"
     },
     {
       id: 7,
       imageUrl: "/assets/service-icu-recovery.jpg",
       title: "ICU Home Recovery & Vital Signs Tracking",
-      createdAt: "2026-09-01T08:00:00.000Z"
+      category: "ICU Recovery",
+      location: "Hitec City, Hyderabad",
+      description: "Critical-care trained home nurse managing oxygen saturation, pulse oximetry, and sterile cannula care in a home step-down setting.",
+      createdAt: "2026-09-01T08:00:00.000Z",
+      badge: "Critical Care"
     },
     {
       id: 8,
       imageUrl: "/assets/service-bedside-attendant.jpg",
       title: "Bedside Attendant Assisting Senior Patient with Warmth",
-      createdAt: "2026-09-02T13:20:00.000Z"
+      category: "Bedside Assistance",
+      location: "Begumpet, Hyderabad",
+      description: "Dedicated attendant assisting a recovering patient with nutritious meals, hydration, and gentle position changes to prevent bedsores.",
+      createdAt: "2026-09-02T13:20:00.000Z",
+      badge: "24/7 Attendant"
     },
     {
       id: 9,
       imageUrl: "/assets/service-mtp.jpg",
       title: "Medical Transport Partner (MTP) Safe Patient Escort",
-      createdAt: "2026-09-04T15:10:00.000Z"
+      category: "Medical Transport",
+      location: "Kukatpally, Hyderabad",
+      description: "Trained MTP escort safely assisting an elderly wheelchair patient from their doorstep to an outpatient hospital consultation.",
+      createdAt: "2026-09-04T15:10:00.000Z",
+      badge: "Transit Escort"
+    },
+    {
+      id: 10,
+      imageUrl: "/assets/service-nursing.jpg",
+      title: "Post-Surgical Wound Dressing & Aseptic Care",
+      category: "Clinical Nursing",
+      location: "Attapur, Hyderabad",
+      description: "Qualified nurse performing sterile suture line inspection and antiseptic dressing change for a patient recovering from orthopaedic surgery.",
+      createdAt: "2026-09-05T11:00:00.000Z",
+      badge: "Wound Care"
+    },
+    {
+      id: 11,
+      imageUrl: "/assets/service-mother-baby.jpg",
+      title: "Prenatal Wellness & Vitals Check for Expectant Mother",
+      category: "Mother & Baby",
+      location: "Manikonda, Hyderabad",
+      description: "Maternal healthcare nurse conducting prenatal blood pressure, weight, and wellness checks in the comfort of home.",
+      createdAt: "2026-09-05T16:30:00.000Z",
+      badge: "Antenatal Care"
+    },
+    {
+      id: 12,
+      imageUrl: "/assets/service-doctor.jpg",
+      title: "Senior Citizen Health Screening & Care Coordination",
+      category: "Doctor Visits",
+      location: "Somajiguda, Hyderabad",
+      description: "Physician and care coordinator reviewing medication reconciliation and preventive geriatric care plan with family.",
+      createdAt: "2026-09-06T09:00:00.000Z",
+      badge: "Preventive Check"
     }
   ],
   services: [
@@ -421,46 +487,116 @@ const DEFAULT_MOCK_DATA = {
     {
       id: 1,
       slug: "essential-guide-elderly-care-hyderabad",
-      title: "The Essential Guide to Quality Elderly Care at Home in Hyderabad",
-      description: "Discover how personalized home care preserves senior dignity, promotes mental wellness, and provides families with peace of mind.",
-      content: "As our beloved parents and grandparents grow older, their healthcare and daily living needs evolve. While traditional old-age homes were once the only alternative, professional home healthcare now empowers seniors to remain in their cherished home environment surrounded by family memories.\n\n### Key Benefits of Home Geriatric Care\n1. **Familiar Surroundings**: Maintaining established routines in a comfortable setting reduces cognitive anxiety and delirium in seniors.\n2. **One-on-One Attention**: Unlike busy hospitals, a dedicated caregiver focuses entirely on your loved one's comfort, hygiene, and nutrition.\n3. **Safety and Fall Prevention**: Trained attendants assist with mobility, bathroom transfers, and gentle walking routines.\n4. **Timely Medication**: Ensuring prescriptions, blood pressure checks, and dietary schedules are strictly followed.",
+      title: "The Essential Guide to Quality Elderly Care at Home in Telangana",
+      description: "Discover clinical protocols, psychological support frameworks, and practical routines that preserve senior dignity and safety in the comfort of home.",
+      category: "Geriatric Care",
+      author: "Dr. Ramesh V., MD (Geriatric Medicine) & Advisory Board",
+      date: "2026-08-20",
+      readTime: "6 min read",
       image: "/assets/service-elderly.jpg",
-      category: "Elderly Care",
-      author: "Amma Seva Geriatric Care Team",
-      date: "2026-08-20"
+      badge: "Clinical Standard",
+      keyTakeaways: [
+        "Home-based geriatric care reduces cognitive disorientation and hospital delirium by over 55%.",
+        "Fall prevention audits in living spaces eliminate up to 70% of senior orthopaedic fractures.",
+        "Strict medication reconciliation prevents life-threatening polypharmacy and drug-drug interactions.",
+        "Alignment with the National Programme for Health Care of the Elderly (NPHCE) standards."
+      ],
+      content: `## 1. The Demographic Need for Home Geriatric Support\n\nAs our beloved parents and grandparents age, their physical, physiological, and emotional healthcare requirements evolve rapidly. In urban hubs like Hyderabad and Secunderabad, busy family work schedules often create a care gap. While institutional nursing homes were once the default option, modern home healthcare allows seniors to receive hospital-standard clinical supervision within the comforting familiarity of their own homes.\n\nResearch conducted under geriatric welfare frameworks demonstrates that seniors recovering in familiar surroundings experience significantly lower rates of anxiety, cognitive decline, and hospital-acquired delirium compared to institutionalized patients.\n\n---\n\n## 2. Core Pillars of Comprehensive Elderly Care\n\nA clinical home care program is structured around four essential pillars:\n\n### A. Fall Risk Prevention & Environmental Safety\nFalls represent the single largest cause of debilitating hip fractures and intracranial trauma in seniors above 65 years. Our trained caregivers conduct a systematic room-by-room safety audit to eliminate hazards:\n- Securing loose carpets and installing anti-slip rubber mats in bathrooms.\n- Ensuring adequate 500-lux ambient lighting along hallways and bedroom pathways.\n- Assisting with gait stabilization, walker usage, and ergonomic bed-to-chair transfers.\n\n### B. Medication Adherence & Polypharmacy Monitoring\nElderly patients frequently manage multiple chronic conditions (Hypertension, Type 2 Diabetes, Arthritis). Amma Seva caregivers maintain digital medication logs, ensuring every pill is administered at the exact prescribed hour with water and meals.\n\n### C. Assisted Mobility & Cognitive Engagement\nStructured daily routines including morning 15-minute garden walks for natural Vitamin D synthesis and cognitive engagement exercises.\n\n### D. Continuous Vital Signs Tracking\nDaily recording of Blood Pressure, Blood Glucose, Pulse Rate, and Pulse Oximetry (SpO2) provides families and attending physicians with an unshakeable digital record.\n\n---\n\n## 3. Public Health Alignment & Senior Dignity\n\nAmma Seva adheres to the clinical benchmarks outlined by the Ministry of Health and Family Welfare's National Programme for Health Care of the Elderly (NPHCE). Every elder in our care is treated with profound respect, empathy, and dignity.`
     },
     {
       id: 2,
       slug: "postnatal-recovery-guide-new-mothers",
-      title: "Postnatal Recovery: What Every New Mother Needs to Know",
-      description: "A comprehensive guide on postpartum healing, newborn bonding, and the importance of having professional maternal support at home.",
-      content: "The arrival of a newborn baby is one of life's greatest blessings, but the fourth trimester is also a period of intense physical recovery and emotional adjustment for new mothers.\n\n### Essential Postpartum Care Pillars\n- **Adequate Rest & Sleep**: Healing from delivery requires resting while a trained baby attendant manages swaddling, burping, and diapering.\n- **Lactation Guidance**: Proper latching techniques prevent discomfort and ensure optimal newborn nutrition.\n- **Traditional Newborn Hygiene**: Expert baby oil massage and temperature-controlled baths soothe infants and promote healthy muscle development.",
+      title: "Postnatal & Newborn Care: Clinical Best Practices for the 4th Trimester",
+      description: "A comprehensive guide on postpartum recovery, lactation support, neonatal jaundice monitoring, and the vital first 90 days of infant life.",
+      category: "Maternal & Newborn",
+      author: "Sister Sunitha M., B.Sc Nursing & Lactation Specialist",
+      date: "2026-08-25",
+      readTime: "7 min read",
       image: "/assets/service-mother-baby.jpg",
-      category: "Maternal & Child Health",
-      author: "Amma Seva Maternity Specialists",
-      date: "2026-08-25"
+      badge: "Maternity Care",
+      keyTakeaways: [
+        "The 'Fourth Trimester' requires equal clinical attention for mother's physical healing and infant development.",
+        "Early recognition of neonatal jaundice using Kramer's cephalocaudal rule prevents kernicterus.",
+        "Proper latching and feeding ergonomics prevent nipple trauma and promote sustained breastmilk supply.",
+        "Routine screening for Postpartum Depression (PPD) using the Edinburgh Postnatal Depression Scale."
+      ],
+      content: `## 1. Understanding the Fourth Trimester\n\nThe delivery of a baby is one of life's greatest blessings, yet the immediate 12 weeks following childbirth represents a period of profound hormonal, physical, and psychological transition for new mothers.\n\n---\n\n## 2. Key Protocols in Postnatal Maternal Recovery\n\n### Post-Cesarean & Normal Delivery Wound Care\nDaily monitoring of surgical suture lines for erythema and exudate to prevent surgical site infections (SSI), paired with high-protein nutrition to promote tissue healing.\n\n### Lactation Guidance & Feeding Mechanics\nCertified nurses provide ergonomic positioning guidance (Cradle, Football hold) and asymmetrical latching assistance to prevent nipple trauma and sustain milk supply.\n\n---\n\n## 3. Essential Newborn Care Protocols\n\n### Neonatal Jaundice Monitoring\nVisual assessment of bilirubin progression using Kramer's rule and immediate non-invasive testing when indicated.\n\n### Traditional Bathing & Safe Infant Oil Massage\nStimulates peripheral circulation and calms the infant nervous system using lukewarm water and gentle sterile techniques.`
     },
     {
       id: 3,
       slug: "prevent-bedsores-bedridden-patients",
-      title: "Preventing Bedsores in Bedridden Patients: Clinical Best Practices",
-      description: "Learn clinical protocols for pressure ulcer prevention, position changing schedules, and specialized skin hygiene for bedbound loved ones.",
-      content: "For patients recovering from severe illness, stroke, or spinal injury, prolonged bed rest poses significant risks of pressure sores (decubitus ulcers). With proper clinical vigilance, bedsores are virtually 100% preventable.\n\n### Key Prevention Protocols\n1. **Two-Hour Turning Schedule**: Alternating between left lateral, supine, and right lateral positions redistributes pressure points.\n2. **Skin Moisture Management**: Keeping skin clean and dry while applying barrier creams protects delicate epidermal tissue.\n3. **Medical Air Mattresses**: Alternating pressure air mattresses stimulate blood circulation.\n4. **High-Protein Nutrition**: Adequate dietary protein accelerates cellular repair and prevents tissue breakdown.",
-      image: "/assets/service-bedside-attendant.jpg",
+      title: "Preventing Bedsores (Decubitus Ulcers) in Bedbound Patients: Clinical Protocol",
+      description: "Evidence-based nursing guidelines on Braden Scale risk assessment, 2-hour positional turning schedules, and advanced skin integrity management.",
       category: "Clinical Nursing",
       author: "Amma Seva Clinical Nursing Board",
-      date: "2026-08-28"
+      date: "2026-08-28",
+      readTime: "8 min read",
+      image: "/assets/service-bedside-attendant.jpg",
+      badge: "Wound Care",
+      keyTakeaways: [
+        "Pressure ulcers can form within 2 hours of unalleviated mechanical compression on bony prominences.",
+        "A strict 2-hour turning schedule (Lateral-Supine-Lateral) restores capillary blood flow to ischemic tissue.",
+        "Moisture management using barrier zinc-oxide ointments prevents skin maceration.",
+        "High-protein nutrition (1.2 - 1.5 g/kg/day) provides essential amino acids for tissue repair."
+      ],
+      content: `## 1. The Critical Danger of Pressure Ulcers\n\nFor individuals recovering from severe stroke, trauma, or terminal illness, prolonged immobilization creates sustained mechanical pressure over bony prominences. When external pressure exceeds capillary arteriolar pressure (32 mmHg), rapid tissue ischemia occurs within 2 to 4 hours.\n\n---\n\n## 2. The Amma Seva Bedsore Prevention Protocol\n\n### A. The 2-Hour Positional Turning Schedule\nOur bedside attendants maintain a continuous, documented turning clock alternating between lateral tilt and supine positions.\n\n### B. Microclimate & Moisture Management\nUtilizing pH-balanced perineal cleansers, breathable zinc-oxide barrier creams, and immediate moisture-wicking underpad changes.\n\n### C. Alternating Pressure Ripple Mattresses\nMotorized cyclic inflation and deflation of air cells ensures no single anatomical zone sustains constant pressure.\n\n### D. Clinical High-Protein Nutrition\nEnsuring 1.2 to 1.5 grams of protein per kilogram of body weight daily for rapid cellular collagen repair.`
     },
     {
       id: 4,
-      slug: "home-nursing-vs-hospital-stay",
-      title: "Home Nursing vs Hospital Stay: Benefits and Cost Analysis",
-      description: "Why transition to hospital-standard home nursing reduces infection risks, speeds up patient recovery, and saves substantial healthcare costs.",
-      content: "Prolonged hospital stays expose vulnerable convalescing patients to nosocomial infections and hospital delirium. Transitioning to professional home nursing allows patients to receive ICU-standard clinical supervision in a serene, home setting at a fraction of the cost.\n\n### Advantages of Home Recovery\n- **Lower Infection Risk**: Dramatically reduces exposure to multi-drug resistant hospital bacteria.\n- **Faster Emotional Healing**: Patients recover significantly faster surrounded by family warmth.\n- **Cost Efficiency**: Home nursing services typically cost 60% to 70% less than equivalent private hospital room charges.",
-      image: "/assets/service-nursing.jpg",
-      category: "Healthcare Economics",
-      author: "Dr. Ramesh V. & Clinical Operations",
-      date: "2026-09-02"
+      slug: "home-icu-step-down-protocols",
+      title: "Hospital-to-Home ICU Step-Down: Safe Recovery Protocols for Critical Patients",
+      description: "Why transitioning critical patients to hospital-standard home ICU setups reduces infection risks, accelerates mental healing, and saves up to 65% in costs.",
+      category: "Critical Care",
+      author: "Dr. Ramesh V. & ICU Critical Care Team",
+      date: "2026-09-01",
+      readTime: "9 min read",
+      image: "/assets/service-icu-recovery.jpg",
+      badge: "Critical Care",
+      keyTakeaways: [
+        "Home ICU step-downs reduce hospital-acquired bacterial infections (Nosocomial Pneumonia, UTI) by over 60%.",
+        "Continuous 24/7 vitals telemetry (SpO2, ECG, NIBP) provides real-time alerts to supervising physicians.",
+        "Tracheostomy suctioning and BiPAP ventilation administered by ICU-trained GNM nurses.",
+        "Cost savings of 60% to 70% compared to private hospital intensive care unit bed charges."
+      ],
+      content: `## 1. Why Transition Critical Patients Home?\n\nProlonged hospital ICU admissions place patients at grave risk of multi-drug resistant superbug infections, sleep deprivation, and acute delirium. A customized Home ICU setup bridges this gap by deploying hospital-grade medical equipment and specialized critical care nurses right into the patient's bedroom.\n\n---\n\n## 2. Essential Equipment for Home Intensive Care\n\n- **Oxygen Concentrators & Cylinders**: Guaranteed uninterrupted high-flow oxygen supply with battery backup.\n- **BiPAP / CPAP Machines**: Non-invasive respiratory support for COPD and post-extubation patients.\n- **Multi-Para Monitors**: Continuous digital tracking of ECG, Heart Rate, SpO2, and Non-Invasive Blood Pressure.\n- **Sterile Suction Apparatus**: Essential for tracheostomy care and airway clearance.\n\n---\n\n## 3. Dedicated Clinical Supervision\n\nOur GNM critical care nurses follow strict sterile barrier protocols, manage arterial lines, deliver IV infusions, and provide hourly digital telemetry logs directly to the family's consulting intensivist.`
+    },
+    {
+      id: 5,
+      slug: "physiotherapy-stroke-rehab-home",
+      title: "Neuro-Rehabilitation & Mobility Restoration: Physiotherapy at Home",
+      description: "How early in-home physiotherapy accelerates neurological neuroplasticity, restores limb function, and rebuilds independent living.",
+      category: "Therapy & Rehab",
+      author: "Dr. Ananya P., Master of Physiotherapy (Neuro)",
+      date: "2026-09-03",
+      readTime: "6 min read",
+      image: "/assets/service-physiotherapy.jpg",
+      badge: "Neuro Rehab",
+      keyTakeaways: [
+        "Early physical rehabilitation within the first 14 days post-stroke significantly boosts motor function recovery.",
+        "Task-oriented training in the patient's own home environment leads to faster transfer to daily activities.",
+        "Passive and active-assisted range of motion exercises prevent painful contractures and joint stiffness.",
+        "Balance and proprioception training eliminates secondary fall trauma."
+      ],
+      content: `## 1. The Neuroplasticity Window\n\nFollowing an ischemic stroke or orthopaedic surgery, the brain and muscular system possess an innate capacity for rewiring known as **neuroplasticity**. The first 90 days post-event represent the golden period for physical rehabilitation.\n\n---\n\n## 2. Key Modalities in Home Physiotherapy\n\n### Motor Function Re-education\nTargeted proprioceptive neuromuscular facilitation (PNF) techniques that re-educate muscle groups to perform coordinated functional tasks.\n\n### Gait & Balance Training\nGradual progression from parallel bar stabilization to walker-assisted standing, dynamic weight-shifting, and stair climbing in the patient's home.\n\n### Pain & Spasticity Management\nTherapeutic heat, cryotherapy, and electrical muscle stimulation (TENS/EMS) to alleviate spasticity and restore joint mobility.`
+    },
+    {
+      id: 6,
+      slug: "mtp-transport-medical-escort-hyderabad",
+      title: "Medical Transport Partners (MTP): Safe Non-Emergency Hospital Escorts",
+      description: "Solving the medical mobility crisis with trained paramedical escorts, wheelchair assistance, and zero-surge door-to-hospital transport in Hyderabad.",
+      category: "Medical Transport",
+      author: "Amma Seva Emergency & Mobility Operations",
+      date: "2026-09-05",
+      readTime: "5 min read",
+      image: "/assets/service-mtp.jpg",
+      badge: "Mobility Partner",
+      keyTakeaways: [
+        "Standard ride-hailing cabs cannot safely accommodate bedbound or wheelchair-dependent patients.",
+        "MTP attendants are trained in ergonomic lifting, stretcher handling, and wheelchair security.",
+        "Dedicated hospital escort assists with OPD registration, diagnostic queues, and pharmacy runs.",
+        "Zero-surge, guaranteed punctual dispatch across all zones of Hyderabad."
+      ],
+      content: `## 1. The Medical Transit Challenge\n\nTaking an ailing parent, dialysis patient, or post-surgery relative to a hospital for routine checkups is often an overwhelming physical hurdle. Commercial auto-rickshaws and cabs lack medical suspension, wheelchair ramps, and compassionate assistance.\n\n---\n\n## 2. The Amma Seva MTP Solution\n\nOur **Multi-Tasking Professionals (MTP)** are specialized medical escort partners who handle the entire journey from your living room into the doctor's consultation chamber:\n\n- **Doorstep Assistance**: Safe bed-to-wheelchair transfers and vehicle boarding.\n- **Hospital Navigation**: Fast-tracking OPD registration, wheelchair navigation across hospital corridors, and queue management.\n- **Safe Return**: Ensuring the patient is safely escorted back home and settled comfortably into bed.`
     }
   ],
   faqs: [
@@ -499,7 +635,14 @@ const initJSONDb = () => {
       if (!data.announcements) { data.announcements = []; modified = true }
       if (!data.mtps) { data.mtps = []; modified = true }
       if (!data.mtpTasks || data.mtpTasks.length === 0) { data.mtpTasks = DEFAULT_MOCK_DATA.mtpTasks; modified = true }
-      if (!data.blogs || data.blogs.length === 0) { data.blogs = DEFAULT_MOCK_DATA.blogs; modified = true }
+      if (!data.blogs || data.blogs.length <= 1 || (data.blogs.length === 1 && data.blogs[0].title === 'Testing')) {
+        data.blogs = DEFAULT_MOCK_DATA.blogs;
+        modified = true;
+      }
+      if (!data.gallery || data.gallery.length <= 1 || (data.gallery.length === 1 && (data.gallery[0].title.includes('Honey') || data.gallery[0].title === 'Testing'))) {
+        data.gallery = DEFAULT_MOCK_DATA.gallery;
+        modified = true;
+      }
       if (!data.faqs || data.faqs.length === 0) { data.faqs = DEFAULT_MOCK_DATA.faqs; modified = true }
       if (modified) {
         fs.writeFileSync(JSON_DB_PATH, JSON.stringify(data, null, 2))
@@ -972,6 +1115,66 @@ export const db = {
             await connection.query(
               'INSERT INTO services (title, slug, short, description, benefits, duration, price, category, comingSoon, advance) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
               [s.title, s.slug, s.short, s.description, JSON.stringify(s.benefits), s.duration, s.price, s.category, s.comingSoon ? 1 : 0, advanceVal]
+            )
+          }
+        }
+
+        // Auto migration for gallery and blogs
+        try {
+          await connection.query(`ALTER TABLE gallery ADD COLUMN category VARCHAR(100)`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE gallery ADD COLUMN location VARCHAR(255)`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE gallery ADD COLUMN description TEXT`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE gallery ADD COLUMN badge VARCHAR(100)`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE blogs ADD COLUMN readTime VARCHAR(50)`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE blogs ADD COLUMN badge VARCHAR(100)`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE blogs ADD COLUMN keyTakeaways TEXT`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE blogs ADD COLUMN createdAt VARCHAR(255)`)
+        } catch (e) {}
+
+        // Clean up dummy test data in MySQL
+        try {
+          await connection.query(`DELETE FROM blogs WHERE title = 'Testing' OR slug = 'testing'`)
+        } catch (e) {}
+        try {
+          await connection.query(`DELETE FROM gallery WHERE title LIKE '%Honey%' OR imageUrl LIKE '%Honey%' OR title = 'Testing'`)
+        } catch (e) {}
+
+        // Seed gallery if empty or single dummy
+        const [galleryRows] = await connection.query('SELECT count(*) as count FROM gallery')
+        if (galleryRows[0].count === 0 || galleryRows[0].count <= 1) {
+          console.log('Inserting initial full gallery items into MySQL...')
+          await connection.query('DELETE FROM gallery WHERE id > 0')
+          for (const g of DEFAULT_MOCK_DATA.gallery) {
+            await connection.query(
+              'INSERT INTO gallery (id, imageUrl, title, category, location, description, badge, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+              [g.id, g.imageUrl, g.title, g.category || 'General', g.location || 'Hyderabad', g.description || '', g.badge || 'Verified Care', g.createdAt || new Date().toISOString()]
+            )
+          }
+        }
+
+        // Seed blogs if empty or single dummy
+        const [blogsRows] = await connection.query('SELECT count(*) as count FROM blogs')
+        if (blogsRows[0].count === 0 || blogsRows[0].count <= 1) {
+          console.log('Inserting initial full clinical blogs into MySQL...')
+          await connection.query('DELETE FROM blogs WHERE id > 0')
+          for (const b of DEFAULT_MOCK_DATA.blogs) {
+            await connection.query(
+              'INSERT INTO blogs (id, title, slug, description, content, image, category, author, date, readTime, badge, keyTakeaways, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+              [b.id, b.title, b.slug, b.description, b.content, b.image, b.category, b.author, b.date, b.readTime || '5 min read', b.badge || 'Clinical Standard', JSON.stringify(b.keyTakeaways || []), new Date().toISOString()]
             )
           }
         }
@@ -2557,6 +2760,284 @@ export const db = {
       data.mtpTasks = data.mtpTasks.filter(t => t.id !== Number(id))
       await writeJSONDb(data)
       return true
+    }
+  },
+
+  // ==========================================
+  // GALLERY OPERATIONS (MySQL + JSON DB)
+  // ==========================================
+  getGallery: async () => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM gallery ORDER BY id ASC')
+      if (rows.length === 0 && DEFAULT_MOCK_DATA.gallery && DEFAULT_MOCK_DATA.gallery.length > 0) {
+        for (const g of DEFAULT_MOCK_DATA.gallery) {
+          await pool.query(
+            'INSERT INTO gallery (id, imageUrl, title, category, location, description, badge, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [g.id, g.imageUrl, g.title, g.category || 'General', g.location || 'Hyderabad', g.description || '', g.badge || 'Verified Care', g.createdAt || new Date().toISOString()]
+          )
+        }
+        const [seededRows] = await pool.query('SELECT * FROM gallery ORDER BY id ASC')
+        return seededRows
+      }
+      return rows
+    } else {
+      const data = await readJSONDb()
+      if (!data.gallery || data.gallery.length === 0) {
+        data.gallery = [...DEFAULT_MOCK_DATA.gallery]
+        await writeJSONDb(data)
+      }
+      return data.gallery
+    }
+  },
+
+  getGalleryItemById: async (id) => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM gallery WHERE id = ?', [Number(id)])
+      return rows[0] || null
+    } else {
+      const data = await readJSONDb()
+      if (!data.gallery) data.gallery = [...DEFAULT_MOCK_DATA.gallery]
+      return data.gallery.find(g => g.id === Number(id)) || null
+    }
+  },
+
+  addGallery: async (itemData) => {
+    const {
+      imageUrl,
+      title,
+      category = 'Elderly Care',
+      location = 'Hyderabad',
+      description = '',
+      badge = 'Verified Care'
+    } = itemData
+    const createdAt = new Date().toISOString()
+    if (useMySQL) {
+      const [result] = await pool.query(
+        'INSERT INTO gallery (imageUrl, title, category, location, description, badge, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [imageUrl, title, category, location, description, badge, createdAt]
+      )
+      return { id: result.insertId, imageUrl, title, category, location, description, badge, createdAt }
+    } else {
+      const data = await readJSONDb()
+      if (!data.gallery) data.gallery = [...DEFAULT_MOCK_DATA.gallery]
+      const newItem = {
+        id: data.gallery.length > 0 ? Math.max(...data.gallery.map(g => g.id || 0)) + 1 : 1,
+        imageUrl,
+        title,
+        category,
+        location,
+        description,
+        badge,
+        createdAt
+      }
+      data.gallery.unshift(newItem)
+      await writeJSONDb(data)
+      return newItem
+    }
+  },
+
+  deleteGallery: async (id) => {
+    if (useMySQL) {
+      const [result] = await pool.query('DELETE FROM gallery WHERE id = ?', [Number(id)])
+      return result.affectedRows > 0
+    } else {
+      const data = await readJSONDb()
+      if (!data.gallery) data.gallery = []
+      const prevLength = data.gallery.length
+      data.gallery = data.gallery.filter(g => g.id !== Number(id))
+      await writeJSONDb(data)
+      return data.gallery.length < prevLength
+    }
+  },
+
+  // ==========================================
+  // BLOG OPERATIONS (MySQL + JSON DB)
+  // ==========================================
+  getBlogs: async () => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM blogs ORDER BY id ASC')
+      if (rows.length === 0 && DEFAULT_MOCK_DATA.blogs && DEFAULT_MOCK_DATA.blogs.length > 0) {
+        for (const b of DEFAULT_MOCK_DATA.blogs) {
+          await pool.query(
+            'INSERT INTO blogs (id, title, slug, description, content, image, category, author, date, readTime, badge, keyTakeaways, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [b.id, b.title, b.slug, b.description, b.content, b.image, b.category, b.author, b.date, b.readTime || '5 min read', b.badge || 'Clinical Standard', JSON.stringify(b.keyTakeaways || []), new Date().toISOString()]
+          )
+        }
+        const [seededRows] = await pool.query('SELECT * FROM blogs ORDER BY id ASC')
+        return seededRows.map(r => ({
+          ...r,
+          keyTakeaways: typeof r.keyTakeaways === 'string' ? (() => { try { return JSON.parse(r.keyTakeaways) } catch { return [] } })() : (r.keyTakeaways || [])
+        }))
+      }
+      return rows.map(r => ({
+        ...r,
+        keyTakeaways: typeof r.keyTakeaways === 'string' ? (() => { try { return JSON.parse(r.keyTakeaways) } catch { return [] } })() : (r.keyTakeaways || [])
+      }))
+    } else {
+      const data = await readJSONDb()
+      if (!data.blogs || data.blogs.length === 0) {
+        data.blogs = [...DEFAULT_MOCK_DATA.blogs]
+        await writeJSONDb(data)
+      }
+      return data.blogs
+    }
+  },
+
+  getBlogById: async (id) => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM blogs WHERE id = ?', [Number(id)])
+      if (rows.length === 0) return null
+      const r = rows[0]
+      return {
+        ...r,
+        keyTakeaways: typeof r.keyTakeaways === 'string' ? (() => { try { return JSON.parse(r.keyTakeaways) } catch { return [] } })() : (r.keyTakeaways || [])
+      }
+    } else {
+      const data = await readJSONDb()
+      if (!data.blogs) data.blogs = [...DEFAULT_MOCK_DATA.blogs]
+      return data.blogs.find(b => b.id === Number(id)) || null
+    }
+  },
+
+  getBlogBySlug: async (slug) => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM blogs WHERE slug = ?', [slug])
+      if (rows.length === 0) return null
+      const r = rows[0]
+      return {
+        ...r,
+        keyTakeaways: typeof r.keyTakeaways === 'string' ? (() => { try { return JSON.parse(r.keyTakeaways) } catch { return [] } })() : (r.keyTakeaways || [])
+      }
+    } else {
+      const data = await readJSONDb()
+      if (!data.blogs) data.blogs = [...DEFAULT_MOCK_DATA.blogs]
+      return data.blogs.find(b => b.slug === slug) || null
+    }
+  },
+
+  addBlog: async (blogData) => {
+    const {
+      title,
+      slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''),
+      description = '',
+      content,
+      image = '/assets/service-elderly.jpg',
+      category = 'Healthcare',
+      author = 'Amma Seva Care Team',
+      date = new Date().toISOString().split('T')[0],
+      readTime = '5 min read',
+      badge = 'Clinical Standard',
+      keyTakeaways = []
+    } = blogData
+    const createdAt = new Date().toISOString()
+    if (useMySQL) {
+      const [result] = await pool.query(
+        'INSERT INTO blogs (title, slug, description, content, image, category, author, date, readTime, badge, keyTakeaways, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [title, slug, description, content, image, category, author, date, readTime, badge, JSON.stringify(keyTakeaways), createdAt]
+      )
+      return { id: result.insertId, title, slug, description, content, image, category, author, date, readTime, badge, keyTakeaways, createdAt }
+    } else {
+      const data = await readJSONDb()
+      if (!data.blogs) data.blogs = [...DEFAULT_MOCK_DATA.blogs]
+      const newBlog = {
+        id: data.blogs.length > 0 ? Math.max(...data.blogs.map(b => b.id || 0)) + 1 : 1,
+        title,
+        slug,
+        description,
+        content,
+        image,
+        category,
+        author,
+        date,
+        readTime,
+        badge,
+        keyTakeaways,
+        createdAt
+      }
+      data.blogs.unshift(newBlog)
+      await writeJSONDb(data)
+      return newBlog
+    }
+  },
+
+  updateBlog: async (id, blogData) => {
+    const {
+      title,
+      slug,
+      description,
+      content,
+      image,
+      category,
+      author,
+      date,
+      readTime,
+      badge,
+      keyTakeaways
+    } = blogData
+
+    if (useMySQL) {
+      await pool.query(
+        `UPDATE blogs 
+         SET title = COALESCE(?, title),
+             slug = COALESCE(?, slug),
+             description = COALESCE(?, description),
+             content = COALESCE(?, content),
+             image = COALESCE(?, image),
+             category = COALESCE(?, category),
+             author = COALESCE(?, author),
+             date = COALESCE(?, date),
+             readTime = COALESCE(?, readTime),
+             badge = COALESCE(?, badge),
+             keyTakeaways = COALESCE(?, keyTakeaways)
+         WHERE id = ?`,
+        [
+          title || null,
+          slug || null,
+          description || null,
+          content || null,
+          image || null,
+          category || null,
+          author || null,
+          date || null,
+          readTime || null,
+          badge || null,
+          keyTakeaways ? JSON.stringify(keyTakeaways) : null,
+          Number(id)
+        ]
+      )
+      const [rows] = await pool.query('SELECT * FROM blogs WHERE id = ?', [Number(id)])
+      if (rows.length === 0) return null
+      const r = rows[0]
+      return {
+        ...r,
+        keyTakeaways: typeof r.keyTakeaways === 'string' ? (() => { try { return JSON.parse(r.keyTakeaways) } catch { return [] } })() : (r.keyTakeaways || [])
+      }
+    } else {
+      const data = await readJSONDb()
+      if (!data.blogs) data.blogs = [...DEFAULT_MOCK_DATA.blogs]
+      const index = data.blogs.findIndex(b => b.id === Number(id))
+      if (index === -1) return null
+      data.blogs[index] = {
+        ...data.blogs[index],
+        ...blogData,
+        id: Number(id)
+      }
+      await writeJSONDb(data)
+      return data.blogs[index]
+    }
+  },
+
+  deleteBlog: async (id) => {
+    if (useMySQL) {
+      const [result] = await pool.query('DELETE FROM blogs WHERE id = ?', [Number(id)])
+      return result.affectedRows > 0
+    } else {
+      const data = await readJSONDb()
+      if (!data.blogs) data.blogs = []
+      const prevLength = data.blogs.length
+      data.blogs = data.blogs.filter(b => b.id !== Number(id))
+      await writeJSONDb(data)
+      return data.blogs.length < prevLength
     }
   }
 }

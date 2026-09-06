@@ -1796,24 +1796,49 @@ app.get('/api/blogs', async (req, res) => {
   }
 })
 
+// GET single blog by slug or ID
+app.get('/api/blogs/:slugOrId', async (req, res) => {
+  try {
+    const param = req.params.slugOrId
+    const isNum = !isNaN(Number(param))
+    let blog = null
+    if (isNum) {
+      blog = await db.getBlogById(param)
+    }
+    if (!blog) {
+      blog = await db.getBlogBySlug(param)
+    }
+    if (blog) {
+      res.json(blog)
+    } else {
+      res.status(404).json({ error: 'Blog not found.' })
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve blog.' })
+  }
+})
+
 // POST add blog (Admin Panel)
 app.post('/api/blogs', authenticateAdmin, async (req, res) => {
-  const { title, slug, description, content, image, category, author, date } = req.body
+  const { title, slug, description, content, image, category, author, date, readTime, badge, keyTakeaways } = req.body
   if (!title || !content) {
     return res.status(400).json({ success: false, error: 'Title and content are required fields.' })
   }
   const slugVal = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
   try {
-    const uploadedImage = image ? await uploadToCloudinary(image) : ''
+    const uploadedImage = image ? (image.startsWith('data:') ? await uploadToCloudinary(image) : image) : '/assets/service-elderly.jpg'
     const newBlog = await db.addBlog({
       title,
       slug: slugVal,
       description: description || '',
       content,
       image: uploadedImage,
-      category: category || 'General',
+      category: category || 'Healthcare',
       author: author || 'Amma Seva Care Team',
-      date
+      date: date || new Date().toISOString().split('T')[0],
+      readTime: readTime || '5 min read',
+      badge: badge || 'Clinical Standard',
+      keyTakeaways: Array.isArray(keyTakeaways) ? keyTakeaways : []
     })
     res.status(201).json({ success: true, message: 'Blog successfully created.', data: newBlog })
   } catch (err) {
@@ -1824,25 +1849,28 @@ app.post('/api/blogs', authenticateAdmin, async (req, res) => {
 
 // PUT update blog (Admin Panel)
 app.put('/api/blogs/:id', authenticateAdmin, async (req, res) => {
-  const { title, slug, description, content, image, category, author, date } = req.body
+  const { title, slug, description, content, image, category, author, date, readTime, badge, keyTakeaways } = req.body
   if (!title || !content) {
     return res.status(400).json({ success: false, error: 'Title and content are required fields.' })
   }
   const slugVal = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
   try {
-    const uploadedImage = image ? await uploadToCloudinary(image) : undefined
+    const uploadedImage = image ? (image.startsWith('data:') ? await uploadToCloudinary(image) : image) : undefined
     const updated = await db.updateBlog(req.params.id, {
       title,
       slug: slugVal,
       description: description || '',
       content,
       image: uploadedImage,
-      category: category || 'General',
+      category: category || 'Healthcare',
       author: author || 'Amma Seva Care Team',
-      date
+      date,
+      readTime,
+      badge,
+      keyTakeaways
     })
     if (updated) {
-      res.json({ success: true, message: 'Blog successfully updated.' })
+      res.json({ success: true, message: 'Blog successfully updated.', data: updated })
     } else {
       res.status(404).json({ error: 'Blog not found.' })
     }
@@ -1878,7 +1906,7 @@ app.get('/api/gallery', async (req, res) => {
 
 // POST add gallery item (Admin Panel)
 app.post('/api/gallery', authenticateAdmin, async (req, res) => {
-  const { imageUrl, title } = req.body
+  const { imageUrl, title, category, location, description, badge } = req.body
   if (!imageUrl || !title) {
     return res.status(400).json({ success: false, error: 'Image and title are required.' })
   }
@@ -1886,7 +1914,11 @@ app.post('/api/gallery', authenticateAdmin, async (req, res) => {
     const uploadedImage = imageUrl.startsWith('data:') ? await uploadToCloudinary(imageUrl) : imageUrl
     const newItem = await db.addGallery({
       imageUrl: uploadedImage,
-      title
+      title,
+      category: category || 'Elderly Care',
+      location: location || 'Hyderabad',
+      description: description || '',
+      badge: badge || 'Verified Care'
     })
     res.status(201).json({ success: true, message: 'Gallery item successfully created.', data: newItem })
   } catch (err) {

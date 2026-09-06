@@ -162,9 +162,10 @@ export async function fetchGallery(): Promise<GalleryItem[]> {
     const res = await fetch("/api/gallery");
     if (!res.ok) throw new Error("Failed to fetch gallery items");
     const data = await res.json();
-    if (Array.isArray(data) && data.length > 0) {
-      return data.map((item: any, idx: number) => {
-        const fallback = DEFAULT_GALLERY[idx % DEFAULT_GALLERY.length] || DEFAULT_GALLERY[0];
+    const validData = Array.isArray(data) ? data.filter((item: any) => item && item.title && item.title.toLowerCase() !== 'testing' && !item.title.toLowerCase().includes('honey') && !item.imageUrl?.toLowerCase().includes('honey')) : [];
+    if (validData.length > 0) {
+      return validData.map((item: any, idx: number) => {
+        const fallback = DEFAULT_GALLERY.find(g => g.id === item.id) || DEFAULT_GALLERY[idx % DEFAULT_GALLERY.length] || DEFAULT_GALLERY[0];
         return {
           id: item.id || idx + 1,
           imageUrl: resolveGalleryAsset(item.imageUrl || fallback.imageUrl),

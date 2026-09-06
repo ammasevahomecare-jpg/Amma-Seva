@@ -353,9 +353,10 @@ export async function fetchBlogs(): Promise<Blog[]> {
     const res = await fetch("/api/blogs");
     if (!res.ok) throw new Error("Failed to fetch blogs");
     const data = await res.json();
-    if (Array.isArray(data) && data.length > 0) {
-      return data.map((item: any, idx: number) => {
-        const fallback = DEFAULT_BLOGS[idx % DEFAULT_BLOGS.length] || DEFAULT_BLOGS[0];
+    const validData = Array.isArray(data) ? data.filter((item: any) => item && item.title && item.title.toLowerCase() !== 'testing' && item.description !== 'Testing') : [];
+    if (validData.length > 0) {
+      return validData.map((item: any, idx: number) => {
+        const fallback = DEFAULT_BLOGS.find(b => b.slug === item.slug) || DEFAULT_BLOGS[idx % DEFAULT_BLOGS.length] || DEFAULT_BLOGS[0];
         return fillBlogFallbackFields({
           id: item.id || idx + 1,
           slug: item.slug || fallback.slug,
