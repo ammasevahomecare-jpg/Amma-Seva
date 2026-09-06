@@ -17,8 +17,10 @@ import elderly from "@/assets/service-elderly.jpg";
 import physiotherapy from "@/assets/service-physiotherapy.jpg";
 import icuRecovery from "@/assets/service-icu-recovery.jpg";
 import bedsideAttendant from "@/assets/service-bedside-attendant.jpg";
+import doctor from "@/assets/service-doctor.jpg";
+import mtp from "@/assets/service-mtp.jpg";
 
-const HERO_IMAGES = [hero, motherBaby, physiotherapy, elderly, icuRecovery, bedsideAttendant];
+const HERO_IMAGES = [hero, motherBaby, physiotherapy, elderly, icuRecovery, bedsideAttendant, doctor];
 
 export const Route = createFileRoute("/")({
   loader: async () => {
@@ -111,8 +113,14 @@ function getServiceDetails(slug: string) {
     "doctor-consultation": {
       category: "Medical Consult",
       badgeClass: "bg-slate-50 text-slate-700 border-slate-200/80",
-      image: nursing,
+      image: doctor,
       highlights: ["Home Doctor Visits", "Comprehensive Diagnosis", "Prescription Review"],
+    },
+    "mtp": {
+      category: "Medical Transport",
+      badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200/80",
+      image: mtp,
+      highlights: ["Wheelchair & Stretcher Transit", "Paramedic Escort Onboard", "Zero Surge Pricing"],
     },
   };
   return details[slug] || {
@@ -542,6 +550,10 @@ function Home() {
 
               return filteredServices.slice(0, 8).map((s: any) => {
                 const details = getServiceDetails(s.slug);
+                const cardImage = s.image || details.image;
+                const cardPrice = s.price || s.pricing || "Starting ₹799 / shift";
+                const cardHighlights = (s.highlights && s.highlights.length > 0) ? s.highlights.slice(0, 3) : details.highlights;
+
                 return (
                   <div
                     key={s.slug}
@@ -550,7 +562,7 @@ function Home() {
                     {/* Card Image */}
                     <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100">
                       <img 
-                        src={details.image} 
+                        src={cardImage} 
                         alt={s.title} 
                         width={1200} 
                         height={900} 
@@ -561,7 +573,7 @@ function Home() {
                       
                       {/* Price Pill */}
                       <div className="absolute top-3.5 right-3.5 bg-[#0b183b]/90 backdrop-blur-xs text-white px-3 py-1 rounded-xl text-xs font-bold shadow-md border border-white/20 group-hover:border-gold/50 transition-colors">
-                        {s.price || "₹799 / Shift"}
+                        {cardPrice}
                       </div>
 
                       {/* Verified Badge */}
@@ -591,7 +603,7 @@ function Home() {
 
                         {/* Feature Highlights */}
                         <div className="pt-2 space-y-1.5">
-                          {details.highlights.map((h, i) => (
+                          {cardHighlights.map((h: string, i: number) => (
                             <div key={i} className="flex items-center gap-1.5 text-[11px] text-slate-600 font-medium">
                               <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                               <span className="truncate">{h}</span>

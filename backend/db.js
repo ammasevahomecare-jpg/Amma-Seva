@@ -92,7 +92,62 @@ const DEFAULT_MOCK_DATA = {
       active: true
     }
   ],
-  gallery: [],
+  gallery: [
+    {
+      id: 1,
+      imageUrl: "/assets/service-elderly.jpg",
+      title: "Compassionate Elderly Companionship & Care",
+      createdAt: "2026-08-15T10:00:00.000Z"
+    },
+    {
+      id: 2,
+      imageUrl: "/assets/service-nursing.jpg",
+      title: "Hospital-Grade Home Nursing & Blood Pressure Monitoring",
+      createdAt: "2026-08-18T14:30:00.000Z"
+    },
+    {
+      id: 3,
+      imageUrl: "/assets/service-mother-baby.jpg",
+      title: "Mother & Newborn Postnatal Care Session",
+      createdAt: "2026-08-20T09:15:00.000Z"
+    },
+    {
+      id: 4,
+      imageUrl: "/assets/service-doctor.jpg",
+      title: "Experienced Doctor Home Consultation & Health Review",
+      createdAt: "2026-08-22T11:45:00.000Z"
+    },
+    {
+      id: 5,
+      imageUrl: "/assets/gallery-walk.jpg",
+      title: "Gentle Assisted Walking & Mobility in Garden",
+      createdAt: "2026-08-25T16:00:00.000Z"
+    },
+    {
+      id: 6,
+      imageUrl: "/assets/service-physiotherapy.jpg",
+      title: "Physiotherapy & Neuro-Rehabilitation Exercise",
+      createdAt: "2026-08-28T10:30:00.000Z"
+    },
+    {
+      id: 7,
+      imageUrl: "/assets/service-icu-recovery.jpg",
+      title: "ICU Home Recovery & Vital Signs Tracking",
+      createdAt: "2026-09-01T08:00:00.000Z"
+    },
+    {
+      id: 8,
+      imageUrl: "/assets/service-bedside-attendant.jpg",
+      title: "Bedside Attendant Assisting Senior Patient with Warmth",
+      createdAt: "2026-09-02T13:20:00.000Z"
+    },
+    {
+      id: 9,
+      imageUrl: "/assets/service-mtp.jpg",
+      title: "Medical Transport Partner (MTP) Safe Patient Escort",
+      createdAt: "2026-09-04T15:10:00.000Z"
+    }
+  ],
   services: [
     {
       id: 1,
@@ -100,15 +155,21 @@ const DEFAULT_MOCK_DATA = {
       title: "Elderly Care at Home",
       short: "Compassionate, respectful care for seniors in the comfort of home.",
       description: "Trained caregivers assist your elderly loved ones with daily activities, mobility, medication reminders, meals, and companionship — always with dignity and warmth.",
-      benefits: ["Personal hygiene & grooming", "Medication reminders", "Meal preparation", "Mobility assistance", "Companionship"],
+      benefits: ["Personal hygiene & grooming", "Medication reminders & vitals check", "Nutritious meal preparation", "Mobility & assisted walking support", "Emotional companionship & conversation"],
       duration: "Hourly, Daily, or Live-in",
       price: "Starting ₹500 / visit",
       category: "Elderly Care",
       comingSoon: false,
-      image: "",
-      about: "",
-      highlights: [],
-      images: []
+      image: "/assets/service-elderly.jpg",
+      about: "Our specialized Elderly Care program is designed to deliver warm, professional, and reliable home care. Under the guidance of geriatric clinical advisors, our dedicated caregivers assist with daily living, medicine routines, mobility, and companionship, ensuring maximum peace of mind in the comfort of your own home.",
+      highlights: [
+        "100% Background-checked & police-verified caregivers",
+        "Daily digital health & activity logs for family members",
+        "Personalized daily care routine tailored to senior needs",
+        "Assisted morning & evening walks with mobility support",
+        "Dedicated 24/7 care helpline and doctor coordinator"
+      ],
+      images: ["/assets/service-elderly.jpg", "/assets/gallery-walk.jpg", "/assets/service-bedside-attendant.jpg"]
     },
     {
       id: 2,
@@ -116,15 +177,21 @@ const DEFAULT_MOCK_DATA = {
       title: "Mother & Baby Care",
       short: "Postnatal support for new mothers and their newborns.",
       description: "Experienced maternity attendants and nurses help new mothers with recovery, feeding guidance, baby bathing, and round-the-clock newborn care.",
-      benefits: ["Postnatal recovery support", "Breastfeeding guidance", "Baby bathing & massage", "Sleep scheduling", "Emotional wellness"],
+      benefits: ["Postnatal recovery & comfort care", "Lactation & breastfeeding guidance", "Gentle baby bathing & oil massage", "Newborn sleep routine scheduling", "Mother's emotional wellness support"],
       duration: "Daily, Weekly, or Monthly",
       price: "Starting ₹18,000 / month",
       category: "Maternal",
       comingSoon: false,
-      image: "",
-      about: "",
-      highlights: [],
-      images: []
+      image: "/assets/service-mother-baby.jpg",
+      about: "Our Mother & Baby Care service provides experienced maternity attendants and pediatric nurses who guide new mothers through post-delivery recovery, gentle newborn handling, bathing, massage, and round-the-clock peace of mind.",
+      highlights: [
+        "Certified newborn care specialists and postnatal attendants",
+        "Safe traditional baby bathing & soothing oil massage routines",
+        "Guidance on breastfeeding, burping, and infant sleep cycles",
+        "Post-cesarean / normal delivery recovery assistance for mother",
+        "Digital milestone and vaccination reminders"
+      ],
+      images: ["/assets/service-mother-baby.jpg", "/assets/service-nursing.jpg", "/assets/service-bedside-attendant.jpg"]
     },
     {
       id: 3,
@@ -132,15 +199,21 @@ const DEFAULT_MOCK_DATA = {
       title: "Pregnancy Care",
       short: "Attentive prenatal support for expectant mothers at home.",
       description: "Qualified nurses provide antenatal check-ins, wellness monitoring, and comforting care throughout pregnancy — so you can rest, recover and prepare in peace.",
-      benefits: ["Vitals monitoring", "Diet & nutrition guidance", "Wellness check-ins", "Mobility support", "Doctor coordination"],
+      benefits: ["Vitals & fetal heartbeat monitoring", "Prenatal diet & nutrition guidance", "Comfort checks & posture guidance", "Mobility & breathing exercise support", "Direct obstetrician coordination"],
       duration: "Hourly, Daily, or Monthly",
       price: "Starting ₹700 / visit",
       category: "Prenatal",
       comingSoon: false,
-      image: "",
-      about: "",
-      highlights: [],
-      images: []
+      image: "/assets/service-nursing.jpg",
+      about: "Attentive prenatal care delivered at home by trained maternal nurses to ensure health, comfort, and peace of mind during every trimester of pregnancy.",
+      highlights: [
+        "Routine blood pressure, pulse, and glucose checks at home",
+        "Nutrition planning tailored to trimester requirements",
+        "Relaxation, breathing, and safe mobility assistance",
+        "Emergency preparedness and hospital bag checklist assistance",
+        "Seamless coordination with your consulting gynaecologist"
+      ],
+      images: ["/assets/service-nursing.jpg", "/assets/service-mother-baby.jpg", "/assets/service-doctor.jpg"]
     },
     {
       id: 4,
@@ -148,15 +221,21 @@ const DEFAULT_MOCK_DATA = {
       title: "Newborn Baby Care",
       short: "Specialist care for babies in their most delicate first weeks.",
       description: "Trained newborn caregivers handle feeding, sleep routines, bathing, and gentle massages so parents can rest while their little one is in expert hands.",
-      benefits: ["Feeding & burping", "Bathing & massage", "Sleep routines", "Vaccination reminders", "Overnight care"],
+      benefits: ["Sterile feeding bottle & burping support", "Gentle Ayurvedic oil massage & warm bath", "Umbilical cord hygiene & skin care", "Vaccination schedule tracking", "Overnight watchful nursery care"],
       duration: "Daily, Weekly, or Monthly",
       price: "Starting ₹20,000 / month",
       category: "Pediatric",
       comingSoon: false,
-      image: "",
-      about: "",
-      highlights: [],
-      images: []
+      image: "/assets/service-mother-baby.jpg",
+      about: "Our specialized newborn caregivers give your newborn infant 24/7 dedicated attention, hygiene, and soothing care during the vital first 90 days of life.",
+      highlights: [
+        "Dedicated infant attendants with background clearance",
+        "Hygienic diaper change, skin fold care, and rash prevention",
+        "Gentle burping and colic relief massage techniques",
+        "Structured sleep schedules for restful newborn nights",
+        "Support with breastmilk storage and bottle sterilization"
+      ],
+      images: ["/assets/service-mother-baby.jpg", "/assets/service-nursing.jpg", "/assets/service-bedside-attendant.jpg"]
     },
     {
       id: 5,
@@ -164,15 +243,21 @@ const DEFAULT_MOCK_DATA = {
       title: "Home Nursing Services",
       short: "Qualified nurses delivering hospital-grade care at home.",
       description: "Registered nurses provide wound care, IV therapy, catheter care, tracheostomy care, and general nursing tailored to your medical needs.",
-      benefits: ["Wound dressing", "IV / injection therapy", "Catheter & tube care", "Vitals monitoring", "Doctor coordination"],
+      benefits: ["Sterile wound dressing & suture care", "IV infusion & injection therapy", "Catheter, Ryle's tube & stoma care", "24/7 Vital signs tracking & digital charts", "Direct doctor coordination"],
       duration: "Hourly, 12-hour, or 24-hour",
       price: "Starting ₹800 / visit",
       category: "Clinical",
       comingSoon: false,
-      image: "",
-      about: "",
-      highlights: [],
-      images: []
+      image: "/assets/service-nursing.jpg",
+      about: "Hospital-standard clinical nursing delivered at home by licensed GNM and B.Sc nurses under strict medical protocols and sterile hygiene standards.",
+      highlights: [
+        "State Nursing Council registered nurses",
+        "Expertise in post-surgical dressings, bedsores, and IV fluids",
+        "Catheterization, nebulization, and oxygen administration",
+        "Real-time vitals transmission to family and consulting doctor",
+        "Flexible 12-hour day/night or 24-hour continuous shifts"
+      ],
+      images: ["/assets/service-nursing.jpg", "/assets/service-icu-recovery.jpg", "/assets/service-doctor.jpg"]
     },
     {
       id: 6,
@@ -180,15 +265,21 @@ const DEFAULT_MOCK_DATA = {
       title: "Injection Services",
       short: "Safe, sterile injections administered by trained nurses at home.",
       description: "On-demand injection service for insulin, antibiotics, vitamin shots, and prescribed medication — quick, hygienic, and pain-conscious.",
-      benefits: ["Sterile procedure", "Trained nurses only", "Same-day availability", "Safe disposal", "Doctor prescription verified"],
+      benefits: ["100% Sterile disposable equipment", "Administered by certified nurses only", "Same-day & scheduled on-demand visits", "Bio-hazard sharps safe disposal", "Prescription verified prior to administration"],
       duration: "Per visit",
       price: "Starting ₹299 / visit",
       category: "Clinical",
       comingSoon: false,
-      image: "",
-      about: "",
-      highlights: [],
-      images: []
+      image: "/assets/service-nursing.jpg",
+      about: "Avoid exhausting clinic trips for routine injections. Our licensed nurses arrive at your doorstep for sterile, hygienic, and gentle medicine administration.",
+      highlights: [
+        "Intramuscular (IM), Intravenous (IV), and Subcutaneous (SC) injections",
+        "Insulin administration and blood glucose monitoring",
+        "Doctor prescription verification before every procedure",
+        "Emergency anaphylaxis protocols and sterile disposal kits",
+        "Immediate booking with doorstep arrival within 60 minutes"
+      ],
+      images: ["/assets/service-nursing.jpg", "/assets/service-doctor.jpg", "/assets/service-icu-recovery.jpg"]
     },
     {
       id: 7,
@@ -196,15 +287,21 @@ const DEFAULT_MOCK_DATA = {
       title: "Post-Surgery Care",
       short: "Guided recovery care after hospital discharge.",
       description: "Nurses and attendants support post-operative healing with wound care, medication schedules, mobility help, and gentle physical support.",
-      benefits: ["Wound & suture care", "Pain management support", "Mobility assistance", "Diet planning", "Progress reporting"],
+      benefits: ["Wound & surgical suture inspection", "Pain management & timely medication", "Assisted mobility & deep breathing exercises", "Post-op dietary supervision", "Daily recovery progress tracking"],
       duration: "Daily or 24-hour",
       price: "Starting ₹1,500 / day",
       category: "Recovery",
       comingSoon: false,
-      image: "",
-      about: "",
-      highlights: [],
-      images: []
+      image: "/assets/service-icu-recovery.jpg",
+      about: "Recover safely and comfortably at home following surgery. Our clinical nurses and bedside attendants prevent hospital readmissions through attentive post-operative care.",
+      highlights: [
+        "Specialized care for orthopaedic, cardiac, and abdominal surgeries",
+        "Sterile dressing changes to prevent surgical site infections (SSI)",
+        "Assistance with transfer from bed to chair and gentle walking",
+        "Drain tube management and input/output fluid charting",
+        "Coordinated follow-ups with your operating surgeon"
+      ],
+      images: ["/assets/service-icu-recovery.jpg", "/assets/service-physiotherapy.jpg", "/assets/service-nursing.jpg"]
     },
     {
       id: 8,
@@ -212,15 +309,21 @@ const DEFAULT_MOCK_DATA = {
       title: "Patient Care Attendant",
       short: "Dedicated attendants for personal and daily patient needs.",
       description: "Trained attendants assist with feeding, hygiene, positioning and companionship so families can focus on being together.",
-      benefits: ["Feeding assistance", "Personal hygiene", "Turning & positioning", "Household support", "Emotional companionship"],
+      benefits: ["Assisted feeding & hydration", "Sponge bath & personal hygiene", "Patient turning & bed positioning", "Medicine timekeeping & reminders", "Empathetic bedside companionship"],
       duration: "12-hour or 24-hour",
       price: "Starting ₹900 / day",
       category: "Assistance",
       comingSoon: false,
-      image: "",
-      about: "",
-      highlights: [],
-      images: []
+      image: "/assets/service-bedside-attendant.jpg",
+      about: "Compassionate and physically capable patient care attendants who support bedridden or semi-mobile family members with daily living activities.",
+      highlights: [
+        "Trained in patient transfer and ergonomic lifting techniques",
+        "Assistance with oral hygiene, sponge bathing, and clothing change",
+        "Nutritious meal and water intake monitoring",
+        "Support with walker, wheelchair, and restroom assistance",
+        "Reliable day and night shift options across Hyderabad"
+      ],
+      images: ["/assets/service-bedside-attendant.jpg", "/assets/service-elderly.jpg", "/assets/gallery-walk.jpg"]
     },
     {
       id: 9,
@@ -228,15 +331,21 @@ const DEFAULT_MOCK_DATA = {
       title: "Bedridden Patient Care",
       short: "Specialist care for patients confined to bed.",
       description: "Attendants and nurses trained in bedsore prevention, position changes, sponge baths, catheter care, and full daily support for bedridden patients.",
-      benefits: ["Bedsore prevention", "Sponge bath & hygiene", "Position changes", "Diaper care", "Catheter care"],
+      benefits: ["2-hourly turning & bedsore prevention", "Bed bath, skin care & linen change", "Adult diaper & hygiene management", "Catheter & Ryle's tube feeding care", "Passive range-of-motion limb movement"],
       duration: "12-hour or 24-hour",
       price: "Starting ₹1,200 / day",
       category: "Specialized",
       comingSoon: false,
-      image: "",
-      about: "",
-      highlights: [],
-      images: []
+      image: "/assets/service-bedside-attendant.jpg",
+      about: "Dedicated, respectful care for chronically ill, stroke, or palliative patients confined to bed, focusing on skin integrity, nutrition, and dignity.",
+      highlights: [
+        "Air mattress maintenance and pressure ulcer prevention routines",
+        "Tube feeding (Ryle's tube / PEG) management by trained attendants",
+        "Gentle daily sponge bathing and antiseptic skin hygiene",
+        "Frequent position changes to prevent stiffness and lung congestion",
+        "Supportive palliative companionship and family reassurance"
+      ],
+      images: ["/assets/service-bedside-attendant.jpg", "/assets/service-icu-recovery.jpg", "/assets/service-nursing.jpg"]
     },
     {
       id: 10,
@@ -244,53 +353,116 @@ const DEFAULT_MOCK_DATA = {
       title: "ICU / Home Recovery Support",
       short: "ICU-level home support for critical recovery.",
       description: "Critical-care trained nurses handle ventilator monitoring, tracheostomy care, and intensive recovery routines under doctor guidance.",
-      benefits: ["Critical-care nurses", "Ventilator monitoring", "Tracheostomy care", "24/7 vitals tracking", "Doctor coordination"],
+      benefits: ["Critical-care ICU certified nurses", "Tracheostomy care & sterile suctioning", "Ventilator / BiPAP / CPAP monitoring", "Continuous 24/7 vitals & SpO2 tracking", "Daily consultant physician reporting"],
       duration: "24-hour",
       price: "Starting ₹2,500 / day",
       category: "Intensive",
       comingSoon: false,
-      image: "",
-      about: "",
-      highlights: [],
-      images: []
+      image: "/assets/service-icu-recovery.jpg",
+      about: "Step down from the hospital ICU to the comfort and safety of home. Our critical care team provides advanced monitoring, ventilator support, and nursing care.",
+      highlights: [
+        "Trained in handling ICU equipment: suction machines, oxygen, monitors",
+        "Tracheostomy cleaning, cannula dressing, and emergency management",
+        "Strict infection control and aseptic technique maintenance",
+        "Direct emergency escalation protocols with tertiary hospitals",
+        "24-hour bedside nursing coverage with experienced staff"
+      ],
+      images: ["/assets/service-icu-recovery.jpg", "/assets/service-nursing.jpg", "/assets/service-doctor.jpg"]
     },
     {
       id: 11,
       slug: "physiotherapy",
-      title: "Physiotherapy",
+      title: "Physiotherapy at Home",
       short: "Home physiotherapy sessions for recovery and mobility.",
       description: "Professional physiotherapists visit your home for orthopaedic, neurological and post-surgery rehabilitation programs.",
-      benefits: ["Custom rehab plans", "Orthopaedic care", "Neuro rehab", "Post-surgery recovery", "Progress reviews"],
+      benefits: ["Customized physical rehabilitation plans", "Orthopaedic & joint replacement rehab", "Neurological & stroke mobility recovery", "Post-surgery strengthening exercises", "Pain management with TENS & ultrasound"],
       duration: "Per session",
-      price: "Coming Soon",
+      price: "Starting ₹799 / session",
       category: "Therapy",
-      comingSoon: true,
-      image: "",
-      about: "",
-      highlights: [],
-      images: []
+      comingSoon: false,
+      image: "/assets/service-physiotherapy.jpg",
+      about: "Reclaim mobility and strength with qualified physiotherapists who bring therapeutic equipment and guided exercises directly to your home.",
+      highlights: [
+        "Certified BPT / MPT licensed physiotherapists",
+        "Custom rehab for knee replacement, hip surgery, and fractures",
+        "Neuro-rehabilitation for stroke, Parkinson's, and paralysis patients",
+        "Balance and gait training to prevent falls in elderly individuals",
+        "Weekly functional improvement scoring and reporting"
+      ],
+      images: ["/assets/service-physiotherapy.jpg", "/assets/gallery-walk.jpg", "/assets/service-elderly.jpg"]
     },
     {
       id: 12,
       slug: "doctor-consultation",
-      title: "Doctor Consultation",
+      title: "Doctor Consultation at Home",
       short: "Home visit and online consultations with trusted doctors.",
       description: "Consult experienced general physicians and specialists from the comfort of your home — with follow-ups and prescriptions.",
-      benefits: ["Home visits", "Online consults", "Follow-ups", "e-Prescriptions", "Specialist referrals"],
+      benefits: ["Comprehensive home physical examination", "Digital & printed e-Prescriptions", "Chronic condition management (Diabetes, BP)", "Specialist referral & lab test coordination", "Convenient tele-consultation follow-ups"],
       duration: "Per consultation",
-      price: "Coming Soon",
+      price: "Starting ₹999 / visit",
       category: "Medical",
-      comingSoon: true,
-      image: "",
-      about: "",
-      highlights: [],
-      images: []
+      comingSoon: false,
+      image: "/assets/service-doctor.jpg",
+      about: "Compassionate, thorough medical consultations conducted in your home by verified physicians, ideal for seniors, bedridden patients, and convalescing individuals.",
+      highlights: [
+        "Detailed medical history review and systemic physical examination",
+        "Medicine reconciliation and reduction of polypharmacy risks",
+        "Doorstep diagnostic lab sample collection coordination",
+        "Digital health record creation on the Amma Seva portal",
+        "Direct emergency helpline access for registered patients"
+      ],
+      images: ["/assets/service-doctor.jpg", "/assets/service-nursing.jpg", "/assets/service-elderly.jpg"]
     }
   ],
   notifications: [],
   reviews: [],
   announcements: [],
-  blogs: [],
+  blogs: [
+    {
+      id: 1,
+      slug: "essential-guide-elderly-care-hyderabad",
+      title: "The Essential Guide to Quality Elderly Care at Home in Hyderabad",
+      description: "Discover how personalized home care preserves senior dignity, promotes mental wellness, and provides families with peace of mind.",
+      content: "As our beloved parents and grandparents grow older, their healthcare and daily living needs evolve. While traditional old-age homes were once the only alternative, professional home healthcare now empowers seniors to remain in their cherished home environment surrounded by family memories.\n\n### Key Benefits of Home Geriatric Care\n1. **Familiar Surroundings**: Maintaining established routines in a comfortable setting reduces cognitive anxiety and delirium in seniors.\n2. **One-on-One Attention**: Unlike busy hospitals, a dedicated caregiver focuses entirely on your loved one's comfort, hygiene, and nutrition.\n3. **Safety and Fall Prevention**: Trained attendants assist with mobility, bathroom transfers, and gentle walking routines.\n4. **Timely Medication**: Ensuring prescriptions, blood pressure checks, and dietary schedules are strictly followed.",
+      image: "/assets/service-elderly.jpg",
+      category: "Elderly Care",
+      author: "Amma Seva Geriatric Care Team",
+      date: "2026-08-20"
+    },
+    {
+      id: 2,
+      slug: "postnatal-recovery-guide-new-mothers",
+      title: "Postnatal Recovery: What Every New Mother Needs to Know",
+      description: "A comprehensive guide on postpartum healing, newborn bonding, and the importance of having professional maternal support at home.",
+      content: "The arrival of a newborn baby is one of life's greatest blessings, but the fourth trimester is also a period of intense physical recovery and emotional adjustment for new mothers.\n\n### Essential Postpartum Care Pillars\n- **Adequate Rest & Sleep**: Healing from delivery requires resting while a trained baby attendant manages swaddling, burping, and diapering.\n- **Lactation Guidance**: Proper latching techniques prevent discomfort and ensure optimal newborn nutrition.\n- **Traditional Newborn Hygiene**: Expert baby oil massage and temperature-controlled baths soothe infants and promote healthy muscle development.",
+      image: "/assets/service-mother-baby.jpg",
+      category: "Maternal & Child Health",
+      author: "Amma Seva Maternity Specialists",
+      date: "2026-08-25"
+    },
+    {
+      id: 3,
+      slug: "prevent-bedsores-bedridden-patients",
+      title: "Preventing Bedsores in Bedridden Patients: Clinical Best Practices",
+      description: "Learn clinical protocols for pressure ulcer prevention, position changing schedules, and specialized skin hygiene for bedbound loved ones.",
+      content: "For patients recovering from severe illness, stroke, or spinal injury, prolonged bed rest poses significant risks of pressure sores (decubitus ulcers). With proper clinical vigilance, bedsores are virtually 100% preventable.\n\n### Key Prevention Protocols\n1. **Two-Hour Turning Schedule**: Alternating between left lateral, supine, and right lateral positions redistributes pressure points.\n2. **Skin Moisture Management**: Keeping skin clean and dry while applying barrier creams protects delicate epidermal tissue.\n3. **Medical Air Mattresses**: Alternating pressure air mattresses stimulate blood circulation.\n4. **High-Protein Nutrition**: Adequate dietary protein accelerates cellular repair and prevents tissue breakdown.",
+      image: "/assets/service-bedside-attendant.jpg",
+      category: "Clinical Nursing",
+      author: "Amma Seva Clinical Nursing Board",
+      date: "2026-08-28"
+    },
+    {
+      id: 4,
+      slug: "home-nursing-vs-hospital-stay",
+      title: "Home Nursing vs Hospital Stay: Benefits and Cost Analysis",
+      description: "Why transition to hospital-standard home nursing reduces infection risks, speeds up patient recovery, and saves substantial healthcare costs.",
+      content: "Prolonged hospital stays expose vulnerable convalescing patients to nosocomial infections and hospital delirium. Transitioning to professional home nursing allows patients to receive ICU-standard clinical supervision in a serene, home setting at a fraction of the cost.\n\n### Advantages of Home Recovery\n- **Lower Infection Risk**: Dramatically reduces exposure to multi-drug resistant hospital bacteria.\n- **Faster Emotional Healing**: Patients recover significantly faster surrounded by family warmth.\n- **Cost Efficiency**: Home nursing services typically cost 60% to 70% less than equivalent private hospital room charges.",
+      image: "/assets/service-nursing.jpg",
+      category: "Healthcare Economics",
+      author: "Dr. Ramesh V. & Clinical Operations",
+      date: "2026-09-02"
+    }
+  ],
   faqs: [
     { id: 1, question: "Are your caregivers and nurses verified?", answer: "Yes. Every professional undergoes ID verification, background checks, and skill assessments before joining." },
     { id: 2, question: "How quickly can care be arranged?", answer: "In most cities, we can arrange care within 4–12 hours depending on the service and shift." },

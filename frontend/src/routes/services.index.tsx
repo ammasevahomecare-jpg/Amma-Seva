@@ -10,6 +10,11 @@ import { fetchServices, type Service } from "@/lib/services";
 import motherBaby from "@/assets/service-mother-baby.jpg";
 import nursing from "@/assets/service-nursing.jpg";
 import elderly from "@/assets/service-elderly.jpg";
+import physio from "@/assets/service-physiotherapy.jpg";
+import icu from "@/assets/service-icu-recovery.jpg";
+import attendant from "@/assets/service-bedside-attendant.jpg";
+import doctor from "@/assets/service-doctor.jpg";
+import mtp from "@/assets/service-mtp.jpg";
 
 function getServiceDetails(slug: string) {
   const details: Record<string, { category: string; badgeClass: string; image: string; highlights: string[]; shiftType: string }> = {
@@ -43,10 +48,10 @@ function getServiceDetails(slug: string) {
     },
     "home-nursing": {
       category: "Clinical Nursing",
-      badgeClass: "bg-cyan-50 text-cyan-800 border-cyan-200",
+      badgeClass: "bg-blue-50 text-blue-800 border-blue-200",
       image: nursing,
-      highlights: ["IV / IM Injections & Drips", "Wound Dressing & Catheterization", "Vitals & Sugar Charting"],
-      shiftType: "Visit / Hourly / 12h Shift",
+      highlights: ["IV Cannula & Injections", "Bed Sore & Surgical Dressing", "Continuous Vital Parameter Log"],
+      shiftType: "Shift / 24h Full-Day",
     },
     "injection-services": {
       category: "Clinical Nursing",
@@ -58,44 +63,51 @@ function getServiceDetails(slug: string) {
     "post-surgery-care": {
       category: "Recovery & Rehab",
       badgeClass: "bg-amber-50 text-amber-800 border-amber-200",
-      image: nursing,
+      image: icu,
       highlights: ["Surgical Wound Management", "Drain & Suture Monitoring", "Physical Rehab Alignment"],
       shiftType: "12h / 24h Dedicated Care",
     },
     "patient-care-attendant": {
       category: "Bedside Attendant",
       badgeClass: "bg-purple-50 text-purple-800 border-purple-200",
-      image: elderly,
+      image: attendant,
       highlights: ["Bed-to-Chair Transfers", "Assisted Feeding & Diaper Care", "Continuous Bedside Presence"],
       shiftType: "12h Day/Night or 24/7",
     },
     "bedridden-patient-care": {
       category: "Specialized Care",
       badgeClass: "bg-teal-50 text-teal-800 border-teal-200",
-      image: elderly,
+      image: attendant,
       highlights: ["Bed Sore Prevention & Turning", "Tube Feeding & Sponge Baths", "Comprehensive Dignity Care"],
       shiftType: "24/7 Full Time Live-in",
     },
     "icu-home-recovery": {
       category: "Intensive Care",
       badgeClass: "bg-red-50 text-red-800 border-red-200",
-      image: nursing,
+      image: icu,
       highlights: ["Tracheostomy & BiPAP Handling", "Critical Vitals Logging", "ICU-Trained ANM/GNM Staff"],
       shiftType: "24/7 Clinical Shifts",
     },
     "physiotherapy": {
       category: "Therapy & Rehab",
       badgeClass: "bg-fuchsia-50 text-fuchsia-800 border-fuchsia-200",
-      image: elderly,
+      image: physio,
       highlights: ["Stroke & Paralysis Recovery", "Geriatric Balance Training", "Custom Pain-Relief Exercises"],
       shiftType: "Hourly Therapy Sessions",
     },
     "doctor-consultation": {
       category: "Medical Consult",
       badgeClass: "bg-slate-50 text-slate-800 border-slate-200",
-      image: nursing,
+      image: doctor,
       highlights: ["Doorstep Physician Examination", "Comprehensive Diagnosis", "Prescription & Lab Review"],
       shiftType: "Home Visit by Appointment",
+    },
+    "mtp": {
+      category: "Medical Transport",
+      badgeClass: "bg-emerald-50 text-emerald-800 border-emerald-200",
+      image: mtp,
+      highlights: ["Wheelchair & Stretcher Transit", "Paramedic Escort Onboard", "Zero Surge Pricing"],
+      shiftType: "On-Demand Dispatch",
     },
   };
   return details[slug] || {
@@ -103,7 +115,7 @@ function getServiceDetails(slug: string) {
     badgeClass: "bg-teal-50 text-teal-800 border-teal-200",
     image: nursing,
     highlights: ["100% Background Verified", "Doctor Prescription Adherence", "24/7 Care Coordinator"],
-    shiftType: "Flexible Hourly / Shift",
+    shiftType: "Flexible Shifts",
   };
 }
 
@@ -306,6 +318,10 @@ function ServicesPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-7">
               {filteredServices.map((s: Service) => {
                 const details = getServiceDetails(s.slug);
+                const cardImage = s.image || details.image;
+                const cardPrice = s.price || s.pricing || "Starting ₹799 / shift";
+                const cardHighlights = (s.highlights && s.highlights.length > 0) ? s.highlights.slice(0, 3) : details.highlights;
+
                 return (
                   <div
                     key={s.slug}
@@ -314,7 +330,7 @@ function ServicesPage() {
                     {/* Card Image Container */}
                     <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100">
                       <img 
-                        src={details.image} 
+                        src={cardImage} 
                         alt={s.title} 
                         width={1200} 
                         height={800} 
@@ -325,7 +341,7 @@ function ServicesPage() {
                       
                       {/* Floating Price Badge */}
                       <div className="absolute top-3.5 right-3.5 bg-[#1e2a5a]/95 backdrop-blur-xs text-white px-3.5 py-1 rounded-xl text-xs font-bold shadow-md border border-white/20">
-                        {s.price || "₹799 / Shift"}
+                        {cardPrice}
                       </div>
 
                       {/* Verified Badge */}
@@ -364,7 +380,7 @@ function ServicesPage() {
 
                         {/* Feature Checklist */}
                         <div className="pt-2 space-y-2 border-t border-slate-100">
-                          {details.highlights.map((h, i) => (
+                          {cardHighlights.map((h: string, i: number) => (
                             <div key={i} className="flex items-center gap-2 text-[11px] text-slate-700 font-medium">
                               <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                               <span className="truncate">{h}</span>

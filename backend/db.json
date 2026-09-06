@@ -70,20 +70,72 @@
       "experience": 5,
       "status": "Verified",
       "joinedAt": "2026-08-21T05:00:00.000Z",
-      "rating": 4.8,
+      "rating": 4.9,
       "reviews": [],
-      "aadhaar": "",
-      "pan": "",
-      "certificates": "",
-      "profilePhoto": "",
-      "experienceDetails": "5 years of caring for senior citizens",
-      "workingLocations": "Hyderabad",
-      "availableTimings": "Full Day",
+      "aadhaar": "XXXX-XXXX-8921",
+      "pan": "ABCDE1234F",
+      "certificates": "Certified Geriatric Caregiver",
+      "profilePhoto": "/assets/service-elderly.jpg",
+      "experienceDetails": "5 years of specialized geriatric care and senior mobility support",
+      "workingLocations": "Hyderabad, Secunderabad",
+      "availableTimings": "Full Day / 12hr Shifts",
       "state": "Telangana",
       "city": "Hyderabad",
       "googleMapLocation": "",
       "experienceCertificate": "",
-      "policeVerification": "",
+      "policeVerification": "Verified",
+      "additionalCertificates": ""
+    },
+    {
+      "id": 2,
+      "name": "Sunitha M., GNM",
+      "email": "sunitha@ammaseva.in",
+      "phone": "9876543211",
+      "password": "password123",
+      "specialty": "Home Nursing & Vitals",
+      "experience": 7,
+      "status": "Verified",
+      "joinedAt": "2026-08-22T08:30:00.000Z",
+      "rating": 4.95,
+      "reviews": [],
+      "aadhaar": "XXXX-XXXX-4512",
+      "pan": "FGHIJ5678K",
+      "certificates": "Registered General Nurse & Midwife (GNM)",
+      "profilePhoto": "/assets/service-nursing.jpg",
+      "experienceDetails": "7 years ICU and post-operative home nursing experience",
+      "workingLocations": "Hyderabad, Cyberabad",
+      "availableTimings": "24/7 On-Call / 12hr Shifts",
+      "state": "Telangana",
+      "city": "Hyderabad",
+      "googleMapLocation": "",
+      "experienceCertificate": "",
+      "policeVerification": "Verified",
+      "additionalCertificates": ""
+    },
+    {
+      "id": 3,
+      "name": "Dr. Ramesh V., MBBS",
+      "email": "drramesh@ammaseva.in",
+      "phone": "9876543212",
+      "password": "password123",
+      "specialty": "General Physician Home Visits",
+      "experience": 12,
+      "status": "Verified",
+      "joinedAt": "2026-08-24T10:00:00.000Z",
+      "rating": 5,
+      "reviews": [],
+      "aadhaar": "XXXX-XXXX-6789",
+      "pan": "KLMNO9012P",
+      "certificates": "MBBS, MD (Family Medicine)",
+      "profilePhoto": "/assets/service-doctor.jpg",
+      "experienceDetails": "12+ years clinical experience in geriatric and preventive medicine",
+      "workingLocations": "Hyderabad Metro Area",
+      "availableTimings": "Morning & Evening Consultations",
+      "state": "Telangana",
+      "city": "Hyderabad",
+      "googleMapLocation": "",
+      "experienceCertificate": "",
+      "policeVerification": "Verified",
       "additionalCertificates": ""
     }
   ],
@@ -96,19 +148,29 @@
       "description": "Trained caregivers assist your elderly loved ones with daily activities, mobility, medication reminders, meals, and companionship — always with dignity and warmth.",
       "benefits": [
         "Personal hygiene & grooming",
-        "Medication reminders",
-        "Meal preparation",
-        "Mobility assistance",
-        "Companionship"
+        "Medication reminders & vitals check",
+        "Nutritious meal preparation",
+        "Mobility & assisted walking support",
+        "Emotional companionship & conversation"
       ],
       "duration": "Hourly, Daily, or Live-in",
       "price": "Starting ₹500 / visit",
       "category": "Elderly Care",
       "comingSoon": false,
-      "image": "",
-      "about": "",
-      "highlights": [],
-      "images": []
+      "image": "/assets/service-elderly.jpg",
+      "about": "Our specialized Elderly Care program is designed to deliver warm, professional, and reliable home care. Under the guidance of geriatric clinical advisors, our dedicated caregivers assist with daily living, medicine routines, mobility, and companionship, ensuring maximum peace of mind in the comfort of your own home.",
+      "highlights": [
+        "100% Background-checked & police-verified caregivers",
+        "Daily digital health & activity logs for family members",
+        "Personalized daily care routine tailored to senior needs",
+        "Assisted morning & evening walks with mobility support",
+        "Dedicated 24/7 care helpline and doctor coordinator"
+      ],
+      "images": [
+        "/assets/service-elderly.jpg",
+        "/assets/gallery-walk.jpg",
+        "/assets/service-bedside-attendant.jpg"
+      ]
     },
     {
       "id": 2,
@@ -117,20 +179,30 @@
       "short": "Postnatal support for new mothers and their newborns.",
       "description": "Experienced maternity attendants and nurses help new mothers with recovery, feeding guidance, baby bathing, and round-the-clock newborn care.",
       "benefits": [
-        "Postnatal recovery support",
-        "Breastfeeding guidance",
-        "Baby bathing & massage",
-        "Sleep scheduling",
-        "Emotional wellness"
+        "Postnatal recovery & comfort care",
+        "Lactation & breastfeeding guidance",
+        "Gentle baby bathing & oil massage",
+        "Newborn sleep routine scheduling",
+        "Mother's emotional wellness support"
       ],
       "duration": "Daily, Weekly, or Monthly",
       "price": "Starting ₹18,000 / month",
       "category": "Maternal",
       "comingSoon": false,
-      "image": "",
-      "about": "",
-      "highlights": [],
-      "images": []
+      "image": "/assets/service-mother-baby.jpg",
+      "about": "Our Mother & Baby Care service provides experienced maternity attendants and pediatric nurses who guide new mothers through post-delivery recovery, gentle newborn handling, bathing, massage, and round-the-clock peace of mind.",
+      "highlights": [
+        "Certified newborn care specialists and postnatal attendants",
+        "Safe traditional baby bathing & soothing oil massage routines",
+        "Guidance on breastfeeding, burping, and infant sleep cycles",
+        "Post-cesarean / normal delivery recovery assistance for mother",
+        "Digital milestone and vaccination reminders"
+      ],
+      "images": [
+        "/assets/service-mother-baby.jpg",
+        "/assets/service-nursing.jpg",
+        "/assets/service-bedside-attendant.jpg"
+      ]
     },
     {
       "id": 3,
@@ -139,20 +211,30 @@
       "short": "Attentive prenatal support for expectant mothers at home.",
       "description": "Qualified nurses provide antenatal check-ins, wellness monitoring, and comforting care throughout pregnancy — so you can rest, recover and prepare in peace.",
       "benefits": [
-        "Vitals monitoring",
-        "Diet & nutrition guidance",
-        "Wellness check-ins",
-        "Mobility support",
-        "Doctor coordination"
+        "Vitals & fetal heartbeat monitoring",
+        "Prenatal diet & nutrition guidance",
+        "Comfort checks & posture guidance",
+        "Mobility & breathing exercise support",
+        "Direct obstetrician coordination"
       ],
       "duration": "Hourly, Daily, or Monthly",
       "price": "Starting ₹700 / visit",
       "category": "Prenatal",
       "comingSoon": false,
-      "image": "",
-      "about": "",
-      "highlights": [],
-      "images": []
+      "image": "/assets/service-nursing.jpg",
+      "about": "Attentive prenatal care delivered at home by trained maternal nurses to ensure health, comfort, and peace of mind during every trimester of pregnancy.",
+      "highlights": [
+        "Routine blood pressure, pulse, and glucose checks at home",
+        "Nutrition planning tailored to trimester requirements",
+        "Relaxation, breathing, and safe mobility assistance",
+        "Emergency preparedness and hospital bag checklist assistance",
+        "Seamless coordination with your consulting gynaecologist"
+      ],
+      "images": [
+        "/assets/service-nursing.jpg",
+        "/assets/service-mother-baby.jpg",
+        "/assets/service-doctor.jpg"
+      ]
     },
     {
       "id": 4,
@@ -161,20 +243,30 @@
       "short": "Specialist care for babies in their most delicate first weeks.",
       "description": "Trained newborn caregivers handle feeding, sleep routines, bathing, and gentle massages so parents can rest while their little one is in expert hands.",
       "benefits": [
-        "Feeding & burping",
-        "Bathing & massage",
-        "Sleep routines",
-        "Vaccination reminders",
-        "Overnight care"
+        "Sterile feeding bottle & burping support",
+        "Gentle Ayurvedic oil massage & warm bath",
+        "Umbilical cord hygiene & skin care",
+        "Vaccination schedule tracking",
+        "Overnight watchful nursery care"
       ],
       "duration": "Daily, Weekly, or Monthly",
       "price": "Starting ₹20,000 / month",
       "category": "Pediatric",
       "comingSoon": false,
-      "image": "",
-      "about": "",
-      "highlights": [],
-      "images": []
+      "image": "/assets/service-mother-baby.jpg",
+      "about": "Our specialized newborn caregivers give your newborn infant 24/7 dedicated attention, hygiene, and soothing care during the vital first 90 days of life.",
+      "highlights": [
+        "Dedicated infant attendants with background clearance",
+        "Hygienic diaper change, skin fold care, and rash prevention",
+        "Gentle burping and colic relief massage techniques",
+        "Structured sleep schedules for restful newborn nights",
+        "Support with breastmilk storage and bottle sterilization"
+      ],
+      "images": [
+        "/assets/service-mother-baby.jpg",
+        "/assets/service-nursing.jpg",
+        "/assets/service-bedside-attendant.jpg"
+      ]
     },
     {
       "id": 5,
@@ -183,20 +275,30 @@
       "short": "Qualified nurses delivering hospital-grade care at home.",
       "description": "Registered nurses provide wound care, IV therapy, catheter care, tracheostomy care, and general nursing tailored to your medical needs.",
       "benefits": [
-        "Wound dressing",
-        "IV / injection therapy",
-        "Catheter & tube care",
-        "Vitals monitoring",
-        "Doctor coordination"
+        "Sterile wound dressing & suture care",
+        "IV infusion & injection therapy",
+        "Catheter, Ryle's tube & stoma care",
+        "24/7 Vital signs tracking & digital charts",
+        "Direct doctor coordination"
       ],
       "duration": "Hourly, 12-hour, or 24-hour",
       "price": "Starting ₹800 / visit",
       "category": "Clinical",
       "comingSoon": false,
-      "image": "",
-      "about": "",
-      "highlights": [],
-      "images": []
+      "image": "/assets/service-nursing.jpg",
+      "about": "Hospital-standard clinical nursing delivered at home by licensed GNM and B.Sc nurses under strict medical protocols and sterile hygiene standards.",
+      "highlights": [
+        "State Nursing Council registered nurses",
+        "Expertise in post-surgical dressings, bedsores, and IV fluids",
+        "Catheterization, nebulization, and oxygen administration",
+        "Real-time vitals transmission to family and consulting doctor",
+        "Flexible 12-hour day/night or 24-hour continuous shifts"
+      ],
+      "images": [
+        "/assets/service-nursing.jpg",
+        "/assets/service-icu-recovery.jpg",
+        "/assets/service-doctor.jpg"
+      ]
     },
     {
       "id": 6,
@@ -205,20 +307,30 @@
       "short": "Safe, sterile injections administered by trained nurses at home.",
       "description": "On-demand injection service for insulin, antibiotics, vitamin shots, and prescribed medication — quick, hygienic, and pain-conscious.",
       "benefits": [
-        "Sterile procedure",
-        "Trained nurses only",
-        "Same-day availability",
-        "Safe disposal",
-        "Doctor prescription verified"
+        "100% Sterile disposable equipment",
+        "Administered by certified nurses only",
+        "Same-day & scheduled on-demand visits",
+        "Bio-hazard sharps safe disposal",
+        "Prescription verified prior to administration"
       ],
       "duration": "Per visit",
       "price": "Starting ₹299 / visit",
       "category": "Clinical",
       "comingSoon": false,
-      "image": "",
-      "about": "",
-      "highlights": [],
-      "images": []
+      "image": "/assets/service-nursing.jpg",
+      "about": "Avoid exhausting clinic trips for routine injections. Our licensed nurses arrive at your doorstep for sterile, hygienic, and gentle medicine administration.",
+      "highlights": [
+        "Intramuscular (IM), Intravenous (IV), and Subcutaneous (SC) injections",
+        "Insulin administration and blood glucose monitoring",
+        "Doctor prescription verification before every procedure",
+        "Emergency anaphylaxis protocols and sterile disposal kits",
+        "Immediate booking with doorstep arrival within 60 minutes"
+      ],
+      "images": [
+        "/assets/service-nursing.jpg",
+        "/assets/service-doctor.jpg",
+        "/assets/service-icu-recovery.jpg"
+      ]
     },
     {
       "id": 7,
@@ -227,20 +339,30 @@
       "short": "Guided recovery care after hospital discharge.",
       "description": "Nurses and attendants support post-operative healing with wound care, medication schedules, mobility help, and gentle physical support.",
       "benefits": [
-        "Wound & suture care",
-        "Pain management support",
-        "Mobility assistance",
-        "Diet planning",
-        "Progress reporting"
+        "Wound & surgical suture inspection",
+        "Pain management & timely medication",
+        "Assisted mobility & deep breathing exercises",
+        "Post-op dietary supervision",
+        "Daily recovery progress tracking"
       ],
       "duration": "Daily or 24-hour",
       "price": "Starting ₹1,500 / day",
       "category": "Recovery",
       "comingSoon": false,
-      "image": "",
-      "about": "",
-      "highlights": [],
-      "images": []
+      "image": "/assets/service-icu-recovery.jpg",
+      "about": "Recover safely and comfortably at home following surgery. Our clinical nurses and bedside attendants prevent hospital readmissions through attentive post-operative care.",
+      "highlights": [
+        "Specialized care for orthopaedic, cardiac, and abdominal surgeries",
+        "Sterile dressing changes to prevent surgical site infections (SSI)",
+        "Assistance with transfer from bed to chair and gentle walking",
+        "Drain tube management and input/output fluid charting",
+        "Coordinated follow-ups with your operating surgeon"
+      ],
+      "images": [
+        "/assets/service-icu-recovery.jpg",
+        "/assets/service-physiotherapy.jpg",
+        "/assets/service-nursing.jpg"
+      ]
     },
     {
       "id": 8,
@@ -249,20 +371,30 @@
       "short": "Dedicated attendants for personal and daily patient needs.",
       "description": "Trained attendants assist with feeding, hygiene, positioning and companionship so families can focus on being together.",
       "benefits": [
-        "Feeding assistance",
-        "Personal hygiene",
-        "Turning & positioning",
-        "Household support",
-        "Emotional companionship"
+        "Assisted feeding & hydration",
+        "Sponge bath & personal hygiene",
+        "Patient turning & bed positioning",
+        "Medicine timekeeping & reminders",
+        "Empathetic bedside companionship"
       ],
       "duration": "12-hour or 24-hour",
       "price": "Starting ₹900 / day",
       "category": "Assistance",
       "comingSoon": false,
-      "image": "",
-      "about": "",
-      "highlights": [],
-      "images": []
+      "image": "/assets/service-bedside-attendant.jpg",
+      "about": "Compassionate and physically capable patient care attendants who support bedridden or semi-mobile family members with daily living activities.",
+      "highlights": [
+        "Trained in patient transfer and ergonomic lifting techniques",
+        "Assistance with oral hygiene, sponge bathing, and clothing change",
+        "Nutritious meal and water intake monitoring",
+        "Support with walker, wheelchair, and restroom assistance",
+        "Reliable day and night shift options across Hyderabad"
+      ],
+      "images": [
+        "/assets/service-bedside-attendant.jpg",
+        "/assets/service-elderly.jpg",
+        "/assets/gallery-walk.jpg"
+      ]
     },
     {
       "id": 9,
@@ -271,20 +403,30 @@
       "short": "Specialist care for patients confined to bed.",
       "description": "Attendants and nurses trained in bedsore prevention, position changes, sponge baths, catheter care, and full daily support for bedridden patients.",
       "benefits": [
-        "Bedsore prevention",
-        "Sponge bath & hygiene",
-        "Position changes",
-        "Diaper care",
-        "Catheter care"
+        "2-hourly turning & bedsore prevention",
+        "Bed bath, skin care & linen change",
+        "Adult diaper & hygiene management",
+        "Catheter & Ryle's tube feeding care",
+        "Passive range-of-motion limb movement"
       ],
       "duration": "12-hour or 24-hour",
       "price": "Starting ₹1,200 / day",
       "category": "Specialized",
       "comingSoon": false,
-      "image": "",
-      "about": "",
-      "highlights": [],
-      "images": []
+      "image": "/assets/service-bedside-attendant.jpg",
+      "about": "Dedicated, respectful care for chronically ill, stroke, or palliative patients confined to bed, focusing on skin integrity, nutrition, and dignity.",
+      "highlights": [
+        "Air mattress maintenance and pressure ulcer prevention routines",
+        "Tube feeding (Ryle's tube / PEG) management by trained attendants",
+        "Gentle daily sponge bathing and antiseptic skin hygiene",
+        "Frequent position changes to prevent stiffness and lung congestion",
+        "Supportive palliative companionship and family reassurance"
+      ],
+      "images": [
+        "/assets/service-bedside-attendant.jpg",
+        "/assets/service-icu-recovery.jpg",
+        "/assets/service-nursing.jpg"
+      ]
     },
     {
       "id": 10,
@@ -293,109 +435,321 @@
       "short": "ICU-level home support for critical recovery.",
       "description": "Critical-care trained nurses handle ventilator monitoring, tracheostomy care, and intensive recovery routines under doctor guidance.",
       "benefits": [
-        "Critical-care nurses",
-        "Ventilator monitoring",
-        "Tracheostomy care",
-        "24/7 vitals tracking",
-        "Doctor coordination"
+        "Critical-care ICU certified nurses",
+        "Tracheostomy care & sterile suctioning",
+        "Ventilator / BiPAP / CPAP monitoring",
+        "Continuous 24/7 vitals & SpO2 tracking",
+        "Daily consultant physician reporting"
       ],
       "duration": "24-hour",
       "price": "Starting ₹2,500 / day",
       "category": "Intensive",
       "comingSoon": false,
-      "image": "",
-      "about": "",
-      "highlights": [],
-      "images": []
+      "image": "/assets/service-icu-recovery.jpg",
+      "about": "Step down from the hospital ICU to the comfort and safety of home. Our critical care team provides advanced monitoring, ventilator support, and nursing care.",
+      "highlights": [
+        "Trained in handling ICU equipment: suction machines, oxygen, monitors",
+        "Tracheostomy cleaning, cannula dressing, and emergency management",
+        "Strict infection control and aseptic technique maintenance",
+        "Direct emergency escalation protocols with tertiary hospitals",
+        "24-hour bedside nursing coverage with experienced staff"
+      ],
+      "images": [
+        "/assets/service-icu-recovery.jpg",
+        "/assets/service-nursing.jpg",
+        "/assets/service-doctor.jpg"
+      ]
     },
     {
       "id": 11,
       "slug": "physiotherapy",
-      "title": "Physiotherapy",
+      "title": "Physiotherapy at Home",
       "short": "Home physiotherapy sessions for recovery and mobility.",
       "description": "Professional physiotherapists visit your home for orthopaedic, neurological and post-surgery rehabilitation programs.",
       "benefits": [
-        "Custom rehab plans",
-        "Orthopaedic care",
-        "Neuro rehab",
-        "Post-surgery recovery",
-        "Progress reviews"
+        "Customized physical rehabilitation plans",
+        "Orthopaedic & joint replacement rehab",
+        "Neurological & stroke mobility recovery",
+        "Post-surgery strengthening exercises",
+        "Pain management with TENS & ultrasound"
       ],
       "duration": "Per session",
-      "price": "Coming Soon",
+      "price": "Starting ₹799 / session",
       "category": "Therapy",
-      "comingSoon": true,
-      "image": "",
-      "about": "",
-      "highlights": [],
-      "images": []
+      "comingSoon": false,
+      "image": "/assets/service-physiotherapy.jpg",
+      "about": "Reclaim mobility and strength with qualified physiotherapists who bring therapeutic equipment and guided exercises directly to your home.",
+      "highlights": [
+        "Certified BPT / MPT licensed physiotherapists",
+        "Custom rehab for knee replacement, hip surgery, and fractures",
+        "Neuro-rehabilitation for stroke, Parkinson's, and paralysis patients",
+        "Balance and gait training to prevent falls in elderly individuals",
+        "Weekly functional improvement scoring and reporting"
+      ],
+      "images": [
+        "/assets/service-physiotherapy.jpg",
+        "/assets/gallery-walk.jpg",
+        "/assets/service-elderly.jpg"
+      ]
     },
     {
       "id": 12,
       "slug": "doctor-consultation",
-      "title": "Doctor Consultation",
+      "title": "Doctor Consultation at Home",
       "short": "Home visit and online consultations with trusted doctors.",
       "description": "Consult experienced general physicians and specialists from the comfort of your home — with follow-ups and prescriptions.",
       "benefits": [
-        "Home visits",
-        "Online consults",
-        "Follow-ups",
-        "e-Prescriptions",
-        "Specialist referrals"
+        "Comprehensive home physical examination",
+        "Digital & printed e-Prescriptions",
+        "Chronic condition management (Diabetes, BP)",
+        "Specialist referral & lab test coordination",
+        "Convenient tele-consultation follow-ups"
       ],
       "duration": "Per consultation",
-      "price": "Coming Soon",
+      "price": "Starting ₹999 / visit",
       "category": "Medical",
-      "comingSoon": true,
-      "image": "",
-      "about": "",
-      "highlights": [],
-      "images": []
+      "comingSoon": false,
+      "image": "/assets/service-doctor.jpg",
+      "about": "Compassionate, thorough medical consultations conducted in your home by verified physicians, ideal for seniors, bedridden patients, and convalescing individuals.",
+      "highlights": [
+        "Detailed medical history review and systemic physical examination",
+        "Medicine reconciliation and reduction of polypharmacy risks",
+        "Doorstep diagnostic lab sample collection coordination",
+        "Digital health record creation on the Amma Seva portal",
+        "Direct emergency helpline access for registered patients"
+      ],
+      "images": [
+        "/assets/service-doctor.jpg",
+        "/assets/service-nursing.jpg",
+        "/assets/service-elderly.jpg"
+      ]
+    }
+  ],
+  "gallery": [
+    {
+      "id": 1,
+      "imageUrl": "/assets/service-elderly.jpg",
+      "title": "Compassionate Elderly Companionship & Care",
+      "category": "Elderly Care",
+      "location": "Banjara Hills, Hyderabad",
+      "description": "Dedicated caregiver providing emotional warmth, daily living assistance, and medication adherence monitoring for a 76-year-old grandfather in the comfort of his home.",
+      "createdAt": "2026-08-15T10:00:00.000Z",
+      "badge": "Verified Care"
+    },
+    {
+      "id": 2,
+      "imageUrl": "/assets/service-nursing.jpg",
+      "title": "Hospital-Grade Home Nursing & Blood Pressure Monitoring",
+      "category": "Clinical Nursing",
+      "location": "Jubilee Hills, Hyderabad",
+      "description": "Registered GNM nurse recording digital vitals, blood pressure, and blood glucose levels during a scheduled morning clinical visit.",
+      "createdAt": "2026-08-18T14:30:00.000Z",
+      "badge": "Clinical Standard"
+    },
+    {
+      "id": 3,
+      "imageUrl": "/assets/service-mother-baby.jpg",
+      "title": "Mother & Newborn Postnatal Care Session",
+      "category": "Mother & Baby",
+      "location": "Gachibowli, Hyderabad",
+      "description": "Certified postnatal care attendant assisting a new mother with baby massage, feeding posture, and post-delivery maternal recovery routines.",
+      "createdAt": "2026-08-20T09:15:00.000Z",
+      "badge": "Postnatal Specialist"
+    },
+    {
+      "id": 4,
+      "imageUrl": "/assets/service-doctor.jpg",
+      "title": "Experienced Doctor Home Consultation & Health Review",
+      "category": "Doctor Visits",
+      "location": "Madhapur, Hyderabad",
+      "description": "Senior general physician conducting an in-depth home health review, reviewing chronic conditions, and answering family queries with patience.",
+      "createdAt": "2026-08-22T11:45:00.000Z",
+      "badge": "Doctor Visit"
+    },
+    {
+      "id": 5,
+      "imageUrl": "/assets/gallery-walk.jpg",
+      "title": "Gentle Assisted Walking & Mobility in Garden",
+      "category": "Elderly Care",
+      "location": "Secunderabad, Hyderabad",
+      "description": "Caregiver gently assisting a senior citizen during their morning fresh-air stroll in the community garden to promote cardiovascular health.",
+      "createdAt": "2026-08-25T16:00:00.000Z",
+      "badge": "Mobility Support"
+    },
+    {
+      "id": 6,
+      "imageUrl": "/assets/service-physiotherapy.jpg",
+      "title": "Physiotherapy & Neuro-Rehabilitation Exercise",
+      "category": "Physiotherapy",
+      "location": "Kondapur, Hyderabad",
+      "description": "Licensed physiotherapist guiding an elderly patient through guided range-of-motion and joint strengthening exercises following surgery.",
+      "createdAt": "2026-08-28T10:30:00.000Z",
+      "badge": "Certified PT"
+    },
+    {
+      "id": 7,
+      "imageUrl": "/assets/service-icu-recovery.jpg",
+      "title": "ICU Home Recovery & Vital Signs Tracking",
+      "category": "ICU Recovery",
+      "location": "Hitec City, Hyderabad",
+      "description": "Critical-care trained home nurse managing oxygen saturation, pulse oximetry, and sterile cannula care in a home step-down setting.",
+      "createdAt": "2026-09-01T08:00:00.000Z",
+      "badge": "Critical Care"
+    },
+    {
+      "id": 8,
+      "imageUrl": "/assets/service-bedside-attendant.jpg",
+      "title": "Bedside Attendant Assisting Senior Patient with Warmth",
+      "category": "Bedside Assistance",
+      "location": "Begumpet, Hyderabad",
+      "description": "Dedicated attendant assisting a recovering patient with nutritious meals, hydration, and gentle position changes to prevent bedsores.",
+      "createdAt": "2026-09-02T13:20:00.000Z",
+      "badge": "24/7 Attendant"
+    },
+    {
+      "id": 9,
+      "imageUrl": "/assets/service-mtp.jpg",
+      "title": "Medical Transport Partner (MTP) Safe Patient Escort",
+      "category": "Medical Transport",
+      "location": "Kukatpally, Hyderabad",
+      "description": "Trained MTP escort safely assisting an elderly wheelchair patient from their doorstep to an outpatient hospital consultation.",
+      "createdAt": "2026-09-04T15:10:00.000Z",
+      "badge": "Transit Escort"
+    },
+    {
+      "id": 10,
+      "imageUrl": "/assets/service-nursing.jpg",
+      "title": "Post-Surgical Wound Dressing & Aseptic Care",
+      "category": "Clinical Nursing",
+      "location": "Attapur, Hyderabad",
+      "description": "Qualified nurse performing sterile suture line inspection and antiseptic dressing change for a patient recovering from orthopaedic surgery.",
+      "createdAt": "2026-09-05T11:00:00.000Z",
+      "badge": "Wound Care"
+    },
+    {
+      "id": 11,
+      "imageUrl": "/assets/service-mother-baby.jpg",
+      "title": "Prenatal Wellness & Vitals Check for Expectant Mother",
+      "category": "Mother & Baby",
+      "location": "Manikonda, Hyderabad",
+      "description": "Maternal healthcare nurse conducting prenatal blood pressure, weight, and wellness checks in the comfort of home.",
+      "createdAt": "2026-09-05T16:30:00.000Z",
+      "badge": "Antenatal Care"
+    },
+    {
+      "id": 12,
+      "imageUrl": "/assets/service-doctor.jpg",
+      "title": "Senior Citizen Health Screening & Care Coordination",
+      "category": "Doctor Visits",
+      "location": "Somajiguda, Hyderabad",
+      "description": "Physician and care coordinator reviewing medication reconciliation and preventive geriatric care plan with family.",
+      "createdAt": "2026-09-06T09:00:00.000Z",
+      "badge": "Preventive Check"
+    }
+  ],
+  "blogs": [
+    {
+      "id": 1,
+      "slug": "essential-guide-elderly-care-hyderabad",
+      "title": "The Essential Guide to Quality Elderly Care at Home in Telangana",
+      "description": "Discover clinical protocols, psychological support frameworks, and practical routines that preserve senior dignity and safety in the comfort of home.",
+      "category": "Geriatric Care",
+      "author": "Dr. Ramesh V., MD (Geriatric Medicine) & Advisory Board",
+      "date": "2026-08-20",
+      "readTime": "6 min read",
+      "image": "/assets/service-elderly.jpg",
+      "content": "## 1. The Demographic Need for Home Geriatric Support\n\nAs our beloved parents and grandparents age, their physical, physiological, and emotional healthcare requirements evolve rapidly. In urban hubs like Hyderabad and Secunderabad, busy family work schedules often create a care gap. While institutional nursing homes were once the default option, modern home healthcare allows seniors to receive hospital-standard clinical supervision within the comforting familiarity of their own homes.\n\nResearch conducted under geriatric welfare frameworks demonstrates that seniors recovering in familiar surroundings experience significantly lower rates of anxiety, cognitive decline, and hospital-acquired delirium compared to institutionalized patients.\n\n---\n\n## 2. Core Pillars of Comprehensive Elderly Care\n\nA clinical home care program is structured around four essential pillars:\n\n### A. Fall Risk Prevention & Environmental Safety\nFalls represent the single largest cause of debilitating hip fractures and intracranial trauma in seniors above 65 years. Our trained caregivers conduct a systematic room-by-room safety audit to eliminate hazards:\n- Securing loose carpets and installing anti-slip rubber mats in bathrooms.\n- Ensuring adequate 500-lux ambient lighting along hallways and bedroom pathways.\n- Assisting with gait stabilization, walker usage, and ergonomic bed-to-chair transfers.\n\n### B. Medication Adherence & Polypharmacy Monitoring\nElderly patients frequently manage multiple chronic conditions (Hypertension, Type 2 Diabetes, Arthritis). Amma Seva caregivers maintain digital medication logs, ensuring every pill is administered at the exact prescribed hour.\n\n### C. Assisted Mobility & Cognitive Engagement\nStructured daily routines including morning 15-minute garden walks for natural Vitamin D synthesis and cognitive engagement exercises.\n\n### D. Continuous Vital Signs Tracking\nDaily recording of Blood Pressure, Blood Glucose, Pulse Rate, and Pulse Oximetry (SpO2) provides an unshakeable digital record.\n\n---\n\n## 3. Public Health Alignment & Senior Dignity\n\nAmma Seva adheres to the clinical benchmarks outlined by the Ministry of Health and Family Welfare's National Programme for Health Care of the Elderly (NPHCE). Every elder in our care is treated with profound respect, empathy, and dignity."
+    },
+    {
+      "id": 2,
+      "slug": "postnatal-recovery-guide-new-mothers",
+      "title": "Postnatal & Newborn Care: Clinical Best Practices for the 4th Trimester",
+      "description": "A comprehensive guide on postpartum recovery, lactation support, neonatal jaundice monitoring, and the vital first 90 days of infant life.",
+      "category": "Maternal & Newborn",
+      "author": "Sister Sunitha M., B.Sc Nursing & Lactation Specialist",
+      "date": "2026-08-25",
+      "readTime": "7 min read",
+      "image": "/assets/service-mother-baby.jpg",
+      "content": "## 1. Understanding the Fourth Trimester\n\nThe delivery of a baby is one of life's greatest blessings, yet the immediate 12 weeks following childbirth represents a period of profound hormonal, physical, and psychological transition for new mothers.\n\n---\n\n## 2. Key Protocols in Postnatal Maternal Recovery\n\n### Post-Cesarean & Normal Delivery Wound Care\nDaily monitoring of surgical suture lines for erythema and exudate to prevent surgical site infections (SSI), paired with high-protein nutrition to promote tissue healing.\n\n### Lactation Guidance & Feeding Mechanics\nCertified nurses provide ergonomic positioning guidance (Cradle, Football hold) and asymmetrical latching assistance to prevent nipple trauma and sustain milk supply.\n\n---\n\n## 3. Essential Newborn Care Protocols\n\n### Neonatal Jaundice Monitoring\nVisual assessment of bilirubin progression using Kramer's rule and immediate non-invasive testing when indicated.\n\n### Traditional Bathing & Safe Infant Oil Massage\nStimulates peripheral circulation and calms the infant nervous system using lukewarm water and gentle sterile techniques."
+    },
+    {
+      "id": 3,
+      "slug": "prevent-bedsores-bedridden-patients",
+      "title": "Preventing Bedsores (Decubitus Ulcers) in Bedbound Patients: Clinical Protocol",
+      "description": "Evidence-based nursing guidelines on Braden Scale risk assessment, 2-hour positional turning schedules, and advanced skin integrity management.",
+      "category": "Clinical Nursing",
+      "author": "Amma Seva Clinical Nursing Board",
+      "date": "2026-08-28",
+      "readTime": "8 min read",
+      "image": "/assets/service-bedside-attendant.jpg",
+      "content": "## 1. The Critical Danger of Pressure Ulcers\n\nFor individuals recovering from severe stroke, trauma, or terminal illness, prolonged immobilization creates sustained mechanical pressure over bony prominences. When external pressure exceeds capillary arteriolar pressure (32 mmHg), rapid tissue ischemia occurs within 2 to 4 hours.\n\n---\n\n## 2. The Amma Seva Bedsore Prevention Protocol\n\n### A. The 2-Hour Positional Turning Schedule\nOur bedside attendants maintain a continuous, documented turning clock alternating between lateral tilt and supine positions.\n\n### B. Microclimate & Moisture Management\nUtilizing pH-balanced perineal cleansers, breathable zinc-oxide barrier creams, and immediate moisture-wicking underpad changes.\n\n### C. Alternating Pressure Ripple Mattresses\nMotorized cyclic inflation and deflation of air cells ensures no single anatomical zone sustains constant pressure.\n\n### D. Clinical High-Protein Nutrition\nEnsuring 1.2 to 1.5 grams of protein per kilogram of body weight daily for rapid cellular collagen repair."
+    },
+    {
+      "id": 4,
+      "slug": "home-icu-step-down-protocols",
+      "title": "Hospital-to-Home ICU Step-Down: Safe Recovery Protocols for Critical Patients",
+      "description": "Why transitioning critical patients to hospital-standard home ICU setups reduces infection risks, accelerates mental healing, and saves up to 65% in costs.",
+      "category": "Critical Care",
+      "author": "Dr. Ramesh V. & ICU Critical Care Team",
+      "date": "2026-09-01",
+      "readTime": "9 min read",
+      "image": "/assets/service-icu-recovery.jpg",
+      "content": "## 1. The Challenge of Prolonged Hospital ICU Stays\n\nProlonged stays in tertiary hospital ICUs introduce severe secondary hazards including hospital-acquired nosocomial infections, ICU delirium, and catastrophic financial expenditure.\n\n---\n\n## 2. Creating a Hospital-Standard Home ICU\n\nAmma Seva's Critical Recovery Program transforms the patient's bedroom into an aseptic, fully-equipped intensive recovery suite with 5-function ICU motorized bed, multiparameter digital monitor, oxygen concentrators, and sterile suctioning equipment.\n\n---\n\n## 3. Dedicated Critical Care Nursing\n\nCritical-care certified nurses manage tracheostomy care, sterile suctioning, central lines, and precision medication infusion under continuous tele-consultation with senior intensivists."
+    },
+    {
+      "id": 5,
+      "slug": "physiotherapy-stroke-ortho-rehabilitation",
+      "title": "Physiotherapy for Stroke & Post-Orthopaedic Surgery: Accelerating Home Mobility",
+      "description": "Evidence-based rehabilitation routines, neuroplasticity windows, and gait training techniques that restore independence after stroke or joint surgery.",
+      "category": "Rehabilitation",
+      "author": "Dr. K. Anand, MPT (Neuro-Physiotherapy)",
+      "date": "2026-09-03",
+      "readTime": "6 min read",
+      "image": "/assets/service-physiotherapy.jpg",
+      "content": "## 1. The Importance of Early Home Rehabilitation\n\nDelivering specialized physical therapy at home eliminates the pain and fatigue of hospital travel while capitalizing on the golden 90-day post-stroke neuroplasticity window.\n\n---\n\n## 2. Key Rehabilitation Streams\n\n### A. Neurological Stroke Rehabilitation\nProprioceptive Neuromuscular Facilitation (PNF) and Constraint-Induced Movement Therapy (CIMT) to activate dormant muscle groups.\n\n### B. Post-Orthopaedic Surgery Recovery\nTargeted protocols following Total Knee Replacement (TKR) and Hip Replacement (THR) progressing from passive range of motion to unassisted walking.\n\n### C. Geriatric Fall Prevention & Balance Training\nPerturbation drills and dual-task gait exercises to eliminate fear of falling."
+    },
+    {
+      "id": 6,
+      "slug": "medical-transport-partner-senior-transit",
+      "title": "Medical Transport Partner (MTP): Bridging the Critical Transit Gap for Senior Citizens",
+      "description": "How trained youth healthcare companions empower seniors to access outpatient medical appointments with safe, dignified doorstep-to-hospital transit.",
+      "category": "Healthcare Logistics & Youth Welfare",
+      "author": "Amma Seva Youth Welfare & Logistics Committee",
+      "date": "2026-09-05",
+      "readTime": "5 min read",
+      "image": "/assets/service-mtp.jpg",
+      "content": "## 1. The Invisible Barrier in Outpatient Healthcare\n\nOver 42% of elderly individuals delay or cancel critical medical checkups because they lack an escort to assist them down stairs, navigate traffic, and manage hospital queues.\n\n---\n\n## 2. The Medical Transport Partner (MTP) Solution\n\nTrained youth companions provide doorstep pickup, wheelchair assistance, hospital registration and elevator navigation, prescription collection, and safe return home.\n\n---\n\n## 3. Youth Empowerment & Dignified Livelihoods\n\nConverts youth energy into meaningful public health service, providing certified healthcare career paths and dignified earnings aligned with state youth welfare initiatives."
     }
   ],
   "notifications": [],
   "reviews": [],
   "announcements": [],
-  "blogs": [],
-  "otps": [
-    {
-      "email": "prasanna@example.com",
-      "otp": "889369",
-      "role": "customer",
-      "expiresAt": 1787289450604
-    },
-    {
-      "email": "test@example.com",
-      "otp": "313813",
-      "role": "customer",
-      "expiresAt": 1787289957411
-    }
-  ],
+  "otps": [],
   "faqs": [
     {
       "id": 1,
       "question": "Are your caregivers and nurses verified?",
-      "answer": "Yes. Every professional undergoes ID verification, background checks, and skill assessments before joining."
+      "answer": "Yes. Every professional undergoes government ID verification (Aadhaar/PAN), comprehensive background checks, police verification, and clinical skill assessments before joining."
     },
     {
       "id": 2,
       "question": "How quickly can care be arranged?",
-      "answer": "In most cities, we can arrange care within 4–12 hours depending on the service and shift."
+      "answer": "In Hyderabad and surrounding regions, we can arrange care within 2–4 hours for urgent needs and same-day for scheduled visits and shifts."
     },
     {
       "id": 3,
       "question": "Can I choose the shift duration?",
-      "answer": "Absolutely. We offer hourly visits, 12-hour and 24-hour shifts, plus weekly and monthly plans."
+      "answer": "Absolutely. We offer hourly visits, 12-hour day/night shifts, 24-hour live-in care, plus weekly and monthly continuous care packages."
     },
     {
       "id": 4,
       "question": "How do payments work?",
-      "answer": "You can pay online via Razorpay. Shift booking is confirmed immediately after secure payment."
+      "answer": "You can pay securely online via Razorpay (UPI, Credit/Debit Cards, Net Banking) or through verified digital invoicing. Your booking is confirmed immediately."
     },
     {
       "id": 5,
-      "question": "What if I need to reschedule or cancel?",
-      "answer": "You can reschedule anytime via your dashboard panel. Cancellations follow our refund policy."
+      "question": "What if I need to reschedule or replace a caregiver?",
+      "answer": "You can request a schedule change or caregiver replacement anytime via your dashboard panel or by calling our 24/7 care helpline. We ensure seamless transitions."
     }
   ]
 }
