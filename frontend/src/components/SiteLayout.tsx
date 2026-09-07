@@ -3,7 +3,6 @@ import { useState, useEffect, type ReactNode } from "react";
 import { Menu, X, Phone, MessageCircle, Mail, MapPin, Building2, Award } from "lucide-react";
 import logoAsset from "@/assets/amma-seva-logo.png";
 import { fetchServices, type Service } from "@/lib/services";
-import { CommemorativeLaunchBanner } from "./LaunchScreen";
 
 const PHONE = "+91 94945 16543";
 const PHONE_TEL = "+919494516543";
@@ -403,7 +402,6 @@ function FloatingActions() {
 export function SiteLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <CommemorativeLaunchBanner />
       <Header />
       <main className="flex-1">{children}</main>
       <Footer />
