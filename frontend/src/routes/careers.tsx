@@ -43,13 +43,14 @@ function Careers() {
     
     if (refParam && refParam.trim()) {
       const cleanRef = refParam.trim().toUpperCase();
-      setReferralCode(cleanRef);
-      setIsLockedFromUrl(true);
       try {
         sessionStorage.setItem("ammaseva_ref_code", cleanRef);
       } catch (e) {
         // ignore storage error
       }
+      // Instantly direct to the unified, official Caretaker Registration Portal with locked referral!
+      window.location.href = `/login?ref=${encodeURIComponent(cleanRef)}&type=caretaker&mode=register`;
+      return;
     } else {
       // Check session storage if previously navigated with ref link
       try {
@@ -273,14 +274,22 @@ function Careers() {
                 <>
                   <div>
                     <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display flex items-center justify-between">
-                      <span>Apply for Caregiver / Nursing Role</span>
+                      <span>Caregiver &amp; Staff Onboarding</span>
                       <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#c9a24c]/15 text-[#9e761a] border border-[#c9a24c]/30">
                         Immediate Joining
                       </span>
                     </h3>
-                    <p className="mt-1 text-xs text-slate-400 leading-relaxed">
-                      Fill out your details below. Screening coordinator will contact you directly.
+                    <p className="mt-1 text-xs text-slate-500 leading-relaxed">
+                      Register as a verified caregiver, upload KYC credentials, and unlock daily shifts.
                     </p>
+                    <div className="mt-3">
+                      <a
+                        href={referralCode ? `/login?ref=${encodeURIComponent(referralCode)}&type=caretaker&mode=register` : `/login?type=caretaker&mode=register`}
+                        className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#1e2a5a] to-[#2b3d80] hover:from-[#151e40] hover:to-[#1e2a5a] text-white text-xs font-bold shadow-sm transition-all text-center"
+                      >
+                        <Sparkles className="h-3.5 w-3.5 text-[#f5d77f]" /> Complete Official Registration on Portal &rarr;
+                      </a>
+                    </div>
                   </div>
 
                   {errorMessage && (

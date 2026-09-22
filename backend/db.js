@@ -35,6 +35,7 @@ const DEFAULT_MOCK_DATA = {
   enquiries: [],
   bookings: [],
   caregivers: [],
+  referrals: [],
   mtps: [],
   mtpTasks: [
     {
@@ -656,12 +657,63 @@ const initJSONDb = () => {
 // Read JSON database file
 const readJSONDb = async () => {
   initJSONDb()
-  const data = await fs.promises.readFile(JSON_DB_PATH, 'utf-8')
-  return JSON.parse(data)
+  const raw = await fs.promises.readFile(JSON_DB_PATH, 'utf-8')
+  const data = JSON.parse(raw)
+  if (!data.referrals) {
+    data.referrals = []
+  }
+  // Auto-sync any registered caregivers who joined via referral code into referrals table
+  if (Array.isArray(data.caregivers)) {
+    let synced = false
+    data.caregivers.forEach(c => {
+      const refCode = (c.referredBy || '').trim().toUpperCase()
+      if (refCode && !data.referrals.some(r => r.candidateId === c.id || (r.candidatePhone === c.phone && r.referrerCode === refCode))) {
+        const referrer = data.caregivers.find(reg => {
+          const cCode = (reg.referCode || reg.uniqueId || db.generateCaregiverReferralCode(reg)).toUpperCase()
+          return cCode === refCode
+        })
+        const newRef = {
+          id: data.referrals.length > 0 ? Math.max(...data.referrals.map(r => r.id || 0)) + 1 : 1,
+          referrerId: referrer ? referrer.id : null,
+          referrerCode: refCode,
+          referrerName: referrer ? referrer.name : `Staff Partner (${refCode})`,
+          referrerPhone: referrer ? referrer.phone : 'N/A',
+          referrerEmail: referrer ? referrer.email : 'N/A',
+          referrerSpecialty: referrer ? referrer.specialty : '',
+          candidateId: c.id,
+          candidateName: c.name,
+          candidatePhone: c.phone,
+          candidateEmail: c.email,
+          candidateSpecialty: c.specialty,
+          candidateExperience: c.experience,
+          city: c.city || 'Hyderabad',
+          state: c.state || 'Telangana',
+          googleMapLocation: c.googleMapLocation || '',
+          status: c.status || 'Pending',
+          joinedAt: c.joinedAt || new Date().toISOString(),
+          aadhaar: c.aadhaar || '',
+          pan: c.pan || '',
+          certificates: c.certificates || '',
+          profilePhoto: c.profilePhoto || '',
+          experienceCertificate: c.experienceCertificate || '',
+          policeVerification: c.policeVerification || '',
+          additionalCertificates: c.additionalCertificates || '',
+          notes: ''
+        }
+        data.referrals.push(newRef)
+        synced = true
+      }
+    })
+    if (synced) {
+      await fs.promises.writeFile(JSON_DB_PATH, JSON.stringify(data, null, 2), 'utf-8')
+    }
+  }
+  return data
 }
 
 // Write JSON database file
 const writeJSONDb = async (data) => {
+  if (!data.referrals) data.referrals = []
   await fs.promises.writeFile(JSON_DB_PATH, JSON.stringify(data, null, 2), 'utf-8')
 }
 
@@ -925,10 +977,37 @@ export const db = {
             icon VARCHAR(50) DEFAULT '🚗',
             title VARCHAR(255) NOT NULL,
             description TEXT NOT NULL,
-            shiftType VARCHAR(100) DEFAULT 'Part-time / On-Demand',
-            earningEstimate VARCHAR(100) DEFAULT '₹300 - ₹1,500 / task',
             active TINYINT DEFAULT 1,
             createdAt VARCHAR(255) NOT NULL
+          )
+        `)
+
+        await connection.query(`
+          CREATE TABLE IF NOT EXISTS referrals (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            referrer_id INT NULL,
+            referrer_code VARCHAR(100) NOT NULL,
+            referrer_name VARCHAR(255) NULL,
+            referrer_phone VARCHAR(50) NULL,
+            candidate_id INT NULL,
+            candidate_name VARCHAR(255) NOT NULL,
+            candidate_phone VARCHAR(50) NOT NULL,
+            candidate_email VARCHAR(255) NULL,
+            candidate_specialty VARCHAR(255) NULL,
+            candidate_experience VARCHAR(50) NULL,
+            city VARCHAR(100) NULL,
+            state VARCHAR(100) NULL,
+            status VARCHAR(50) DEFAULT 'Pending',
+            joined_at VARCHAR(255) NOT NULL,
+            aadhaar LONGTEXT NULL,
+            pan LONGTEXT NULL,
+            certificates LONGTEXT NULL,
+            profile_photo LONGTEXT NULL,
+            experience_certificate LONGTEXT NULL,
+            police_verification LONGTEXT NULL,
+            additional_certificates LONGTEXT NULL,
+            notes TEXT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           )
         `)
 
@@ -1548,12 +1627,20 @@ export const db = {
         'UPDATE caregivers SET status = ? WHERE id = ?',
         [status, id]
       )
+      try {
+        await pool.query('UPDATE referrals SET status = ? WHERE candidate_id = ?', [status, id])
+      } catch (e) {}
       return result.affectedRows > 0
     } else {
       const data = await readJSONDb()
       const caregiverIdx = data.caregivers.findIndex(c => c.id === Number(id))
       if (caregiverIdx > -1) {
         data.caregivers[caregiverIdx].status = status
+        if (data.referrals) {
+          data.referrals.filter(r => r.candidateId === Number(id)).forEach(r => {
+            r.status = status
+          })
+        }
         await writeJSONDb(data)
         return true
       }
@@ -1821,7 +1908,43 @@ export const db = {
         'INSERT INTO caregivers (name, phone, email, specialty, experience, password, joinedAt, aadhaar, pan, certificates, profilePhoto, experienceDetails, workingLocations, availableTimings, state, city, googleMapLocation, experienceCertificate, policeVerification, additionalCertificates) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [name, phone, email, specialty, experience, dummyPassword, joinedAt, aadhaar, pan, certificates, profilePhoto, experienceDetails, workingLocations, availableTimings, state, city, googleMapLocation, experienceCertificate, policeVerification, additionalCertificates]
       )
-      return { id: result.insertId, name, phone, email, specialty, experience, status: 'Pending', joinedAt, state, city, googleMapLocation, experienceCertificate, policeVerification, additionalCertificates, uniqueId: code, referCode: code, referralCode: code, referredBy: cleanReferredBy }
+      const candidateId = result.insertId
+      if (cleanReferredBy) {
+        try {
+          const [refRows] = await pool.query('SELECT * FROM caregivers WHERE id = ? OR name LIKE ?', [cleanReferredBy, `%${cleanReferredBy}%`])
+          const referrer = refRows && refRows.length > 0 ? refRows[0] : null
+          await pool.query(
+            'INSERT INTO referrals (referrer_id, referrer_code, referrer_name, referrer_phone, candidate_id, candidate_name, candidate_phone, candidate_email, candidate_specialty, candidate_experience, city, state, status, joined_at, aadhaar, pan, certificates, profile_photo, experience_certificate, police_verification, additional_certificates, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+              referrer ? referrer.id : null,
+              cleanReferredBy,
+              referrer ? referrer.name : `Staff Partner (${cleanReferredBy})`,
+              referrer ? referrer.phone : 'N/A',
+              candidateId,
+              name,
+              phone,
+              email,
+              specialty,
+              experience,
+              city || 'Hyderabad',
+              state || 'Telangana',
+              'Pending',
+              joinedAt,
+              aadhaar,
+              pan,
+              certificates,
+              profilePhoto,
+              experienceCertificate,
+              policeVerification,
+              additionalCertificates,
+              ''
+            ]
+          )
+        } catch (err) {
+          console.error('Failed to insert MySQL referral row:', err)
+        }
+      }
+      return { id: candidateId, name, phone, email, specialty, experience, status: 'Pending', joinedAt, state, city, googleMapLocation, experienceCertificate, policeVerification, additionalCertificates, uniqueId: code, referCode: code, referralCode: code, referredBy: cleanReferredBy }
     } else {
       const data = await readJSONDb()
       const newCaregiver = {
@@ -1853,6 +1976,45 @@ export const db = {
         referredBy: cleanReferredBy
       }
       data.caregivers.push(newCaregiver)
+
+      // Insert full candidate details into dedicated referrals table
+      if (cleanReferredBy) {
+        if (!data.referrals) data.referrals = []
+        const referrer = data.caregivers.find(c => {
+          const cCode = (c.referCode || c.uniqueId || db.generateCaregiverReferralCode(c)).toUpperCase()
+          return cCode === cleanReferredBy
+        })
+        const newReferralRecord = {
+          id: data.referrals.length > 0 ? Math.max(...data.referrals.map(r => r.id || 0)) + 1 : 1,
+          referrerId: referrer ? referrer.id : null,
+          referrerCode: cleanReferredBy,
+          referrerName: referrer ? referrer.name : `Staff Partner (${cleanReferredBy})`,
+          referrerPhone: referrer ? referrer.phone : 'N/A',
+          referrerEmail: referrer ? referrer.email : 'N/A',
+          referrerSpecialty: referrer ? referrer.specialty : '',
+          candidateId: newCaregiver.id,
+          candidateName: newCaregiver.name,
+          candidatePhone: newCaregiver.phone,
+          candidateEmail: newCaregiver.email,
+          candidateSpecialty: newCaregiver.specialty,
+          candidateExperience: newCaregiver.experience,
+          city: newCaregiver.city || 'Hyderabad',
+          state: newCaregiver.state || 'Telangana',
+          googleMapLocation: newCaregiver.googleMapLocation || '',
+          status: newCaregiver.status || 'Pending',
+          joinedAt: newCaregiver.joinedAt,
+          aadhaar: newCaregiver.aadhaar || '',
+          pan: newCaregiver.pan || '',
+          certificates: newCaregiver.certificates || '',
+          profilePhoto: newCaregiver.profilePhoto || '',
+          experienceCertificate: newCaregiver.experienceCertificate || '',
+          policeVerification: newCaregiver.policeVerification || '',
+          additionalCertificates: newCaregiver.additionalCertificates || '',
+          notes: ''
+        }
+        data.referrals.push(newReferralRecord)
+      }
+
       await writeJSONDb(data)
       return newCaregiver
     }
@@ -3153,6 +3315,117 @@ export const db = {
       data.blogs = data.blogs.filter(b => b.id !== Number(id))
       await writeJSONDb(data)
       return data.blogs.length < prevLength
+    }
+  },
+
+  // Referral Network DB Operations
+  getReferrals: async () => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM referrals ORDER BY id DESC')
+      return rows.map(r => ({
+        id: r.id,
+        referrerId: r.referrer_id,
+        referrerCode: r.referrer_code,
+        referrerName: r.referrer_name,
+        referrerPhone: r.referrer_phone,
+        candidateId: r.candidate_id,
+        candidateName: r.candidate_name,
+        candidatePhone: r.candidate_phone,
+        candidateEmail: r.candidate_email,
+        candidateSpecialty: r.candidate_specialty,
+        candidateExperience: r.candidate_experience,
+        city: r.city,
+        state: r.state,
+        status: r.status,
+        joinedAt: r.joined_at,
+        aadhaar: r.aadhaar,
+        pan: r.pan,
+        certificates: r.certificates,
+        profilePhoto: r.profile_photo,
+        experienceCertificate: r.experience_certificate,
+        policeVerification: r.police_verification,
+        additionalCertificates: r.additional_certificates,
+        notes: r.notes
+      }))
+    } else {
+      const data = await readJSONDb()
+      return data.referrals || []
+    }
+  },
+
+  getReferralsByReferrer: async (code) => {
+    const cleanCode = (code || '').trim().toUpperCase()
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM referrals WHERE UPPER(referrer_code) = ? ORDER BY id DESC', [cleanCode])
+      return rows
+    } else {
+      const data = await readJSONDb()
+      return (data.referrals || []).filter(r => (r.referrerCode || '').toUpperCase() === cleanCode)
+    }
+  },
+
+  addReferral: async (refData) => {
+    if (useMySQL) {
+      const [result] = await pool.query(
+        'INSERT INTO referrals (referrer_id, referrer_code, referrer_name, referrer_phone, candidate_id, candidate_name, candidate_phone, candidate_email, candidate_specialty, candidate_experience, city, state, status, joined_at, aadhaar, pan, certificates, profile_photo, experience_certificate, police_verification, additional_certificates, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          refData.referrerId || null,
+          (refData.referrerCode || '').toUpperCase(),
+          refData.referrerName || '',
+          refData.referrerPhone || '',
+          refData.candidateId || null,
+          refData.candidateName,
+          refData.candidatePhone,
+          refData.candidateEmail || '',
+          refData.candidateSpecialty || '',
+          refData.candidateExperience || '',
+          refData.city || 'Hyderabad',
+          refData.state || 'Telangana',
+          refData.status || 'Pending',
+          refData.joinedAt || new Date().toISOString(),
+          refData.aadhaar || '',
+          refData.pan || '',
+          refData.certificates || '',
+          refData.profilePhoto || '',
+          refData.experienceCertificate || '',
+          refData.policeVerification || '',
+          refData.additionalCertificates || '',
+          refData.notes || ''
+        ]
+      )
+      return { ...refData, id: result.insertId }
+    } else {
+      const data = await readJSONDb()
+      if (!data.referrals) data.referrals = []
+      const newRef = {
+        ...refData,
+        id: data.referrals.length > 0 ? Math.max(...data.referrals.map(r => r.id || 0)) + 1 : 1,
+        joinedAt: refData.joinedAt || new Date().toISOString()
+      }
+      data.referrals.push(newRef)
+      await writeJSONDb(data)
+      return newRef
+    }
+  },
+
+  updateReferralStatus: async (candidateId, status) => {
+    if (useMySQL) {
+      const [result] = await pool.query('UPDATE referrals SET status = ? WHERE candidate_id = ?', [status, candidateId])
+      return result.affectedRows > 0
+    } else {
+      const data = await readJSONDb()
+      if (data.referrals) {
+        let changed = false
+        data.referrals.filter(r => r.candidateId === Number(candidateId)).forEach(r => {
+          r.status = status
+          changed = true
+        })
+        if (changed) {
+          await writeJSONDb(data)
+          return true
+        }
+      }
+      return false
     }
   }
 }

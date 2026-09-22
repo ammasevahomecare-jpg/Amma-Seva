@@ -29,16 +29,41 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
+function getInitialLoginState() {
+  if (typeof window === "undefined") {
+    return { role: "customer" as const, mode: "login" as const, referredBy: "", isReferralLocked: false };
+  }
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const refParam = urlParams.get("ref") || urlParams.get("refer") || urlParams.get("referral") || urlParams.get("code") || sessionStorage.getItem("ammaseva_ref_code") || "";
+    const typeParam = urlParams.get("type") || urlParams.get("role") || "";
+    const modeParam = urlParams.get("mode") || urlParams.get("tab") || "";
+    
+    const isCaretaker = typeParam === "caretaker" || typeParam === "caregiver" || Boolean(refParam && refParam.trim());
+    const isRegister = modeParam === "register" || Boolean(refParam && refParam.trim()) || typeParam === "caretaker";
+
+    return {
+      role: isCaretaker ? ("caretaker" as const) : ("customer" as const),
+      mode: isRegister ? ("register" as const) : ("login" as const),
+      referredBy: refParam ? refParam.trim().toUpperCase() : "",
+      isReferralLocked: Boolean(refParam && refParam.trim()),
+    };
+  } catch (e) {
+    return { role: "customer" as const, mode: "login" as const, referredBy: "", isReferralLocked: false };
+  }
+}
+
 function LoginPage() {
   const navigate = useNavigate();
+  const initial = getInitialLoginState();
   
   // Tabs and mode
-  const [role, setRole] = useState<"customer" | "caretaker">("customer");
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const [role, setRole] = useState<"customer" | "caretaker">(initial.role);
+  const [mode, setMode] = useState<"login" | "register">(initial.mode);
 
   // Referral states
-  const [referredBy, setReferredBy] = useState("");
-  const [isReferralLocked, setIsReferralLocked] = useState(false);
+  const [referredBy, setReferredBy] = useState(initial.referredBy);
+  const [isReferralLocked, setIsReferralLocked] = useState(initial.isReferralLocked);
 
   // Form states
   const [name, setName] = useState("");

@@ -1386,12 +1386,12 @@ function CustomerDashboard() {
                   <div className="pt-2 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3">
                     <div className="w-full sm:flex-1 bg-black/20 rounded-xl px-3.5 py-2 border border-white/10 flex items-center justify-between gap-2 overflow-hidden">
                       <span className="text-xs text-slate-300 font-mono truncate select-all">
-                        {typeof window !== "undefined" ? `${window.location.origin}/careers?ref=${getCaregiverReferralCode(caretaker)}` : `/careers?ref=${getCaregiverReferralCode(caretaker)}`}
+                        {typeof window !== "undefined" ? `${window.location.origin}/login?ref=${getCaregiverReferralCode(caretaker)}&type=caretaker` : `/login?ref=${getCaregiverReferralCode(caretaker)}&type=caretaker`}
                       </span>
                       <button
                         type="button"
                         onClick={() => {
-                          const url = `${window.location.origin}/careers?ref=${getCaregiverReferralCode(caretaker)}`;
+                          const url = `${window.location.origin}/login?ref=${getCaregiverReferralCode(caretaker)}&type=caretaker`;
                           navigator.clipboard.writeText(url);
                           alert(`Copied your personal referral link:\n${url}`);
                         }}
@@ -1403,7 +1403,7 @@ function CustomerDashboard() {
 
                     <a
                       href={`https://wa.me/?text=${encodeURIComponent(
-                        `Namaste! Join Amma Seva as a caregiver or nurse in Hyderabad. Great daily/monthly payouts, flexible shift options & doctor-backed support.\n\nApply directly using my referral link:\n${typeof window !== "undefined" ? window.location.origin : "https://ammaseva.in"}/careers?ref=${getCaregiverReferralCode(caretaker)}`
+                        `Namaste! Join Amma Seva as a caregiver or nurse in Hyderabad. Great daily/monthly payouts, flexible shift options & doctor-backed support.\n\nRegister directly using my referral link:\n${typeof window !== "undefined" ? window.location.origin : "https://ammaseva.in"}/login?ref=${getCaregiverReferralCode(caretaker)}&type=caretaker`
                       )}`}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -2557,12 +2557,12 @@ function CustomerDashboard() {
                     <span className="text-xs font-bold text-[#f5d77f] uppercase tracking-wider block">1-Click Shareable Apply Link</span>
                     <div className="bg-black/30 rounded-2xl p-3 border border-white/15 flex items-center justify-between gap-2 overflow-hidden">
                       <span className="text-xs font-mono text-slate-200 truncate select-all">
-                        {typeof window !== "undefined" ? `${window.location.origin}/careers?ref=${caretakerReferralsData?.referCode || getCaregiverReferralCode(caretaker)}` : `/careers?ref=${getCaregiverReferralCode(caretaker)}`}
+                        {typeof window !== "undefined" ? `${window.location.origin}/login?ref=${caretakerReferralsData?.referCode || getCaregiverReferralCode(caretaker)}&type=caretaker` : `/login?ref=${getCaregiverReferralCode(caretaker)}&type=caretaker`}
                       </span>
                       <button
                         type="button"
                         onClick={() => {
-                          const url = `${window.location.origin}/careers?ref=${caretakerReferralsData?.referCode || getCaregiverReferralCode(caretaker)}`;
+                          const url = `${window.location.origin}/login?ref=${caretakerReferralsData?.referCode || getCaregiverReferralCode(caretaker)}&type=caretaker`;
                           navigator.clipboard.writeText(url);
                           alert(`Copied your personal referral link:\n${url}`);
                         }}
@@ -2572,7 +2572,7 @@ function CustomerDashboard() {
                       </button>
                     </div>
                     <p className="text-[11px] text-slate-300">
-                      When someone clicks this link, your code is auto-locked into their application!
+                      When someone clicks this link, your code is auto-locked into their registration!
                     </p>
                   </div>
                 </div>
@@ -2580,7 +2580,7 @@ function CustomerDashboard() {
                 <div className="pt-4 border-t border-white/10 flex flex-wrap gap-3">
                   <a
                     href={`https://wa.me/?text=${encodeURIComponent(
-                      `Namaste! Join Amma Seva as a caregiver or nurse in Hyderabad. Great daily/monthly payouts, flexible shifts & doctor-backed support.\n\nApply directly using my referral link:\n${typeof window !== "undefined" ? window.location.origin : "https://ammaseva.in"}/careers?ref=${caretakerReferralsData?.referCode || getCaregiverReferralCode(caretaker)}`
+                      `Namaste! Join Amma Seva as a caregiver or nurse in Hyderabad. Great daily/monthly payouts, flexible shifts & doctor-backed support.\n\nRegister directly using my referral link:\n${typeof window !== "undefined" ? window.location.origin : "https://ammaseva.in"}/login?ref=${caretakerReferralsData?.referCode || getCaregiverReferralCode(caretaker)}&type=caretaker`
                     )}`}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -2590,12 +2590,12 @@ function CustomerDashboard() {
                   </a>
 
                   <a
-                    href={typeof window !== "undefined" ? `/careers?ref=${caretakerReferralsData?.referCode || getCaregiverReferralCode(caretaker)}` : "#"}
+                    href={typeof window !== "undefined" ? `/login?ref=${caretakerReferralsData?.referCode || getCaregiverReferralCode(caretaker)}&type=caretaker` : "#"}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="px-5 py-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 border border-white/20 transition-all cursor-pointer"
                   >
-                    <ExternalLink className="h-4 w-4" /> Preview Application Page
+                    <ExternalLink className="h-4 w-4" /> Preview Caretaker Registration Page
                   </a>
                 </div>
               </div>

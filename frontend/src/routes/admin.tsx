@@ -2119,7 +2119,7 @@ function AdminPage() {
                                     title="Copy Careers Application Referral Link"
                                     onClick={() => {
                                       const code = getCaregiverReferralCode(c);
-                                      const link = `${window.location.origin}/careers?ref=${code}`;
+                                      const link = `${window.location.origin}/login?ref=${code}&type=caretaker`;
                                       navigator.clipboard.writeText(link);
                                       alert(`Copied Caregiver Application Referral Link:\n${link}`);
                                     }}
@@ -4622,9 +4622,9 @@ function AdminPage() {
                                       type="button"
                                       title="Copy Careers Application Link"
                                       onClick={() => {
-                                        const link = `${window.location.origin}/careers?ref=${referrer.referCode}`;
+                                        const link = `${window.location.origin}/login?ref=${referrer.referCode}&type=caretaker`;
                                         navigator.clipboard.writeText(link);
-                                        alert(`Copied Application Link:\n${link}`);
+                                        alert(`Copied Registration Link:\n${link}`);
                                       }}
                                       className="px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
                                     >
@@ -5212,7 +5212,7 @@ function AdminPage() {
                             type="button"
                             onClick={() => {
                               const code = getCaregiverReferralCode({ name: caregiverName, phone: caregiverPhone });
-                              const link = `${window.location.origin}/careers?ref=${code}`;
+                              const link = `${window.location.origin}/login?ref=${code}&type=caretaker`;
                               navigator.clipboard.writeText(link);
                               alert(`Copied Referral Link:\n${link}`);
                             }}
