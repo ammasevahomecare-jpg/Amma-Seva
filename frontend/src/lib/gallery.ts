@@ -8,6 +8,13 @@ import attendant from "@/assets/service-bedside-attendant.jpg";
 import mtp from "@/assets/service-mtp.jpg";
 import galleryWalk from "@/assets/gallery-walk.jpg";
 
+import iasPhoto from "@/assets/sandeep-nanduri-ias.jpg";
+import inauguLamp from "@/assets/img_8775.jpg";
+import inauguRibbon from "@/assets/img_8818.jpg";
+import inauguUnveil from "@/assets/img_8821.jpg";
+import inauguSpeech from "@/assets/img_8822.jpg";
+import inauguTeam from "@/assets/img_8828.jpg";
+
 export type GalleryItem = {
   id: number;
   imageUrl: string;
@@ -20,6 +27,66 @@ export type GalleryItem = {
 };
 
 export const DEFAULT_GALLERY: GalleryItem[] = [
+  {
+    id: 101,
+    imageUrl: inauguRibbon,
+    title: "Official Ribbon Cutting by Thiru Sandeep Nanduri, IAS",
+    category: "Inauguration",
+    location: "State Inauguration Ceremony",
+    description: "Thiru Sandeep Nanduri, IAS (Secretary to Government, Youth Welfare and Sports Development Dept., Govt. of Tamil Nadu) presiding over the ceremonial ribbon cutting to officially inaugurate Amma Seva Home Healthcare.",
+    createdAt: "2026-09-06T10:00:00.000Z",
+    badge: "Official Launch"
+  },
+  {
+    id: 102,
+    imageUrl: inauguLamp,
+    title: "Auspicious Ceremonial Lamp Lighting Blessing",
+    category: "Inauguration",
+    location: "Inauguration Ceremony Hall",
+    description: "Lighting of the traditional ceremonial lamp invoking blessings for Amma Seva's compassionate healthcare and patient care mission.",
+    createdAt: "2026-09-06T10:15:00.000Z",
+    badge: "Auspicious Beginning"
+  },
+  {
+    id: 103,
+    imageUrl: inauguUnveil,
+    title: "Unveiling & Dedication to Community Welfare",
+    category: "Inauguration",
+    location: "State Healthcare Initiative",
+    description: "Official dedication and unveiling of Amma Seva's 24/7 home nursing, elderly care, and patient transit network.",
+    createdAt: "2026-09-06T10:30:00.000Z",
+    badge: "Platform Dedication"
+  },
+  {
+    id: 104,
+    imageUrl: inauguSpeech,
+    title: "Inaugural Address by Thiru Sandeep Nanduri, IAS",
+    category: "Inauguration",
+    location: "Keynote Address",
+    description: "Thiru Sandeep Nanduri, IAS, delivering the inaugural address on the vital need for accessible, hospital-grade home care and patient recovery services.",
+    createdAt: "2026-09-06T10:45:00.000Z",
+    badge: "Keynote Address"
+  },
+  {
+    id: 105,
+    imageUrl: inauguTeam,
+    title: "Commemorative Moment with Founders & Clinical Team",
+    category: "Inauguration",
+    location: "Inauguration Milestone",
+    description: "Commemorative photo of Chief Guest Thiru Sandeep Nanduri, IAS, with leadership, coordinators, and caregivers marking this momentous milestone.",
+    createdAt: "2026-09-06T11:00:00.000Z",
+    badge: "Milestone Archive"
+  },
+  {
+    id: 106,
+    imageUrl: iasPhoto,
+    title: "Thiru Sandeep Nanduri, IAS — Chief Guest & Dignitary",
+    category: "Inauguration",
+    location: "Government of Tamil Nadu",
+    description: "Portrait of Chief Guest Thiru Sandeep Nanduri, IAS, Secretary to Government, Youth Welfare and Sports Development Department.",
+    createdAt: "2026-09-06T11:15:00.000Z",
+    badge: "Chief Guest"
+  },
   {
     id: 1,
     imageUrl: elderly,
@@ -145,6 +212,12 @@ export const DEFAULT_GALLERY: GalleryItem[] = [
 export function resolveGalleryAsset(url: string): string {
   if (!url) return nursing;
   const s = url.toLowerCase();
+  if (s.includes("8818") || s.includes("ribbon")) return inauguRibbon;
+  if (s.includes("8775") || s.includes("lamp")) return inauguLamp;
+  if (s.includes("8821") || s.includes("unveil")) return inauguUnveil;
+  if (s.includes("8822") || s.includes("speech")) return inauguSpeech;
+  if (s.includes("8828") || s.includes("team")) return inauguTeam;
+  if (s.includes("sandeep") || s.includes("nanduri") || s.includes("ias")) return iasPhoto;
   if (s.includes("elderly")) return elderly;
   if (s.includes("nursing") || s.includes("bp") || s.includes("wound")) return nursing;
   if (s.includes("mother") || s.includes("baby") || s.includes("newborn") || s.includes("prenatal")) return motherBaby;

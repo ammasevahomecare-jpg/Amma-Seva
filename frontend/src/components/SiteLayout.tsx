@@ -3,11 +3,13 @@ import { useState, useEffect, type ReactNode } from "react";
 import { Menu, X, Phone, MessageCircle, Mail, MapPin, Building2, Award } from "lucide-react";
 import logoAsset from "@/assets/amma-seva-logo.png";
 import { fetchServices, type Service } from "@/lib/services";
+import { InaugurationSection } from "./InaugurationSection";
 
 const PHONE = "+91 94945 16543";
 const PHONE_TEL = "+919494516543";
 const WHATSAPP = "919494516543";
 const EMAIL = "info@ammaseva.in";
+const INSTAGRAM = "https://www.instagram.com/amma.seva?stkn=NWo0NTdxZnRxOHpx&utm_source=qr";
 
 function Header() {
   const [open, setOpen] = useState(false);
@@ -208,7 +210,7 @@ function Footer() {
 
             {/* Instagram */}
             <a 
-              href="https://instagram.com" 
+              href={INSTAGRAM} 
               target="_blank"
               rel="noreferrer"
               aria-label="Instagram" 
@@ -399,15 +401,22 @@ function FloatingActions() {
   );
 }
 
-export function SiteLayout({ children }: { children: ReactNode }) {
+export function SiteLayout({ 
+  children, 
+  showInauguration = true 
+}: { 
+  children: ReactNode; 
+  showInauguration?: boolean;
+}) {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
       <main className="flex-1">{children}</main>
+      {showInauguration && <InaugurationSection />}
       <Footer />
       <FloatingActions />
     </div>
   );
 }
 
-export const contact = { PHONE, PHONE_TEL, WHATSAPP, EMAIL };
+export const contact = { PHONE, PHONE_TEL, WHATSAPP, EMAIL, INSTAGRAM };

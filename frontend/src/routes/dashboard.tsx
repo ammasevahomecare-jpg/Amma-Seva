@@ -1,13 +1,28 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { SiteLayout } from "@/components/SiteLayout";
+import { DocumentViewerModal } from "@/components/DocumentViewerModal";
 import { fetchServices, type Service } from "../lib/services";
 import { 
   Calendar, Clock, MapPin, User, FileText, CheckCircle2, 
   AlertTriangle, RefreshCw, XCircle, Download, CreditCard, 
   Phone, Briefcase, ChevronRight, Check, DollarSign, QrCode, Upload,
-  Star, MessageSquare
+  Star, MessageSquare, Eye, Gift, Copy, Send, Share2, ExternalLink, Sparkles
 } from "lucide-react";
+
+// Helper to compute / format Referral Code (FIRSTNAME + LAST 4 DIGITS OF PHONE)
+function getCaregiverReferralCode(c: { name?: string; phone?: string; uniqueId?: string; referCode?: string; referralCode?: string } | null | undefined): string {
+  if (!c) return "STAFF0000";
+  if (c.referCode && !c.referCode.startsWith("AMMASEVA-")) return c.referCode;
+  if (c.referralCode && !c.referralCode.startsWith("AMMASEVA-")) return c.referralCode;
+  if (c.uniqueId && !c.uniqueId.startsWith("AMMASEVA-")) return c.uniqueId;
+  const rawName = (c.name || "STAFF").trim();
+  const nameWithoutTitle = rawName.replace(/^(dr\.?|mr\.?|mrs\.?|ms\.?|sister|nurse)\s+/i, "").trim();
+  const firstName = (nameWithoutTitle.split(/\s+/)[0] || "STAFF").replace(/[^a-zA-Z]/g, "").toUpperCase() || "STAFF";
+  const cleanPhone = (c.phone || "").replace(/[^0-9]/g, "");
+  const last4 = cleanPhone.length >= 4 ? cleanPhone.slice(-4) : (cleanPhone.padEnd(4, "0") || "0000");
+  return `${firstName}${last4}`;
+}
 
 const INDIAN_STATES = [
   "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", 
@@ -358,6 +373,30 @@ function CustomerDashboard() {
     }
   };
 
+  // Fetch caretaker referrals network intelligence
+  const fetchCaretakerReferrals = async () => {
+    const token = localStorage.getItem("ammaseva_caretaker_token");
+    if (!token) return;
+    setIsLoadingReferrals(true);
+    try {
+      const res = await fetch("/api/caretaker/referrals", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setCaretakerReferralsData(data);
+      }
+    } catch (err) {
+      console.error("Failed to load caretaker referrals:", err);
+    } finally {
+      setIsLoadingReferrals(false);
+    }
+  };
+
   // Save caretaker details
   const handleCaretakerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -471,6 +510,32 @@ function CustomerDashboard() {
   const [bookingGoogleMapLocation, setBookingGoogleMapLocation] = useState("");
   const [isFetchingLocationBooking, setIsFetchingLocationBooking] = useState(false);
   const [agreeTermsBooking, setAgreeTermsBooking] = useState(false);
+
+  // Document Viewer Modal State
+  const [docViewerState, setDocViewerState] = useState<{
+    isOpen: boolean;
+    docUrl: string | null;
+    docTitle: string;
+    applicantName: string;
+    category: string;
+  }>({
+    isOpen: false,
+    docUrl: null,
+    docTitle: "",
+    applicantName: "",
+    category: "",
+  });
+
+  const openDocViewer = (docUrl?: string | null, docTitle = "Medical Document", applicantName = "", category = "Patient Medical Record") => {
+    if (!docUrl) return;
+    setDocViewerState({
+      isOpen: true,
+      docUrl,
+      docTitle,
+      applicantName,
+      category,
+    });
+  };
  
   // Booking result/modals state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -501,6 +566,16 @@ function CustomerDashboard() {
   const [isSavingLog, setIsSavingLog] = useState(false);
   const [activeCaregiverTab, setActiveCaregiverTab] = useState("shifts");
   const hasServiceParam = !!(new URLSearchParams(window.location.search).get("service"));
+
+  // Caretaker Referral Network State
+  const [caretakerReferralsData, setCaretakerReferralsData] = useState<{
+    referCode: string;
+    totalJoined: number;
+    totalVerified: number;
+    totalPending: number;
+    members: any[];
+  } | null>(null);
+  const [isLoadingReferrals, setIsLoadingReferrals] = useState(false);
  
   // Check login on mount
   useEffect(() => {
@@ -515,6 +590,7 @@ function CustomerDashboard() {
       setCaretaker(parsedCaretaker);
       fetchCaretakerProfile();
       fetchCaretakerBookings();
+      fetchCaretakerReferrals();
       fetchAnnouncements('caretaker');
       if (parsedCaretaker.status !== "Verified") {
         setActiveCaregiverTab("profile");
@@ -529,6 +605,12 @@ function CustomerDashboard() {
       navigate({ to: "/login" });
     }
   }, [navigate]);
+
+  useEffect(() => {
+    if (isCaretaker && activeCaregiverTab === "referrals") {
+      fetchCaretakerReferrals();
+    }
+  }, [activeCaregiverTab, isCaretaker]);
  
   // Load dynamic services for specialty dropdown and booking catalog
   useEffect(() => {
@@ -1222,9 +1304,25 @@ function CustomerDashboard() {
                         }`}
                       >
                         <DollarSign className="h-4 w-4 shrink-0 text-[#c9a24c]" />
-                        <span className="text-left flex-1 font-sans">Earnings & Duty Logs</span>
+                        <span className="text-left flex-1 font-sans">Earnings &amp; Duty Logs</span>
                       </button>
                     )}
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveCaregiverTab("referrals")}
+                      className={`w-full py-3 px-4 rounded-2xl text-xs font-bold uppercase tracking-wider flex items-center gap-3 cursor-pointer transition-all ${
+                        activeCaregiverTab === "referrals"
+                          ? "bg-[#1e2a5a] text-white shadow-md shadow-[#1e2a5a]/20"
+                          : "text-slate-500 hover:text-[#1e2a5a] hover:bg-slate-50 border border-transparent hover:border-slate-200/50"
+                      }`}
+                    >
+                      <Gift className="h-4 w-4 shrink-0 text-[#c9a24c]" />
+                      <span className="text-left flex-1 font-sans">Refer &amp; Share Link</span>
+                      <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-[#c9a24c]/20 text-[#c9a24c]">
+                        NEW
+                      </span>
+                    </button>
 
                     {caretaker?.status !== "Verified" && (
                         <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
@@ -1245,6 +1343,77 @@ function CustomerDashboard() {
               {/* Right Column - Main Dynamic Workspace */}
               <div className="lg:col-span-3 space-y-6">
                 
+                {/* Personal Referral & Share Link Quick Card */}
+                <div className="bg-gradient-to-r from-[#1e2a5a] via-[#162044] to-[#0f1738] rounded-3xl p-6 text-white shadow-lg shadow-[#1e2a5a]/20 border border-slate-700/50 space-y-4 text-left">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] uppercase font-black tracking-widest text-[#f0d48b] bg-[#c9a24c]/20 px-2.5 py-0.5 rounded-full border border-[#c9a24c]/30 flex items-center gap-1">
+                          <Gift className="h-3 w-3 text-[#f0d48b]" /> Care Partner Referral
+                        </span>
+                        <span className="text-xs text-slate-300 font-medium">Earn Referral Rewards</span>
+                      </div>
+                      <h3 className="text-lg sm:text-xl font-extrabold font-display text-white">
+                        Invite Caregivers &amp; Nurses to Amma Seva
+                      </h3>
+                      <p className="text-xs text-slate-300 leading-relaxed max-w-xl">
+                        When caregivers apply using your link, their application automatically locks your referral code.
+                      </p>
+                    </div>
+
+                    <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/15 flex items-center gap-3 shrink-0">
+                      <div>
+                        <div className="text-[9px] uppercase font-extrabold tracking-wider text-slate-300">Your Referral Code</div>
+                        <div className="text-lg font-black text-[#f5d77f] font-mono tracking-widest">
+                          {getCaregiverReferralCode(caretaker)}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        title="Copy Referral Code"
+                        onClick={() => {
+                          const code = getCaregiverReferralCode(caretaker);
+                          navigator.clipboard.writeText(code);
+                          alert(`Copied Referral Code: ${code}`);
+                        }}
+                        className="h-9 w-9 rounded-xl bg-white/20 hover:bg-white/30 text-white flex items-center justify-center cursor-pointer transition-all border border-white/20"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div className="w-full sm:flex-1 bg-black/20 rounded-xl px-3.5 py-2 border border-white/10 flex items-center justify-between gap-2 overflow-hidden">
+                      <span className="text-xs text-slate-300 font-mono truncate select-all">
+                        {typeof window !== "undefined" ? `${window.location.origin}/careers?ref=${getCaregiverReferralCode(caretaker)}` : `/careers?ref=${getCaregiverReferralCode(caretaker)}`}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const url = `${window.location.origin}/careers?ref=${getCaregiverReferralCode(caretaker)}`;
+                          navigator.clipboard.writeText(url);
+                          alert(`Copied your personal referral link:\n${url}`);
+                        }}
+                        className="text-[11px] font-bold text-[#f5d77f] hover:underline shrink-0 cursor-pointer flex items-center gap-1"
+                      >
+                        <Copy className="h-3 w-3" /> Copy Link
+                      </button>
+                    </div>
+
+                    <a
+                      href={`https://wa.me/?text=${encodeURIComponent(
+                        `Namaste! Join Amma Seva as a caregiver or nurse in Hyderabad. Great daily/monthly payouts, flexible shift options & doctor-backed support.\n\nApply directly using my referral link:\n${typeof window !== "undefined" ? window.location.origin : "https://ammaseva.in"}/careers?ref=${getCaregiverReferralCode(caretaker)}`
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer shrink-0"
+                    >
+                      <Send className="h-3.5 w-3.5" /> Share on WhatsApp
+                    </a>
+                  </div>
+                </div>
+
                 {/* Announcement Banners for Caretaker */}
                 {announcements.map((ann) => (
                   <div key={ann.id} className="bg-gradient-to-r from-indigo-600 to-indigo-800 text-white px-6 py-4 rounded-3xl flex items-center justify-between shadow-sm border border-indigo-700/50">
@@ -1266,7 +1435,7 @@ function CustomerDashboard() {
                       <CheckCircle2 className="h-6 w-6" />
                     </div>
                     <div className="space-y-1">
-                      <h3 className="text-lg font-bold text-emerald-900 font-display">Profile Approved & Active</h3>
+                      <h3 className="text-lg font-bold text-emerald-900 font-display">Profile Approved &amp; Active</h3>
                       <p className="text-sm text-emerald-800 leading-relaxed">
                         Your caretaker profile is fully verified by the administrator. Your profile is visible in the care network, and you can now be assigned to customer booking shifts.
                       </p>
@@ -2295,6 +2464,251 @@ function CustomerDashboard() {
             </div>
           )}
 
+          {/* Referrals & Partner Share Tab */}
+          {activeCaregiverTab === "referrals" && (
+            <div className="bg-white p-8 sm:p-10 rounded-3xl border border-slate-200/60 shadow-sm space-y-8 text-left animate-in fade-in duration-300">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-6">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] uppercase font-black tracking-widest text-[#9e761a] bg-[#c9a24c]/15 px-2.5 py-0.5 rounded-full border border-[#c9a24c]/30 flex items-center gap-1 font-mono">
+                      <Gift className="h-3 w-3 text-[#c9a24c]" /> Staff Referral System
+                    </span>
+                    <span className="text-xs text-slate-400 font-semibold">• Live Attribution</span>
+                  </div>
+                  <h2 className="text-2xl font-extrabold text-[#1e2a5a] font-display">
+                    Refer Caregivers, Nurses &amp; Staff
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Share your personalized referral code or 1-click link to invite friends, coworkers, and healthcare professionals.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={fetchCaretakerReferrals}
+                  disabled={isLoadingReferrals}
+                  className="px-4 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors self-start sm:self-auto"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${isLoadingReferrals ? "animate-spin" : ""}`} />
+                  Sync Referral Data
+                </button>
+              </div>
+
+              {/* 3 Real-time KPI Metric Badges */}
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+                <div className="bg-gradient-to-br from-indigo-50/70 to-indigo-50/20 border border-indigo-100 rounded-2xl p-5 space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 block">
+                    Total Members Joined
+                  </span>
+                  <div className="text-3xl font-black text-[#1e2a5a] font-display">
+                    {caretakerReferralsData?.totalJoined || 0}
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-medium">Applied using your referral link</p>
+                </div>
+
+                <div className="bg-gradient-to-br from-emerald-50/70 to-emerald-50/20 border border-emerald-100 rounded-2xl p-5 space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">
+                    Verified Staff
+                  </span>
+                  <div className="text-3xl font-black text-emerald-700 font-display">
+                    {caretakerReferralsData?.totalVerified || 0}
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-medium">Approved by admin for shifts</p>
+                </div>
+
+                <div className="bg-gradient-to-br from-amber-50/70 to-amber-50/20 border border-amber-100 rounded-2xl p-5 space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 block">
+                    Pending Verification
+                  </span>
+                  <div className="text-3xl font-black text-amber-700 font-display">
+                    {caretakerReferralsData?.totalPending || 0}
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-medium">Under KYC document review</p>
+                </div>
+              </div>
+
+              {/* Main Highlight Card */}
+              <div className="bg-gradient-to-br from-[#1e2a5a] via-[#152047] to-[#0f1738] rounded-3xl p-6 sm:p-8 text-white space-y-6 shadow-xl shadow-[#1e2a5a]/20 border border-slate-700/50">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                  <div className="space-y-2">
+                    <span className="text-xs font-bold text-[#f5d77f] uppercase tracking-wider block">Your Unique Referral Code</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-3xl sm:text-4xl font-black font-mono tracking-widest text-white bg-white/10 px-4 py-2 rounded-2xl border border-white/20 shadow-inner">
+                        {caretakerReferralsData?.referCode || getCaregiverReferralCode(caretaker)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const code = caretakerReferralsData?.referCode || getCaregiverReferralCode(caretaker);
+                          navigator.clipboard.writeText(code);
+                          alert(`Copied Referral Code: ${code}`);
+                        }}
+                        className="px-4 py-2.5 rounded-xl bg-[#c9a24c] hover:bg-[#b08726] text-[#1e2a5a] font-bold text-xs flex items-center gap-1.5 transition-all shadow-md cursor-pointer shrink-0"
+                      >
+                        <Copy className="h-4 w-4" /> Copy Code
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-slate-300">
+                      Generated automatically from your name + phone number.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <span className="text-xs font-bold text-[#f5d77f] uppercase tracking-wider block">1-Click Shareable Apply Link</span>
+                    <div className="bg-black/30 rounded-2xl p-3 border border-white/15 flex items-center justify-between gap-2 overflow-hidden">
+                      <span className="text-xs font-mono text-slate-200 truncate select-all">
+                        {typeof window !== "undefined" ? `${window.location.origin}/careers?ref=${caretakerReferralsData?.referCode || getCaregiverReferralCode(caretaker)}` : `/careers?ref=${getCaregiverReferralCode(caretaker)}`}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const url = `${window.location.origin}/careers?ref=${caretakerReferralsData?.referCode || getCaregiverReferralCode(caretaker)}`;
+                          navigator.clipboard.writeText(url);
+                          alert(`Copied your personal referral link:\n${url}`);
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white font-bold text-xs flex items-center gap-1 shrink-0 cursor-pointer transition-all border border-white/20"
+                      >
+                        <Copy className="h-3 w-3" /> Copy
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-slate-300">
+                      When someone clicks this link, your code is auto-locked into their application!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-white/10 flex flex-wrap gap-3">
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent(
+                      `Namaste! Join Amma Seva as a caregiver or nurse in Hyderabad. Great daily/monthly payouts, flexible shifts & doctor-backed support.\n\nApply directly using my referral link:\n${typeof window !== "undefined" ? window.location.origin : "https://ammaseva.in"}/careers?ref=${caretakerReferralsData?.referCode || getCaregiverReferralCode(caretaker)}`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold uppercase tracking-wider flex items-center gap-2 shadow-lg transition-all cursor-pointer"
+                  >
+                    <Send className="h-4 w-4" /> Share on WhatsApp
+                  </a>
+
+                  <a
+                    href={typeof window !== "undefined" ? `/careers?ref=${caretakerReferralsData?.referCode || getCaregiverReferralCode(caretaker)}` : "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-5 py-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 border border-white/20 transition-all cursor-pointer"
+                  >
+                    <ExternalLink className="h-4 w-4" /> Preview Application Page
+                  </a>
+                </div>
+              </div>
+
+              {/* Members Joined via My Referral Code Table / Grid */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display flex items-center gap-2">
+                    <Users className="h-5 w-5 text-[#c9a24c]" /> Members Joined via My Referral Link ({caretakerReferralsData?.members?.length || 0})
+                  </h3>
+                </div>
+
+                {(!caretakerReferralsData?.members || caretakerReferralsData.members.length === 0) ? (
+                  <div className="bg-slate-50/70 border border-dashed border-slate-200 rounded-2xl p-8 sm:p-12 text-center text-slate-500 space-y-3">
+                    <Gift className="h-10 w-10 text-slate-300 mx-auto" />
+                    <div>
+                      <h4 className="font-bold text-base text-slate-800">No members have joined yet</h4>
+                      <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                        Share your referral link on WhatsApp with other nurses, elder care attendants, and health assistants. Once they apply, they will appear here!
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-xs">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-sm text-slate-700">
+                        <thead>
+                          <tr className="border-b border-slate-100 bg-slate-50/80 text-xs text-[#1e2a5a] uppercase font-bold tracking-wider">
+                            <th className="py-3.5 px-5">Candidate Name</th>
+                            <th className="py-3.5 px-5">Specialty</th>
+                            <th className="py-3.5 px-5">Experience</th>
+                            <th className="py-3.5 px-5">Joined Date</th>
+                            <th className="py-3.5 px-5">Location</th>
+                            <th className="py-3.5 px-5 text-right">Verification Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {caretakerReferralsData.members.map((member: any) => (
+                            <tr key={member.id} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="py-3.5 px-5">
+                                <div className="font-bold text-[#1e2a5a]">{member.name}</div>
+                              </td>
+                              <td className="py-3.5 px-5 text-xs text-slate-600 font-medium">
+                                {member.specialty}
+                              </td>
+                              <td className="py-3.5 px-5 text-xs text-slate-500">
+                                {member.experience} years
+                              </td>
+                              <td className="py-3.5 px-5 text-xs text-slate-500">
+                                {new Date(member.joinedAt).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}
+                              </td>
+                              <td className="py-3.5 px-5 text-xs text-slate-600">
+                                {member.city}, {member.state}
+                              </td>
+                              <td className="py-3.5 px-5 text-right">
+                                <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${
+                                  member.status === "Verified" ? "bg-emerald-50 text-emerald-800 border-emerald-200" :
+                                  member.status === "Rejected" ? "bg-rose-50 text-rose-800 border-rose-200" :
+                                  "bg-amber-50 text-amber-800 border-amber-200"
+                                }`}>
+                                  {member.status === "Verified" ? "✓ Verified" :
+                                   member.status === "Rejected" ? "✗ Rejected" : "⏳ Review Pending"}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* How it Works Step-by-Step */}
+              <div className="space-y-4 pt-4 border-t border-slate-100">
+                <h3 className="text-base font-extrabold text-[#1e2a5a] font-display">
+                  How the Referral Program Works
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-2">
+                    <span className="h-8 w-8 rounded-full bg-[#1e2a5a] text-white flex items-center justify-center font-bold text-xs">
+                      1
+                    </span>
+                    <h4 className="text-sm font-bold text-slate-900">Share Your Link</h4>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Send your link to nurses, geriatric caregivers, post-operative attendants, and physiotherapists.
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-2">
+                    <span className="h-8 w-8 rounded-full bg-[#c9a24c] text-[#1e2a5a] flex items-center justify-center font-bold text-xs">
+                      2
+                    </span>
+                    <h4 className="text-sm font-bold text-slate-900">Automatic Code Lock</h4>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      The applicant submits with your referral code automatically locked so you receive 100% credit.
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-2">
+                    <span className="h-8 w-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs">
+                      3
+                    </span>
+                    <h4 className="text-sm font-bold text-slate-900">Verification &amp; Payouts</h4>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Admin verifies their KYC credentials and assigns them to active customer shifts across Hyderabad.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
               </div>
             </div>
 
@@ -2705,14 +3119,14 @@ function CustomerDashboard() {
                                 </a>
                               )}
                               {booking.prescription && (
-                                <a 
-                                  href={booking.prescription} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer" 
-                                  className="text-[10px] text-emerald-600 hover:underline font-bold block"
+                                <button
+                                  type="button"
+                                  onClick={() => openDocViewer(booking.prescription, "Doctor Prescription / Case File", booking.patientName || booking.name, "Patient Medical Record")}
+                                  className="text-[10px] text-emerald-700 font-bold hover:underline flex items-center gap-1 cursor-pointer bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200"
                                 >
-                                  📄 Doctor Prescription / Case File
-                                </a>
+                                  <Eye className="h-2.5 w-2.5" />
+                                  <span>📄 Doctor Prescription / Case File</span>
+                                </button>
                               )}
                             </div>
                           </div>
@@ -3729,6 +4143,16 @@ function CustomerDashboard() {
           </div>
         </div>
       )}
+
+      {/* DOCUMENT PREVIEW MODAL */}
+      <DocumentViewerModal
+        isOpen={docViewerState.isOpen}
+        onClose={() => setDocViewerState(s => ({ ...s, isOpen: false }))}
+        docUrl={docViewerState.docUrl}
+        docTitle={docViewerState.docTitle}
+        applicantName={docViewerState.applicantName}
+        category={docViewerState.category}
+      />
 
     </SiteLayout>
   );

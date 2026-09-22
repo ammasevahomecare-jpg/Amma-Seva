@@ -82,6 +82,16 @@ function RootComponent() {
     const timer = setTimeout(() => {
       window.scrollTo({ top: 0, left: 0, behavior: "instant" });
     }, 50);
+
+    // Track Single-Page-App (SPA) route changes in Google Analytics GA4
+    if (typeof window !== "undefined" && typeof (window as any).gtag === "function") {
+      const pagePath = location.pathname + location.search;
+      (window as any).gtag("config", "G-2Q1YD8K196", {
+        page_path: pagePath,
+        page_title: document.title,
+      });
+    }
+
     return () => clearTimeout(timer);
   }, [location.pathname, location.search]);
 

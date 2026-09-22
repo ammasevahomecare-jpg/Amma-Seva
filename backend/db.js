@@ -1442,32 +1442,84 @@ export const db = {
     }
   },
 
+  // Helper to generate Unique Referral Code for Caregivers (FIRSTNAME + LAST 4 DIGITS OF PHONE)
+  generateCaregiverReferralCode: (caregiver) => {
+    if (!caregiver) return 'STAFF0000'
+    const rawName = (caregiver.name || 'STAFF').trim()
+    const nameWithoutTitle = rawName.replace(/^(dr\.?|mr\.?|mrs\.?|ms\.?|sister|nurse)\s+/i, '').trim()
+    const firstName = (nameWithoutTitle.split(/\s+/)[0] || 'STAFF').replace(/[^a-zA-Z]/g, '').toUpperCase() || 'STAFF'
+    const cleanPhone = (caregiver.phone || '').replace(/[^0-9]/g, '')
+    const last4 = cleanPhone.length >= 4 ? cleanPhone.slice(-4) : (cleanPhone.padEnd(4, '0') || '0000')
+    return `${firstName}${last4}`
+  },
+
   // Caregivers Operations
   getCaregivers: async () => {
     if (useMySQL) {
       const [rows] = await pool.query('SELECT * FROM caregivers ORDER BY id DESC')
-      return rows.map(r => ({
-        ...r,
-        uniqueId: `AMMASEVA-${String(r.id).padStart(4, '0')}`
-      }))
+      return rows.map(r => {
+        const rawName = (r.name || 'STAFF').trim()
+        const nameWithoutTitle = rawName.replace(/^(dr\.?|mr\.?|mrs\.?|ms\.?|sister|nurse)\s+/i, '').trim()
+        const firstName = (nameWithoutTitle.split(/\s+/)[0] || 'STAFF').replace(/[^a-zA-Z]/g, '').toUpperCase() || 'STAFF'
+        const cleanPhone = (r.phone || '').replace(/[^0-9]/g, '')
+        const last4 = cleanPhone.length >= 4 ? cleanPhone.slice(-4) : (cleanPhone.padEnd(4, '0') || '0000')
+        const code = `${firstName}${last4}`
+        return {
+          ...r,
+          referCode: code,
+          referralCode: code,
+          uniqueId: code
+        }
+      })
     } else {
       const data = await readJSONDb()
-      return [...data.caregivers].reverse().map(r => ({
-        ...r,
-        uniqueId: `AMMASEVA-${String(r.id).padStart(4, '0')}`
-      }))
+      return [...data.caregivers].reverse().map(r => {
+        const rawName = (r.name || 'STAFF').trim()
+        const nameWithoutTitle = rawName.replace(/^(dr\.?|mr\.?|mrs\.?|ms\.?|sister|nurse)\s+/i, '').trim()
+        const firstName = (nameWithoutTitle.split(/\s+/)[0] || 'STAFF').replace(/[^a-zA-Z]/g, '').toUpperCase() || 'STAFF'
+        const cleanPhone = (r.phone || '').replace(/[^0-9]/g, '')
+        const last4 = cleanPhone.length >= 4 ? cleanPhone.slice(-4) : (cleanPhone.padEnd(4, '0') || '0000')
+        const code = `${firstName}${last4}`
+        return {
+          ...r,
+          referCode: code,
+          referralCode: code,
+          uniqueId: code
+        }
+      })
     }
   },
 
   addCaregiver: async (caregiverData) => {
-    const { name, phone, email, specialty, experience } = caregiverData
+    const { name, phone, email, specialty, experience, referredBy = '' } = caregiverData
     const joinedAt = new Date().toISOString()
+    const rawName = (name || 'STAFF').trim()
+    const nameWithoutTitle = rawName.replace(/^(dr\.?|mr\.?|mrs\.?|ms\.?|sister|nurse)\s+/i, '').trim()
+    const firstName = (nameWithoutTitle.split(/\s+/)[0] || 'STAFF').replace(/[^a-zA-Z]/g, '').toUpperCase() || 'STAFF'
+    const cleanPhone = (phone || '').replace(/[^0-9]/g, '')
+    const last4 = cleanPhone.length >= 4 ? cleanPhone.slice(-4) : (cleanPhone.padEnd(4, '0') || '0000')
+    const code = `${firstName}${last4}`
+    const cleanReferredBy = (referredBy || '').trim().toUpperCase()
+
     if (useMySQL) {
       const [result] = await pool.query(
         'INSERT INTO caregivers (name, phone, email, specialty, experience, joinedAt) VALUES (?, ?, ?, ?, ?, ?)',
         [name, phone, email, specialty, experience, joinedAt]
       )
-      return { id: result.insertId, name, phone, email, specialty, experience, status: 'Pending', joinedAt }
+      return { 
+        id: result.insertId, 
+        name, 
+        phone, 
+        email, 
+        specialty, 
+        experience, 
+        status: 'Pending', 
+        joinedAt,
+        uniqueId: code,
+        referCode: code,
+        referralCode: code,
+        referredBy: cleanReferredBy
+      }
     } else {
       const data = await readJSONDb()
       const newCaregiver = {
@@ -1478,7 +1530,11 @@ export const db = {
         specialty,
         experience,
         status: 'Pending',
-        joinedAt
+        joinedAt,
+        uniqueId: code,
+        referCode: code,
+        referralCode: code,
+        referredBy: cleanReferredBy
       }
       data.caregivers.push(newCaregiver)
       await writeJSONDb(data)
@@ -1560,21 +1616,50 @@ export const db = {
     const normalized = email.toLowerCase().trim()
     if (useMySQL) {
       const [rows] = await pool.query('SELECT * FROM caregivers WHERE email = ?', [normalized])
-      return rows[0] || null
+      if (!rows[0]) return null
+      const rawName = (rows[0].name || 'STAFF').trim()
+      const nameWithoutTitle = rawName.replace(/^(dr\.?|mr\.?|mrs\.?|ms\.?|sister|nurse)\s+/i, '').trim()
+      const firstName = (nameWithoutTitle.split(/\s+/)[0] || 'STAFF').replace(/[^a-zA-Z]/g, '').toUpperCase() || 'STAFF'
+      const cleanPhone = (rows[0].phone || '').replace(/[^0-9]/g, '')
+      const last4 = cleanPhone.length >= 4 ? cleanPhone.slice(-4) : (cleanPhone.padEnd(4, '0') || '0000')
+      const code = `${firstName}${last4}`
+      return { ...rows[0], referCode: code, referralCode: code, uniqueId: code }
     } else {
       const data = await readJSONDb()
-      return data.caregivers.find(c => c.email && c.email.toLowerCase().trim() === normalized) || null
+      const c = data.caregivers.find(c => c.email && c.email.toLowerCase().trim() === normalized) || null
+      if (!c) return null
+      const rawName = (c.name || 'STAFF').trim()
+      const nameWithoutTitle = rawName.replace(/^(dr\.?|mr\.?|mrs\.?|ms\.?|sister|nurse)\s+/i, '').trim()
+      const firstName = (nameWithoutTitle.split(/\s+/)[0] || 'STAFF').replace(/[^a-zA-Z]/g, '').toUpperCase() || 'STAFF'
+      const cleanPhone = (c.phone || '').replace(/[^0-9]/g, '')
+      const last4 = cleanPhone.length >= 4 ? cleanPhone.slice(-4) : (cleanPhone.padEnd(4, '0') || '0000')
+      const code = `${firstName}${last4}`
+      return { ...c, referCode: code, referralCode: code, uniqueId: code }
     }
   },
 
   getCaregiverById: async (id) => {
     if (useMySQL) {
       const [rows] = await pool.query('SELECT * FROM caregivers WHERE id = ?', [id])
-      return rows[0] ? { ...rows[0], uniqueId: `AMMASEVA-${String(rows[0].id).padStart(4, '0')}` } : null
+      if (!rows[0]) return null
+      const rawName = (rows[0].name || 'STAFF').trim()
+      const nameWithoutTitle = rawName.replace(/^(dr\.?|mr\.?|mrs\.?|ms\.?|sister|nurse)\s+/i, '').trim()
+      const firstName = (nameWithoutTitle.split(/\s+/)[0] || 'STAFF').replace(/[^a-zA-Z]/g, '').toUpperCase() || 'STAFF'
+      const cleanPhone = (rows[0].phone || '').replace(/[^0-9]/g, '')
+      const last4 = cleanPhone.length >= 4 ? cleanPhone.slice(-4) : (cleanPhone.padEnd(4, '0') || '0000')
+      const code = `${firstName}${last4}`
+      return { ...rows[0], referCode: code, referralCode: code, uniqueId: code }
     } else {
       const data = await readJSONDb()
       const c = data.caregivers.find(c => c.id === Number(id))
-      return c ? { ...c, uniqueId: `AMMASEVA-${String(c.id).padStart(4, '0')}` } : null
+      if (!c) return null
+      const rawName = (c.name || 'STAFF').trim()
+      const nameWithoutTitle = rawName.replace(/^(dr\.?|mr\.?|mrs\.?|ms\.?|sister|nurse)\s+/i, '').trim()
+      const firstName = (nameWithoutTitle.split(/\s+/)[0] || 'STAFF').replace(/[^a-zA-Z]/g, '').toUpperCase() || 'STAFF'
+      const cleanPhone = (c.phone || '').replace(/[^0-9]/g, '')
+      const last4 = cleanPhone.length >= 4 ? cleanPhone.slice(-4) : (cleanPhone.padEnd(4, '0') || '0000')
+      const code = `${firstName}${last4}`
+      return { ...c, referCode: code, referralCode: code, uniqueId: code }
     }
   },
 
@@ -1582,10 +1667,25 @@ export const db = {
     const trimmed = name.trim()
     if (useMySQL) {
       const [rows] = await pool.query('SELECT * FROM caregivers WHERE name = ?', [trimmed])
-      return rows[0] || null
+      if (!rows[0]) return null
+      const rawName = (rows[0].name || 'STAFF').trim()
+      const nameWithoutTitle = rawName.replace(/^(dr\.?|mr\.?|mrs\.?|ms\.?|sister|nurse)\s+/i, '').trim()
+      const firstName = (nameWithoutTitle.split(/\s+/)[0] || 'STAFF').replace(/[^a-zA-Z]/g, '').toUpperCase() || 'STAFF'
+      const cleanPhone = (rows[0].phone || '').replace(/[^0-9]/g, '')
+      const last4 = cleanPhone.length >= 4 ? cleanPhone.slice(-4) : (cleanPhone.padEnd(4, '0') || '0000')
+      const code = `${firstName}${last4}`
+      return { ...rows[0], referCode: code, referralCode: code, uniqueId: code }
     } else {
       const data = await readJSONDb()
-      return data.caregivers.find(c => c.name && c.name.trim() === trimmed) || null
+      const c = data.caregivers.find(c => c.name && c.name.trim() === trimmed) || null
+      if (!c) return null
+      const rawName = (c.name || 'STAFF').trim()
+      const nameWithoutTitle = rawName.replace(/^(dr\.?|mr\.?|mrs\.?|ms\.?|sister|nurse)\s+/i, '').trim()
+      const firstName = (nameWithoutTitle.split(/\s+/)[0] || 'STAFF').replace(/[^a-zA-Z]/g, '').toUpperCase() || 'STAFF'
+      const cleanPhone = (c.phone || '').replace(/[^0-9]/g, '')
+      const last4 = cleanPhone.length >= 4 ? cleanPhone.slice(-4) : (cleanPhone.padEnd(4, '0') || '0000')
+      const code = `${firstName}${last4}`
+      return { ...c, referCode: code, referralCode: code, uniqueId: code }
     }
   },
 
@@ -1703,16 +1803,25 @@ export const db = {
       aadhaar = '', pan = '', certificates = '', profilePhoto = '', 
       experienceDetails = '', workingLocations = '', availableTimings = '',
       state = '', city = '', googleMapLocation = '',
-      experienceCertificate = '', policeVerification = '', additionalCertificates = ''
+      experienceCertificate = '', policeVerification = '', additionalCertificates = '',
+      referredBy = ''
     } = caregiverData
     const joinedAt = new Date().toISOString()
     const dummyPassword = ''
+    const rawName = (name || 'STAFF').trim()
+    const nameWithoutTitle = rawName.replace(/^(dr\.?|mr\.?|mrs\.?|ms\.?|sister|nurse)\s+/i, '').trim()
+    const firstName = (nameWithoutTitle.split(/\s+/)[0] || 'STAFF').replace(/[^a-zA-Z]/g, '').toUpperCase() || 'STAFF'
+    const cleanPhone = (phone || '').replace(/[^0-9]/g, '')
+    const last4 = cleanPhone.length >= 4 ? cleanPhone.slice(-4) : (cleanPhone.padEnd(4, '0') || '0000')
+    const code = `${firstName}${last4}`
+    const cleanReferredBy = (referredBy || '').trim().toUpperCase()
+
     if (useMySQL) {
       const [result] = await pool.query(
         'INSERT INTO caregivers (name, phone, email, specialty, experience, password, joinedAt, aadhaar, pan, certificates, profilePhoto, experienceDetails, workingLocations, availableTimings, state, city, googleMapLocation, experienceCertificate, policeVerification, additionalCertificates) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [name, phone, email, specialty, experience, dummyPassword, joinedAt, aadhaar, pan, certificates, profilePhoto, experienceDetails, workingLocations, availableTimings, state, city, googleMapLocation, experienceCertificate, policeVerification, additionalCertificates]
       )
-      return { id: result.insertId, name, phone, email, specialty, experience, status: 'Pending', joinedAt, state, city, googleMapLocation, experienceCertificate, policeVerification, additionalCertificates }
+      return { id: result.insertId, name, phone, email, specialty, experience, status: 'Pending', joinedAt, state, city, googleMapLocation, experienceCertificate, policeVerification, additionalCertificates, uniqueId: code, referCode: code, referralCode: code, referredBy: cleanReferredBy }
     } else {
       const data = await readJSONDb()
       const newCaregiver = {
@@ -1737,7 +1846,11 @@ export const db = {
         googleMapLocation,
         experienceCertificate,
         policeVerification,
-        additionalCertificates
+        additionalCertificates,
+        uniqueId: code,
+        referCode: code,
+        referralCode: code,
+        referredBy: cleanReferredBy
       }
       data.caregivers.push(newCaregiver)
       await writeJSONDb(data)
@@ -1938,7 +2051,8 @@ export const db = {
       aadhaar, pan, certificates, profilePhoto, 
       experienceDetails, workingLocations, availableTimings,
       state, city, googleMapLocation,
-      experienceCertificate, policeVerification, additionalCertificates
+      experienceCertificate, policeVerification, additionalCertificates,
+      referredBy
     } = caregiverData
     if (useMySQL) {
       const [result] = await pool.query(
@@ -1970,7 +2084,8 @@ export const db = {
           googleMapLocation: googleMapLocation !== undefined ? googleMapLocation : data.caregivers[idx].googleMapLocation,
           experienceCertificate: experienceCertificate !== undefined ? experienceCertificate : data.caregivers[idx].experienceCertificate,
           policeVerification: policeVerification !== undefined ? policeVerification : data.caregivers[idx].policeVerification,
-          additionalCertificates: additionalCertificates !== undefined ? additionalCertificates : data.caregivers[idx].additionalCertificates
+          additionalCertificates: additionalCertificates !== undefined ? additionalCertificates : data.caregivers[idx].additionalCertificates,
+          referredBy: referredBy !== undefined ? (referredBy || '').trim().toUpperCase() : (data.caregivers[idx].referredBy || '')
         }
         await writeJSONDb(data)
         return true

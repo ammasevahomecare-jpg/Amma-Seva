@@ -566,6 +566,174 @@ app.get('/api/caretaker/bookings', authenticateUser, async (req, res) => {
   }
 })
 
+// GET individual caretaker referral network and stats
+app.get('/api/caretaker/referrals', authenticateUser, async (req, res) => {
+  if (req.role !== 'caretaker') {
+    return res.status(403).json({ error: 'Access forbidden. Caretaker profile only.' })
+  }
+  try {
+    const caretaker = await db.getCaregiverById(req.userId)
+    if (!caretaker) {
+      return res.status(404).json({ error: 'Caretaker profile not found.' })
+    }
+    const myCode = (caretaker.referCode || db.generateCaregiverReferralCode(caretaker)).toUpperCase()
+    const allCaregivers = await db.getCaregivers()
+
+    const myReferees = allCaregivers
+      .filter(c => c.id !== caretaker.id && (c.referredBy || '').trim().toUpperCase() === myCode)
+      .map(c => ({
+        id: c.id,
+        name: c.name,
+        specialty: c.specialty,
+        experience: c.experience,
+        joinedAt: c.joinedAt,
+        status: c.status,
+        city: c.city || 'Hyderabad',
+        state: c.state || 'Telangana',
+        phone: c.phone,
+        email: c.email
+      }))
+
+    const totalJoined = myReferees.length
+    const totalVerified = myReferees.filter(m => m.status === 'Verified').length
+    const totalPending = myReferees.filter(m => m.status !== 'Verified').length
+
+    res.json({
+      success: true,
+      referCode: myCode,
+      totalJoined,
+      totalVerified,
+      totalPending,
+      members: myReferees
+    })
+  } catch (err) {
+    console.error('Failed to retrieve caretaker referrals:', err)
+    res.status(500).json({ error: 'Failed to retrieve referral data.' })
+  }
+})
+
+// GET all referrals intelligence & tracking breakdown (Admin Panel)
+app.get('/api/admin/referrals', authenticateAdmin, async (req, res) => {
+  try {
+    const allCaregivers = await db.getCaregivers()
+    
+    // Map of all caregivers by their uppercase referCode
+    const referrersMap = {}
+    
+    allCaregivers.forEach(c => {
+      const code = (c.referCode || db.generateCaregiverReferralCode(c)).toUpperCase()
+      referrersMap[code] = {
+        id: c.id,
+        name: c.name,
+        phone: c.phone,
+        email: c.email,
+        specialty: c.specialty,
+        status: c.status,
+        joinedAt: c.joinedAt,
+        referCode: code,
+        profilePhoto: c.profilePhoto,
+        city: c.city,
+        state: c.state,
+        referredCount: 0,
+        verifiedCount: 0,
+        pendingCount: 0,
+        referees: []
+      }
+    })
+
+    const allReferredCandidates = []
+
+    allCaregivers.forEach(candidate => {
+      const refCode = (candidate.referredBy || '').trim().toUpperCase()
+      if (refCode) {
+        let referrer = referrersMap[refCode]
+        if (!referrer) {
+          // If code is an external partner / campaign code not in caregiver DB
+          referrersMap[refCode] = {
+            id: null,
+            name: `Partner Link (${refCode})`,
+            phone: 'N/A',
+            email: 'N/A',
+            specialty: 'External Campaign',
+            status: 'Active',
+            joinedAt: candidate.joinedAt,
+            referCode: refCode,
+            profilePhoto: '',
+            city: 'Hyderabad',
+            state: 'Telangana',
+            referredCount: 0,
+            verifiedCount: 0,
+            pendingCount: 0,
+            referees: []
+          }
+          referrer = referrersMap[refCode]
+        }
+
+        const candidateSummary = {
+          id: candidate.id,
+          name: candidate.name,
+          phone: candidate.phone,
+          email: candidate.email,
+          specialty: candidate.specialty,
+          experience: candidate.experience,
+          status: candidate.status,
+          joinedAt: candidate.joinedAt,
+          state: candidate.state,
+          city: candidate.city,
+          googleMapLocation: candidate.googleMapLocation,
+          experienceDetails: candidate.experienceDetails,
+          workingLocations: candidate.workingLocations,
+          availableTimings: candidate.availableTimings,
+          aadhaar: candidate.aadhaar,
+          pan: candidate.pan,
+          certificates: candidate.certificates,
+          profilePhoto: candidate.profilePhoto,
+          experienceCertificate: candidate.experienceCertificate,
+          policeVerification: candidate.policeVerification,
+          additionalCertificates: candidate.additionalCertificates,
+          referredBy: refCode,
+          referrerName: referrer.name,
+          referrerPhone: referrer.phone,
+          referrerCode: refCode
+        }
+
+        referrer.referredCount += 1
+        if (candidate.status === 'Verified') {
+          referrer.verifiedCount += 1
+        } else {
+          referrer.pendingCount += 1
+        }
+        referrer.referees.push(candidateSummary)
+        allReferredCandidates.push(candidateSummary)
+      }
+    })
+
+    const referrersList = Object.values(referrersMap)
+      .sort((a, b) => b.referredCount - a.referredCount || a.name.localeCompare(b.name))
+
+    const totalReferred = allReferredCandidates.length
+    const totalVerified = allReferredCandidates.filter(c => c.status === 'Verified').length
+    const totalPending = allReferredCandidates.filter(c => c.status !== 'Verified').length
+    const activeReferrersCount = referrersList.filter(r => r.referredCount > 0).length
+
+    res.json({
+      success: true,
+      summary: {
+        totalCaregivers: allCaregivers.length,
+        activeReferrersCount,
+        totalReferred,
+        totalVerified,
+        totalPending
+      },
+      referrers: referrersList,
+      allReferredCandidates
+    })
+  } catch (err) {
+    console.error('Failed to retrieve admin referrals:', err)
+    res.status(500).json({ error: 'Failed to retrieve referral details.' })
+  }
+})
+
 // PUT update booking status (for caregiver check-in / check-out shift tracking)
 app.put('/api/booking/:id/status', authenticateUser, async (req, res) => {
   const { status } = req.body
@@ -767,7 +935,8 @@ app.post('/api/caretaker/register', async (req, res) => {
     aadhaar, pan, certificates, profilePhoto, 
     experienceDetails, workingLocations, availableTimings,
     state, city, googleMapLocation,
-    experienceCertificate, policeVerification, additionalCertificates
+    experienceCertificate, policeVerification, additionalCertificates,
+    referredBy
   } = req.body
 
   if (!name || !phone || !specialty) {
@@ -804,7 +973,8 @@ app.post('/api/caretaker/register', async (req, res) => {
       googleMapLocation: googleMapLocation || '',
       experienceCertificate: uploadedExperienceCert,
       policeVerification: uploadedPoliceVerification,
-      additionalCertificates: uploadedAdditionalCertificates
+      additionalCertificates: uploadedAdditionalCertificates,
+      referredBy: (referredBy || '').trim().toUpperCase()
     })
 
     const token = jwt.sign({ id: newCaregiver.id, role: 'caretaker', email: newCaregiver.email }, JWT_SECRET, { expiresIn: '7d' })
@@ -812,7 +982,7 @@ app.post('/api/caretaker/register', async (req, res) => {
       success: true,
       message: 'Caregiver application submitted! Verification is pending.',
       token,
-      caretaker: { id: newCaregiver.id, name: newCaregiver.name }
+      caretaker: { id: newCaregiver.id, name: newCaregiver.name, referCode: newCaregiver.referCode, uniqueId: newCaregiver.uniqueId }
     })
   } catch (err) {
     res.status(500).json({ error: 'Failed to submit caretaker registration.' })
@@ -1459,12 +1629,12 @@ app.get('/api/caregivers', authenticateAdmin, async (req, res) => {
 
 // POST register caregiver
 app.post('/api/caregiver', async (req, res) => {
-  const { name, phone, email, specialty, experience } = req.body
+  const { name, phone, email, specialty, experience, referredBy } = req.body
   if (!name || !phone || !specialty) {
     return res.status(400).json({ error: 'Name, phone, and specialty are required.' })
   }
   try {
-    const newCaregiver = await db.addCaregiver({ name, phone, email, specialty, experience })
+    const newCaregiver = await db.addCaregiver({ name, phone, email, specialty, experience, referredBy })
     res.status(201).json({
       success: true,
       message: 'Registration profile submitted!',
@@ -1472,6 +1642,54 @@ app.post('/api/caregiver', async (req, res) => {
     })
   } catch (err) {
     res.status(500).json({ error: 'Failed to submit caregiver registration.' })
+  }
+})
+
+// POST careers application endpoint
+app.post('/api/careers/apply', async (req, res) => {
+  const { name, phone, email, city, role, experience, about, referredBy } = req.body
+  if (!name || !phone) {
+    return res.status(400).json({ error: 'Name and phone are required fields.' })
+  }
+  try {
+    const specialtyMap = {
+      caregiver: 'Elderly Care',
+      nurse: 'Home Nursing Services',
+      physiotherapist: 'Physiotherapy & Mobility',
+      other: 'Hospital & Home Recovery'
+    }
+    const specialty = specialtyMap[role] || 'Elderly Care'
+    const cleanReferredBy = (referredBy || '').trim().toUpperCase()
+
+    const newCaregiver = await db.addCaregiverWithPassword({
+      name,
+      phone,
+      email: email || `${phone}@applicant.ammaseva.in`,
+      specialty,
+      experience: Number(experience) || 1,
+      city: city || 'Hyderabad',
+      state: 'Telangana',
+      experienceDetails: about || `Applied via careers form for role: ${role}`,
+      referredBy: cleanReferredBy
+    })
+
+    // Also record as enquiry for fast coordinator follow-up
+    await db.addEnquiry({
+      name,
+      phone,
+      email: email || '',
+      service: `Career Application (${specialty})`,
+      city: city || 'Hyderabad',
+      message: `Role: ${role} | Exp: ${experience || 'N/A'} yrs | Ref by: ${cleanReferredBy || 'Direct'} | ${about || ''}`
+    })
+
+    res.status(201).json({
+      success: true,
+      message: 'Application submitted successfully! Our onboarding team will contact you shortly.',
+      data: newCaregiver
+    })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to process career application.' })
   }
 })
 
@@ -1587,7 +1805,8 @@ app.put('/api/admin/caregiver/:id', authenticateAdmin, async (req, res) => {
       aadhaar, pan, certificates, profilePhoto, 
       experienceDetails, workingLocations, availableTimings,
       state, city, googleMapLocation,
-      experienceCertificate, policeVerification, additionalCertificates
+      experienceCertificate, policeVerification, additionalCertificates,
+      referredBy
     } = req.body
 
     const uploadedProfilePhoto = profilePhoto ? await uploadToCloudinary(profilePhoto) : undefined
@@ -1608,7 +1827,8 @@ app.put('/api/admin/caregiver/:id', authenticateAdmin, async (req, res) => {
       state, city, googleMapLocation,
       experienceCertificate: uploadedExperienceCert,
       policeVerification: uploadedPoliceVerification,
-      additionalCertificates: uploadedAdditionalCertificates
+      additionalCertificates: uploadedAdditionalCertificates,
+      referredBy
     })
     if (updated) {
       res.json({ success: true, message: 'Caregiver details successfully updated.' })
@@ -1986,6 +2206,119 @@ app.post('/api/notifications', authenticateAdmin, async (req, res) => {
 })
 
 
+
+// Google Search Console Site Verification Endpoint
+app.get('/googlec5f847b60d2aa4ef.html', (req, res) => {
+  res.type('text/html').send('google-site-verification: googlec5f847b60d2aa4ef.html')
+})
+
+// Robots.txt Search Engine Crawling Rules
+app.get('/robots.txt', (req, res) => {
+  const robotsTxt = `# ==============================================================================
+# Amma Seva — Home Healthcare & Caregiving Services
+# Website: https://ammaseva.in
+# ==============================================================================
+
+User-agent: *
+Allow: /
+Allow: /about
+Allow: /services
+Allow: /services/
+Allow: /careers
+Allow: /gallery
+Allow: /contact
+Allow: /blog
+Allow: /blog/
+Allow: /mtp
+Allow: /privacy
+Allow: /terms
+Allow: /refund
+Allow: /assets/
+Allow: /favicon.png
+Allow: /favicon.ico
+Allow: /googlec5f847b60d2aa4ef.html
+
+# Disallow internal administrative & user portals
+Disallow: /admin
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /dashboard/
+Disallow: /login
+Disallow: /api/
+
+# Sitemap index
+Sitemap: https://ammaseva.in/sitemap.xml
+`
+  res.type('text/plain').send(robotsTxt)
+})
+
+// XML Dynamic Sitemap Endpoint
+app.get('/sitemap.xml', async (req, res) => {
+  try {
+    const services = await db.getServices() || []
+    const blogs = await db.getBlogs() || []
+    const now = new Date().toISOString().split('T')[0]
+
+    const staticRoutes = [
+      { url: '/', priority: '1.0', changefreq: 'daily' },
+      { url: '/services', priority: '0.95', changefreq: 'daily' },
+      { url: '/careers', priority: '0.85', changefreq: 'weekly' },
+      { url: '/mtp', priority: '0.90', changefreq: 'weekly' },
+      { url: '/about', priority: '0.80', changefreq: 'monthly' },
+      { url: '/gallery', priority: '0.75', changefreq: 'monthly' },
+      { url: '/contact', priority: '0.80', changefreq: 'monthly' },
+      { url: '/blog', priority: '0.85', changefreq: 'daily' },
+      { url: '/privacy', priority: '0.40', changefreq: 'yearly' },
+      { url: '/terms', priority: '0.40', changefreq: 'yearly' },
+      { url: '/refund', priority: '0.40', changefreq: 'yearly' }
+    ]
+
+    let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+`
+
+    staticRoutes.forEach(r => {
+      xml += `  <url>
+    <loc>https://ammaseva.in${r.url}</loc>
+    <lastmod>${now}</lastmod>
+    <changefreq>${r.changefreq}</changefreq>
+    <priority>${r.priority}</priority>
+  </url>
+`
+    })
+
+    // Dynamic services
+    services.forEach(s => {
+      const slug = s.slug || s.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
+      xml += `  <url>
+    <loc>https://ammaseva.in/services/${slug}</loc>
+    <lastmod>${now}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.90</priority>
+  </url>
+`
+    })
+
+    // Dynamic blogs
+    blogs.forEach(b => {
+      const slug = b.slug || b.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
+      xml += `  <url>
+    <loc>https://ammaseva.in/blog/${slug}</loc>
+    <lastmod>${b.date || now}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.80</priority>
+  </url>
+`
+    })
+
+    xml += `</urlset>`
+    res.header('Content-Type', 'application/xml')
+    res.send(xml)
+  } catch (err) {
+    console.error('Failed to generate dynamic sitemap:', err)
+    res.status(500).send('Error generating sitemap')
+  }
+})
 
 // Serve frontend static assets in production with aggressive Cache-Control settings
 const frontendDistPath = path.join(__dirname, 'dist')

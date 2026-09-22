@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { SiteLayout } from "@/components/SiteLayout";
+import { DocumentViewerModal } from "@/components/DocumentViewerModal";
 import { 
   Trash2, RefreshCw, Mail, Phone, MapPin, ClipboardList, 
   Users, Calendar, DollarSign, ShieldAlert, LogOut, CheckCircle2, 
@@ -8,7 +9,8 @@ import {
   UserCheck, MessageSquare, Sliders, Bell, Search, Plus, Send, TrendingDown,
   ArrowUpRight, Star, BookOpen, HelpCircle, Menu, X, Image, Coins, Clock,
   Briefcase, Car, Eye, MessageCircle, FileText, Sparkles,
-  GraduationCap, CreditCard, ShieldCheck, FileCheck
+  GraduationCap, CreditCard, ShieldCheck, FileCheck, User, ExternalLink,
+  Gift, Copy, Share2
 } from "lucide-react";
 
 const INDIAN_STATES = [
@@ -20,6 +22,20 @@ const INDIAN_STATES = [
   "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu", 
   "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
 ];
+
+// Helper to compute / format Referral Code (FIRSTNAME + LAST 4 DIGITS OF PHONE)
+export function getCaregiverReferralCode(c: { name?: string; phone?: string; uniqueId?: string; referCode?: string; referralCode?: string } | null | undefined): string {
+  if (!c) return "STAFF0000";
+  if (c.referCode && !c.referCode.startsWith("AMMASEVA-")) return c.referCode;
+  if (c.referralCode && !c.referralCode.startsWith("AMMASEVA-")) return c.referralCode;
+  if (c.uniqueId && !c.uniqueId.startsWith("AMMASEVA-")) return c.uniqueId;
+  const rawName = (c.name || "STAFF").trim();
+  const nameWithoutTitle = rawName.replace(/^(dr\.?|mr\.?|mrs\.?|ms\.?|sister|nurse)\s+/i, "").trim();
+  const firstName = (nameWithoutTitle.split(/\s+/)[0] || "STAFF").replace(/[^a-zA-Z]/g, "").toUpperCase() || "STAFF";
+  const cleanPhone = (c.phone || "").replace(/[^0-9]/g, "");
+  const last4 = cleanPhone.length >= 4 ? cleanPhone.slice(-4) : (cleanPhone.padEnd(4, "0") || "0000");
+  return `${firstName}${last4}`;
+}
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -90,6 +106,9 @@ interface Caregiver {
   rating?: number | string;
   reviews?: any[];
   uniqueId?: string;
+  referCode?: string;
+  referralCode?: string;
+  referredBy?: string;
 }
 
 interface Enquiry {
@@ -128,6 +147,64 @@ interface NotificationRecord {
   sentAt: string;
 }
 
+interface ReferralReferee {
+  id: number;
+  name: string;
+  phone: string;
+  email: string;
+  specialty: string;
+  experience: number;
+  status: string;
+  joinedAt: string;
+  state?: string;
+  city?: string;
+  googleMapLocation?: string;
+  experienceDetails?: string;
+  workingLocations?: string;
+  availableTimings?: string;
+  aadhaar?: string;
+  pan?: string;
+  certificates?: string;
+  profilePhoto?: string;
+  experienceCertificate?: string;
+  policeVerification?: string;
+  additionalCertificates?: string;
+  referredBy: string;
+  referrerName: string;
+  referrerPhone: string;
+  referrerCode: string;
+}
+
+interface ReferrerGroup {
+  id: number | null;
+  name: string;
+  phone: string;
+  email: string;
+  specialty: string;
+  status: string;
+  joinedAt: string;
+  referCode: string;
+  profilePhoto?: string;
+  city?: string;
+  state?: string;
+  referredCount: number;
+  verifiedCount: number;
+  pendingCount: number;
+  referees: ReferralReferee[];
+}
+
+interface ReferralsData {
+  summary: {
+    totalCaregivers: number;
+    activeReferrersCount: number;
+    totalReferred: number;
+    totalVerified: number;
+    totalPending: number;
+  };
+  referrers: ReferrerGroup[];
+  allReferredCandidates: ReferralReferee[];
+}
+
 function AdminPage() {
   const navigate = useNavigate();
 
@@ -141,7 +218,7 @@ function AdminPage() {
   };
 
   // Navigation and Search
-  const [activeTab, setActiveTab] = useState<"overview" | "bookings" | "caregivers" | "mtps" | "enquiries" | "services" | "users" | "notifications" | "payments" | "blogs" | "faqs" | "gallery" | "salaries">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "bookings" | "caregivers" | "mtps" | "enquiries" | "services" | "users" | "notifications" | "payments" | "blogs" | "faqs" | "gallery" | "salaries" | "referrals">("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -161,6 +238,14 @@ function AdminPage() {
   const [mtpTasks, setMtpTasks] = useState<any[]>([]);
   const [mtpSubTab, setMtpSubTab] = useState<"applicants" | "tasks">("applicants");
 
+  // Referral Network State
+  const [referralsData, setReferralsData] = useState<ReferralsData | null>(null);
+  const [referralsViewMode, setReferralsViewMode] = useState<"by-referrer" | "all-candidates">("by-referrer");
+  const [referralsSearch, setReferralsSearch] = useState("");
+  const [referralsStatusFilter, setReferralsStatusFilter] = useState("All");
+  const [selectedCandidateDetail, setSelectedCandidateDetail] = useState<ReferralReferee | null>(null);
+  const [expandedReferrerCode, setExpandedReferrerCode] = useState<string | null>(null);
+
   // MTP Filter & Detail state
   const [mtpSearch, setMtpSearch] = useState("");
   const [mtpStatusFilter, setMtpStatusFilter] = useState("All");
@@ -177,6 +262,32 @@ function AdminPage() {
   const [taskDescription, setTaskDescription] = useState("");
   const [taskShiftType, setTaskShiftType] = useState("Part-time / On-Demand");
   const [taskEarningEstimate, setTaskEarningEstimate] = useState("₹300 - ₹1,500 / task");
+
+  // Document Viewer Modal State
+  const [docViewerState, setDocViewerState] = useState<{
+    isOpen: boolean;
+    docUrl: string | null;
+    docTitle: string;
+    applicantName: string;
+    category: string;
+  }>({
+    isOpen: false,
+    docUrl: null,
+    docTitle: "",
+    applicantName: "",
+    category: "",
+  });
+
+  const openDocViewer = (docUrl?: string | null, docTitle = "Verification Document", applicantName = "", category = "Verification Record") => {
+    if (!docUrl) return;
+    setDocViewerState({
+      isOpen: true,
+      docUrl,
+      docTitle,
+      applicantName,
+      category,
+    });
+  };
 
   // Modal Control
   const [modalType, setModalType] = useState<"booking" | "caregiver" | "service" | "notification" | "blog" | "faq" | "gallery" | null>(null);
@@ -232,6 +343,7 @@ function AdminPage() {
   const [caregiverExperienceCertificate, setCaregiverExperienceCertificate] = useState("");
   const [caregiverPoliceVerification, setCaregiverPoliceVerification] = useState("");
   const [caregiverAdditionalCertificates, setCaregiverAdditionalCertificates] = useState("");
+  const [caregiverReferredBy, setCaregiverReferredBy] = useState("");
 
   // Form states - Service
   const [serviceTitle, setServiceTitle] = useState("");
@@ -335,7 +447,7 @@ function AdminPage() {
     };
 
     try {
-      const [bookingsRes, caregiversRes, enquiriesRes, usersRes, servicesRes, notificationsRes, blogsRes, faqsRes, galleryRes, mtpsRes, mtpTasksRes] = await Promise.all([
+      const [bookingsRes, caregiversRes, enquiriesRes, usersRes, servicesRes, notificationsRes, blogsRes, faqsRes, galleryRes, mtpsRes, mtpTasksRes, referralsRes] = await Promise.all([
         fetchWithAuth("/api/bookings"),
         fetchWithAuth("/api/caregivers"),
         fetchWithAuth("/api/enquiries"),
@@ -346,7 +458,8 @@ function AdminPage() {
         fetch("/api/faqs").then(res => res.json()),
         fetch("/api/gallery").then(res => res.json()),
         fetchWithAuth("/api/admin/mtps").catch(() => []),
-        fetch("/api/mtp/tasks").then(res => res.json()).catch(() => [])
+        fetch("/api/mtp/tasks").then(res => res.json()).catch(() => []),
+        fetchWithAuth("/api/admin/referrals").catch(() => null)
       ]);
       setBookings(Array.isArray(bookingsRes) ? bookingsRes : []);
       setCaregivers(Array.isArray(caregiversRes) ? caregiversRes : []);
@@ -359,6 +472,9 @@ function AdminPage() {
       setGallery(Array.isArray(galleryRes) ? galleryRes : []);
       setMTPs(Array.isArray(mtpsRes) ? mtpsRes : []);
       setMtpTasks(Array.isArray(mtpTasksRes) ? mtpTasksRes : []);
+      if (referralsRes && referralsRes.success) {
+        setReferralsData(referralsRes);
+      }
     } catch (err) {
       console.error(err);
       if (err instanceof Error && err.message === "Unauthorized") {
@@ -379,7 +495,7 @@ function AdminPage() {
 
 
   // Quick verify/reject for caregivers
-  const handleUpdateCaregiverStatus = (id: number, status: "Verified" | "Rejected") => {
+  const handleUpdateCaregiverStatus = (id: number, status: "Verified" | "Rejected" | "Pending") => {
     const token = localStorage.getItem("ammaseva_admin_token");
     fetch(`/api/caregiver/${id}`, {
       method: "PUT",
@@ -395,6 +511,16 @@ function AdminPage() {
           setCaregivers(prev => 
             prev.map(c => c.id === id ? { ...c, status } : c)
           );
+          // Also update referral candidate if open or in state
+          setSelectedCandidateDetail(prev => prev && prev.id === id ? { ...prev, status } : prev);
+          // Refetch referral network to sync counts
+          const fetchWithAuth = async (url: string) => {
+            const res = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
+            return res.json();
+          };
+          fetchWithAuth("/api/admin/referrals")
+            .then(res => { if (res && res.success) setReferralsData(res); })
+            .catch(() => {});
         }
       })
       .catch(err => console.error(err));
@@ -755,6 +881,7 @@ function AdminPage() {
       setCaregiverExperienceCertificate("");
       setCaregiverPoliceVerification("");
       setCaregiverAdditionalCertificates("");
+      setCaregiverReferredBy("");
     } else if (type === "service") {
       setServiceTitle("");
       setServiceShort("");
@@ -852,6 +979,7 @@ function AdminPage() {
       setCaregiverExperienceCertificate(record.experienceCertificate || "");
       setCaregiverPoliceVerification(record.policeVerification || "");
       setCaregiverAdditionalCertificates(record.additionalCertificates || "");
+      setCaregiverReferredBy(record.referredBy || "");
     } else if (type === "service") {
       setServiceTitle(record.title);
       setServiceShort(record.short || "");
@@ -979,7 +1107,8 @@ function AdminPage() {
         googleMapLocation: caregiverGoogleMapLocation,
         experienceCertificate: caregiverExperienceCertificate,
         policeVerification: caregiverPoliceVerification,
-        additionalCertificates: caregiverAdditionalCertificates
+        additionalCertificates: caregiverAdditionalCertificates,
+        referredBy: caregiverReferredBy.trim().toUpperCase()
       };
       if (modalMode === "add") {
         bodyData.password = "123456"; // Default password
@@ -1178,12 +1307,19 @@ function AdminPage() {
     b.service.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredCaregivers = caregivers.filter(c => 
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.phone.includes(searchQuery) ||
-    c.specialty.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (c.uniqueId && c.uniqueId.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredCaregivers = caregivers.filter(c => {
+    const q = searchQuery.toLowerCase();
+    const refCode = getCaregiverReferralCode(c).toLowerCase();
+    return (
+      c.name.toLowerCase().includes(q) ||
+      c.phone.includes(searchQuery) ||
+      c.specialty.toLowerCase().includes(q) ||
+      refCode.includes(q) ||
+      (c.uniqueId && c.uniqueId.toLowerCase().includes(q)) ||
+      (c.referCode && c.referCode.toLowerCase().includes(q)) ||
+      (c.referralCode && c.referralCode.toLowerCase().includes(q))
+    );
+  });
 
   const filteredEnquiries = enquiries.filter(e => 
     e.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -1253,6 +1389,7 @@ function AdminPage() {
               { id: "overview", label: "Dashboard", icon: LayoutDashboard },
               { id: "bookings", label: "Manage Bookings", icon: CalendarDays },
               { id: "caregivers", label: "Employees & Staff", icon: UserCheck },
+              { id: "referrals", label: "Referral Network", icon: Gift, badge: referralsData?.summary.totalPending || 0 },
               { id: "mtps", label: "MTP Registrations", icon: Briefcase, badge: mtps.filter(m => m.status === "Pending").length },
               { id: "users", label: "Patients", icon: Users },
               { id: "services", label: "Services", icon: Sliders },
@@ -1800,9 +1937,15 @@ function AdminPage() {
                                   </a>
                                 )}
                                 {b.prescription && (
-                                  <a href={b.prescription} target="_blank" rel="noopener noreferrer" className="text-[9px] text-teal-600 font-black hover:underline flex items-center gap-0.5">
-                                    📄 Case File
-                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => openDocViewer(b.prescription, "Doctor Prescription / Case File", `${b.patientName || b.name} (Booking #${b.id})`, "Patient Medical Record")}
+                                    className="text-[9px] text-teal-700 font-black hover:underline flex items-center gap-1 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200 shadow-2xs cursor-pointer"
+                                    title="Click to view full prescription / case file"
+                                  >
+                                    <Eye className="h-2.5 w-2.5 text-teal-600" />
+                                    <span>Case File</span>
+                                  </button>
                                 )}
                               </div>
                             </div>
@@ -1952,11 +2095,44 @@ function AdminPage() {
                                 </div>
                               )}
                               <div>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-[#c9a24c]/10 text-[#c9a24c] border border-[#c9a24c]/20 shrink-0">
-                                    {c.uniqueId}
-                                  </span>
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <div className="font-bold text-[#1e2a5a] font-display text-base leading-tight">{c.name}</div>
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-md bg-[#c9a24c]/15 text-[#8c6b16] border border-[#c9a24c]/30 font-mono tracking-wider shadow-2xs">
+                                    <Gift className="h-3 w-3 text-[#b08726]" />
+                                    REF: {getCaregiverReferralCode(c)}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    title="Copy Referral Code"
+                                    onClick={() => {
+                                      const code = getCaregiverReferralCode(c);
+                                      navigator.clipboard.writeText(code);
+                                      alert(`Copied Referral Code: ${code}`);
+                                    }}
+                                    className="inline-flex items-center gap-1 text-[10px] text-slate-500 hover:text-[#1e2a5a] bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 rounded border border-slate-200 transition-colors font-semibold cursor-pointer"
+                                  >
+                                    <Copy className="h-2.5 w-2.5" />
+                                    Copy Code
+                                  </button>
+                                  <button
+                                    type="button"
+                                    title="Copy Careers Application Referral Link"
+                                    onClick={() => {
+                                      const code = getCaregiverReferralCode(c);
+                                      const link = `${window.location.origin}/careers?ref=${code}`;
+                                      navigator.clipboard.writeText(link);
+                                      alert(`Copied Caregiver Application Referral Link:\n${link}`);
+                                    }}
+                                    className="inline-flex items-center gap-1 text-[10px] text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded border border-indigo-200 transition-colors font-bold cursor-pointer"
+                                  >
+                                    <Share2 className="h-2.5 w-2.5 text-indigo-600" />
+                                    Share Link
+                                  </button>
+                                  {c.referredBy && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 font-mono">
+                                      👤 Ref by: {c.referredBy}
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="text-xs text-slate-400 mt-1.5 font-semibold">{c.phone}</div>
                                 <div className="text-xs text-slate-500 font-medium mt-0.5">{c.email}</div>
@@ -1997,39 +2173,63 @@ function AdminPage() {
                           <td className="py-4 px-6 text-xs">
                             <div className="space-y-1">
                               {c.aadhaar ? (
-                                <a href={c.aadhaar} target="_blank" rel="noopener noreferrer" className="text-[#c9a24c] font-bold hover:underline block text-[10px]">
-                                  📄 Aadhaar Card Verified
-                                </a>
+                                <button
+                                  type="button"
+                                  onClick={() => openDocViewer(c.aadhaar, "Aadhaar Card Document", c.name, "Staff / Nurse Verification")}
+                                  className="text-[#c9a24c] font-bold hover:underline flex items-center gap-1 text-[10px] cursor-pointer text-left"
+                                >
+                                  <Eye className="h-2.5 w-2.5" /> Aadhaar Card Verified
+                                </button>
                               ) : <span className="text-slate-300 block text-[10px]">❌ Aadhaar Card</span>}
                               
                               {c.pan ? (
-                                <a href={c.pan} target="_blank" rel="noopener noreferrer" className="text-[#c9a24c] font-bold hover:underline block text-[10px]">
-                                  📄 PAN Card Verified
-                                </a>
+                                <button
+                                  type="button"
+                                  onClick={() => openDocViewer(c.pan, "PAN Card Document", c.name, "Staff / Nurse Verification")}
+                                  className="text-[#c9a24c] font-bold hover:underline flex items-center gap-1 text-[10px] cursor-pointer text-left"
+                                >
+                                  <Eye className="h-2.5 w-2.5" /> PAN Card Verified
+                                </button>
                               ) : <span className="text-slate-300 block text-[10px]">❌ PAN Card</span>}
                               
                               {c.certificates ? (
-                                <a href={c.certificates} target="_blank" rel="noopener noreferrer" className="text-[#c9a24c] font-bold hover:underline block text-[10px]">
-                                  📄 Edu Certificate Verified
-                                </a>
+                                <button
+                                  type="button"
+                                  onClick={() => openDocViewer(c.certificates, "Nursing / Education Qualification Certificate", c.name, "Staff / Nurse Verification")}
+                                  className="text-[#c9a24c] font-bold hover:underline flex items-center gap-1 text-[10px] cursor-pointer text-left"
+                                >
+                                  <Eye className="h-2.5 w-2.5" /> Edu Certificate Verified
+                                </button>
                               ) : <span className="text-slate-300 block text-[10px]">❌ Edu Certificate</span>}
 
                               {c.experienceCertificate ? (
-                                <a href={c.experienceCertificate} target="_blank" rel="noopener noreferrer" className="text-[#c9a24c] font-bold hover:underline block text-[10px]">
-                                  📄 Experience Certificate
-                                </a>
+                                <button
+                                  type="button"
+                                  onClick={() => openDocViewer(c.experienceCertificate, "Experience Certificate", c.name, "Staff / Nurse Verification")}
+                                  className="text-[#c9a24c] font-bold hover:underline flex items-center gap-1 text-[10px] cursor-pointer text-left"
+                                >
+                                  <Eye className="h-2.5 w-2.5" /> Experience Certificate
+                                </button>
                               ) : <span className="text-slate-300 block text-[10px]">❌ Experience Cert</span>}
 
                               {c.policeVerification ? (
-                                <a href={c.policeVerification} target="_blank" rel="noopener noreferrer" className="text-[#c9a24c] font-bold hover:underline block text-[10px]">
-                                  📄 Police Verification Cert
-                                </a>
+                                <button
+                                  type="button"
+                                  onClick={() => openDocViewer(c.policeVerification, "Police Verification Certificate (PCC)", c.name, "Staff / Nurse Verification")}
+                                  className="text-[#c9a24c] font-bold hover:underline flex items-center gap-1 text-[10px] cursor-pointer text-left"
+                                >
+                                  <Eye className="h-2.5 w-2.5" /> Police Verification Cert
+                                </button>
                               ) : <span className="text-slate-300 block text-[10px]">❌ Police verification</span>}
 
                               {c.additionalCertificates ? (
-                                <a href={c.additionalCertificates} target="_blank" rel="noopener noreferrer" className="text-[#c9a24c] font-bold hover:underline block text-[10px]">
-                                  📄 Additional Docs
-                                </a>
+                                <button
+                                  type="button"
+                                  onClick={() => openDocViewer(c.additionalCertificates, "Additional Verification Documents", c.name, "Staff / Nurse Verification")}
+                                  className="text-[#c9a24c] font-bold hover:underline flex items-center gap-1 text-[10px] cursor-pointer text-left"
+                                >
+                                  <Eye className="h-2.5 w-2.5" /> Additional Docs
+                                </button>
                               ) : null}
                             </div>
                           </td>
@@ -2333,9 +2533,14 @@ function AdminPage() {
                                     </a>
                                   )}
                                   {b.prescription && (
-                                    <a href={b.prescription} target="_blank" rel="noopener noreferrer" className="text-teal-600 font-bold hover:underline">
-                                      📄 Case File / Prescription
-                                    </a>
+                                    <button
+                                      type="button"
+                                      onClick={() => openDocViewer(b.prescription, "Doctor Prescription / Case File", `${b.patientName || b.name} (Booking #${b.id})`, "Patient Medical Record")}
+                                      className="text-teal-600 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                                    >
+                                      <Eye className="h-3 w-3" />
+                                      <span>📄 Case File / Prescription</span>
+                                    </button>
                                   )}
                                 </div>
                               </div>
@@ -2643,11 +2848,25 @@ function AdminPage() {
                             ← Back to Salaries
                           </button>
                           <div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px] font-black px-2 py-0.5 rounded bg-[#c9a24c]/15 text-[#c9a24c] border border-[#c9a24c]/20 shrink-0">
-                                {cg.uniqueId}
-                              </span>
+                            <div className="flex items-center gap-2 flex-wrap">
                               <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display">{cg.name}</h3>
+                              <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-md bg-[#c9a24c]/15 text-[#8c6b16] border border-[#c9a24c]/30 font-mono tracking-wider shadow-2xs">
+                                <Gift className="h-3 w-3 text-[#b08726]" />
+                                REFER: {getCaregiverReferralCode(cg)}
+                              </span>
+                              <button
+                                type="button"
+                                title="Copy Referral Code"
+                                onClick={() => {
+                                  const code = getCaregiverReferralCode(cg);
+                                  navigator.clipboard.writeText(code);
+                                  alert(`Copied Referral Code: ${code}`);
+                                }}
+                                className="inline-flex items-center gap-1 text-[10px] text-slate-500 hover:text-[#1e2a5a] bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 rounded border border-slate-200 transition-colors font-semibold cursor-pointer"
+                              >
+                                <Copy className="h-2.5 w-2.5" />
+                                Copy
+                              </button>
                             </div>
                             <p className="text-xs text-slate-400 mt-1 font-semibold">{cg.specialty} • {cg.phone}</p>
                           </div>
@@ -2910,9 +3129,11 @@ function AdminPage() {
                             {caregivers
                               .filter((cg) => {
                                 const q = salarySearch.toLowerCase();
+                                const refCode = getCaregiverReferralCode(cg).toLowerCase();
                                 return !salarySearch || 
                                   cg.name.toLowerCase().includes(q) || 
                                   cg.specialty.toLowerCase().includes(q) ||
+                                  refCode.includes(q) ||
                                   (cg.uniqueId && cg.uniqueId.toLowerCase().includes(q));
                               })
                               .map((cg) => {
@@ -2930,11 +3151,24 @@ function AdminPage() {
                                           {cg.name.charAt(0)}
                                         </div>
                                         <div>
-                                          <div className="flex items-center gap-2">
-                                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-[#c9a24c]/10 text-[#c9a24c] border border-[#c9a24c]/20 shrink-0">
-                                              {cg.uniqueId}
-                                            </span>
+                                          <div className="flex items-center gap-2 flex-wrap">
                                             <div className="font-extrabold text-[#1e2a5a] text-sm leading-tight">{cg.name}</div>
+                                            <span className="inline-flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 rounded bg-[#c9a24c]/15 text-[#8c6b16] border border-[#c9a24c]/30 font-mono tracking-wider">
+                                              <Gift className="h-2.5 w-2.5 text-[#b08726]" />
+                                              {getCaregiverReferralCode(cg)}
+                                            </span>
+                                            <button
+                                              type="button"
+                                              title="Copy Referral Code"
+                                              onClick={() => {
+                                                const code = getCaregiverReferralCode(cg);
+                                                navigator.clipboard.writeText(code);
+                                                alert(`Copied Referral Code: ${code}`);
+                                              }}
+                                              className="text-[9px] text-slate-500 hover:text-[#1e2a5a] bg-slate-100 hover:bg-slate-200 px-1 py-0.5 rounded border border-slate-200 transition-colors font-semibold cursor-pointer flex items-center gap-0.5"
+                                            >
+                                              <Copy className="h-2.5 w-2.5" />
+                                            </button>
                                           </div>
                                           <p className="text-[10px] text-slate-400 font-semibold mt-1">{cg.phone} • {cg.specialty}</p>
                                         </div>
@@ -3524,29 +3758,34 @@ function AdminPage() {
 
                 {/* MODAL: ADD / EDIT MTP TASK FIELD */}
                 {isMtpTaskModalOpen && (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-                    <div className="w-full max-w-lg rounded-3xl bg-white p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-5 text-left">
-                      <div className="flex items-start justify-between border-b border-slate-100 pb-3">
-                        <div>
-                          <span className="text-xs font-mono font-bold text-gold uppercase tracking-wider">
-                            {mtpTaskModalMode === "add" ? "Create New Field" : "Edit Task Field"}
-                          </span>
-                          <h3 className="text-xl font-bold text-[#1e2a5a] font-display mt-0.5">
-                            {mtpTaskModalMode === "add" ? "Add MTP Task Category" : `Edit Task #${editingMtpTaskId}`}
-                          </h3>
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-md p-3 sm:p-6 animate-in fade-in duration-200">
+                    <div className="w-full max-w-xl rounded-3xl bg-white shadow-2xl border border-slate-200/90 overflow-hidden text-left flex flex-col">
+                      <div className="px-6 py-4 bg-gradient-to-r from-[#091438] via-[#112255] to-[#1e2a5a] border-b border-[#c9a24c]/30 flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-xl bg-white/10 border border-[#c9a24c]/40 flex items-center justify-center text-lg">
+                            {taskIcon || "🚗"}
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-mono font-bold text-[#f5d77f] uppercase tracking-wider block">
+                              {mtpTaskModalMode === "add" ? "Create New Category" : `Edit Task #${editingMtpTaskId}`}
+                            </span>
+                            <h3 className="text-base sm:text-lg font-bold text-white font-display">
+                              {mtpTaskModalMode === "add" ? "Add MTP Task Category" : "Edit MTP Task Category"}
+                            </h3>
+                          </div>
                         </div>
                         <button
                           onClick={() => setIsMtpTaskModalOpen(false)}
-                          className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 cursor-pointer"
+                          className="h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white flex items-center justify-center cursor-pointer transition-colors border border-white/10"
                         >
-                          <X className="h-5 w-5" />
+                          <X className="h-4 w-4" />
                         </button>
                       </div>
 
-                      <form onSubmit={handleSaveMtpTask} className="space-y-4">
+                      <form onSubmit={handleSaveMtpTask} className="p-6 space-y-4 text-xs">
                         {/* Icon selection */}
                         <div>
-                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">
                             Icon / Emoji
                           </label>
                           <div className="flex items-center gap-2">
@@ -3555,7 +3794,7 @@ function AdminPage() {
                               required
                               value={taskIcon}
                               onChange={(e) => setTaskIcon(e.target.value)}
-                              className="w-16 text-center text-xl rounded-xl border border-slate-200 bg-slate-50 p-2 outline-none focus:border-[#c9a24c]"
+                              className="w-14 text-center text-lg rounded-xl border border-slate-200 bg-slate-50 p-1.5 outline-none focus:border-[#c9a24c]"
                             />
                             <div className="flex flex-wrap gap-1">
                               {["🚗", "💊", "👴", "🍼", "🩺", "⚡", "🛒", "🏢", "🤝", "🏥", "🦽", "👵"].map((emoji) => (
@@ -3563,7 +3802,7 @@ function AdminPage() {
                                   type="button"
                                   key={emoji}
                                   onClick={() => setTaskIcon(emoji)}
-                                  className={`p-1.5 rounded-lg text-base hover:bg-slate-100 cursor-pointer ${taskIcon === emoji ? "bg-gold/20 border border-gold" : ""}`}
+                                  className={`p-1.5 rounded-lg text-sm hover:bg-slate-100 cursor-pointer ${taskIcon === emoji ? "bg-gold/20 border border-gold" : ""}`}
                                 >
                                   {emoji}
                                 </button>
@@ -3574,7 +3813,7 @@ function AdminPage() {
 
                         {/* Title */}
                         <div>
-                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">
                             Task Title <span className="text-rose-500">*</span>
                           </label>
                           <input
@@ -3583,13 +3822,13 @@ function AdminPage() {
                             value={taskTitle}
                             onChange={(e) => setTaskTitle(e.target.value)}
                             placeholder="e.g. Patient Hospital Dropping & Escort"
-                            className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-primary focus:bg-white focus:border-[#c9a24c] outline-none"
+                            className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-primary focus:bg-white focus:border-[#c9a24c] outline-none"
                           />
                         </div>
 
                         {/* Description */}
                         <div>
-                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">
                             Description <span className="text-rose-500">*</span>
                           </label>
                           <textarea
@@ -3598,13 +3837,13 @@ function AdminPage() {
                             value={taskDescription}
                             onChange={(e) => setTaskDescription(e.target.value)}
                             placeholder="e.g. Accompany patients/seniors safely to doctors, diagnostics & therapy"
-                            className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-primary focus:bg-white focus:border-[#c9a24c] outline-none resize-none"
+                            className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-primary focus:bg-white focus:border-[#c9a24c] outline-none resize-none"
                           />
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                            <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">
                               Shift / Type
                             </label>
                             <input
@@ -3612,12 +3851,12 @@ function AdminPage() {
                               value={taskShiftType}
                               onChange={(e) => setTaskShiftType(e.target.value)}
                               placeholder="e.g. Part-time / On-Demand"
-                              className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-primary focus:bg-white focus:border-[#c9a24c] outline-none"
+                              className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-primary focus:bg-white focus:border-[#c9a24c] outline-none"
                             />
                           </div>
 
                           <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                            <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">
                               Earning Estimate
                             </label>
                             <input
@@ -3625,7 +3864,7 @@ function AdminPage() {
                               value={taskEarningEstimate}
                               onChange={(e) => setTaskEarningEstimate(e.target.value)}
                               placeholder="e.g. ₹300 - ₹1,500 / task"
-                              className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-primary focus:bg-white focus:border-[#c9a24c] outline-none"
+                              className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-primary focus:bg-white focus:border-[#c9a24c] outline-none"
                             />
                           </div>
                         </div>
@@ -3641,9 +3880,9 @@ function AdminPage() {
                           </button>
                           <button
                             type="submit"
-                            className="btn-gold px-5 py-2 text-xs font-bold shadow-md cursor-pointer flex items-center gap-1.5"
+                            className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#091438] to-[#1e2a5a] text-white border border-[#c9a24c]/40 text-xs font-bold shadow-md cursor-pointer flex items-center gap-1.5"
                           >
-                            <Save className="h-3.5 w-3.5" /> Save Task Category
+                            <Save className="h-3.5 w-3.5 text-[#f5d77f]" /> Save Task Category
                           </button>
                         </div>
                       </form>
@@ -3653,243 +3892,240 @@ function AdminPage() {
 
                 {/* MTP Applicant Full Detail Modal */}
                 {selectedMTPDetail && (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-                    <div className="w-full max-w-2xl rounded-3xl bg-white p-6 sm:p-8 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto space-y-6 text-left">
-                      <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-md p-3 sm:p-6 animate-in fade-in duration-200">
+                    <div className="w-full max-w-3xl rounded-3xl bg-white shadow-2xl border border-slate-200/90 max-h-[90vh] overflow-hidden flex flex-col text-left">
+                      <div className="px-6 py-4 bg-gradient-to-r from-[#091438] via-[#112255] to-[#1e2a5a] border-b border-[#c9a24c]/30 flex justify-between items-center">
                         <div>
-                          <span className="text-xs font-mono font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
+                          <span className="text-[10px] font-mono font-bold text-[#f5d77f] bg-white/10 px-2 py-0.5 rounded border border-white/10">
                             MTP Application #{selectedMTPDetail.id}
                           </span>
-                          <h2 className="text-2xl font-bold text-[#1e2a5a] font-display mt-1">
+                          <h2 className="text-lg sm:text-xl font-bold text-white font-display mt-1">
                             {selectedMTPDetail.name}
                           </h2>
-                          <p className="text-xs text-slate-500">
+                          <p className="text-[11px] text-slate-300">
                             Applied on {new Date(selectedMTPDetail.createdAt || Date.now()).toLocaleString()}
                           </p>
                         </div>
                         <button
                           onClick={() => setSelectedMTPDetail(null)}
-                          className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 cursor-pointer"
+                          className="h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white flex items-center justify-center cursor-pointer transition-colors border border-white/10"
                         >
-                          <X className="h-5 w-5" />
+                          <X className="h-4 w-4" />
                         </button>
                       </div>
 
-                      {/* Detail fields */}
-                      <div className="grid sm:grid-cols-2 gap-4 text-xs">
-                        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60 space-y-1">
-                          <span className="text-slate-400 font-bold block uppercase tracking-wider text-[10px]">Contact</span>
-                          <div className="font-bold text-primary text-sm">{selectedMTPDetail.phone}</div>
-                          <div className="text-slate-500">{selectedMTPDetail.email || "No email provided"}</div>
-                        </div>
-
-                        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60 space-y-1">
-                          <span className="text-slate-400 font-bold block uppercase tracking-wider text-[10px]">Location &amp; Zone</span>
-                          <div className="font-bold text-primary text-sm">{selectedMTPDetail.locality || "Hyderabad"}</div>
-                          <div className="text-slate-500">{selectedMTPDetail.city || "Hyderabad"}</div>
-                        </div>
-
-                        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60 space-y-1">
-                          <span className="text-slate-400 font-bold block uppercase tracking-wider text-[10px]">Availability &amp; Transport</span>
-                          <div className="font-bold text-primary">{selectedMTPDetail.availability}</div>
-                          <div className="text-slate-500">Vehicle: {selectedMTPDetail.vehicle} (License: {selectedMTPDetail.drivingLicense || "N/A"})</div>
-                        </div>
-
-                        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60 space-y-1">
-                          <span className="text-slate-400 font-bold block uppercase tracking-wider text-[10px]">Experience &amp; ID</span>
-                          <div className="font-bold text-primary">{selectedMTPDetail.experience}</div>
-                          <div className="text-slate-500">Aadhaar: {selectedMTPDetail.aadhaar || "Not provided yet"}</div>
-                        </div>
-
-                        {selectedMTPDetail.emergencyContact && (
-                          <div className="sm:col-span-2 bg-slate-50 p-3.5 rounded-xl border border-slate-200/60 space-y-1">
-                            <span className="text-slate-400 font-bold block uppercase tracking-wider text-[10px]">Emergency Contact</span>
-                            <div className="font-semibold text-primary">{selectedMTPDetail.emergencyContact}</div>
+                      <div className="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
+                        {/* Detail fields */}
+                        <div className="grid sm:grid-cols-2 gap-3.5">
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/70 space-y-1">
+                            <span className="text-slate-400 font-bold block uppercase tracking-wider text-[10px]">Contact</span>
+                            <div className="font-bold text-primary text-xs">{selectedMTPDetail.phone}</div>
+                            <div className="text-slate-500">{selectedMTPDetail.email || "No email provided"}</div>
                           </div>
-                        )}
 
-                        {selectedMTPDetail.skillsSummary && (
-                          <div className="sm:col-span-2 bg-slate-50 p-3.5 rounded-xl border border-slate-200/60 space-y-1">
-                            <span className="text-slate-400 font-bold block uppercase tracking-wider text-[10px]">Languages &amp; Bio</span>
-                            <div className="text-slate-700 leading-relaxed">{selectedMTPDetail.skillsSummary}</div>
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/70 space-y-1">
+                            <span className="text-slate-400 font-bold block uppercase tracking-wider text-[10px]">Location &amp; Zone</span>
+                            <div className="font-bold text-primary text-xs">{selectedMTPDetail.locality || "Hyderabad"}</div>
+                            <div className="text-slate-500">{selectedMTPDetail.city || "Hyderabad"}</div>
                           </div>
-                        )}
 
-                        <div className="sm:col-span-2 bg-slate-50 p-3.5 rounded-xl border border-slate-200/60 space-y-2">
-                          <span className="text-slate-400 font-bold block uppercase tracking-wider text-[10px]">Roles &amp; Tasks Interested In</span>
-                          <div className="flex flex-wrap gap-1.5">
-                            {selectedMTPDetail.roles ? (
-                              selectedMTPDetail.roles.split(",").map((r: string, idx: number) => (
-                                <span key={idx} className="bg-gold/15 text-primary border border-gold/30 px-2.5 py-1 rounded-lg text-xs font-bold">
-                                  {r.trim()}
-                                </span>
-                              ))
-                            ) : (
-                              <span className="text-slate-400">No roles selected</span>
-                            )}
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/70 space-y-1">
+                            <span className="text-slate-400 font-bold block uppercase tracking-wider text-[10px]">Availability &amp; Transport</span>
+                            <div className="font-bold text-primary">{selectedMTPDetail.availability}</div>
+                            <div className="text-slate-500">Vehicle: {selectedMTPDetail.vehicle} (License: {selectedMTPDetail.drivingLicense || "N/A"})</div>
                           </div>
-                        </div>
-                      </div>
 
-                      {/* Uploaded Verification Documents */}
-                      <div className="space-y-3 pt-3 border-t border-slate-100">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-[#1e2a5a] uppercase tracking-wider flex items-center gap-1.5">
-                            <FileText className="h-4 w-4 text-gold" /> Uploaded KYC Documents
-                          </span>
-                          <span className="text-[10px] text-slate-400">Click to view/download original</span>
-                        </div>
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/70 space-y-1">
+                            <span className="text-slate-400 font-bold block uppercase tracking-wider text-[10px]">Experience &amp; ID</span>
+                            <div className="font-bold text-primary">{selectedMTPDetail.experience}</div>
+                            <div className="text-slate-500">Aadhaar: {selectedMTPDetail.aadhaar || "Not provided yet"}</div>
+                          </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                          {/* Aadhaar */}
-                          <div className="p-3 rounded-xl border border-slate-200/80 bg-slate-50/50 flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <FileCheck className="h-4 w-4 text-primary shrink-0" />
-                              <div className="min-w-0">
-                                <div className="font-bold text-xs text-primary truncate">Aadhaar Document</div>
-                                <div className="text-[10px] text-slate-500">{selectedMTPDetail.aadhaarDoc ? "Uploaded" : "Not Provided"}</div>
-                              </div>
+                          {selectedMTPDetail.emergencyContact && (
+                            <div className="sm:col-span-2 bg-slate-50 p-3 rounded-xl border border-slate-200/70 space-y-1">
+                              <span className="text-slate-400 font-bold block uppercase tracking-wider text-[10px]">Emergency Contact</span>
+                              <div className="font-semibold text-primary">{selectedMTPDetail.emergencyContact}</div>
                             </div>
-                            {selectedMTPDetail.aadhaarDoc ? (
-                              <a
-                                href={selectedMTPDetail.aadhaarDoc}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shrink-0 transition-colors shadow-2xs flex items-center gap-1"
-                              >
-                                <Eye className="h-3 w-3" /> View
-                              </a>
-                            ) : (
-                              <span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded font-semibold">Missing</span>
-                            )}
-                          </div>
+                          )}
 
-                          {/* PAN */}
-                          <div className="p-3 rounded-xl border border-slate-200/80 bg-slate-50/50 flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <CreditCard className="h-4 w-4 text-primary shrink-0" />
-                              <div className="min-w-0">
-                                <div className="font-bold text-xs text-primary truncate">PAN Card</div>
-                                <div className="text-[10px] text-slate-500">{selectedMTPDetail.panDoc ? "Uploaded" : "Not Provided"}</div>
-                              </div>
+                          {selectedMTPDetail.skillsSummary && (
+                            <div className="sm:col-span-2 bg-slate-50 p-3 rounded-xl border border-slate-200/70 space-y-1">
+                              <span className="text-slate-400 font-bold block uppercase tracking-wider text-[10px]">Languages &amp; Bio</span>
+                              <div className="text-slate-700 leading-relaxed">{selectedMTPDetail.skillsSummary}</div>
                             </div>
-                            {selectedMTPDetail.panDoc ? (
-                              <a
-                                href={selectedMTPDetail.panDoc}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shrink-0 transition-colors shadow-2xs flex items-center gap-1"
-                              >
-                                <Eye className="h-3 w-3" /> View
-                              </a>
-                            ) : (
-                              <span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded font-semibold">Missing</span>
-                            )}
-                          </div>
+                          )}
 
-                          {/* Driving License */}
-                          <div className="p-3 rounded-xl border border-slate-200/80 bg-slate-50/50 flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <Car className="h-4 w-4 text-primary shrink-0" />
-                              <div className="min-w-0">
-                                <div className="font-bold text-xs text-primary truncate">Driving Licence</div>
-                                <div className="text-[10px] text-slate-500">{selectedMTPDetail.drivingLicenseDoc ? "Uploaded" : "Optional / None"}</div>
-                              </div>
+                          <div className="sm:col-span-2 bg-slate-50 p-3 rounded-xl border border-slate-200/70 space-y-2">
+                            <span className="text-slate-400 font-bold block uppercase tracking-wider text-[10px]">Roles &amp; Tasks Interested In</span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {selectedMTPDetail.roles ? (
+                                selectedMTPDetail.roles.split(",").map((r: string, idx: number) => (
+                                  <span key={idx} className="bg-[#c9a24c]/15 text-primary border border-[#c9a24c]/30 px-2.5 py-0.5 rounded-lg text-[11px] font-bold">
+                                    {r.trim()}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-slate-400">No roles selected</span>
+                              )}
                             </div>
-                            {selectedMTPDetail.drivingLicenseDoc ? (
-                              <a
-                                href={selectedMTPDetail.drivingLicenseDoc}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shrink-0 transition-colors shadow-2xs flex items-center gap-1"
-                              >
-                                <Eye className="h-3 w-3" /> View
-                              </a>
-                            ) : (
-                              <span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded font-semibold">N/A</span>
-                            )}
-                          </div>
-
-                          {/* 10th Certificate */}
-                          <div className="p-3 rounded-xl border border-slate-200/80 bg-slate-50/50 flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <GraduationCap className="h-4 w-4 text-primary shrink-0" />
-                              <div className="min-w-0">
-                                <div className="font-bold text-xs text-primary truncate">10th Certificate</div>
-                                <div className="text-[10px] text-slate-500">{selectedMTPDetail.tenthCertificateDoc ? "Uploaded" : "Optional / None"}</div>
-                              </div>
-                            </div>
-                            {selectedMTPDetail.tenthCertificateDoc ? (
-                              <a
-                                href={selectedMTPDetail.tenthCertificateDoc}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shrink-0 transition-colors shadow-2xs flex items-center gap-1"
-                              >
-                                <Eye className="h-3 w-3" /> View
-                              </a>
-                            ) : (
-                              <span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded font-semibold">N/A</span>
-                            )}
-                          </div>
-
-                          {/* Police Verification */}
-                          <div className="sm:col-span-2 p-3 rounded-xl border border-slate-200/80 bg-slate-50/50 flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
-                              <div className="min-w-0">
-                                <div className="font-bold text-xs text-primary truncate">Police Verification Certificate (PCC)</div>
-                                <div className="text-[10px] text-slate-500">{selectedMTPDetail.policeVerificationDoc ? "Uploaded & Available" : "Not Provided"}</div>
-                              </div>
-                            </div>
-                            {selectedMTPDetail.policeVerificationDoc ? (
-                              <a
-                                href={selectedMTPDetail.policeVerificationDoc}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shrink-0 transition-colors shadow-2xs flex items-center gap-1"
-                              >
-                                <Eye className="h-3 w-3" /> View PCC
-                              </a>
-                            ) : (
-                              <span className="text-[10px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded font-bold">Missing</span>
-                            )}
                           </div>
                         </div>
-                      </div>
 
-                      {/* Admin Notes Section */}
-                      <div className="space-y-2 pt-2 border-t border-slate-100">
-                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                          Internal Admin Notes
-                        </label>
-                        <textarea
-                          rows={2}
-                          value={mtpAdminNotes}
-                          onChange={(e) => setMtpAdminNotes(e.target.value)}
-                          placeholder="Add coordinator notes, interview outcome, ID verification status..."
-                          className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-primary focus:bg-white focus:border-[#c9a24c] outline-none"
-                        />
+                        {/* Uploaded Verification Documents */}
+                        <div className="space-y-2.5 pt-3 border-t border-slate-100">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-[#1e2a5a] uppercase tracking-wider flex items-center gap-1.5">
+                              <FileText className="h-3.5 w-3.5 text-[#c9a24c]" /> Uploaded KYC Documents
+                            </span>
+                            <span className="text-[10px] text-slate-400">Click to view on screen with zero forced download</span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            {/* Aadhaar */}
+                            <div className="p-2.5 rounded-xl border border-slate-200/80 bg-slate-50/50 flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <FileCheck className="h-4 w-4 text-primary shrink-0" />
+                                <div className="min-w-0">
+                                  <div className="font-bold text-xs text-primary truncate">Aadhaar Document</div>
+                                  <div className="text-[10px] text-slate-500">{selectedMTPDetail.aadhaarDoc ? "Uploaded" : "Not Provided"}</div>
+                                </div>
+                              </div>
+                              {selectedMTPDetail.aadhaarDoc ? (
+                                <button
+                                  type="button"
+                                  onClick={() => openDocViewer(selectedMTPDetail.aadhaarDoc, "Aadhaar Document", selectedMTPDetail.name, "MTP Partner Verification")}
+                                  className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shrink-0 transition-colors shadow-2xs flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Eye className="h-3 w-3" /> View
+                                </button>
+                              ) : (
+                                <span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded font-semibold">Missing</span>
+                              )}
+                            </div>
+
+                            {/* PAN */}
+                            <div className="p-2.5 rounded-xl border border-slate-200/80 bg-slate-50/50 flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <CreditCard className="h-4 w-4 text-primary shrink-0" />
+                                <div className="min-w-0">
+                                  <div className="font-bold text-xs text-primary truncate">PAN Card</div>
+                                  <div className="text-[10px] text-slate-500">{selectedMTPDetail.panDoc ? "Uploaded" : "Not Provided"}</div>
+                                </div>
+                              </div>
+                              {selectedMTPDetail.panDoc ? (
+                                <button
+                                  type="button"
+                                  onClick={() => openDocViewer(selectedMTPDetail.panDoc, "PAN Card", selectedMTPDetail.name, "MTP Partner Verification")}
+                                  className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shrink-0 transition-colors shadow-2xs flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Eye className="h-3 w-3" /> View
+                                </button>
+                              ) : (
+                                <span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded font-semibold">Missing</span>
+                              )}
+                            </div>
+
+                            {/* Driving License */}
+                            <div className="p-2.5 rounded-xl border border-slate-200/80 bg-slate-50/50 flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Car className="h-4 w-4 text-primary shrink-0" />
+                                <div className="min-w-0">
+                                  <div className="font-bold text-xs text-primary truncate">Driving Licence</div>
+                                  <div className="text-[10px] text-slate-500">{selectedMTPDetail.drivingLicenseDoc ? "Uploaded" : "Optional / None"}</div>
+                                </div>
+                              </div>
+                              {selectedMTPDetail.drivingLicenseDoc ? (
+                                <button
+                                  type="button"
+                                  onClick={() => openDocViewer(selectedMTPDetail.drivingLicenseDoc, "Driving Licence Document", selectedMTPDetail.name, "MTP Partner Verification")}
+                                  className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shrink-0 transition-colors shadow-2xs flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Eye className="h-3 w-3" /> View
+                                </button>
+                              ) : (
+                                <span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded font-semibold">N/A</span>
+                              )}
+                            </div>
+
+                            {/* 10th Certificate */}
+                            <div className="p-2.5 rounded-xl border border-slate-200/80 bg-slate-50/50 flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <GraduationCap className="h-4 w-4 text-primary shrink-0" />
+                                <div className="min-w-0">
+                                  <div className="font-bold text-xs text-primary truncate">10th Certificate</div>
+                                  <div className="text-[10px] text-slate-500">{selectedMTPDetail.tenthCertificateDoc ? "Uploaded" : "Optional / None"}</div>
+                                </div>
+                              </div>
+                              {selectedMTPDetail.tenthCertificateDoc ? (
+                                <button
+                                  type="button"
+                                  onClick={() => openDocViewer(selectedMTPDetail.tenthCertificateDoc, "10th Certificate / Education Proof", selectedMTPDetail.name, "MTP Partner Verification")}
+                                  className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shrink-0 transition-colors shadow-2xs flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Eye className="h-3 w-3" /> View
+                                </button>
+                              ) : (
+                                <span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded font-semibold">N/A</span>
+                              )}
+                            </div>
+
+                            {/* Police Verification */}
+                            <div className="sm:col-span-2 p-2.5 rounded-xl border border-slate-200/80 bg-slate-50/50 flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
+                                <div className="min-w-0">
+                                  <div className="font-bold text-xs text-primary truncate">Police Verification Certificate (PCC)</div>
+                                  <div className="text-[10px] text-slate-500">{selectedMTPDetail.policeVerificationDoc ? "Uploaded & Available" : "Not Provided"}</div>
+                                </div>
+                              </div>
+                              {selectedMTPDetail.policeVerificationDoc ? (
+                                <button
+                                  type="button"
+                                  onClick={() => openDocViewer(selectedMTPDetail.policeVerificationDoc, "Police Verification Certificate (PCC)", selectedMTPDetail.name, "MTP Partner Verification")}
+                                  className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shrink-0 transition-colors shadow-2xs flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Eye className="h-3 w-3" /> View PCC
+                                </button>
+                              ) : (
+                                <span className="text-[10px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded font-bold">Missing</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Admin Notes Section */}
+                        <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                          <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
+                            Internal Admin Notes
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={mtpAdminNotes}
+                            onChange={(e) => setMtpAdminNotes(e.target.value)}
+                            placeholder="Add coordinator notes, interview outcome, ID verification status..."
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-primary focus:bg-white focus:border-[#c9a24c] outline-none resize-none"
+                          />
+                        </div>
                       </div>
 
                       {/* Modal Actions */}
-                      <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-100">
+                      <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200/90 flex flex-wrap items-center justify-between gap-3 shrink-0">
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleUpdateMTPStatus(selectedMTPDetail.id, "Verified")}
-                            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
+                            className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
                           >
                             Mark Verified
                           </button>
                           <button
                             onClick={() => handleUpdateMTPStatus(selectedMTPDetail.id, "Contacted")}
-                            className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
+                            className="px-3.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
                           >
                             Mark Contacted
                           </button>
                           <button
                             onClick={() => handleUpdateMTPStatus(selectedMTPDetail.id, "Rejected")}
-                            className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
+                            className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
                           >
                             Reject
                           </button>
@@ -3901,7 +4137,7 @@ function AdminPage() {
                               handleUpdateMTPStatus(selectedMTPDetail.id, selectedMTPDetail.status, mtpAdminNotes);
                               setSelectedMTPDetail(null);
                             }}
-                            className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 cursor-pointer"
+                            className="px-5 py-1.5 rounded-xl bg-gradient-to-r from-[#091438] to-[#1e2a5a] text-white border border-[#c9a24c]/40 text-xs font-bold shadow-md cursor-pointer"
                           >
                             Save &amp; Close
                           </button>
@@ -4149,892 +4385,1462 @@ function AdminPage() {
               </div>
             </div>
           )}
+
+          {/* Referral Network Intelligence & Tracking Panel */}
+          {activeTab === "referrals" && (() => {
+            const summary = referralsData?.summary || {
+              totalCaregivers: caregivers.length,
+              activeReferrersCount: referralsData?.referrers.filter(r => r.referredCount > 0).length || 0,
+              totalReferred: referralsData?.allReferredCandidates.length || 0,
+              totalVerified: referralsData?.allReferredCandidates.filter(c => c.status === "Verified").length || 0,
+              totalPending: referralsData?.allReferredCandidates.filter(c => c.status !== "Verified").length || 0
+            };
+
+            const referrersList = referralsData?.referrers || [];
+            const allCandidatesList = referralsData?.allReferredCandidates || [];
+
+            // Filter candidates
+            const filteredCandidates = allCandidatesList.filter(c => {
+              const matchesSearch = 
+                c.name.toLowerCase().includes(referralsSearch.toLowerCase()) ||
+                c.phone.includes(referralsSearch) ||
+                c.email.toLowerCase().includes(referralsSearch.toLowerCase()) ||
+                c.specialty.toLowerCase().includes(referralsSearch.toLowerCase()) ||
+                c.referrerName.toLowerCase().includes(referralsSearch.toLowerCase()) ||
+                c.referrerCode.toLowerCase().includes(referralsSearch.toLowerCase()) ||
+                (c.city && c.city.toLowerCase().includes(referralsSearch.toLowerCase()));
+              
+              const matchesStatus = referralsStatusFilter === "All" || c.status === referralsStatusFilter;
+              return matchesSearch && matchesStatus;
+            });
+
+            // Filter referrers
+            const filteredReferrers = referrersList.filter(r => {
+              const matchesSearch = 
+                r.name.toLowerCase().includes(referralsSearch.toLowerCase()) ||
+                r.phone.includes(referralsSearch) ||
+                r.referCode.toLowerCase().includes(referralsSearch.toLowerCase()) ||
+                r.specialty.toLowerCase().includes(referralsSearch.toLowerCase()) ||
+                r.referees.some(ref => ref.name.toLowerCase().includes(referralsSearch.toLowerCase()));
+              
+              const matchesStatus = referralsStatusFilter === "All" 
+                || (referralsStatusFilter === "Active" && r.referredCount > 0)
+                || (referralsStatusFilter === "Verified" && r.verifiedCount > 0)
+                || (referralsStatusFilter === "Pending" && r.pendingCount > 0);
+
+              return matchesSearch && matchesStatus;
+            });
+
+            return (
+              <div className="space-y-6 text-left animate-in fade-in duration-200">
+                {/* Header with Title & Controls */}
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/40 flex flex-col md:flex-row md:items-center justify-between gap-4 premium-card">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] uppercase font-black tracking-widest text-[#9e761a] bg-[#c9a24c]/15 px-2.5 py-0.5 rounded-full border border-[#c9a24c]/30 flex items-center gap-1 font-mono">
+                        <Gift className="h-3 w-3 text-[#c9a24c]" /> Staff Referral Tracking
+                      </span>
+                      <span className="text-xs text-slate-400 font-semibold">• Admin Confidential</span>
+                    </div>
+                    <h3 className="text-xl font-extrabold text-[#1e2a5a] font-display">
+                      Referral Network &amp; Candidate Intelligence
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                      Track which caretakers shared referral links, who joined through their links, and inspect full candidate KYC dossiers.
+                    </p>
+                  </div>
+
+                  {/* View Mode Toggle */}
+                  <div className="flex items-center gap-2 bg-slate-100/80 p-1 rounded-xl border border-slate-200/80 self-start md:self-auto">
+                    <button
+                      type="button"
+                      onClick={() => setReferralsViewMode("by-referrer")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                        referralsViewMode === "by-referrer"
+                          ? "bg-[#1e2a5a] text-white shadow-sm"
+                          : "text-slate-600 hover:text-slate-900"
+                      }`}
+                    >
+                      <Users className="h-3.5 w-3.5" /> By Caretaker / Referrer
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReferralsViewMode("all-candidates")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                        referralsViewMode === "all-candidates"
+                          ? "bg-[#1e2a5a] text-white shadow-sm"
+                          : "text-slate-600 hover:text-slate-900"
+                      }`}
+                    >
+                      <UserCheck className="h-3.5 w-3.5" /> All Referred Candidates ({allCandidatesList.length})
+                    </button>
+                  </div>
+                </div>
+
+                {/* KPI Metrics Ribbon */}
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+                  <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm space-y-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Registered Staff</span>
+                    <span className="text-2xl font-black text-[#1e2a5a] font-display">{summary.totalCaregivers}</span>
+                    <span className="text-[10px] text-slate-500 font-medium block">In database</span>
+                  </div>
+
+                  <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm space-y-1">
+                    <span className="text-[10px] font-bold text-[#c9a24c] uppercase tracking-wider block">Active Referrers</span>
+                    <span className="text-2xl font-black text-[#c9a24c] font-display">{summary.activeReferrersCount}</span>
+                    <span className="text-[10px] text-slate-500 font-medium block">Shared links &amp; invited staff</span>
+                  </div>
+
+                  <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm space-y-1">
+                    <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider block">Total Candidates Joined</span>
+                    <span className="text-2xl font-black text-indigo-600 font-display">{summary.totalReferred}</span>
+                    <span className="text-[10px] text-slate-500 font-medium block">Joined via caretaker links</span>
+                  </div>
+
+                  <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm space-y-1">
+                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Verified Candidates</span>
+                    <span className="text-2xl font-black text-emerald-600 font-display">{summary.totalVerified}</span>
+                    <span className="text-[10px] text-slate-500 font-medium block">Approved for patient shifts</span>
+                  </div>
+
+                  <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm space-y-1">
+                    <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block">Pending Review</span>
+                    <span className="text-2xl font-black text-amber-600 font-display">{summary.totalPending}</span>
+                    <span className="text-[10px] text-slate-500 font-medium block">Awaiting KYC verification</span>
+                  </div>
+                </div>
+
+                {/* Filter & Search Toolbar */}
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="relative w-full sm:w-80">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Search referrer, referee, code, phone, city..."
+                      value={referralsSearch}
+                      onChange={(e) => setReferralsSearch(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-[#c9a24c] transition-all text-slate-800"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                    <span className="text-[10px] font-bold uppercase text-slate-400">Filter Status:</span>
+                    <select
+                      value={referralsStatusFilter}
+                      onChange={(e) => setReferralsStatusFilter(e.target.value)}
+                      className="px-3 py-1.5 border border-slate-200 rounded-xl bg-slate-50 text-xs font-bold text-slate-700 outline-none cursor-pointer focus:border-[#c9a24c]"
+                    >
+                      <option value="All">All Records</option>
+                      <option value="Verified">Verified Only</option>
+                      <option value="Pending">Pending Only</option>
+                      <option value="Rejected">Rejected Only</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* VIEW MODE 1: GROUPED BY REFERRER / CARETAKER */}
+                {referralsViewMode === "by-referrer" && (
+                  <div className="space-y-4">
+                    {filteredReferrers.length === 0 ? (
+                      <div className="bg-white border border-dashed border-slate-200 rounded-2xl p-12 text-center text-slate-400">
+                        <Gift className="h-10 w-10 text-slate-300 mx-auto mb-2" />
+                        <p className="text-sm font-semibold">No referral records match your criteria.</p>
+                      </div>
+                    ) : (
+                      <div className="grid gap-4 grid-cols-1">
+                        {filteredReferrers.map((referrer) => {
+                          const isExpanded = expandedReferrerCode === referrer.referCode;
+                          return (
+                            <div
+                              key={referrer.referCode}
+                              className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all premium-card"
+                            >
+                              {/* Referrer Header Card */}
+                              <div className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-slate-50/70 to-white border-b border-slate-100">
+                                <div className="flex items-center gap-4">
+                                  {referrer.profilePhoto ? (
+                                    <img
+                                      src={referrer.profilePhoto}
+                                      alt={referrer.name}
+                                      className="h-12 w-12 rounded-xl object-cover border border-slate-200 shadow-xs"
+                                    />
+                                  ) : (
+                                    <div className="h-12 w-12 rounded-xl bg-[#1e2a5a]/10 border border-[#1e2a5a]/20 flex items-center justify-center text-[#1e2a5a] font-bold text-lg">
+                                      {referrer.name.charAt(0).toUpperCase()}
+                                    </div>
+                                  )}
+                                  <div>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <h4 className="font-bold text-base text-[#1e2a5a] font-display">
+                                        {referrer.name}
+                                      </h4>
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-md bg-[#c9a24c]/15 text-[#8c6b16] border border-[#c9a24c]/30 font-mono tracking-wider">
+                                        <Gift className="h-3 w-3 text-[#b08726]" />
+                                        REF CODE: {referrer.referCode}
+                                      </span>
+                                    </div>
+                                    <div className="text-xs text-slate-500 mt-1 flex items-center gap-3 flex-wrap">
+                                      <span>🩺 {referrer.specialty}</span>
+                                      {referrer.phone !== "N/A" && <span>📞 {referrer.phone}</span>}
+                                      {referrer.email !== "N/A" && <span>✉️ {referrer.email}</span>}
+                                      {referrer.city && <span>📍 {referrer.city}</span>}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Referrer Actions and Counters */}
+                                <div className="flex items-center gap-3 flex-wrap justify-between md:justify-end">
+                                  <div className="flex items-center gap-2">
+                                    <span className="px-3 py-1 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-800 text-xs font-extrabold">
+                                      {referrer.referredCount} {referrer.referredCount === 1 ? "Member Joined" : "Members Joined"}
+                                    </span>
+                                    {referrer.verifiedCount > 0 && (
+                                      <span className="px-2 py-1 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-800 text-xs font-bold">
+                                        ✓ {referrer.verifiedCount} Verified
+                                      </span>
+                                    )}
+                                    {referrer.pendingCount > 0 && (
+                                      <span className="px-2 py-1 rounded-xl bg-amber-50 border border-amber-100 text-amber-800 text-xs font-bold">
+                                        ⏳ {referrer.pendingCount} Pending
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center gap-1.5">
+                                    <button
+                                      type="button"
+                                      title="Copy Referrer Code"
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(referrer.referCode);
+                                        alert(`Copied Referral Code: ${referrer.referCode}`);
+                                      }}
+                                      className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                                    >
+                                      <Copy className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      title="Copy Careers Application Link"
+                                      onClick={() => {
+                                        const link = `${window.location.origin}/careers?ref=${referrer.referCode}`;
+                                        navigator.clipboard.writeText(link);
+                                        alert(`Copied Application Link:\n${link}`);
+                                      }}
+                                      className="px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                                    >
+                                      <Share2 className="h-3.5 w-3.5" /> Link
+                                    </button>
+
+                                    {referrer.referredCount > 0 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setExpandedReferrerCode(isExpanded ? null : referrer.referCode)}
+                                        className="px-3 py-1.5 rounded-lg bg-[#1e2a5a] hover:bg-[#283875] text-white text-xs font-bold flex items-center gap-1 cursor-pointer transition-all shadow-xs"
+                                      >
+                                        {isExpanded ? "Hide Members ▲" : `View ${referrer.referredCount} Joiners ▼`}
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Nested Members Joined List */}
+                              {isExpanded && (
+                                <div className="p-5 bg-slate-50/40 border-t border-slate-100 space-y-3">
+                                  <h5 className="text-xs font-extrabold text-[#1e2a5a] uppercase tracking-wider flex items-center gap-1.5">
+                                    <UserCheck className="h-4 w-4 text-[#c9a24c]" />
+                                    Members Who Joined Using {referrer.name}&apos;s Referral Code ({referrer.referees.length})
+                                  </h5>
+
+                                  <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                                    {referrer.referees.map((candidate) => (
+                                      <div
+                                        key={candidate.id}
+                                        className="bg-white border border-slate-200/90 rounded-xl p-4 shadow-xs hover:border-[#c9a24c]/50 transition-all space-y-3"
+                                      >
+                                        <div className="flex justify-between items-start gap-2">
+                                          <div>
+                                            <h6 className="font-bold text-sm text-[#1e2a5a]">{candidate.name}</h6>
+                                            <span className="text-xs text-slate-500 block">{candidate.specialty}</span>
+                                          </div>
+                                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${
+                                            candidate.status === "Verified" ? "bg-emerald-50 text-emerald-800 border-emerald-200" :
+                                            candidate.status === "Rejected" ? "bg-rose-50 text-rose-800 border-rose-200" :
+                                            "bg-amber-50 text-amber-800 border-amber-200"
+                                          }`}>
+                                            {candidate.status}
+                                          </span>
+                                        </div>
+
+                                        <div className="text-xs text-slate-600 space-y-1 pt-2 border-t border-slate-100">
+                                          <div>📞 <a href={`tel:${candidate.phone}`} className="hover:underline">{candidate.phone}</a></div>
+                                          <div>✉️ <span className="text-slate-500">{candidate.email}</span></div>
+                                          <div>⏱️ <span className="font-semibold">{candidate.experience} yrs exp</span> • Joined: {new Date(candidate.joinedAt).toLocaleDateString()}</div>
+                                          {candidate.city && <div>📍 {candidate.city}, {candidate.state}</div>}
+                                        </div>
+
+                                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                                          <button
+                                            type="button"
+                                            onClick={() => setSelectedCandidateDetail(candidate)}
+                                            className="w-full py-1.5 px-3 rounded-lg bg-[#1e2a5a]/5 hover:bg-[#1e2a5a] text-[#1e2a5a] hover:text-white text-xs font-bold transition-all text-center flex items-center justify-center gap-1 cursor-pointer"
+                                          >
+                                            <Eye className="h-3.5 w-3.5" /> View Full Profile &amp; KYC
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* VIEW MODE 2: FLAT ALL CANDIDATES TABLE */}
+                {referralsViewMode === "all-candidates" && (
+                  <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-md shadow-slate-100/30 premium-card">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-sm text-slate-700">
+                        <thead>
+                          <tr className="border-b border-slate-200/80 bg-[#1e2a5a]/5 text-xs text-[#1e2a5a] uppercase font-bold tracking-wider">
+                            <th className="py-4 px-6">Referred Candidate</th>
+                            <th className="py-4 px-6">Referred By (Referrer)</th>
+                            <th className="py-4 px-6">Specialty &amp; Experience</th>
+                            <th className="py-4 px-6">KYC Documents</th>
+                            <th className="py-4 px-6">Status</th>
+                            <th className="py-4 px-6 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {filteredCandidates.length === 0 ? (
+                            <tr>
+                              <td colSpan={6} className="py-12 text-center text-slate-400">
+                                No referred candidate applications found matching your criteria.
+                              </td>
+                            </tr>
+                          ) : (
+                            filteredCandidates.map((c) => (
+                              <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
+                                <td className="py-4 px-6">
+                                  <div className="flex items-center gap-3">
+                                    {c.profilePhoto ? (
+                                      <img src={c.profilePhoto} className="h-10 w-10 rounded-xl object-cover border border-slate-200" alt="profile" />
+                                    ) : (
+                                      <div className="h-10 w-10 rounded-xl bg-[#1e2a5a]/10 border border-[#1e2a5a]/20 flex items-center justify-center text-[#1e2a5a] font-bold text-sm">
+                                        {c.name.charAt(0)}
+                                      </div>
+                                    )}
+                                    <div>
+                                      <div className="font-bold text-[#1e2a5a] text-sm">{c.name}</div>
+                                      <div className="text-xs text-slate-500 font-medium">📞 {c.phone}</div>
+                                      <div className="text-[11px] text-slate-400">✉️ {c.email}</div>
+                                      <div className="text-[10px] text-slate-400 mt-0.5">Joined: {new Date(c.joinedAt).toLocaleDateString()}</div>
+                                    </div>
+                                  </div>
+                                </td>
+
+                                <td className="py-4 px-6">
+                                  <div className="space-y-1">
+                                    <div className="font-bold text-indigo-900 flex items-center gap-1.5">
+                                      <span>👤 {c.referrerName}</span>
+                                    </div>
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-md bg-[#c9a24c]/15 text-[#8c6b16] border border-[#c9a24c]/30 font-mono tracking-wider">
+                                      <Gift className="h-3 w-3 text-[#b08726]" />
+                                      CODE: {c.referrerCode}
+                                    </span>
+                                    {c.referrerPhone !== "N/A" && (
+                                      <div className="text-xs text-slate-500">📞 {c.referrerPhone}</div>
+                                    )}
+                                  </div>
+                                </td>
+
+                                <td className="py-4 px-6">
+                                  <div className="font-bold text-slate-800">{c.specialty}</div>
+                                  <div className="text-xs text-slate-500 mt-0.5">{c.experience} years experience</div>
+                                  {c.city && <div className="text-xs text-slate-600 mt-1">📍 {c.city}, {c.state}</div>}
+                                </td>
+
+                                <td className="py-4 px-6 text-xs">
+                                  <div className="space-y-1">
+                                    {c.aadhaar ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => openDocViewer(c.aadhaar, "Aadhaar Card Document", c.name, "Referred Caregiver")}
+                                        className="text-[#c9a24c] font-bold hover:underline flex items-center gap-1 text-[10px] cursor-pointer"
+                                      >
+                                        <Eye className="h-2.5 w-2.5" /> Aadhaar Uploaded
+                                      </button>
+                                    ) : (
+                                      <span className="text-slate-400 text-[10px] block">No Aadhaar</span>
+                                    )}
+
+                                    {c.pan ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => openDocViewer(c.pan, "PAN Card Document", c.name, "Referred Caregiver")}
+                                        className="text-indigo-600 font-bold hover:underline flex items-center gap-1 text-[10px] cursor-pointer"
+                                      >
+                                        <Eye className="h-2.5 w-2.5" /> PAN Uploaded
+                                      </button>
+                                    ) : null}
+
+                                    {c.certificates && (
+                                      <button
+                                        type="button"
+                                        onClick={() => openDocViewer(c.certificates, "Educational Cert", c.name, "Referred Caregiver")}
+                                        className="text-emerald-600 font-bold hover:underline flex items-center gap-1 text-[10px] cursor-pointer"
+                                      >
+                                        <Eye className="h-2.5 w-2.5" /> Certifications
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+
+                                <td className="py-4 px-6">
+                                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
+                                    c.status === "Verified" ? "bg-emerald-50 text-emerald-800 border-emerald-200" :
+                                    c.status === "Rejected" ? "bg-rose-50 text-rose-800 border-rose-200" :
+                                    "bg-amber-50 text-amber-800 border-amber-200"
+                                  }`}>
+                                    {c.status}
+                                  </span>
+                                </td>
+
+                                <td className="py-4 px-6 text-right">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedCandidateDetail(c)}
+                                      className="px-3 py-1.5 rounded-lg bg-[#1e2a5a] text-white hover:bg-[#283875] text-xs font-bold flex items-center gap-1 cursor-pointer transition-all shadow-xs"
+                                    >
+                                      <Eye className="h-3.5 w-3.5" /> Full Details
+                                    </button>
+
+                                    {c.status !== "Verified" && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateCaregiverStatus(c.id, "Verified")}
+                                        className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200 transition-colors cursor-pointer"
+                                        title="Approve & Verify"
+                                      >
+                                        <Check className="h-3.5 w-3.5" />
+                                      </button>
+                                    )}
+
+                                    {c.status !== "Rejected" && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateCaregiverStatus(c.id, "Rejected")}
+                                        className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 transition-colors cursor-pointer"
+                                        title="Reject"
+                                      >
+                                        <XCircle className="h-3.5 w-3.5" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </main>
       </div>
 
-      {/* DYNAMIC FORMS EDITING MODALS */}
+      {/* DYNAMIC FORMS EDITING MODALS - LUXURY WIDE & COMPACT REDESIGN */}
       {modalType && modalType !== "notification" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-md p-4 animate-in fade-in duration-200">
-          <div className={`bg-white rounded-3xl border border-slate-200/80 shadow-2xl w-full overflow-hidden animate-in fade-in zoom-in duration-200 ${modalType === 'service' ? 'max-w-3xl' : 'max-w-xl'} premium-card`}>
-            <div className="px-6 py-4.5 border-b border-slate-150 flex justify-between items-center bg-slate-50/40">
-              <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display uppercase tracking-wider">
-                {modalMode === "add" ? "Create New" : "Edit Details"} {modalType}
-              </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-md p-3 sm:p-6 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-2xl shadow-indigo-950/40 w-full max-w-5xl xl:max-w-6xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            
+            {/* Header: Royal Navy Gradient with Gold Accent */}
+            <div className="px-6 py-4 bg-gradient-to-r from-[#091438] via-[#112255] to-[#1e2a5a] border-b border-[#c9a24c]/30 flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-white/10 border border-[#c9a24c]/40 flex items-center justify-center text-lg shadow-inner">
+                  {modalType === "caregiver" ? "👩‍⚕️" : modalType === "booking" ? "📅" : modalType === "service" ? "🩺" : modalType === "blog" ? "📰" : modalType === "faq" ? "❓" : "🖼️"}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-[#c9a24c]/20 text-[#f5d77f] border border-[#c9a24c]/40 font-mono">
+                      {modalMode === "add" ? "Create New" : "Edit Record"}
+                    </span>
+                    <h3 className="text-base sm:text-lg font-extrabold text-white font-display tracking-wide uppercase">
+                      {modalType === "caregiver" ? "Caregiver & Staff Profile" : modalType === "booking" ? "Patient Booking & Shift" : modalType === "service" ? "Healthcare Service Tier" : modalType}
+                    </h3>
+                  </div>
+                  <p className="text-[11px] text-slate-300 font-medium">
+                    {modalType === "caregiver" && "Manage staff professional credentials, active verification status & uploaded KYC files"}
+                    {modalType === "booking" && "Configure client schedule, caregiver assignment, financial split & patient address"}
+                    {modalType === "service" && "Configure service tier, pricing units, detailed offerings & highlights"}
+                    {modalType === "blog" && "Publish or edit care guides, health articles & patient resources"}
+                    {modalType === "faq" && "Manage customer frequently asked questions & verified answers"}
+                    {modalType === "gallery" && "Upload and showcase service moments & media"}
+                  </p>
+                </div>
+              </div>
               <button 
                 onClick={() => setModalType(null)} 
-                className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 cursor-pointer transition-colors"
+                className="h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white flex items-center justify-center cursor-pointer transition-all border border-white/10"
+                title="Close modal"
               >
-                <XCircle className="h-6 w-6" />
+                <X className="h-4 w-4" />
               </button>
             </div>
             
-            <form onSubmit={handleModalSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto text-sm">
+            {/* Scrollable Form Body with Multi-Column Efficiency */}
+            <form id="admin-dynamic-form" onSubmit={handleModalSubmit} className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 text-xs">
               
               {/* Form elements for Booking */}
               {modalType === "booking" && (
-                <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Customer Name</label>
-                      <input 
-                        type="text" required value={bookingName} onChange={e => setBookingName(e.target.value)}
-                        disabled={isRecordCaretakerPaymentMode}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Phone Number</label>
-                      <input 
-                        type="tel" required value={bookingPhone} onChange={e => setBookingPhone(e.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
-                        placeholder="10-digit number"
-                        disabled={isRecordCaretakerPaymentMode}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
-                      />
-                    </div>
-                  </div>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    
+                    {/* Left Column: Client & Schedule Info */}
+                    <div className="bg-slate-50/70 rounded-2xl p-4 border border-slate-200/80 space-y-3">
+                      <div className="text-[11px] font-extrabold text-[#1e2a5a] uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-200/60 pb-2">
+                        <Users className="h-3.5 w-3.5 text-[#c9a24c]" /> Customer &amp; Schedule Details
+                      </div>
 
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Select Service</label>
-                    <select 
-                      value={bookingService} onChange={e => setBookingService(e.target.value)}
-                      disabled={isRecordCaretakerPaymentMode}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
-                    >
-                      {services.map(s => (
-                        <option key={s.id} value={s.title}>{s.title} ({s.price})</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Date</label>
-                      <input 
-                        type="date" required value={bookingDate} onChange={e => setBookingDate(e.target.value)}
-                        disabled={isRecordCaretakerPaymentMode}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Time</label>
-                      <input 
-                        type="text" required placeholder="e.g. 09:00" value={bookingTime} onChange={e => setBookingTime(e.target.value)}
-                        disabled={isRecordCaretakerPaymentMode}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Duration</label>
-                      <select 
-                        value={bookingDuration} onChange={e => setBookingDuration(e.target.value)}
-                        disabled={isRecordCaretakerPaymentMode}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
-                      >
-                        <option value="Hourly">Hourly visit</option>
-                        <option value="Daily">Daily shift</option>
-                        <option value="Weekly">Weekly log</option>
-                        <option value="Monthly">Monthly companion</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Booking Amount (₹)</label>
-                      <input 
-                        type="number" required value={bookingAmount} onChange={e => setBookingAmount(e.target.value)}
-                        disabled={isRecordCaretakerPaymentMode}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-4 col-span-2">
-                    <label className="block text-xs font-extrabold uppercase tracking-wider text-[#1e2a5a] mb-1">Caretaker Payout Setup</label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5">Calculation Option</label>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPayoutCalcMode("percentage");
-                              const amt = Number(bookingAmount) || 0;
-                              const pct = Number(payoutPercentValue) || 85;
-                              setBookingCaretakerPayout(Math.round(amt * (pct / 100)).toString());
-                            }}
-                            className={`flex-1 py-2 rounded-lg border text-xs font-extrabold transition-all cursor-pointer ${
-                              payoutCalcMode === "percentage"
-                                ? "bg-[#1e2a5a] text-white border-[#1e2a5a] shadow-sm shadow-[#1e2a5a]/25"
-                                : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                            }`}
-                          >
-                            % Percentage Split
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPayoutCalcMode("fixed");
-                            }}
-                            className={`flex-1 py-2 rounded-lg border text-xs font-extrabold transition-all cursor-pointer ${
-                              payoutCalcMode === "fixed"
-                                ? "bg-[#1e2a5a] text-white border-[#1e2a5a] shadow-sm shadow-[#1e2a5a]/25"
-                                : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                            }`}
-                          >
-                            Flat Fixed Amount
-                          </button>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Customer Name *</label>
+                          <input 
+                            type="text" required value={bookingName} onChange={e => setBookingName(e.target.value)}
+                            disabled={isRecordCaretakerPaymentMode}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800 disabled:opacity-70 disabled:bg-slate-100/50"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Phone Number *</label>
+                          <input 
+                            type="tel" required value={bookingPhone} onChange={e => setBookingPhone(e.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
+                            placeholder="10-digit number"
+                            disabled={isRecordCaretakerPaymentMode}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800 font-mono disabled:opacity-70 disabled:bg-slate-100/50"
+                          />
                         </div>
                       </div>
 
-                      {payoutCalcMode === "percentage" ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5">Split Percentage (%)</label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="number"
-                              value={payoutPercentValue}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setPayoutPercentValue(val);
-                                const amt = Number(bookingAmount) || 0;
-                                const pct = Number(val) || 0;
-                                setBookingCaretakerPayout(Math.round(amt * (pct / 100)).toString());
-                              }}
-                              className="w-24 px-3 py-1.5 border border-slate-200 rounded-lg outline-none bg-white text-xs font-bold text-slate-800 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c]"
-                              min="0"
-                              max="100"
-                            />
-                            <span className="text-[10px] text-slate-450 font-bold">
-                              ({payoutPercentValue}% of ₹{(Number(bookingAmount) || 0).toLocaleString()})
-                            </span>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Service Type *</label>
+                          <select 
+                            value={bookingService} onChange={e => setBookingService(e.target.value)}
+                            disabled={isRecordCaretakerPaymentMode}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800 cursor-pointer disabled:opacity-70 disabled:bg-slate-100/50"
+                          >
+                            {services.map(s => (
+                              <option key={s.id} value={s.title}>{s.title} ({s.price})</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Duration Shift</label>
+                          <select 
+                            value={bookingDuration} onChange={e => setBookingDuration(e.target.value)}
+                            disabled={isRecordCaretakerPaymentMode}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800 cursor-pointer disabled:opacity-70 disabled:bg-slate-100/50"
+                          >
+                            <option value="Hourly">Hourly visit</option>
+                            <option value="Daily">Daily shift</option>
+                            <option value="Weekly">Weekly log</option>
+                            <option value="Monthly">Monthly companion</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Booking Date</label>
+                          <input 
+                            type="date" required value={bookingDate} onChange={e => setBookingDate(e.target.value)}
+                            disabled={isRecordCaretakerPaymentMode}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800 disabled:opacity-70 disabled:bg-slate-100/50"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Time</label>
+                          <input 
+                            type="text" required placeholder="e.g. 09:00 AM" value={bookingTime} onChange={e => setBookingTime(e.target.value)}
+                            disabled={isRecordCaretakerPaymentMode}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800 disabled:opacity-70 disabled:bg-slate-100/50"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Patient Location Address</label>
+                        <textarea 
+                          required rows={2} value={bookingAddress} onChange={e => setBookingAddress(e.target.value)}
+                          disabled={isRecordCaretakerPaymentMode}
+                          placeholder="Complete door address, flat/plot, landmark..."
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs text-slate-800 resize-none disabled:opacity-70 disabled:bg-slate-100/50"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Right Column: Financials, Caregiver Payout & Assignments */}
+                    <div className="bg-slate-50/70 rounded-2xl p-4 border border-slate-200/80 space-y-3">
+                      <div className="text-[11px] font-extrabold text-[#1e2a5a] uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-200/60 pb-2">
+                        <DollarSign className="h-3.5 w-3.5 text-[#c9a24c]" /> Payout &amp; Assignment Status
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Booking Status</label>
+                          <select 
+                            value={bookingStatus} onChange={e => setBookingStatus(e.target.value)}
+                            disabled={isRecordCaretakerPaymentMode}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none bg-white text-xs font-semibold text-slate-800 cursor-pointer disabled:opacity-70"
+                          >
+                            <option value="Pending">Pending</option>
+                            <option value="Confirmed">Confirmed</option>
+                            <option value="Cancelled">Cancelled</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Assign Staff</label>
+                          <select 
+                            value={bookingAssignedStaff} onChange={e => setBookingAssignedStaff(e.target.value)}
+                            disabled={isRecordCaretakerPaymentMode}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none bg-white text-xs font-semibold text-slate-800 cursor-pointer disabled:opacity-70"
+                          >
+                            <option value="">-- Unassigned --</option>
+                            {caregivers
+                              .filter(c => c.status === "Verified")
+                              .map(c => (
+                                <option key={c.id} value={c.name}>{c.name} — [{getCaregiverReferralCode(c)}] ({c.specialty})</option>
+                              ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Client Payment</label>
+                          <select 
+                            value={bookingPaymentStatus} onChange={e => setBookingPaymentStatus(e.target.value)}
+                            disabled={isRecordCaretakerPaymentMode}
+                            className={`w-full px-3 py-1.5 border rounded-xl outline-none text-xs font-extrabold cursor-pointer ${
+                              bookingPaymentStatus === "Paid" ? "bg-emerald-50 text-emerald-800 border-emerald-300" : "bg-amber-50 text-amber-800 border-amber-300"
+                            }`}
+                          >
+                            <option value="Unpaid">Unpaid</option>
+                            <option value="Paid">Paid</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Caretaker Payout Box */}
+                      <div className="bg-white p-3 rounded-xl border border-slate-200/80 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-black uppercase tracking-wider text-[#1e2a5a]">Caretaker Payout Configuration</label>
+                          <div className="text-[10px] font-bold text-slate-500">
+                            Client Total: <span className="font-extrabold text-[#1e2a5a]">₹{(Number(bookingAmount) || 0).toLocaleString()}</span>
                           </div>
                         </div>
-                      ) : (
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                          <div className="flex gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPayoutCalcMode("percentage");
+                                const amt = Number(bookingAmount) || 0;
+                                const pct = Number(payoutPercentValue) || 85;
+                                setBookingCaretakerPayout(Math.round(amt * (pct / 100)).toString());
+                              }}
+                              className={`flex-1 py-1 px-2 rounded-lg border text-[10px] font-extrabold transition-all cursor-pointer ${
+                                payoutCalcMode === "percentage"
+                                  ? "bg-[#1e2a5a] text-white border-[#1e2a5a]"
+                                  : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                              }`}
+                            >
+                              % Split
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPayoutCalcMode("fixed")}
+                              className={`flex-1 py-1 px-2 rounded-lg border text-[10px] font-extrabold transition-all cursor-pointer ${
+                                payoutCalcMode === "fixed"
+                                  ? "bg-[#1e2a5a] text-white border-[#1e2a5a]"
+                                  : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                              }`}
+                            >
+                              Flat ₹
+                            </button>
+                          </div>
+
+                          {payoutCalcMode === "percentage" ? (
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="number"
+                                value={payoutPercentValue}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setPayoutPercentValue(val);
+                                  const amt = Number(bookingAmount) || 0;
+                                  const pct = Number(val) || 0;
+                                  setBookingCaretakerPayout(Math.round(amt * (pct / 100)).toString());
+                                }}
+                                className="w-16 px-2 py-1 border border-slate-200 rounded-lg outline-none text-xs font-bold text-slate-800"
+                                min="0"
+                                max="100"
+                              />
+                              <span className="text-[10px] text-slate-500 font-bold">% of client fee</span>
+                            </div>
+                          ) : (
+                            <input
+                              type="number"
+                              value={bookingCaretakerPayout}
+                              onChange={(e) => setBookingCaretakerPayout(e.target.value)}
+                              className="w-full px-2 py-1 border border-slate-200 rounded-lg outline-none text-xs font-bold text-[#1e2a5a]"
+                              placeholder="Flat payout ₹"
+                            />
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100 text-[11px]">
+                          <div className="bg-amber-50/60 p-2 rounded-lg border border-amber-100/80">
+                            <span className="text-[9px] font-bold text-amber-800 uppercase block">Caretaker Net</span>
+                            <span className="font-black text-[#c9a24c] text-xs">₹{(Number(bookingCaretakerPayout) || 0).toLocaleString()}</span>
+                          </div>
+                          <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                            <span className="text-[9px] font-bold text-slate-500 uppercase block">Amma Seva Margin</span>
+                            <span className="font-bold text-slate-700 text-xs">₹{Math.max(0, (Number(bookingAmount) || 0) - (Number(bookingCaretakerPayout) || 0)).toLocaleString()}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5">Flat Payout Amount (₹)</label>
-                          <input
-                            type="number"
-                            value={bookingCaretakerPayout}
-                            onChange={(e) => setBookingCaretakerPayout(e.target.value)}
-                            className="w-full px-3 py-1.5 border border-slate-200 rounded-lg outline-none bg-white text-xs font-bold text-[#1e2a5a] focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c]"
-                            placeholder="Enter flat payout amount"
-                          />
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Caretaker Payout Status</label>
+                          <select 
+                            value={bookingCaretakerPayoutStatus} onChange={e => setBookingCaretakerPayoutStatus(e.target.value)}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none bg-white text-xs font-bold text-slate-700 cursor-pointer"
+                          >
+                            <option value="Unpaid">Unpaid / Pending</option>
+                            <option value="Paid">Paid / Settled</option>
+                          </select>
+                        </div>
+                        {bookingCaretakerPayoutStatus === "Paid" && (
+                          <div>
+                            <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#c9a24c] mb-1">Payout Ref / Method</label>
+                            <input 
+                              type="text" placeholder="UPI Ref / Txn ID" value={bookingCaretakerPayoutRef} onChange={e => setBookingCaretakerPayoutRef(e.target.value)}
+                              className="w-full px-3 py-1.5 border border-[#c9a24c]/40 rounded-xl outline-none bg-white text-xs font-bold text-slate-900"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Customer Payment Details if Paid */}
+                      {bookingPaymentStatus === "Paid" && (
+                        <div className="grid grid-cols-3 gap-2 p-2.5 rounded-xl bg-emerald-50/50 border border-emerald-100">
+                          <div>
+                            <label className="block text-[9px] font-bold uppercase text-emerald-800 mb-0.5">Method</label>
+                            <select 
+                              value={bookingPaymentMethod} onChange={e => setBookingPaymentMethod(e.target.value)}
+                              disabled={isRecordCaretakerPaymentMode}
+                              className="w-full px-2 py-1 border border-emerald-200 rounded-lg outline-none bg-white text-[11px] text-emerald-950 cursor-pointer"
+                            >
+                              <option value="UPI">UPI / GPay</option>
+                              <option value="Cash">Cash</option>
+                              <option value="Bank Transfer">Bank Transfer</option>
+                              <option value="Card">Card</option>
+                              <option value="Razorpay">Razorpay</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[9px] font-bold uppercase text-emerald-800 mb-0.5">Txn ID</label>
+                            <input 
+                              type="text" value={bookingTransactionId} onChange={e => setBookingTransactionId(e.target.value)}
+                              placeholder="TXN..."
+                              disabled={isRecordCaretakerPaymentMode}
+                              className="w-full px-2 py-1 border border-emerald-200 rounded-lg outline-none bg-white text-[11px] text-emerald-950 font-mono"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9px] font-bold uppercase text-emerald-800 mb-0.5">Date</label>
+                            <input 
+                              type="date" value={bookingPaymentDate} onChange={e => setBookingPaymentDate(e.target.value)}
+                              disabled={isRecordCaretakerPaymentMode}
+                              className="w-full px-2 py-1 border border-emerald-200 rounded-lg outline-none bg-white text-[11px] text-emerald-950"
+                            />
+                          </div>
                         </div>
                       )}
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-100 pt-3">
-                      <div>
-                        <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Final Caretaker Payout (₹)</label>
-                        <div className="text-sm font-black text-[#c9a24c] mt-1">
-                          ₹{(Number(bookingCaretakerPayout) || 0).toLocaleString()}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Amma Seva Fee / Margin (₹)</label>
-                        <div className="text-sm font-bold text-slate-500 mt-1">
-                          ₹{Math.max(0, (Number(bookingAmount) || 0) - (Number(bookingCaretakerPayout) || 0)).toLocaleString()}
-                        </div>
-                      </div>
-                    </div>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-4 col-span-2">
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Caretaker Payout Status</label>
-                      <select 
-                        value={bookingCaretakerPayoutStatus} onChange={e => setBookingCaretakerPayoutStatus(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 text-xs font-bold text-slate-700"
-                      >
-                        <option value="Unpaid">Unpaid / Settle Pending</option>
-                        <option value="Paid">Paid / Settle Cleared</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {bookingCaretakerPayoutStatus === "Paid" && (
-                    <div className="grid grid-cols-2 gap-4 p-4 rounded-2xl bg-[#c9a24c]/5 border border-[#c9a24c]/20">
-                      <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-[#c9a24c] mb-1">Payout Method (e.g. UPI, Bank)</label>
-                        <input 
-                          type="text" placeholder="GPay / PhonePe / Bank Trans" value={bookingCaretakerPayoutMethod} onChange={e => setBookingCaretakerPayoutMethod(e.target.value)}
-                          className="w-full px-3 py-2 border border-[#c9a24c]/30 rounded-lg outline-none bg-white text-slate-900"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-[#c9a24c] mb-1">Payout Transaction Ref #</label>
-                        <input 
-                          type="text" placeholder="TXN12948194..." value={bookingCaretakerPayoutRef} onChange={e => setBookingCaretakerPayoutRef(e.target.value)}
-                          className="w-full px-3 py-2 border border-[#c9a24c]/30 rounded-lg outline-none bg-white text-slate-900"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Caretaker Location Address</label>
-                    <textarea 
-                      required rows={3} value={bookingAddress} onChange={e => setBookingAddress(e.target.value)}
-                      disabled={isRecordCaretakerPaymentMode}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Status</label>
-                      <select 
-                        value={bookingStatus} onChange={e => setBookingStatus(e.target.value)}
-                        disabled={isRecordCaretakerPaymentMode}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
-                      >
-                        <option value="Pending">Pending</option>
-                        <option value="Confirmed">Confirmed</option>
-                        <option value="Cancelled">Cancelled</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Assign Staff</label>
-                      <select 
-                        value={bookingAssignedStaff} onChange={e => setBookingAssignedStaff(e.target.value)}
-                        disabled={isRecordCaretakerPaymentMode}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
-                      >
-                        <option value="">-- None --</option>
-                        {caregivers
-                          .filter(c => c.status === "Verified")
-                          .map(c => (
-                            <option key={c.id} value={c.name}>{c.name} ({c.specialty})</option>
-                          ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Payment Status</label>
-                      <select 
-                        value={bookingPaymentStatus} onChange={e => setBookingPaymentStatus(e.target.value)}
-                        disabled={isRecordCaretakerPaymentMode}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
-                      >
-                        <option value="Unpaid">Unpaid</option>
-                        <option value="Paid">Paid</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {bookingPaymentStatus === "Paid" && (
-                    <div className="grid grid-cols-3 gap-4 p-4 rounded-2xl bg-emerald-50/30 border border-emerald-100/50">
-                      <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-emerald-800 mb-1">Payment Method</label>
-                        <select 
-                          value={bookingPaymentMethod} onChange={e => setBookingPaymentMethod(e.target.value)}
-                          disabled={isRecordCaretakerPaymentMode}
-                          className="w-full px-3 py-2 border border-emerald-200 rounded-lg outline-none bg-white text-emerald-950 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
-                        >
-                          <option value="UPI">UPI / GPay</option>
-                          <option value="Cash">Cash</option>
-                          <option value="Bank Transfer">Bank Transfer</option>
-                          <option value="Card">Credit/Debit Card</option>
-                          <option value="Razorpay">Razorpay</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-emerald-800 mb-1">Transaction ID / Ref</label>
-                        <input 
-                          type="text" value={bookingTransactionId} onChange={e => setBookingTransactionId(e.target.value)}
-                          placeholder="e.g. TXN98765"
-                          disabled={isRecordCaretakerPaymentMode}
-                          className="w-full px-3 py-2 border border-emerald-200 rounded-lg outline-none bg-white text-emerald-950 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-emerald-800 mb-1">Payment Date</label>
-                        <input 
-                          type="date" value={bookingPaymentDate} onChange={e => setBookingPaymentDate(e.target.value)}
-                          disabled={isRecordCaretakerPaymentMode}
-                          className="w-full px-3 py-2 border border-emerald-200 rounded-lg outline-none bg-white text-emerald-950 disabled:opacity-70 disabled:bg-slate-100/50 disabled:cursor-not-allowed"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </>
+                </div>
               )}
 
-              {/* Form elements for Caregiver */}
+              {/* Caregiver Form - 2 Column Side-by-Side Sections + Verification Documents Hub */}
               {modalType === "caregiver" && (
-                <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Staff Name</label>
-                      <input 
-                        type="text" required value={caregiverName} onChange={e => setCaregiverName(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Phone Number</label>
-                      <input 
-                        type="tel" required value={caregiverPhone} onChange={e => setCaregiverPhone(e.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
-                        placeholder="10-digit number"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Email Address</label>
-                      <input 
-                        type="email" required value={caregiverEmail} onChange={e => setCaregiverEmail(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Experience (Years)</label>
-                      <input 
-                        type="number" required value={caregiverExperience} onChange={e => setCaregiverExperience(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Specialty Option</label>
-                      <select 
-                        value={caregiverSpecialty} onChange={e => setCaregiverSpecialty(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
-                      >
-                        <option value="Elderly Care">Elderly Care</option>
-                        <option value="Mother & Baby Care">Mother & Baby Care</option>
-                        <option value="Home Nursing Services">Home Nursing</option>
-                        <option value="ICU/Home Recovery Support">ICU Support</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Verification Status</label>
-                      <select 
-                        value={caregiverStatus} onChange={e => setCaregiverStatus(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
-                      >
-                        <option value="Pending">Pending</option>
-                        <option value="Verified">Verified</option>
-                        <option value="Rejected">Rejected</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Experience Details / Skills Summary</label>
-                    <textarea 
-                      value={caregiverExperienceDetails} onChange={e => setCaregiverExperienceDetails(e.target.value)}
-                      rows={2}
-                      placeholder="List previous nursing / caregiver postings..."
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
-                    />
-                  </div>
-
-                  {/* Address Section */}
-                  <div className="border border-slate-100 rounded-2xl p-4 bg-slate-50/50 space-y-3">
-                    <div className="text-xs font-bold text-slate-800 uppercase tracking-wider">Address Details</div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">State</label>
-                        <select 
-                          value={caregiverState} onChange={e => setCaregiverState(e.target.value)}
-                          className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-white text-sm"
-                        >
-                          <option value="">Select State</option>
-                          {INDIAN_STATES.map((st) => (
-                            <option key={st} value={st}>{st}</option>
-                          ))}
-                        </select>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    
+                    {/* Left Column: Personal & Professional Profile */}
+                    <div className="bg-slate-50/70 rounded-2xl p-4 border border-slate-200/80 space-y-3">
+                      <div className="text-[11px] font-extrabold text-[#1e2a5a] uppercase tracking-wider flex items-center justify-between border-b border-slate-200/60 pb-2">
+                        <span className="flex items-center gap-1.5"><User className="h-3.5 w-3.5 text-[#c9a24c]" /> Basic &amp; Professional Info</span>
+                        <span className="text-[10px] font-mono font-bold text-[#b08726] bg-[#c9a24c]/15 px-2 py-0.5 rounded border border-[#c9a24c]/30 flex items-center gap-1">
+                          <Gift className="h-3 w-3 text-[#c9a24c]" />
+                          REF: {getCaregiverReferralCode({ name: caregiverName, phone: caregiverPhone })}
+                        </span>
                       </div>
+
+                      {/* Live Referral Code Summary Card */}
+                      <div className="bg-gradient-to-r from-[#1e2a5a]/5 to-[#c9a24c]/10 border border-[#c9a24c]/30 rounded-xl p-2.5 flex items-center justify-between gap-2">
+                        <div>
+                          <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                            Staff Referral &amp; Unique ID
+                          </div>
+                          <div className="text-xs font-black text-[#1e2a5a] font-mono mt-0.5 tracking-wider">
+                            {getCaregiverReferralCode({ name: caregiverName, phone: caregiverPhone })}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const code = getCaregiverReferralCode({ name: caregiverName, phone: caregiverPhone });
+                              const link = `${window.location.origin}/careers?ref=${code}`;
+                              navigator.clipboard.writeText(link);
+                              alert(`Copied Referral Link:\n${link}`);
+                            }}
+                            className="text-[10px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2 py-1 rounded-lg border border-indigo-200 flex items-center gap-1 cursor-pointer transition-colors"
+                          >
+                            <Share2 className="h-3 w-3 text-indigo-600" />
+                            Copy Link
+                          </button>
+                          <span className="text-[9px] font-bold text-slate-500 bg-white/80 px-2 py-1 rounded-lg border border-slate-200 font-mono hidden sm:inline-block">
+                            Auto (First Name + Last 4)
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Staff Name *</label>
+                          <input 
+                            type="text" required value={caregiverName} onChange={e => setCaregiverName(e.target.value)}
+                            placeholder="Full Name"
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] bg-white text-xs font-semibold text-slate-800"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Phone Number *</label>
+                          <input 
+                            type="tel" required value={caregiverPhone} onChange={e => setCaregiverPhone(e.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
+                            placeholder="10-digit phone"
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] bg-white text-xs font-semibold text-slate-800 font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Email Address *</label>
+                          <input 
+                            type="email" required value={caregiverEmail} onChange={e => setCaregiverEmail(e.target.value)}
+                            placeholder="staff@ammaseva.in"
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] bg-white text-xs font-semibold text-slate-800"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Experience (Years) *</label>
+                          <input 
+                            type="number" required value={caregiverExperience} onChange={e => setCaregiverExperience(e.target.value)}
+                            placeholder="e.g. 3"
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] bg-white text-xs font-semibold text-slate-800"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Specialty Domain</label>
+                          <select 
+                            value={caregiverSpecialty} onChange={e => setCaregiverSpecialty(e.target.value)}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800 cursor-pointer"
+                          >
+                            <option value="Elderly Care">Elderly Care</option>
+                            <option value="Mother & Baby Care">Mother & Baby Care</option>
+                            <option value="Home Nursing Services">Home Nursing</option>
+                            <option value="ICU/Home Recovery Support">ICU Support</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Verification Status</label>
+                          <select 
+                            value={caregiverStatus} onChange={e => setCaregiverStatus(e.target.value)}
+                            className={`w-full px-3 py-1.5 border rounded-xl outline-none text-xs font-extrabold cursor-pointer ${
+                              caregiverStatus === "Verified" ? "bg-emerald-50 text-emerald-800 border-emerald-300" :
+                              caregiverStatus === "Rejected" ? "bg-rose-50 text-rose-800 border-rose-300" :
+                              "bg-amber-50 text-amber-800 border-amber-300"
+                            }`}
+                          >
+                            <option value="Pending">🟡 Pending Verification</option>
+                            <option value="Verified">🟢 Verified &amp; Active</option>
+                            <option value="Rejected">🔴 Rejected</option>
+                          </select>
+                        </div>
+                      </div>
+
                       <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">City</label>
+                        <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Experience Details / Skills Summary</label>
+                        <textarea 
+                          value={caregiverExperienceDetails} onChange={e => setCaregiverExperienceDetails(e.target.value)}
+                          rows={2}
+                          placeholder="List previous hospital or home nursing postings and special competencies..."
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs text-slate-800 resize-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1 flex items-center justify-between">
+                          <span>Referred By (Partner / Staff Referral Code)</span>
+                          <span className="text-[9px] text-slate-400 font-normal">Optional</span>
+                        </label>
                         <input 
-                          type="text" value={caregiverCity} onChange={e => setCaregiverCity(e.target.value)}
-                          className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-white text-sm"
+                          type="text" 
+                          value={caregiverReferredBy} 
+                          onChange={e => setCaregiverReferredBy(e.target.value.toUpperCase())}
+                          placeholder="e.g. PRIYA3210 (Leave blank if direct)"
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-mono font-bold text-slate-800 uppercase"
                         />
                       </div>
                     </div>
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 flex justify-between items-center">
-                        <span>Google Map Location URL</span>
-                        {caregiverGoogleMapLocation && (
-                          <a 
-                            href={caregiverGoogleMapLocation} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="text-xs text-indigo-600 hover:underline font-semibold animate-pulse"
+
+                    {/* Right Column: Location, Address & Timings */}
+                    <div className="bg-slate-50/70 rounded-2xl p-4 border border-slate-200/80 space-y-3">
+                      <div className="text-[11px] font-extrabold text-[#1e2a5a] uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-200/60 pb-2">
+                        <MapPin className="h-3.5 w-3.5 text-[#c9a24c]" /> Address, Location &amp; Timings
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">State</label>
+                          <select 
+                            value={caregiverState} onChange={e => setCaregiverState(e.target.value)}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800 cursor-pointer"
                           >
-                            Open on Map
-                          </a>
-                        )}
-                      </label>
-                      <input 
-                        type="text" value={caregiverGoogleMapLocation} onChange={e => setCaregiverGoogleMapLocation(e.target.value)}
-                        placeholder="Google Maps URL"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-white text-xs"
-                      />
-                    </div>
-                  </div>
+                            <option value="">Select State</option>
+                            {INDIAN_STATES.map((st) => (
+                              <option key={st} value={st}>{st}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">City / Town</label>
+                          <input 
+                            type="text" value={caregiverCity} onChange={e => setCaregiverCity(e.target.value)}
+                            placeholder="e.g. Hyderabad"
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] bg-white text-xs font-semibold text-slate-800"
+                          />
+                        </div>
+                      </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Preferred Locations</label>
-                      <input 
-                        type="text" value={caregiverWorkingLocations} onChange={e => setCaregiverWorkingLocations(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Available Timings</label>
-                      <input 
-                        type="text" value={caregiverAvailableTimings} onChange={e => setCaregiverAvailableTimings(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Documents Display */}
-                  <div className="border border-slate-100 rounded-2xl p-4 bg-slate-50/50 space-y-3">
-                    <div className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                      Verification Files
-                    </div>
-                    <div className="grid grid-cols-2 gap-3 text-xs">
                       <div>
-                        <span className="block font-bold text-slate-500 mb-1">Profile Photo</span>
+                        <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1 flex justify-between items-center">
+                          <span>Google Maps Live Location URL</span>
+                          {caregiverGoogleMapLocation && (
+                            <a 
+                              href={caregiverGoogleMapLocation} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1"
+                            >
+                              <ExternalLink className="h-3 w-3" /> Test Map Link
+                            </a>
+                          )}
+                        </label>
+                        <input 
+                          type="text" value={caregiverGoogleMapLocation} onChange={e => setCaregiverGoogleMapLocation(e.target.value)}
+                          placeholder="https://maps.google.com/..."
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-mono text-slate-700"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Preferred Localities</label>
+                          <input 
+                            type="text" value={caregiverWorkingLocations} onChange={e => setCaregiverWorkingLocations(e.target.value)}
+                            placeholder="e.g. Madhapur, Gachibowli"
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs text-slate-800"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Available Shift Timings</label>
+                          <input 
+                            type="text" value={caregiverAvailableTimings} onChange={e => setCaregiverAvailableTimings(e.target.value)}
+                            placeholder="e.g. 24-hr Live-in / 12-hr Day"
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs text-slate-800"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bottom: Uploaded KYC Verification Documents Grid */}
+                  <div className="bg-slate-50/70 rounded-2xl p-4 border border-slate-200/80 space-y-2.5">
+                    <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                      <div className="text-[11px] font-extrabold text-[#1e2a5a] uppercase tracking-wider flex items-center gap-1.5">
+                        <FileText className="h-3.5 w-3.5 text-[#c9a24c]" /> Verification Documents &amp; Certificates
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-semibold">
+                        Click &ldquo;View&rdquo; to review full documents on screen with zero forced download
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2.5 pt-1">
+                      {/* Profile Photo */}
+                      <div className="p-2.5 bg-white rounded-xl border border-slate-200/70 flex flex-col justify-between items-center text-center gap-1.5 shadow-2xs">
+                        <span className="text-[10px] font-bold text-slate-500">Profile Photo</span>
                         {caregiverProfilePhoto ? (
-                          <div className="space-y-1">
-                            <img src={caregiverProfilePhoto} className="h-16 w-16 rounded-lg object-cover border border-slate-200" alt="profile" />
-                            <a href={caregiverProfilePhoto} download={`Photo_${caregiverName}`} className="text-gold font-semibold hover:underline block text-[10px]">Download</a>
+                          <div className="space-y-1 w-full flex flex-col items-center">
+                            <img src={caregiverProfilePhoto} className="h-10 w-10 rounded-lg object-cover border border-slate-200 shadow-2xs" alt="Profile" />
+                            <button
+                              type="button"
+                              onClick={() => openDocViewer(caregiverProfilePhoto, "Profile Photo", caregiverName, "Staff Profile")}
+                              className="px-2 py-0.5 rounded-md bg-gold/10 hover:bg-gold/20 text-slate-800 font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer"
+                            >
+                              <Eye className="h-2.5 w-2.5 text-[#c9a24c]" /> View
+                            </button>
                           </div>
-                        ) : <span className="text-slate-400 italic">No photo uploaded</span>}
+                        ) : (
+                          <span className="text-[10px] text-slate-400 italic py-2">Not uploaded</span>
+                        )}
                       </div>
-                      
-                      <div>
-                        <span className="block font-bold text-slate-500 mb-1">Aadhaar Card</span>
+
+                      {/* Aadhaar */}
+                      <div className="p-2.5 bg-white rounded-xl border border-slate-200/70 flex flex-col justify-between items-center text-center gap-1.5 shadow-2xs">
+                        <span className="text-[10px] font-bold text-slate-500">Aadhaar Card</span>
                         {caregiverAadhaar ? (
-                          <div className="space-y-1">
-                            <div className="text-[10px] text-slate-500 truncate max-w-[150px]">Base64 Data Available</div>
-                            <a href={caregiverAadhaar} download={`Aadhaar_${caregiverName}`} className="text-gold font-semibold hover:underline block text-[10px]">Download File</a>
+                          <div className="space-y-1 w-full flex flex-col items-center">
+                            <span className="text-[9px] font-extrabold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Attached</span>
+                            <button
+                              type="button"
+                              onClick={() => openDocViewer(caregiverAadhaar, "Aadhaar Card", caregiverName, "Identity Verification")}
+                              className="px-2 py-0.5 rounded-md bg-gold/10 hover:bg-gold/20 text-slate-800 font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer"
+                            >
+                              <Eye className="h-2.5 w-2.5 text-[#c9a24c]" /> View
+                            </button>
                           </div>
-                        ) : <span className="text-slate-400 italic">No Aadhaar uploaded</span>}
+                        ) : (
+                          <span className="text-[10px] text-slate-400 italic py-2">Not uploaded</span>
+                        )}
                       </div>
 
-                      <div>
-                        <span className="block font-bold text-slate-500 mb-1">PAN Card</span>
+                      {/* PAN Card */}
+                      <div className="p-2.5 bg-white rounded-xl border border-slate-200/70 flex flex-col justify-between items-center text-center gap-1.5 shadow-2xs">
+                        <span className="text-[10px] font-bold text-slate-500">PAN Card</span>
                         {caregiverPan ? (
-                          <div className="space-y-1">
-                            <div className="text-[10px] text-slate-500 truncate max-w-[150px]">Base64 Data Available</div>
-                            <a href={caregiverPan} download={`PAN_${caregiverName}`} className="text-gold font-semibold hover:underline block text-[10px]">Download File</a>
+                          <div className="space-y-1 w-full flex flex-col items-center">
+                            <span className="text-[9px] font-extrabold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Attached</span>
+                            <button
+                              type="button"
+                              onClick={() => openDocViewer(caregiverPan, "PAN Card Document", caregiverName, "Identity Verification")}
+                              className="px-2 py-0.5 rounded-md bg-gold/10 hover:bg-gold/20 text-slate-800 font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer"
+                            >
+                              <Eye className="h-2.5 w-2.5 text-[#c9a24c]" /> View
+                            </button>
                           </div>
-                        ) : <span className="text-slate-400 italic">No PAN uploaded</span>}
+                        ) : (
+                          <span className="text-[10px] text-slate-400 italic py-2">Not uploaded</span>
+                        )}
                       </div>
 
-                      <div>
-                        <span className="block font-bold text-slate-500 mb-1">Educational Qualification Certs</span>
+                      {/* Education / Nursing Certs */}
+                      <div className="p-2.5 bg-white rounded-xl border border-slate-200/70 flex flex-col justify-between items-center text-center gap-1.5 shadow-2xs">
+                        <span className="text-[10px] font-bold text-slate-500">Nursing / Degree</span>
                         {caregiverCertificates ? (
-                          <div className="space-y-1">
-                            <div className="text-[10px] text-slate-500 truncate max-w-[150px]">Base64 Data Available</div>
-                            <a href={caregiverCertificates} download={`EduCertificates_${caregiverName}`} className="text-gold font-semibold hover:underline block text-[10px]">Download File</a>
+                          <div className="space-y-1 w-full flex flex-col items-center">
+                            <span className="text-[9px] font-extrabold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">Attached</span>
+                            <button
+                              type="button"
+                              onClick={() => openDocViewer(caregiverCertificates, "Educational Degree / Diploma", caregiverName, "Qualification Verification")}
+                              className="px-2 py-0.5 rounded-md bg-gold/10 hover:bg-gold/20 text-slate-800 font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer"
+                            >
+                              <Eye className="h-2.5 w-2.5 text-[#c9a24c]" /> View
+                            </button>
                           </div>
-                        ) : <span className="text-slate-400 italic">No certificates uploaded</span>}
+                        ) : (
+                          <span className="text-[10px] text-slate-400 italic py-2">Not uploaded</span>
+                        )}
                       </div>
 
-                      <div>
-                        <span className="block font-bold text-slate-500 mb-1">Experience Certificate(s)</span>
+                      {/* Experience Cert */}
+                      <div className="p-2.5 bg-white rounded-xl border border-slate-200/70 flex flex-col justify-between items-center text-center gap-1.5 shadow-2xs">
+                        <span className="text-[10px] font-bold text-slate-500">Exp Certificate</span>
                         {caregiverExperienceCertificate ? (
-                          <div className="space-y-1">
-                            <div className="text-[10px] text-slate-500 truncate max-w-[150px]">Base64 Data Available</div>
-                            <a href={caregiverExperienceCertificate} download={`ExpCertificates_${caregiverName}`} className="text-gold font-semibold hover:underline block text-[10px]">Download File</a>
+                          <div className="space-y-1 w-full flex flex-col items-center">
+                            <span className="text-[9px] font-extrabold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">Attached</span>
+                            <button
+                              type="button"
+                              onClick={() => openDocViewer(caregiverExperienceCertificate, "Experience Certificate", caregiverName, "Work Verification")}
+                              className="px-2 py-0.5 rounded-md bg-gold/10 hover:bg-gold/20 text-slate-800 font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer"
+                            >
+                              <Eye className="h-2.5 w-2.5 text-[#c9a24c]" /> View
+                            </button>
                           </div>
-                        ) : <span className="text-slate-400 italic">No experience certs</span>}
+                        ) : (
+                          <span className="text-[10px] text-slate-400 italic py-2">Not uploaded</span>
+                        )}
                       </div>
 
-                      <div>
-                        <span className="block font-bold text-slate-500 mb-1">Police Verification</span>
+                      {/* Police Verification */}
+                      <div className="p-2.5 bg-white rounded-xl border border-slate-200/70 flex flex-col justify-between items-center text-center gap-1.5 shadow-2xs">
+                        <span className="text-[10px] font-bold text-slate-500">Police Check</span>
                         {caregiverPoliceVerification ? (
-                          <div className="space-y-1">
-                            <div className="text-[10px] text-slate-500 truncate max-w-[150px]">Base64 Data Available</div>
-                            <a href={caregiverPoliceVerification} download={`PoliceVerification_${caregiverName}`} className="text-gold font-semibold hover:underline block text-[10px]">Download File</a>
+                          <div className="space-y-1 w-full flex flex-col items-center">
+                            <span className="text-[9px] font-extrabold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Attached</span>
+                            <button
+                              type="button"
+                              onClick={() => openDocViewer(caregiverPoliceVerification, "Police Verification Document", caregiverName, "Background Security Check")}
+                              className="px-2 py-0.5 rounded-md bg-gold/10 hover:bg-gold/20 text-slate-800 font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer"
+                            >
+                              <Eye className="h-2.5 w-2.5 text-[#c9a24c]" /> View
+                            </button>
                           </div>
-                        ) : <span className="text-slate-400 italic">No police verification</span>}
+                        ) : (
+                          <span className="text-[10px] text-slate-400 italic py-2">Not uploaded</span>
+                        )}
                       </div>
 
-                      <div>
-                        <span className="block font-bold text-slate-500 mb-1">Additional Certificates</span>
+                      {/* Additional Certs */}
+                      <div className="p-2.5 bg-white rounded-xl border border-slate-200/70 flex flex-col justify-between items-center text-center gap-1.5 shadow-2xs">
+                        <span className="text-[10px] font-bold text-slate-500">Extra / BLS Cert</span>
                         {caregiverAdditionalCertificates ? (
-                          <div className="space-y-1">
-                            <div className="text-[10px] text-slate-500 truncate max-w-[150px]">Base64 Data Available</div>
-                            <a href={caregiverAdditionalCertificates} download={`AddCertificates_${caregiverName}`} className="text-gold font-semibold hover:underline block text-[10px]">Download File</a>
+                          <div className="space-y-1 w-full flex flex-col items-center">
+                            <span className="text-[9px] font-extrabold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">Attached</span>
+                            <button
+                              type="button"
+                              onClick={() => openDocViewer(caregiverAdditionalCertificates, "Additional Certificates", caregiverName, "Certifications")}
+                              className="px-2 py-0.5 rounded-md bg-gold/10 hover:bg-gold/20 text-slate-800 font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer"
+                            >
+                              <Eye className="h-2.5 w-2.5 text-[#c9a24c]" /> View
+                            </button>
                           </div>
-                        ) : <span className="text-slate-400 italic">No additional certs</span>}
+                        ) : (
+                          <span className="text-[10px] text-slate-400 italic py-2">Not uploaded</span>
+                        )}
                       </div>
                     </div>
                   </div>
-                </>
+                </div>
               )}
 
               {/* Form elements for Service */}
               {modalType === "service" && (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Service Title</label>
-                      <input 
-                        type="text" required value={serviceTitle} onChange={e => setServiceTitle(e.target.value)}
-                        placeholder="e.g. Newborn Care shift"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
-                      />
+                <div className="space-y-4">
+                  <div className="bg-slate-50/70 rounded-2xl p-4 border border-slate-200/80 space-y-3">
+                    <div className="text-[11px] font-extrabold text-[#1e2a5a] uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-200/60 pb-2">
+                      <Briefcase className="h-3.5 w-3.5 text-[#c9a24c]" /> Service Configuration &amp; Pricing
                     </div>
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Category Badge Tag Name</label>
-                      <input 
-                        type="text" required value={serviceCategory} onChange={e => setServiceCategory(e.target.value)}
-                        placeholder="e.g. Intensive, Specialized, Assistance"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
-                      />
-                    </div>
-                    <div>
-                      <div className="flex gap-2">
-                        <div className="flex-1">
-                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Pricing (₹)</label>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Service Title *</label>
+                        <input 
+                          type="text" required value={serviceTitle} onChange={e => setServiceTitle(e.target.value)}
+                          placeholder="e.g. Newborn Care shift"
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Category Badge Tag</label>
+                        <input 
+                          type="text" required value={serviceCategory} onChange={e => setServiceCategory(e.target.value)}
+                          placeholder="e.g. Intensive, Specialized"
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Pricing (₹) &amp; Unit</label>
+                        <div className="flex gap-1.5">
                           <input 
                             type="number" required value={servicePriceVal} onChange={e => setServicePriceVal(e.target.value)}
-                            placeholder="e.g. 1200"
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
+                            placeholder="1200"
+                            className="flex-1 px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800"
                           />
-                        </div>
-                        <div className="w-[85px] shrink-0">
-                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Per Unit</label>
                           <select 
                             value={servicePriceUnit} onChange={e => setServicePriceUnit(e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 cursor-pointer text-xs"
+                            className="w-20 px-2 py-1.5 border border-slate-200 rounded-xl outline-none bg-white text-xs font-semibold text-slate-800 cursor-pointer"
                           >
-                            <option value="hour">hour</option>
-                            <option value="day">day</option>
-                            <option value="week">week</option>
-                            <option value="month">month</option>
+                            <option value="hour">/ hr</option>
+                            <option value="day">/ day</option>
+                            <option value="week">/ wk</option>
+                            <option value="month">/ mo</option>
                           </select>
                         </div>
                       </div>
+                      <div>
+                        <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Advance Booking (₹)</label>
+                        <input 
+                          type="number" required value={serviceAdvanceVal} onChange={e => setServiceAdvanceVal(e.target.value)}
+                          placeholder="300"
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Advance Payment (₹)</label>
-                      <input 
-                        type="number" required value={serviceAdvanceVal} onChange={e => setServiceAdvanceVal(e.target.value)}
-                        placeholder="e.g. 300"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
-                      />
-                    </div>
-                  </div>
 
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Short Description (Summary)</label>
-                    <input 
-                      type="text" required value={serviceShort} onChange={e => setServiceShort(e.target.value)}
-                      placeholder="e.g. Compassionate postnatal care for mothers and newborns."
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Duration Options</label>
-                      <input 
-                        type="text" required value={serviceDuration} onChange={e => setServiceDuration(e.target.value)}
-                        placeholder="e.g. Hourly, Daily, or Live-in"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Service Image (Upload file OR Enter URL)</label>
-                      <div className="space-y-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Duration Options</label>
+                        <input 
+                          type="text" required value={serviceDuration} onChange={e => setServiceDuration(e.target.value)}
+                          placeholder="e.g. Hourly, Daily, or Live-in"
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs text-slate-800"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Service Banner Image</label>
                         <div className="flex items-center gap-2">
                           {serviceImage && (
-                            <img 
-                              src={serviceImage} 
-                              className="h-10 w-10 rounded-lg object-cover border border-slate-200 shrink-0" 
-                              alt="Service Preview" 
-                            />
+                            <img src={serviceImage} className="h-7 w-7 rounded-lg object-cover border border-slate-200 shrink-0" alt="Preview" />
                           )}
                           <input 
                             type="file" 
                             accept="image/*" 
                             onChange={e => handleFileChange(e, setServiceImage)}
-                            className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer"
-                          />
-                        </div>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[10px] font-semibold text-slate-400">
-                            URL
-                          </div>
-                          <input 
-                            type="text" 
-                            placeholder="Or paste image URL (e.g. https://example.com/image.jpg)"
-                            value={serviceImage.startsWith("data:") ? "" : serviceImage}
-                            onChange={e => setServiceImage(e.target.value)}
-                            className="w-full pl-10 pr-2 py-1 text-xs border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50"
+                            className="w-full text-[10px] text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[9px] file:font-semibold file:bg-slate-200 file:text-slate-700 hover:file:bg-slate-300 cursor-pointer"
                           />
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Service description (Full details)</label>
-                      <textarea 
-                        required rows={5} value={serviceDescription} onChange={e => setServiceDescription(e.target.value)}
-                        placeholder="Describe what tasks are covered in this caregiver shift..."
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50"
-                      />
-                    </div>
-                    <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Key Benefits / Tasks Included</label>
-                        <span className="text-[10px] text-slate-400 font-medium">Enter one benefit per line</span>
-                      </div>
-                      <textarea 
-                        rows={5} value={serviceBenefits} onChange={e => setServiceBenefits(e.target.value)}
-                        placeholder="e.g.&#10;Personal hygiene & grooming&#10;Medication reminders&#10;Meal preparation"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 font-mono text-xs"
+                      <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Short Summary (For Cards)</label>
+                      <input 
+                        type="text" required value={serviceShort} onChange={e => setServiceShort(e.target.value)}
+                        placeholder="Compassionate postnatal care for mothers and newborns..."
+                        className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs text-slate-800"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">About Service (Detailed narrative)</label>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="bg-slate-50/70 rounded-2xl p-4 border border-slate-200/80 space-y-2">
+                      <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Detailed Scope &amp; Responsibilities</label>
                       <textarea 
-                        rows={5} value={serviceAbout} onChange={e => setServiceAbout(e.target.value)}
-                        placeholder="Detailed narrative about the service for the details page..."
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 text-sm"
+                        required rows={3} value={serviceDescription} onChange={e => setServiceDescription(e.target.value)}
+                        placeholder="Describe daily caregiver tasks and routines covered..."
+                        className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs text-slate-800 resize-none"
                       />
                     </div>
-                    <div className="grid grid-cols-1 gap-4">
-                      <div>
-                        <div className="flex justify-between items-center mb-1">
-                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Service Highlights (Features)</label>
-                          <span className="text-[10px] text-slate-400 font-medium">One per line</span>
-                        </div>
-                        <textarea 
-                          rows={2} value={serviceHighlights} onChange={e => setServiceHighlights(e.target.value)}
-                          placeholder="e.g.&#10;Verified Professionals&#10;24/7 Helpline Support"
-                          className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 font-mono text-xs"
-                        />
+
+                    <div className="bg-slate-50/70 rounded-2xl p-4 border border-slate-200/80 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Key Benefits / Tasks Included</label>
+                        <span className="text-[9px] text-slate-400 font-medium">One per line</span>
                       </div>
-                      <div>
-                        <div className="flex justify-between items-center mb-1">
-                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Additional Images (URLs)</label>
-                          <span className="text-[10px] text-slate-400 font-medium">One URL per line</span>
-                        </div>
-                        <textarea 
-                          rows={2} value={serviceImages} onChange={e => setServiceImages(e.target.value)}
-                          placeholder="e.g.&#10;https://example.com/gallery1.jpg&#10;https://example.com/gallery2.jpg"
-                          className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none bg-slate-50/50 font-mono text-xs"
-                        />
-                      </div>
+                      <textarea 
+                        rows={3} value={serviceBenefits} onChange={e => setServiceBenefits(e.target.value)}
+                        placeholder="Personal hygiene & grooming&#10;Medication reminders&#10;Meal preparation"
+                        className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-mono text-slate-800 resize-none"
+                      />
                     </div>
                   </div>
-                </>
+                </div>
               )}
 
+              {/* Form elements for Blog */}
               {modalType === "blog" && (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Blog Title</label>
-                      <input 
-                        type="text" required value={blogTitle} onChange={e => setBlogTitle(e.target.value)}
-                        placeholder="e.g. Caring for a bedridden parent: a family guide"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 text-slate-800"
-                      />
+                <div className="space-y-4">
+                  <div className="bg-slate-50/70 rounded-2xl p-4 border border-slate-200/80 space-y-3">
+                    <div className="text-[11px] font-extrabold text-[#1e2a5a] uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-200/60 pb-2">
+                      <BookOpen className="h-3.5 w-3.5 text-[#c9a24c]" /> Blog Article Setup
                     </div>
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Category</label>
-                      <input 
-                        type="text" required value={blogCategory} onChange={e => setBlogCategory(e.target.value)}
-                        placeholder="e.g. Elderly Care, Maternal, Clinical"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 text-slate-800"
-                      />
-                    </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Author Name</label>
-                      <input 
-                        type="text" required value={blogAuthor} onChange={e => setBlogAuthor(e.target.value)}
-                        placeholder="e.g. Dr. Lakshmi Prasad"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 text-slate-800"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Publication Date</label>
-                      <input 
-                        type="date" required value={blogDate} onChange={e => setBlogDate(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 text-slate-800 text-sm"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Blog Banner Image (Upload file OR Enter URL)</label>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        {blogImage && (
-                          <img 
-                            src={blogImage} 
-                            className="h-10 w-10 rounded-lg object-cover border border-slate-200 shrink-0" 
-                            alt="Blog Preview" 
-                          />
-                        )}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      <div className="sm:col-span-2">
+                        <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Blog Title *</label>
                         <input 
-                          type="file" 
-                          accept="image/*" 
-                            onChange={e => handleFileChange(e, setBlogImage)}
-                            className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer"
-                          />
-                        </div>
-                        <input 
-                          type="text" 
-                          placeholder="Or paste image URL"
-                          value={blogImage.startsWith("data:") ? "" : blogImage}
-                          onChange={e => setBlogImage(e.target.value)}
-                          className="w-full pl-3 pr-2 py-1 text-xs border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 text-slate-800"
+                          type="text" required value={blogTitle} onChange={e => setBlogTitle(e.target.value)}
+                          placeholder="e.g. Caring for an Elderly Loved One at Home"
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800"
                         />
                       </div>
+                      <div>
+                        <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Category</label>
+                        <input 
+                          type="text" required value={blogCategory} onChange={e => setBlogCategory(e.target.value)}
+                          placeholder="Elderly Care"
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Author</label>
+                        <input 
+                          type="text" required value={blogAuthor} onChange={e => setBlogAuthor(e.target.value)}
+                          placeholder="Dr. Lakshmi"
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Short Excerpt / Description</label>
+                      <input 
+                        type="text" required value={blogDescription} onChange={e => setBlogDescription(e.target.value)}
+                        placeholder="One-line summary for the blog cards listing..."
+                        className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs text-slate-800"
+                      />
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Short Description (Excerpt)</label>
-                    <input 
-                      type="text" required value={blogDescription} onChange={e => setBlogDescription(e.target.value)}
-                      placeholder="Enter a brief one-line summary for the blog cards listing..."
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 text-slate-800"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Blog Post Content (Markdown / Text)</label>
+                  <div className="bg-slate-50/70 rounded-2xl p-4 border border-slate-200/80 space-y-2">
+                    <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Post Content (Markdown / Text)</label>
                     <textarea 
-                      required rows={8} value={blogContent} onChange={e => setBlogContent(e.target.value)}
-                      placeholder="Write your detailed care article guidelines here..."
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 text-slate-800 text-xs font-mono"
+                      required rows={6} value={blogContent} onChange={e => setBlogContent(e.target.value)}
+                      placeholder="Write your full medical or caregiving guide content here..."
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-mono text-slate-800"
                     />
                   </div>
-                </>
+                </div>
               )}
 
+              {/* Form elements for FAQ */}
               {modalType === "faq" && (
-                <>
-                  <div className="text-left">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Question</label>
+                <div className="bg-slate-50/70 rounded-2xl p-4 border border-slate-200/80 space-y-3">
+                  <div className="text-[11px] font-extrabold text-[#1e2a5a] uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-200/60 pb-2">
+                    <HelpCircle className="h-3.5 w-3.5 text-[#c9a24c]" /> FAQ Question &amp; Answer
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Question *</label>
                     <input 
                       type="text" required value={faqQuestion} onChange={e => setFaqQuestion(e.target.value)}
-                      placeholder="e.g. Are your caregivers and nurses verified?"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 text-slate-800"
+                      placeholder="e.g. Are your caregivers and nurses background verified?"
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800"
                     />
                   </div>
-                  <div className="text-left">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Answer</label>
+                  <div>
+                    <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Answer *</label>
                     <textarea 
-                      required rows={5} value={faqAnswer} onChange={e => setFaqAnswer(e.target.value)}
-                      placeholder="Write the detailed answer here..."
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 text-slate-800 text-sm leading-relaxed"
+                      required rows={4} value={faqAnswer} onChange={e => setFaqAnswer(e.target.value)}
+                      placeholder="Write the official verified answer here..."
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs text-slate-800 leading-relaxed"
                     />
                   </div>
-                </>
+                </div>
               )}
 
+              {/* Form elements for Gallery */}
               {modalType === "gallery" && (
-                <>
-                  <div className="text-left">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Image Title / Description</label>
+                <div className="bg-slate-50/70 rounded-2xl p-4 border border-slate-200/80 space-y-3">
+                  <div className="text-[11px] font-extrabold text-[#1e2a5a] uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-200/60 pb-2">
+                    <Image className="h-3.5 w-3.5 text-[#c9a24c]" /> Gallery Photo Details
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Photo Title / Caption *</label>
                     <input 
                       type="text" required value={galleryTitle} onChange={e => setGalleryTitle(e.target.value)}
-                      placeholder="e.g. Caregiver assist walk shift"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 text-slate-800"
+                      placeholder="e.g. In-Home Physiotherapy Session"
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800"
                     />
                   </div>
-                  <div className="text-left">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Image Upload (Select file OR Enter URL)</label>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        {galleryImageUrl && (
-                          <img 
-                            src={galleryImageUrl} 
-                            className="h-10 w-10 rounded-lg object-cover border border-slate-200 shrink-0" 
-                            alt="Gallery Preview" 
-                          />
-                        )}
-                        <input 
-                          type="file" 
-                          accept="image/*" 
-                          onChange={e => handleFileChange(e, setGalleryImageUrl)}
-                          className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer"
-                        />
-                      </div>
+                  <div>
+                    <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Select Photo File</label>
+                    <div className="flex items-center gap-3">
+                      {galleryImageUrl && (
+                        <img src={galleryImageUrl} className="h-14 w-14 rounded-xl object-cover border border-slate-200 shadow-2xs shrink-0" alt="Preview" />
+                      )}
                       <input 
-                        type="text" 
-                        placeholder="Or paste image URL"
-                        value={galleryImageUrl.startsWith("data:") ? "" : galleryImageUrl}
-                        onChange={e => setGalleryImageUrl(e.target.value)}
-                        className="w-full pl-3 pr-2 py-1 text-xs border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-gold bg-slate-50/50 text-slate-800"
+                        type="file" 
+                        accept="image/*" 
+                        onChange={e => handleFileChange(e, setGalleryImageUrl)}
+                        className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-[10px] file:font-bold file:bg-slate-200 file:text-slate-800 hover:file:bg-slate-300 cursor-pointer"
                       />
                     </div>
                   </div>
-                </>
+                </div>
               )}
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="btn-primary w-full py-3 mt-6 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-md text-xs font-bold transition-all"
-              >
-                {isLoading ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0"></span> : <CheckCircle2 className="h-4 w-4" />}
-                {isLoading ? "Saving changes..." : "Save Record"}
-              </button>
             </form>
+
+            {/* Sticky Action Footer */}
+            <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200/90 flex items-center justify-between shrink-0">
+              <div className="text-[11px] text-slate-400 font-semibold hidden sm:block">
+                All changes instantly synchronize with live database records.
+              </div>
+              <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                <button
+                  type="button"
+                  onClick={() => setModalType(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 font-bold text-xs transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  form="admin-dynamic-form"
+                  disabled={isLoading}
+                  className="px-6 py-2 rounded-xl bg-gradient-to-r from-[#091438] via-[#112255] to-[#1e2a5a] hover:from-[#112255] hover:to-[#2b3a75] text-white border border-[#c9a24c]/40 font-bold text-xs shadow-md shadow-indigo-950/20 flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+                >
+                  {isLoading ? (
+                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0"></span>
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4 text-[#f5d77f]" />
+                  )}
+                  <span>{isLoading ? "Saving..." : "Save Record"}</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
       {/* Collapsible Caregiver Reviews Modal */}
+      {/* Collapsible Caregiver Reviews Modal */}
       {selectedCaregiverForReviews && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col max-h-[80vh] premium-card">
-            <div className="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-              <div className="text-left">
-                <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display flex items-center gap-2">
-                  Reviews for {selectedCaregiverForReviews.name}
-                </h3>
-                <p className="text-xs text-slate-400 mt-1 font-semibold">Overall rating: ⭐ {selectedCaregiverForReviews.rating || "N/A"} / 5.0</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200/90 overflow-hidden flex flex-col max-h-[85vh] premium-card">
+            <div className="px-6 py-4 bg-gradient-to-r from-[#091438] via-[#112255] to-[#1e2a5a] border-b border-[#c9a24c]/30 flex justify-between items-center text-left">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-white/10 border border-[#c9a24c]/40 flex items-center justify-center text-lg">
+                  ⭐
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-extrabold text-white font-display flex items-center gap-2">
+                    Reviews for {selectedCaregiverForReviews.name}
+                  </h3>
+                  <p className="text-[11px] text-slate-300 font-medium">Overall Rating: <span className="text-[#f5d77f] font-bold">⭐ {selectedCaregiverForReviews.rating || "N/A"} / 5.0</span></p>
+                </div>
               </div>
               <button
                 onClick={() => setSelectedCaregiverForReviews(null)}
-                className="h-8 w-8 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 cursor-pointer transition-colors"
+                className="h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white flex items-center justify-center cursor-pointer transition-colors border border-white/10"
               >
-                &times;
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto space-y-4 flex-1">
+            <div className="p-6 overflow-y-auto space-y-3 flex-1 bg-slate-50/40">
               {!selectedCaregiverForReviews.reviews || selectedCaregiverForReviews.reviews.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-8 font-semibold">No feedback reviews submitted for this caregiver yet.</p>
+                <div className="text-center py-10 border border-dashed border-slate-200 rounded-2xl bg-white p-6">
+                  <p className="text-xs text-slate-400 font-semibold">No feedback reviews submitted for this caregiver yet.</p>
+                </div>
               ) : (
                 selectedCaregiverForReviews.reviews.map((r: any) => (
-                  <div key={r.id} className="p-4 bg-slate-50/30 border border-slate-100 rounded-2xl space-y-2 text-left">
+                  <div key={r.id} className="p-4 bg-white border border-slate-200/80 rounded-2xl space-y-2 text-left shadow-2xs">
                     <div className="flex justify-between items-center">
-                      <span className="text-[10px] text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded border border-amber-200/60 font-black">
+                      <span className="text-[10px] text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200 font-black">
                         ⭐ {r.rating}.0
                       </span>
                       <span className="text-[10px] text-slate-400 font-semibold">{new Date(r.createdAt).toLocaleDateString()}</span>
                     </div>
-                    <p className="text-xs text-slate-600 italic font-medium">&ldquo;{r.comment || "No written feedback."}&rdquo;</p>
+                    <p className="text-xs text-slate-700 italic font-medium">&ldquo;{r.comment || "No written feedback."}&rdquo;</p>
                   </div>
                 ))
               )}
@@ -5045,27 +5851,32 @@ function AdminPage() {
 
       {/* Global Care Rating & Reviews Modal */}
       {isAllReviewsModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col max-h-[85vh] premium-card">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-slate-200/90 overflow-hidden flex flex-col max-h-[85vh] premium-card">
             
             {/* Header */}
-            <div className="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center text-left">
-              <div>
-                <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display flex items-center gap-2">
-                  ⭐ Platform Feedback &amp; Reviews
-                </h3>
-                <p className="text-xs text-slate-400 mt-1 font-semibold">
-                  Platform Average Score: <span className="text-[#c9a24c] font-black">{avgPlatformRating.toFixed(1)} / 5.0</span> • Total: {allPlatformReviews.length} feedback logs
-                </p>
+            <div className="px-6 py-4 bg-gradient-to-r from-[#091438] via-[#112255] to-[#1e2a5a] border-b border-[#c9a24c]/30 flex justify-between items-center text-left">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-white/10 border border-[#c9a24c]/40 flex items-center justify-center text-lg">
+                  ⭐
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-extrabold text-white font-display flex items-center gap-2">
+                    Platform Feedback &amp; Reviews
+                  </h3>
+                  <p className="text-[11px] text-slate-300 font-medium">
+                    Platform Average Score: <span className="text-[#f5d77f] font-black">{avgPlatformRating.toFixed(1)} / 5.0</span> • Total: {allPlatformReviews.length} feedback logs
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => {
                   setIsAllReviewsModalOpen(false);
                   setReviewsSearchQuery("");
                 }}
-                className="h-8 w-8 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 cursor-pointer transition-colors font-bold"
+                className="h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white flex items-center justify-center cursor-pointer transition-colors border border-white/10"
               >
-                &times;
+                <X className="h-4 w-4" />
               </button>
             </div>
 
@@ -5079,7 +5890,7 @@ function AdminPage() {
                   placeholder="Search by staff name or comment..."
                   value={reviewsSearchQuery}
                   onChange={(e) => setReviewsSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 text-xs font-semibold focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c]"
+                  className="w-full pl-9 pr-3 py-1.5 border border-slate-200 rounded-xl outline-none bg-slate-50/50 text-xs font-semibold focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c]"
                 />
               </div>
 
@@ -5089,7 +5900,7 @@ function AdminPage() {
                 <select
                   value={reviewsSortOrder}
                   onChange={(e) => setReviewsSortOrder(e.target.value as any)}
-                  className="px-2.5 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 text-xs font-bold text-slate-650 cursor-pointer focus:ring-1 focus:ring-[#c9a24c]"
+                  className="px-2.5 py-1.5 border border-slate-200 rounded-xl outline-none bg-slate-50/50 text-xs font-bold text-slate-650 cursor-pointer focus:ring-1 focus:ring-[#c9a24c]"
                 >
                   <option value="high-to-low">⭐ Top Rated First</option>
                   <option value="low-to-high">⭐ Lowest Rated First</option>
@@ -5098,17 +5909,19 @@ function AdminPage() {
             </div>
 
             {/* Content List */}
-            <div className="p-6 overflow-y-auto space-y-4 flex-1 bg-slate-50/20">
+            <div className="p-6 overflow-y-auto space-y-3.5 flex-1 bg-slate-50/30">
               {filteredAndSortedPlatformReviews.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-12 font-semibold">
-                  No platform reviews match your search filter.
-                </p>
+                <div className="text-center py-12 border border-dashed border-slate-200 rounded-2xl bg-white p-6">
+                  <p className="text-xs text-slate-400 font-semibold">
+                    No platform reviews match your search filter.
+                  </p>
+                </div>
               ) : (
-                <div className="grid gap-3.5 grid-cols-1">
+                <div className="grid gap-3 grid-cols-1">
                   {filteredAndSortedPlatformReviews.map((r: any, idx: number) => (
                     <div 
                       key={r.id || idx} 
-                      className="p-4 bg-white border border-slate-100 hover:border-slate-200 rounded-2xl shadow-sm space-y-3 text-left transition-colors"
+                      className="p-4 bg-white border border-slate-200/80 hover:border-slate-300 rounded-2xl shadow-2xs space-y-2 text-left transition-colors"
                     >
                       <div className="flex justify-between items-start">
                         {/* Caretaker Info */}
@@ -5124,18 +5937,18 @@ function AdminPage() {
 
                         {/* Rating Badges */}
                         <div className="text-right">
-                          <span className="inline-block text-[10px] text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded border border-amber-200/60 font-black">
+                          <span className="inline-block text-[10px] text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200 font-black">
                             ⭐ {Number(r.rating || 0).toFixed(1)}
                           </span>
-                          <span className="block text-[8px] text-slate-400 font-bold mt-1">
+                          <span className="block text-[9px] text-slate-400 font-bold mt-0.5">
                             {new Date(r.createdAt || Date.now()).toLocaleDateString()}
                           </span>
                         </div>
                       </div>
 
                       {/* Comment Message */}
-                      <div className="p-3 bg-slate-50/50 rounded-xl border border-slate-100">
-                        <p className="text-xs text-slate-600 leading-relaxed font-semibold italic">
+                      <div className="p-3 bg-slate-50/70 rounded-xl border border-slate-100">
+                        <p className="text-xs text-slate-700 leading-relaxed font-semibold italic">
                           &ldquo;{r.comment || "No written feedback comments submitted."}&rdquo;
                         </p>
                       </div>
@@ -5148,6 +5961,345 @@ function AdminPage() {
           </div>
         </div>
       )}
+
+      {/* REFERRED CANDIDATE FULL KYC & DOSSIER MODAL */}
+      {selectedCandidateDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col premium-card">
+            
+            {/* Header */}
+            <div className="px-6 py-4 bg-gradient-to-r from-[#091438] via-[#112255] to-[#1e2a5a] border-b border-[#c9a24c]/30 flex justify-between items-center text-left shrink-0">
+              <div className="flex items-center gap-3.5">
+                {selectedCandidateDetail.profilePhoto ? (
+                  <img
+                    src={selectedCandidateDetail.profilePhoto}
+                    alt={selectedCandidateDetail.name}
+                    className="h-12 w-12 rounded-2xl object-cover border-2 border-[#c9a24c]/40 shadow-sm"
+                  />
+                ) : (
+                  <div className="h-12 w-12 rounded-2xl bg-white/10 border border-[#c9a24c]/40 flex items-center justify-center text-xl font-bold text-white shadow-inner">
+                    {selectedCandidateDetail.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-lg sm:text-xl font-extrabold text-white font-display">
+                      {selectedCandidateDetail.name}
+                    </h3>
+                    <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border ${
+                      selectedCandidateDetail.status === "Verified" ? "bg-emerald-500/20 text-emerald-300 border-emerald-400/40" :
+                      selectedCandidateDetail.status === "Rejected" ? "bg-rose-500/20 text-rose-300 border-rose-400/40" :
+                      "bg-amber-500/20 text-amber-300 border-amber-400/40"
+                    }`}>
+                      {selectedCandidateDetail.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 font-medium mt-0.5">
+                    {selectedCandidateDetail.specialty} • {selectedCandidateDetail.experience} Years Exp • Joined {new Date(selectedCandidateDetail.joinedAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedCandidateDetail(null)}
+                className="h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white flex items-center justify-center cursor-pointer transition-colors border border-white/10"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-6 text-left flex-1 bg-slate-50/50">
+              
+              {/* Referrer Attribution Banner */}
+              <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200/80 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow-sm shrink-0">
+                    <Gift className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 block">
+                      Referral Attribution &amp; Link Provider
+                    </span>
+                    <h4 className="text-sm font-extrabold text-[#1e2a5a]">
+                      Referred by: {selectedCandidateDetail.referrerName}
+                    </h4>
+                    <p className="text-xs text-slate-600 mt-0.5">
+                      Referral Code Used: <span className="font-mono font-bold text-purple-700">{selectedCandidateDetail.referrerCode}</span>
+                      {selectedCandidateDetail.referrerPhone !== "N/A" && (
+                        <span> • Phone: <a href={`tel:${selectedCandidateDetail.referrerPhone}`} className="text-indigo-600 hover:underline">{selectedCandidateDetail.referrerPhone}</a></span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                <span className="text-[10px] font-bold text-indigo-800 bg-white px-3 py-1 rounded-xl border border-indigo-200 shadow-2xs">
+                  Auto Locked at Registration
+                </span>
+              </div>
+
+              {/* Personal & Contact Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="bg-white p-4 rounded-2xl border border-slate-200/80 space-y-1 shadow-xs">
+                  <span className="text-[10px] font-bold uppercase text-slate-400 block">Phone Number</span>
+                  <a href={`tel:${selectedCandidateDetail.phone}`} className="text-sm font-bold text-[#1e2a5a] hover:underline flex items-center gap-1">
+                    <Phone className="h-3.5 w-3.5 text-[#c9a24c]" /> {selectedCandidateDetail.phone}
+                  </a>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-slate-200/80 space-y-1 shadow-xs">
+                  <span className="text-[10px] font-bold uppercase text-slate-400 block">Email Address</span>
+                  <a href={`mailto:${selectedCandidateDetail.email}`} className="text-sm font-semibold text-slate-800 hover:underline flex items-center gap-1 truncate">
+                    <Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" /> {selectedCandidateDetail.email}
+                  </a>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-slate-200/80 space-y-1 shadow-xs">
+                  <span className="text-[10px] font-bold uppercase text-slate-400 block">Location &amp; State</span>
+                  <span className="text-sm font-semibold text-slate-800 flex items-center gap-1">
+                    <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                    {selectedCandidateDetail.city ? `${selectedCandidateDetail.city}, ` : ""}{selectedCandidateDetail.state || "Telangana"}
+                  </span>
+                  {selectedCandidateDetail.googleMapLocation && (
+                    <a
+                      href={selectedCandidateDetail.googleMapLocation}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-[#c9a24c] font-bold hover:underline flex items-center gap-1 mt-1"
+                    >
+                      <ExternalLink className="h-3 w-3" /> View Map Location
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {/* Work Preferences & Experience Details */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200/80 space-y-3 shadow-xs">
+                <h4 className="text-xs font-extrabold text-[#1e2a5a] uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-2">
+                  <Briefcase className="h-4 w-4 text-[#c9a24c]" /> Experience Details &amp; Availability
+                </h4>
+
+                <div className="text-xs text-slate-700 leading-relaxed space-y-2">
+                  <div>
+                    <span className="font-bold text-slate-500 block mb-0.5">Clinical Skills &amp; Past Postings:</span>
+                    <p className="bg-slate-50 p-3 rounded-xl border border-slate-100 italic">
+                      {selectedCandidateDetail.experienceDetails || "No detailed summary written during registration."}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                    {selectedCandidateDetail.workingLocations && (
+                      <div>
+                        <span className="font-bold text-slate-500 block">Preferred Localities:</span>
+                        <span className="font-semibold text-[#1e2a5a]">{selectedCandidateDetail.workingLocations}</span>
+                      </div>
+                    )}
+                    {selectedCandidateDetail.availableTimings && (
+                      <div>
+                        <span className="font-bold text-slate-500 block">Available Timings:</span>
+                        <span className="font-semibold text-slate-800">{selectedCandidateDetail.availableTimings}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Uploaded KYC Documents Hub */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200/80 space-y-4 shadow-xs">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <h4 className="text-xs font-extrabold text-[#1e2a5a] uppercase tracking-wider flex items-center gap-1.5">
+                    <ShieldCheck className="h-4 w-4 text-emerald-600" /> Uploaded KYC Verification Documents
+                  </h4>
+                  <span className="text-[10px] text-slate-400 font-semibold">Click to preview document in high resolution</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  
+                  {/* Aadhaar */}
+                  <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between gap-2">
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 block">Aadhaar Card</span>
+                      <span className="text-[10px] text-slate-400">Government Identity Record</span>
+                    </div>
+                    {selectedCandidateDetail.aadhaar ? (
+                      <button
+                        type="button"
+                        onClick={() => openDocViewer(selectedCandidateDetail.aadhaar, "Aadhaar Card Document", selectedCandidateDetail.name, "Referred Caregiver")}
+                        className="py-1.5 px-3 rounded-lg bg-[#c9a24c] hover:bg-[#b08726] text-[#1e2a5a] text-xs font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                      >
+                        <Eye className="h-3.5 w-3.5" /> View Aadhaar Card
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-rose-500 font-bold bg-rose-50 py-1 px-2 rounded text-center">
+                        ⚠️ Document Not Provided
+                      </span>
+                    )}
+                  </div>
+
+                  {/* PAN Card */}
+                  <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between gap-2">
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 block">PAN Card</span>
+                      <span className="text-[10px] text-slate-400">Tax ID &amp; Payment Record</span>
+                    </div>
+                    {selectedCandidateDetail.pan ? (
+                      <button
+                        type="button"
+                        onClick={() => openDocViewer(selectedCandidateDetail.pan, "PAN Card Document", selectedCandidateDetail.name, "Referred Caregiver")}
+                        className="py-1.5 px-3 rounded-lg bg-[#1e2a5a] hover:bg-[#283875] text-white text-xs font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                      >
+                        <Eye className="h-3.5 w-3.5" /> View PAN Card
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-slate-400 font-bold bg-slate-100 py-1 px-2 rounded text-center">
+                        Optional / Not Uploaded
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Certificates */}
+                  <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between gap-2">
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 block">Educational Cert</span>
+                      <span className="text-[10px] text-slate-400">Nursing / Clinical Training</span>
+                    </div>
+                    {selectedCandidateDetail.certificates ? (
+                      <button
+                        type="button"
+                        onClick={() => openDocViewer(selectedCandidateDetail.certificates, "Educational Cert", selectedCandidateDetail.name, "Referred Caregiver")}
+                        className="py-1.5 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                      >
+                        <Eye className="h-3.5 w-3.5" /> View Certificate
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-slate-400 font-bold bg-slate-100 py-1 px-2 rounded text-center">
+                        Not Uploaded
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Experience Certificate */}
+                  <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between gap-2">
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 block">Experience Letter</span>
+                      <span className="text-[10px] text-slate-400">Hospital Service Reference</span>
+                    </div>
+                    {selectedCandidateDetail.experienceCertificate ? (
+                      <button
+                        type="button"
+                        onClick={() => openDocViewer(selectedCandidateDetail.experienceCertificate, "Experience Certificate", selectedCandidateDetail.name, "Referred Caregiver")}
+                        className="py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                      >
+                        <Eye className="h-3.5 w-3.5" /> View Experience Cert
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-slate-400 font-bold bg-slate-100 py-1 px-2 rounded text-center">
+                        Not Uploaded
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Police Verification */}
+                  <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between gap-2">
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 block">Police Verification</span>
+                      <span className="text-[10px] text-slate-400">Background Safety Check</span>
+                    </div>
+                    {selectedCandidateDetail.policeVerification ? (
+                      <button
+                        type="button"
+                        onClick={() => openDocViewer(selectedCandidateDetail.policeVerification, "Police Verification Record", selectedCandidateDetail.name, "Referred Caregiver")}
+                        className="py-1.5 px-3 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                      >
+                        <Eye className="h-3.5 w-3.5" /> View Police Clearance
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-slate-400 font-bold bg-slate-100 py-1 px-2 rounded text-center">
+                        Not Uploaded
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Additional Certificates */}
+                  <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between gap-2">
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 block">Additional Certs</span>
+                      <span className="text-[10px] text-slate-400">Special Clinical Courses</span>
+                    </div>
+                    {selectedCandidateDetail.additionalCertificates ? (
+                      <button
+                        type="button"
+                        onClick={() => openDocViewer(selectedCandidateDetail.additionalCertificates, "Additional Certificates", selectedCandidateDetail.name, "Referred Caregiver")}
+                        className="py-1.5 px-3 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                      >
+                        <Eye className="h-3.5 w-3.5" /> View Extra Certs
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-slate-400 font-bold bg-slate-100 py-1 px-2 rounded text-center">
+                        None
+                      </span>
+                    )}
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+
+            {/* Modal Footer Controls */}
+            <div className="px-6 py-4 bg-white border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
+                <span>Update Status:</span>
+                <span className={`px-2.5 py-0.5 rounded-full ${
+                  selectedCandidateDetail.status === "Verified" ? "bg-emerald-100 text-emerald-800" :
+                  selectedCandidateDetail.status === "Rejected" ? "bg-rose-100 text-rose-800" :
+                  "bg-amber-100 text-amber-800"
+                }`}>
+                  Current: {selectedCandidateDetail.status}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <button
+                  type="button"
+                  onClick={() => handleUpdateCaregiverStatus(selectedCandidateDetail.id, "Verified")}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                >
+                  <Check className="h-4 w-4" /> Approve &amp; Verify Staff
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleUpdateCaregiverStatus(selectedCandidateDetail.id, "Pending")}
+                  className="px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <Clock className="h-4 w-4" /> Mark Pending
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleUpdateCaregiverStatus(selectedCandidateDetail.id, "Rejected")}
+                  className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <XCircle className="h-4 w-4" /> Reject
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ENTERPRISE DOCUMENT VIEWER MODAL */}
+      <DocumentViewerModal
+        isOpen={docViewerState.isOpen}
+        onClose={() => setDocViewerState(s => ({ ...s, isOpen: false }))}
+        docUrl={docViewerState.docUrl}
+        docTitle={docViewerState.docTitle}
+        applicantName={docViewerState.applicantName}
+        category={docViewerState.category}
+      />
 
     </div>
   );

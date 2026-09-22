@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+
+  <!-- Homepage -->
+  <url>
+    <loc>https://ammaseva.in/</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- Services Catalog -->
+  <url>
+    <loc>https://ammaseva.in/services</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.95</priority>
+  </url>
+
+  <!-- Dedicated Service Pages -->
+  <url>
+    <loc>https://ammaseva.in/services/elderly-care</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.90</priority>
+  </url>
+
+  <url>
+    <loc>https://ammaseva.in/services/mother-baby-care</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.90</priority>
+  </url>
+
+  <url>
+    <loc>https://ammaseva.in/services/pregnancy-care</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <url>
+    <loc>https://ammaseva.in/services/newborn-baby-care</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <url>
+    <loc>https://ammaseva.in/services/home-nursing</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.90</priority>
+  </url>
+
+  <url>
+    <loc>https://ammaseva.in/services/bedside-attendant</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.90</priority>
+  </url>
+
+  <url>
+    <loc>https://ammaseva.in/services/bedridden-patient-care</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.90</priority>
+  </url>
+
+  <url>
+    <loc>https://ammaseva.in/services/icu-home-recovery</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.90</priority>
+  </url>
+
+  <url>
+    <loc>https://ammaseva.in/services/physiotherapy</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.90</priority>
+  </url>
+
+  <url>
+    <loc>https://ammaseva.in/services/doctor-consultation</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <url>
+    <loc>https://ammaseva.in/services/mtp</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.90</priority>
+  </url>
+
+  <!-- MTP Transportation & Hospital Escort -->
+  <url>
+    <loc>https://ammaseva.in/mtp</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.90</priority>
+  </url>
+
+  <!-- Careers & Caregiver Registration -->
+  <url>
+    <loc>https://ammaseva.in/careers</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- About Us -->
+  <url>
+    <loc>https://ammaseva.in/about</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.80</priority>
+  </url>
+
+  <!-- Photo Gallery -->
+  <url>
+    <loc>https://ammaseva.in/gallery</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+
+  <!-- Contact Us -->
+  <url>
+    <loc>https://ammaseva.in/contact</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.80</priority>
+  </url>
+
+  <!-- Health Blog -->
+  <url>
+    <loc>https://ammaseva.in/blog</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Legal & Policies -->
+  <url>
+    <loc>https://ammaseva.in/privacy</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.40</priority>
+  </url>
+
+  <url>
+    <loc>https://ammaseva.in/terms</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.40</priority>
+  </url>
+
+  <url>
+    <loc>https://ammaseva.in/refund</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.40</priority>
+  </url>
+
+</urlset>

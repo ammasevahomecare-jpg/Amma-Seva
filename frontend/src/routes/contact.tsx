@@ -1,6 +1,6 @@
 import React from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Phone, MessageCircle, Mail, MapPin, Send, ArrowRight } from "lucide-react";
+import { Phone, MessageCircle, Mail, MapPin, Send, ArrowRight, Instagram } from "lucide-react";
 import { SiteLayout, contact } from "@/components/SiteLayout";
 
 export const Route = createFileRoute("/contact")({
@@ -66,6 +66,13 @@ function Contact() {
                 value={contact.EMAIL} 
                 subtext="For partnership, careers or feedback."
                 href={`mailto:${contact.EMAIL}`} 
+              />
+              <ContactRow 
+                icon={Instagram} 
+                label="Official Instagram" 
+                value="@amma.seva" 
+                subtext="Follow us for care tips, moments, and updates."
+                href={contact.INSTAGRAM} 
               />
               <ContactRow 
                 icon={MapPin} 
