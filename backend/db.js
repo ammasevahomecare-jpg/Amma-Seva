@@ -2256,6 +2256,39 @@ export const db = {
     }
   },
 
+  updateCaregiverStatus: async (id, status) => {
+    if (useMySQL) {
+      const [result] = await pool.query('UPDATE caregivers SET status = ? WHERE id = ?', [status, id])
+      try {
+        await pool.query('UPDATE referrals SET status = ? WHERE candidate_id = ?', [status, id])
+      } catch (e) {
+        console.error('Error syncing referral status in MySQL:', e)
+      }
+      return result.affectedRows > 0
+    } else {
+      const data = await readJSONDb()
+      let updated = false
+      if (data.caregivers) {
+        const idx = data.caregivers.findIndex(c => c.id === Number(id))
+        if (idx > -1) {
+          data.caregivers[idx].status = status
+          updated = true
+        }
+      }
+      if (data.referrals) {
+        data.referrals.filter(r => r.candidateId === Number(id)).forEach(r => {
+          r.status = status
+          updated = true
+        })
+      }
+      if (updated) {
+        await writeJSONDb(data)
+        return true
+      }
+      return false
+    }
+  },
+
   deleteCaregiver: async (id) => {
     if (useMySQL) {
       const [result] = await pool.query('DELETE FROM caregivers WHERE id = ?', [id])

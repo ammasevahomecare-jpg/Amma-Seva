@@ -509,21 +509,22 @@ function AdminPage() {
       .then((data) => {
         if (data.success) {
           setCaregivers(prev => 
-            prev.map(c => c.id === id ? { ...c, status } : c)
+            prev.map(c => (c.id === id || (c as any).candidateId === id) ? { ...c, status } : c)
           );
           // Also update referral candidate if open or in state
-          setSelectedCandidateDetail(prev => prev && prev.id === id ? { ...prev, status } : prev);
-          // Refetch referral network to sync counts
-          const fetchWithAuth = async (url: string) => {
-            const res = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
-            return res.json();
-          };
-          fetchWithAuth("/api/admin/referrals")
-            .then(res => { if (res && res.success) setReferralsData(res); })
-            .catch(() => {});
+          setSelectedCandidateDetail(prev => 
+            prev && (prev.id === id || prev.candidateId === id) ? { ...prev, status } : prev
+          );
+          // Sync whole dashboard data
+          fetchDashboardData();
+        } else {
+          alert(data.error || "Failed to update status.");
         }
       })
-      .catch(err => console.error(err));
+      .catch(err => {
+        console.error(err);
+        alert("Failed to update status due to network error.");
+      });
   };
 
   // DELETE actions
@@ -6268,7 +6269,7 @@ function AdminPage() {
               <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                 <button
                   type="button"
-                  onClick={() => handleUpdateCaregiverStatus(selectedCandidateDetail.id, "Verified")}
+                  onClick={() => handleUpdateCaregiverStatus(selectedCandidateDetail.candidateId || selectedCandidateDetail.id, "Verified")}
                   className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
                 >
                   <Check className="h-4 w-4" /> Approve &amp; Verify Staff
@@ -6276,7 +6277,7 @@ function AdminPage() {
 
                 <button
                   type="button"
-                  onClick={() => handleUpdateCaregiverStatus(selectedCandidateDetail.id, "Pending")}
+                  onClick={() => handleUpdateCaregiverStatus(selectedCandidateDetail.candidateId || selectedCandidateDetail.id, "Pending")}
                   className="px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
                 >
                   <Clock className="h-4 w-4" /> Mark Pending
@@ -6284,7 +6285,7 @@ function AdminPage() {
 
                 <button
                   type="button"
-                  onClick={() => handleUpdateCaregiverStatus(selectedCandidateDetail.id, "Rejected")}
+                  onClick={() => handleUpdateCaregiverStatus(selectedCandidateDetail.candidateId || selectedCandidateDetail.id, "Rejected")}
                   className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
                 >
                   <XCircle className="h-4 w-4" /> Reject

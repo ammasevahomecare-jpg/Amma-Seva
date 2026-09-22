@@ -104,6 +104,13 @@ function LoginPage() {
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
+  const [registrationSuccessData, setRegistrationSuccessData] = useState<{
+    name: string;
+    email: string;
+    role: "customer" | "caretaker";
+    specialty?: string;
+    code?: string;
+  } | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setFileState: (val: string) => void) => {
     const file = e.target.files?.[0];
@@ -297,12 +304,15 @@ function LoginPage() {
         })
         .then((data) => {
           if (data.success) {
-            setSuccessMsg(data.message || "Account registered successfully!");
-            setTimeout(() => {
-              setMode("login");
-              setAuthStep("email");
-              setSuccessMsg(null);
-            }, 1800);
+            setRegistrationSuccessData({
+              name: name.trim(),
+              email: email.toLowerCase().trim(),
+              role,
+              specialty: role === "caretaker" ? specialty : undefined,
+              code: data.caretaker?.referCode || data.caretaker?.uniqueId || undefined
+            });
+            setError(null);
+            setSuccessMsg(null);
           }
         })
         .catch((err) => {
@@ -1461,6 +1471,127 @@ function LoginPage() {
                 className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
               >
                 Close
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Premium Registration Success Confirmation Modal */}
+      {registrationSuccessData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/75 backdrop-blur-md">
+          <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-emerald-100 flex flex-col max-h-[90vh]">
+            
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 p-6 sm:p-7 text-center relative overflow-hidden">
+              <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-white/10 rounded-full blur-xl pointer-events-none" />
+              <div className="absolute bottom-0 left-0 -ml-8 -mb-8 w-32 h-32 bg-emerald-400/20 rounded-full blur-xl pointer-events-none" />
+              
+              <div className="w-16 h-16 bg-white rounded-2xl shadow-lg mx-auto flex items-center justify-center mb-4 text-emerald-600">
+                <CheckCircle2 className="w-10 h-10 text-emerald-600" />
+              </div>
+
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm text-white text-xs font-bold uppercase tracking-wider mb-2">
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span>Application Submitted Successfully</span>
+              </div>
+
+              <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                Thank You for Registering!
+              </h2>
+              <p className="text-emerald-100 text-xs sm:text-sm mt-1 font-medium">
+                {registrationSuccessData.role === "caretaker" 
+                  ? "Your Caregiver application & KYC details have been safely received." 
+                  : "Your customer account has been created successfully."}
+              </p>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 sm:p-7 space-y-4 overflow-y-auto">
+              {/* Status Box */}
+              <div className="bg-amber-50/90 border border-amber-200/80 rounded-2xl p-4 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center shrink-0 text-amber-700 mt-0.5">
+                  <Clock className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wide">
+                    {registrationSuccessData.role === "caretaker" ? "Under Clinical & KYC Verification" : "Account Active"}
+                  </h4>
+                  <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
+                    {registrationSuccessData.role === "caretaker"
+                      ? "Our medical coordination desk is verifying your uploaded KYC & credentials. Verification is usually completed within 4–12 hours."
+                      : "You can now book verified nurses, caregivers, and home health attendants across Hyderabad."}
+                  </p>
+                </div>
+              </div>
+
+              {/* Applicant Card Summary */}
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-2.5 text-xs text-slate-700">
+                <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                  <span className="text-slate-500 font-medium">Applicant Name</span>
+                  <span className="font-bold text-slate-900">{registrationSuccessData.name}</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                  <span className="text-slate-500 font-medium">Registered Email</span>
+                  <span className="font-semibold text-slate-800 break-all">{registrationSuccessData.email}</span>
+                </div>
+                {registrationSuccessData.specialty && (
+                  <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                    <span className="text-slate-500 font-medium">Specialty / Role</span>
+                    <span className="font-bold text-teal-700">{registrationSuccessData.specialty}</span>
+                  </div>
+                )}
+                {registrationSuccessData.code && (
+                  <div className="flex justify-between items-center py-1">
+                    <span className="text-slate-500 font-medium">Staff Partner ID</span>
+                    <span className="font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                      {registrationSuccessData.code}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Email Confirmation Notice */}
+              <div className="flex items-center gap-2 text-xs text-slate-600 bg-emerald-50/70 border border-emerald-100 rounded-xl p-3">
+                <Mail className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>
+                  We've sent an official confirmation email to <strong>{registrationSuccessData.email}</strong>.
+                </span>
+              </div>
+
+              <div className="text-center text-xs text-slate-500 leading-relaxed pt-1">
+                Please log in with your registered email to track real-time KYC status and access your Amma Seva dashboard.
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="p-6 sm:p-7 pt-0 flex flex-col sm:flex-row gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  const regEmail = registrationSuccessData.email;
+                  setRegistrationSuccessData(null);
+                  setMode("login");
+                  setEmail(regEmail);
+                  setAuthStep("email");
+                  setError(null);
+                  setSuccessMsg("🎉 Registration complete! Click 'Send Verification Code' to log in.");
+                }}
+                className="w-full sm:flex-1 py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-emerald-600/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>Go to Login & Check Status</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setRegistrationSuccessData(null);
+                  navigate({ to: "/" });
+                }}
+                className="w-full sm:w-auto py-3 px-5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl transition-colors cursor-pointer text-center"
+              >
+                Back to Home
               </button>
             </div>
 

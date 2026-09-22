@@ -173,6 +173,233 @@ const handleBookingEmailNotification = async (bookingId, oldBooking, newStatus, 
   }
 }
 
+// 2. Caregiver / Caretaker Registration Welcome Email
+const sendCaregiverRegistrationEmail = async (caregiver) => {
+  if (!caregiver || !caregiver.email || !caregiver.email.includes('@') || caregiver.email.includes('@applicant.ammaseva.in')) {
+    return
+  }
+  const cleanEmail = caregiver.email.trim()
+  const name = caregiver.name || 'Care Partner'
+  const specialty = caregiver.specialty || 'Home Healthcare Specialist'
+  const phone = caregiver.phone || 'N/A'
+  const code = caregiver.referCode || caregiver.uniqueId || 'STAFF0000'
+  const city = caregiver.city || 'Hyderabad'
+
+  const mailOptions = {
+    from: `"Amma Seva Onboarding" <${cleanSmtpEmail}>`,
+    to: cleanEmail,
+    subject: `Application Received — Welcome to Amma Seva Caregiving Network`,
+    html: `
+      <div style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
+        
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #091438 0%, #1e2a5a 50%, #091438 100%); padding: 32px 24px; text-align: center; border-bottom: 3px solid #c9a24c;">
+          <div style="display: inline-block; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); padding: 8px 18px; margin-bottom: 12px; border-radius: 30px;">
+            <span style="color: #ffd700; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;">✨ Official Caregiver Registration</span>
+          </div>
+          <h1 style="color: #ffffff; font-size: 24px; margin: 0; font-weight: 800; letter-spacing: -0.5px;">Welcome to Amma Seva</h1>
+          <p style="color: #cbd5e1; font-size: 13px; margin: 6px 0 0 0;">Hyderabad's Most Trusted Home Healthcare Network</p>
+        </div>
+
+        <!-- Body -->
+        <div style="padding: 32px 28px; color: #334155; line-height: 1.6;">
+          <p style="font-size: 16px; font-weight: bold; color: #091438; margin-top: 0;">Dear ${name},</p>
+          <p style="font-size: 14px; color: #475569; margin-bottom: 20px;">
+            Thank you for registering as a Caregiver / Staff Partner with <strong>Amma Seva</strong>. We have safely received your profile details and KYC verification documents.
+          </p>
+
+          <!-- Status Highlight Card -->
+          <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #c9a24c; border-radius: 12px; padding: 18px 20px; margin-bottom: 24px;">
+            <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #94a3b8; letter-spacing: 1px;">Application Status</div>
+            <div style="font-size: 15px; font-weight: 800; color: #d97706; margin-top: 2px;">
+              ⏳ Under Clinical &amp; KYC Verification
+            </div>
+            <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
+              Our coordination desk is reviewing your documents. Turnaround time is usually within <strong>4–12 hours</strong>.
+            </div>
+          </div>
+
+          <!-- Application Summary Table -->
+          <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #334155; margin-bottom: 24px; background: #ffffff; border: 1px solid #f1f5f9; border-radius: 12px;">
+            <tr style="border-bottom: 1px solid #f1f5f9; background: #fafafa;">
+              <td style="padding: 10px 14px; font-weight: bold; color: #64748b;">Staff ID / Code</td>
+              <td style="padding: 10px 14px; text-align: right; font-weight: bold; color: #1e2a5a; font-family: monospace;">${code}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+              <td style="padding: 10px 14px; font-weight: bold; color: #64748b;">Applicant Name</td>
+              <td style="padding: 10px 14px; text-align: right; font-weight: 600;">${name}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+              <td style="padding: 10px 14px; font-weight: bold; color: #64748b;">Specialty / Role</td>
+              <td style="padding: 10px 14px; text-align: right; font-weight: 600; color: #0284c7;">${specialty}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+              <td style="padding: 10px 14px; font-weight: bold; color: #64748b;">Registered Phone</td>
+              <td style="padding: 10px 14px; text-align: right;">${phone}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 14px; font-weight: bold; color: #64748b;">Operational City</td>
+              <td style="padding: 10px 14px; text-align: right;">${city}</td>
+            </tr>
+          </table>
+
+          <!-- Next Steps & Portal Button -->
+          <div style="background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); border: 1px solid #bbf7d0; border-radius: 14px; padding: 20px; text-align: center; margin-bottom: 24px;">
+            <h3 style="color: #166534; font-size: 14px; margin: 0 0 8px 0; font-weight: 800;">🔑 Track Your Application in Real-Time</h3>
+            <p style="color: #15803d; font-size: 12px; margin: 0 0 16px 0;">
+              You can log in to your caretaker control dashboard using your registered mobile number/email to check real-time KYC verification and shift assignments.
+            </p>
+            <a href="https://ammaseva.in/login" style="display: inline-block; background-color: #091438; color: #ffd700; font-size: 13px; font-weight: 800; text-decoration: none; padding: 12px 28px; border-radius: 12px; box-shadow: 0 4px 12px rgba(9, 20, 56, 0.25);">
+              Login &amp; Check Status →
+            </a>
+          </div>
+
+          <p style="font-size: 12px; color: #94a3b8; text-align: center; margin-bottom: 0;">
+            Need help? Reach out to our 24/7 care desk at <a href="tel:+919989832222" style="color: #1e2a5a; font-weight: bold; text-decoration: none;">+91 99898 32222</a> or <a href="mailto:ammasevahomecare@gmail.com" style="color: #1e2a5a; text-decoration: none;">ammasevahomecare@gmail.com</a>.
+          </p>
+        </div>
+
+        <!-- Footer -->
+        <div style="background-color: #f8fafc; padding: 16px 24px; text-align: center; border-top: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8;">
+          © ${new Date().getFullYear()} Amma Seva Home Healthcare • Hyderabad, Telangana • All Rights Reserved
+        </div>
+      </div>
+    `
+  }
+
+  try {
+    await transporter.sendMail(mailOptions)
+    console.log(`[Caretaker Onboarding Email] Sent registration confirmation to ${cleanEmail}`)
+  } catch (err) {
+    console.error('Failed to send caretaker registration email:', err.message)
+  }
+}
+
+// 3. Caregiver / Caretaker Admin Status Update (Approved / Rejected) Email
+const sendCaregiverApprovalEmail = async (caregiver, status) => {
+  if (!caregiver || !caregiver.email || !caregiver.email.includes('@') || caregiver.email.includes('@applicant.ammaseva.in')) {
+    return
+  }
+  const cleanEmail = caregiver.email.trim()
+  const name = caregiver.name || 'Care Partner'
+  const specialty = caregiver.specialty || 'Home Healthcare Specialist'
+  const code = caregiver.referCode || caregiver.uniqueId || 'STAFF0000'
+
+  if (status === 'Verified') {
+    const mailOptions = {
+      from: `"Amma Seva Approvals" <${cleanSmtpEmail}>`,
+      to: cleanEmail,
+      subject: `🎉 Congratulations! Your Amma Seva Caregiver Profile is Approved & Verified`,
+      html: `
+        <div style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
+          
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #064e3b 0%, #047857 50%, #064e3b 100%); padding: 32px 24px; text-align: center; border-bottom: 3px solid #ffd700;">
+            <div style="display: inline-block; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); padding: 8px 18px; margin-bottom: 12px; border-radius: 30px;">
+              <span style="color: #ffffff; font-size: 11px; font-weight: 900; letter-spacing: 1.5px; text-transform: uppercase;">🌟 100% Verified Care Partner</span>
+            </div>
+            <h1 style="color: #ffffff; font-size: 24px; margin: 0; font-weight: 800;">Congratulations, ${name}!</h1>
+            <p style="color: #a7f3d0; font-size: 13px; margin: 6px 0 0 0;">Your Application Has Been Approved by Amma Seva</p>
+          </div>
+
+          <!-- Body -->
+          <div style="padding: 32px 28px; color: #334155; line-height: 1.6;">
+            <p style="font-size: 15px; color: #334155; margin-top: 0;">
+              We are pleased to inform you that your clinical credentials and KYC verification documents have been <strong>officially approved</strong>. You are now an active care partner with <strong>Amma Seva</strong>.
+            </p>
+
+            <!-- Verification Badge Card -->
+            <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 2px solid #86efac; border-radius: 14px; padding: 20px; margin-bottom: 24px; text-align: center;">
+              <div style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #15803d; letter-spacing: 1px;">Official Verification Status</div>
+              <div style="font-size: 20px; font-weight: 900; color: #166534; margin-top: 4px;">
+                ✅ VERIFIED &amp; ACTIVE
+              </div>
+              <div style="font-size: 12px; color: #15803d; margin-top: 4px;">
+                Unique Staff Partner ID: <strong style="font-family: monospace; font-size: 14px;">${code}</strong>
+              </div>
+            </div>
+
+            <!-- Certified Details Table -->
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #334155; margin-bottom: 24px; background: #ffffff; border: 1px solid #f1f5f9; border-radius: 12px;">
+              <tr style="border-bottom: 1px solid #f1f5f9; background: #fafafa;">
+                <td style="padding: 10px 14px; font-weight: bold; color: #64748b;">Staff Name</td>
+                <td style="padding: 10px 14px; text-align: right; font-weight: 700;">${name}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 10px 14px; font-weight: bold; color: #64748b;">Authorized Specialty</td>
+                <td style="padding: 10px 14px; text-align: right; font-weight: 700; color: #047857;">${specialty}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 10px 14px; font-weight: bold; color: #64748b;">Approval Date</td>
+                <td style="padding: 10px 14px; text-align: right;">${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px 14px; font-weight: bold; color: #64748b;">Referral Link &amp; Code</td>
+                <td style="padding: 10px 14px; text-align: right; font-family: monospace; font-weight: bold; color: #1e2a5a;">${code}</td>
+              </tr>
+            </table>
+
+            <!-- What You Can Do Now -->
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px; margin-bottom: 24px;">
+              <h4 style="margin: 0 0 10px 0; color: #091438; font-size: 13px; font-weight: 800; text-transform: uppercase;">🚀 What's Next?</h4>
+              <ul style="margin: 0; padding-left: 18px; font-size: 13px; color: #475569; line-height: 1.6;">
+                <li><strong>Accept Patient Shifts</strong>: Receive nearby home nursing, companionship, or recovery requests.</li>
+                <li><strong>Log Service Records</strong>: Track patient vitals, medication logs, and attendance on your dashboard.</li>
+                <li><strong>Refer Caretakers</strong>: Earn referral rewards by sharing your code <strong style="color: #091438;">${code}</strong>.</li>
+              </ul>
+            </div>
+
+            <!-- Login Button -->
+            <div style="text-align: center; margin-bottom: 20px;">
+              <a href="https://ammaseva.in/login" style="display: inline-block; background-color: #091438; color: #ffd700; font-size: 14px; font-weight: 800; text-decoration: none; padding: 14px 32px; border-radius: 12px; box-shadow: 0 4px 12px rgba(9, 20, 56, 0.25);">
+                Access Caretaker Dashboard →
+              </a>
+            </div>
+
+            <p style="font-size: 12px; color: #94a3b8; text-align: center; margin-bottom: 0;">
+              Welcome aboard to the Amma Seva family! If you have questions, our coordination team is reachable at <a href="tel:+919989832222" style="color: #047857; font-weight: bold; text-decoration: none;">+91 99898 32222</a>.
+            </p>
+          </div>
+
+          <!-- Footer -->
+          <div style="background-color: #f8fafc; padding: 16px 24px; text-align: center; border-top: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8;">
+            © ${new Date().getFullYear()} Amma Seva Home Healthcare • Hyderabad, Telangana • All Rights Reserved
+          </div>
+        </div>
+      `
+    }
+    try {
+      await transporter.sendMail(mailOptions)
+      console.log(`[Caretaker Approval Email] Sent approval notification to ${cleanEmail}`)
+    } catch (err) {
+      console.error('Failed to send caretaker approval email:', err.message)
+    }
+  } else if (status === 'Rejected') {
+    const mailOptions = {
+      from: `"Amma Seva Verification Desk" <${cleanSmtpEmail}>`,
+      to: cleanEmail,
+      subject: `Update regarding your Amma Seva Caregiver Application`,
+      html: `
+        <div style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; padding: 32px 24px; color: #334155;">
+          <h2 style="color: #e11d48; margin-top: 0;">Application Status Update</h2>
+          <p>Dear ${name},</p>
+          <p>Thank you for your interest in joining Amma Seva. Following verification of the submitted KYC records, your application could not be verified at this time due to incomplete documentation or mismatched records.</p>
+          <p>If you believe this was in error or wish to provide updated documents, please contact our support team at <a href="mailto:ammasevahomecare@gmail.com">ammasevahomecare@gmail.com</a> or call <a href="tel:+919989832222">+91 99898 32222</a>.</p>
+          <p style="margin-top: 24px; color: #64748b; font-size: 13px;">Warm regards,<br>Amma Seva Verification Desk</p>
+        </div>
+      `
+    }
+    try {
+      await transporter.sendMail(mailOptions)
+      console.log(`[Caretaker Rejection Email] Sent rejection notification to ${cleanEmail}`)
+    } catch (err) {
+      console.error('Failed to send caretaker rejection email:', err.message)
+    }
+  }
+}
+
+
+
 
 
 const app = express()
@@ -1175,6 +1402,10 @@ app.post('/api/caretaker/register', async (req, res) => {
     })
 
     const token = jwt.sign({ id: newCaregiver.id, role: 'caretaker', email: newCaregiver.email }, JWT_SECRET, { expiresIn: '7d' })
+    
+    // Send professional onboarding confirmation email
+    sendCaregiverRegistrationEmail(newCaregiver).catch(e => console.error('Onboarding email dispatch error:', e))
+
     res.status(201).json({
       success: true,
       message: 'Caregiver application submitted! Verification is pending.',
@@ -1914,6 +2145,7 @@ app.post('/api/caregiver', async (req, res) => {
   }
   try {
     const newCaregiver = await db.addCaregiver({ name, phone, email, specialty, experience, referredBy })
+    sendCaregiverRegistrationEmail(newCaregiver).catch(e => console.error('Caregiver onboarding email error:', e))
     res.status(201).json({
       success: true,
       message: 'Registration profile submitted!',
@@ -1952,6 +2184,9 @@ app.post('/api/careers/apply', async (req, res) => {
       referredBy: cleanReferredBy
     })
 
+    // Trigger onboarding welcome email if email provided
+    sendCaregiverRegistrationEmail(newCaregiver).catch(e => console.error('Careers onboarding email error:', e))
+
     // Also record as enquiry for fast coordinator follow-up
     await db.addEnquiry({
       name,
@@ -1981,6 +2216,10 @@ app.put('/api/caregiver/:id', authenticateAdmin, async (req, res) => {
   try {
     const updated = await db.updateCaregiverStatus(req.params.id, status)
     if (updated) {
+      const caregiver = await db.getCaregiverById(req.params.id)
+      if (caregiver) {
+        sendCaregiverApprovalEmail(caregiver, status).catch(e => console.error('Caregiver status update email error:', e))
+      }
       res.json({ success: true, message: `Caregiver status updated to ${status}.` })
     } else {
       res.status(404).json({ error: 'Caregiver not found.' })
@@ -2483,6 +2722,55 @@ app.post('/api/notifications', authenticateAdmin, async (req, res) => {
     res.status(201).json({ success: true, message: 'Notification successfully dispatched!', data: log })
   } catch (err) {
     res.status(500).json({ error: 'Failed to send notification.' })
+  }
+})
+
+// GET Referral Network Analytics & Candidate List (Admin Panel)
+app.get('/api/admin/referrals', authenticateAdmin, async (req, res) => {
+  try {
+    const referrals = await db.getReferrals() || []
+    
+    // Aggregate by referrer
+    const referrerMap = {}
+    
+    referrals.forEach(r => {
+      const code = (r.referrerCode || 'DIRECT').toUpperCase()
+      if (!referrerMap[code]) {
+        referrerMap[code] = {
+          code,
+          referrerName: r.referrerName || 'Staff Partner',
+          referrerPhone: r.referrerPhone || 'N/A',
+          totalReferrals: 0,
+          verifiedReferrals: 0,
+          pendingReferrals: 0,
+          rejectedReferrals: 0,
+          candidates: []
+        }
+      }
+      referrerMap[code].totalReferrals++
+      if (r.status === 'Verified') referrerMap[code].verifiedReferrals++
+      else if (r.status === 'Rejected') referrerMap[code].rejectedReferrals++
+      else referrerMap[code].pendingReferrals++
+
+      referrerMap[code].candidates.push(r)
+    })
+
+    const referrers = Object.values(referrerMap)
+    const totalReferrals = referrals.length
+    const verifiedReferrals = referrals.filter(r => r.status === 'Verified').length
+    const pendingReferrals = referrals.filter(r => r.status === 'Pending').length
+
+    res.json({
+      success: true,
+      totalReferrals,
+      verifiedReferrals,
+      pendingReferrals,
+      referrers,
+      allReferredCandidates: referrals
+    })
+  } catch (err) {
+    console.error('Failed to retrieve referrals:', err)
+    res.status(500).json({ error: 'Failed to retrieve referrals network data.' })
   }
 })
 
