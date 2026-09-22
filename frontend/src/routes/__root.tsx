@@ -85,15 +85,20 @@ function RootComponent() {
 
     // Track Single-Page-App (SPA) route changes in Google Analytics GA4
     if (typeof window !== "undefined" && typeof (window as any).gtag === "function") {
-      const pagePath = location.pathname + location.search;
-      (window as any).gtag("config", "G-2Q1YD8K196", {
-        page_path: pagePath,
-        page_title: document.title,
-      });
+      try {
+        const searchStr = window.location.search || "";
+        const pagePath = location.pathname + searchStr;
+        (window as any).gtag("config", "G-2Q1YD8K196", {
+          page_path: pagePath,
+          page_title: document.title,
+        });
+      } catch (e) {
+        console.error("GA tracking error:", e);
+      }
     }
 
     return () => clearTimeout(timer);
-  }, [location.pathname, location.search]);
+  }, [location.pathname, location.searchStr || location.href || ""]);
 
   return (
     <QueryClientProvider client={queryClient}>

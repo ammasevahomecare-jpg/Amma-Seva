@@ -1389,7 +1389,7 @@ function AdminPage() {
               { id: "overview", label: "Dashboard", icon: LayoutDashboard },
               { id: "bookings", label: "Manage Bookings", icon: CalendarDays },
               { id: "caregivers", label: "Employees & Staff", icon: UserCheck },
-              { id: "referrals", label: "Referral Network", icon: Gift, badge: referralsData?.summary.totalPending || 0 },
+              { id: "referrals", label: "Referral Network", icon: Gift, badge: referralsData?.summary?.totalPending || 0 },
               { id: "mtps", label: "MTP Registrations", icon: Briefcase, badge: mtps.filter(m => m.status === "Pending").length },
               { id: "users", label: "Patients", icon: Users },
               { id: "services", label: "Services", icon: Sliders },
@@ -4389,11 +4389,11 @@ function AdminPage() {
           {/* Referral Network Intelligence & Tracking Panel */}
           {activeTab === "referrals" && (() => {
             const summary = referralsData?.summary || {
-              totalCaregivers: caregivers.length,
-              activeReferrersCount: referralsData?.referrers.filter(r => r.referredCount > 0).length || 0,
-              totalReferred: referralsData?.allReferredCandidates.length || 0,
-              totalVerified: referralsData?.allReferredCandidates.filter(c => c.status === "Verified").length || 0,
-              totalPending: referralsData?.allReferredCandidates.filter(c => c.status !== "Verified").length || 0
+              totalCaregivers: caregivers?.length || 0,
+              activeReferrersCount: (referralsData?.referrers || []).filter(r => (r?.referredCount || 0) > 0).length || 0,
+              totalReferred: (referralsData?.allReferredCandidates || []).length || 0,
+              totalVerified: (referralsData?.allReferredCandidates || []).filter(c => c?.status === "Verified").length || 0,
+              totalPending: (referralsData?.allReferredCandidates || []).filter(c => c?.status !== "Verified").length || 0
             };
 
             const referrersList = referralsData?.referrers || [];
