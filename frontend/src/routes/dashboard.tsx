@@ -896,11 +896,14 @@ function CustomerDashboard() {
         if (!orderRes.ok) {
           throw new Error(orderData.error || "Failed to initiate online payment order.");
         }
+        if (!orderData.keyId) {
+          throw new Error("Razorpay Key ID not configured on the server.");
+        }
 
         const options = {
-          key: "rzp_test_SwedUUn1KgRMs0",
+          key: orderData.keyId,
           amount: orderData.amount,
-          currency: orderData.currency,
+          currency: orderData.currency || "INR",
           name: "Amma Seva",
           description: `Care Booking - ${currentService.title}`,
           order_id: orderData.orderId,
@@ -1085,12 +1088,15 @@ function CustomerDashboard() {
       if (!orderRes.ok) {
         throw new Error(orderData.error || "Failed to initiate online payment order.");
       }
+      if (!orderData.keyId) {
+        throw new Error("Razorpay Key ID not configured on the server.");
+      }
 
       // 2. Open Razorpay checkout modal
       const options = {
-        key: "rzp_test_SwedUUn1KgRMs0",
+        key: orderData.keyId,
         amount: orderData.amount,
-        currency: orderData.currency,
+        currency: orderData.currency || "INR",
         name: "Amma Seva",
         description: `Balance Payment for Booking #${booking.id}`,
         order_id: orderData.orderId,

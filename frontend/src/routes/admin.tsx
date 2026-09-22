@@ -3244,7 +3244,12 @@ function AdminPage() {
                         <div className="flex-1 min-w-0 text-left">
                           <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-2">
                             <h4 className="text-lg font-bold text-[#1e2a5a] font-display truncate">{service.title}</h4>
-                            <span className="text-xs font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded w-fit shrink-0">{service.price}</span>
+                            <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                              <span className="text-xs font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded w-fit">{service.price}</span>
+                              <span className="text-[10px] font-black text-amber-800 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded w-fit">
+                                Adv: ₹{(Number(service.advance) || 0).toLocaleString()}
+                              </span>
+                            </div>
                           </div>
                           <p className="mt-2 text-xs text-slate-400 leading-relaxed line-clamp-3 font-medium">{service.description}</p>
                         </div>

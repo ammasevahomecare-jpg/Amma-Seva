@@ -624,9 +624,9 @@ const initJSONDb = () => {
       if (!data.services || data.services.length === 0) { data.services = DEFAULT_MOCK_DATA.services; modified = true }
       if (data.services) {
         data.services.forEach(s => {
-          if (s.advance === undefined) {
-            const priceVal = Number(String(s.price).replace(/[^0-9]/g, '')) || 500
-            s.advance = Math.round(priceVal * 0.2)
+          if (s.advance === undefined || s.advance === null || s.advance === 0) {
+            const priceVal = Number(String(s.price).replace(/[^0-9]/g, '')) || 1200
+            s.advance = Math.round(priceVal * 0.25)
             modified = true
           }
         })

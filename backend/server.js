@@ -10,6 +10,8 @@ import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 import Razorpay from 'razorpay'
 import crypto from 'crypto'
+import http from 'http'
+import https from 'https'
 
 import { v2 as cloudinary } from 'cloudinary'
 
@@ -19,11 +21,16 @@ const __dirname = path.dirname(__filename)
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '.env') })
 
-// Configure Razorpay
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_SwedUUn1KgRMs0',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || 'xdW2Ry7T67sUK4zMKb3oOsZh'
-})
+// Configure Razorpay strictly using environment variables (no hardcoded fallback keys)
+const getRazorpayConfig = () => {
+  const key_id = (process.env.RAZORPAY_KEY_ID || '').trim().replace(/["']/g, '')
+  const key_secret = (process.env.RAZORPAY_KEY_SECRET || '').trim().replace(/["']/g, '')
+  let client = null
+  if (key_id && key_secret) {
+    client = new Razorpay({ key_id, key_secret })
+  }
+  return { key_id, key_secret, client }
+}
 
 // Configure Cloudinary
 cloudinary.config({
@@ -185,6 +192,69 @@ app.use((req, res, next) => {
 })
 
 // API Endpoints
+
+// Document Proxy / Streamer Endpoint for seamless in-modal inline rendering without CORS/attachment blocks
+app.get('/api/proxy-document', async (req, res) => {
+  const docUrl = req.query.url
+  if (!docUrl || typeof docUrl !== 'string') {
+    return res.status(400).send('Document URL parameter is required.')
+  }
+
+  try {
+    const parsedUrl = new URL(docUrl)
+    if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+      return res.status(400).send('Invalid URL protocol.')
+    }
+
+    const client = parsedUrl.protocol === 'https:' ? https : http
+
+    const request = client.get(docUrl, (proxyRes) => {
+      // Follow 301/302 redirects if any
+      if (proxyRes.statusCode >= 300 && proxyRes.statusCode < 400 && proxyRes.headers.location) {
+        return res.redirect(302, `/api/proxy-document?url=${encodeURIComponent(proxyRes.headers.location)}`)
+      }
+
+      if (proxyRes.statusCode && proxyRes.statusCode >= 400) {
+        return res.status(proxyRes.statusCode).send('Remote document storage returned an error.')
+      }
+
+      // Determine appropriate MIME Content-Type
+      let contentType = proxyRes.headers['content-type'] || 'application/pdf'
+      const cleanLower = docUrl.toLowerCase()
+      if (cleanLower.endsWith('.pdf') || cleanLower.includes('.pdf?') || cleanLower.includes('/raw/')) {
+        contentType = 'application/pdf'
+      } else if (cleanLower.endsWith('.png')) {
+        contentType = 'image/png'
+      } else if (cleanLower.endsWith('.jpg') || cleanLower.endsWith('.jpeg')) {
+        contentType = 'image/jpeg'
+      } else if (cleanLower.endsWith('.webp')) {
+        contentType = 'image/webp'
+      } else if (cleanLower.endsWith('.svg')) {
+        contentType = 'image/svg+xml'
+      }
+
+      res.setHeader('Content-Type', contentType)
+      res.setHeader('Content-Disposition', 'inline')
+      res.setHeader('Access-Control-Allow-Origin', '*')
+      res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
+      res.removeHeader('X-Frame-Options')
+
+      proxyRes.pipe(res)
+    })
+
+    request.on('error', (err) => {
+      console.error('[Document Stream Error]', err.message)
+      if (!res.headersSent) {
+        res.status(502).send('Error connecting to remote document storage: ' + err.message)
+      }
+    })
+  } catch (err) {
+    console.error('[Document Stream Exception]', err.message)
+    if (!res.headersSent) {
+      res.status(400).send('Invalid document URL: ' + err.message)
+    }
+  }
+})
 
 // POST request admin OTP
 app.post('/api/admin/send-otp', async (req, res) => {
@@ -1504,11 +1574,27 @@ app.get('/api/bookings', authenticateAdmin, async (req, res) => {
     res.status(500).json({ error: 'Failed to retrieve bookings list.' })
   }
 })
+// GET Razorpay Public Configuration
+app.get('/api/payment/config', (req, res) => {
+  const { key_id } = getRazorpayConfig()
+  if (!key_id) {
+    return res.status(500).json({ error: 'Razorpay Key ID is not configured in server environment.' })
+  }
+  res.json({
+    keyId: key_id,
+    isLive: key_id.startsWith('rzp_live')
+  })
+})
+
 // POST create Razorpay order
 app.post('/api/payment/order', async (req, res) => {
   const { amount } = req.body
   if (!amount) {
     return res.status(400).json({ error: 'Amount is required.' })
+  }
+  const { key_id, key_secret, client } = getRazorpayConfig()
+  if (!key_id || !key_secret || !client) {
+    return res.status(500).json({ error: 'Razorpay gateway keys (RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET) are not configured in server environment.' })
   }
   try {
     const options = {
@@ -1516,16 +1602,17 @@ app.post('/api/payment/order', async (req, res) => {
       currency: 'INR',
       receipt: `receipt_${Date.now()}`
     }
-    const order = await razorpay.orders.create(options)
+    const order = await client.orders.create(options)
     res.json({
       success: true,
       orderId: order.id,
       amount: order.amount,
-      currency: order.currency
+      currency: order.currency,
+      keyId: key_id
     })
   } catch (err) {
     console.error('Razorpay order creation error:', err)
-    res.status(500).json({ error: 'Failed to create payment order.' })
+    res.status(500).json({ error: 'Failed to create payment order: ' + (err.error?.description || err.message) })
   }
 })
 
@@ -1546,11 +1633,16 @@ app.post('/api/booking', async (req, res) => {
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return res.status(400).json({ error: 'Missing Razorpay payment parameters.' })
     }
+    const { key_secret } = getRazorpayConfig()
+    if (!key_secret) {
+      return res.status(500).json({ error: 'Razorpay secret key not configured on server.' })
+    }
     const generated_signature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || 'xdW2Ry7T67sUK4zMKb3oOsZh')
+      .createHmac('sha256', key_secret)
       .update(razorpay_order_id + '|' + razorpay_payment_id)
       .digest('hex')
     if (generated_signature !== razorpay_signature) {
+      console.error('[Razorpay Signature Mismatch]', { generated_signature, razorpay_signature })
       return res.status(400).json({ error: 'Payment signature verification failed.' })
     }
   }
@@ -1654,12 +1746,17 @@ app.post('/api/booking/:id/pay-balance', async (req, res) => {
   }
 
   try {
+    const { key_secret } = getRazorpayConfig()
+    if (!key_secret) {
+      return res.status(500).json({ error: 'Razorpay secret key not configured on server.' })
+    }
     const generated_signature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || 'xdW2Ry7T67sUK4zMKb3oOsZh')
+      .createHmac('sha256', key_secret)
       .update(razorpay_order_id + '|' + razorpay_payment_id)
       .digest('hex')
 
     if (generated_signature !== razorpay_signature) {
+      console.error('[Razorpay Balance Signature Mismatch]', { generated_signature, razorpay_signature })
       return res.status(400).json({ error: 'Signature verification failed.' })
     }
 
@@ -1991,7 +2088,7 @@ app.get('/api/services', async (req, res) => {
 
 // POST add service (Admin Panel)
 app.post('/api/services', authenticateAdmin, async (req, res) => {
-  const { title, slug, short, description, benefits, duration, price, category, comingSoon, image, about, highlights, images } = req.body
+  const { title, slug, short, description, benefits, duration, price, category, comingSoon, image, about, highlights, images, advance } = req.body
   if (!title || !price) {
     return res.status(400).json({ success: false, error: 'Title and price are required fields.' })
   }
@@ -2011,6 +2108,7 @@ app.post('/api/services', authenticateAdmin, async (req, res) => {
       price,
       category: category || 'care',
       comingSoon: !!comingSoon,
+      advance: advance !== undefined ? Number(advance) : 0,
       image: uploadedImage,
       about: about || '',
       highlights: Array.isArray(highlights) ? highlights : [],
@@ -2025,7 +2123,7 @@ app.post('/api/services', authenticateAdmin, async (req, res) => {
 
 // PUT update service (Admin Panel)
 app.put('/api/services/:id', authenticateAdmin, async (req, res) => {
-  const { title, slug, short, description, benefits, duration, price, category, comingSoon, image, about, highlights, images } = req.body
+  const { title, slug, short, description, benefits, duration, price, category, comingSoon, image, about, highlights, images, advance } = req.body
   if (!title || !price) {
     return res.status(400).json({ success: false, error: 'Title and price are required fields.' })
   }
@@ -2045,6 +2143,7 @@ app.put('/api/services/:id', authenticateAdmin, async (req, res) => {
       price,
       category: category || 'care',
       comingSoon: !!comingSoon,
+      advance: advance !== undefined ? Number(advance) : undefined,
       image: uploadedImage,
       about: about || '',
       highlights: Array.isArray(highlights) ? highlights : [],
