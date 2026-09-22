@@ -12,16 +12,14 @@ import {
   ShieldCheck, 
   Maximize2, 
   Minimize2, 
-  CheckCircle2,
-  RefreshCw,
-  Eye,
-  Sparkles,
-  Layers,
-  AlertCircle,
-  FileCheck,
-  Globe,
-  Zap,
-  RotateCcw
+  CheckCircle2, 
+  Sparkles, 
+  Layers, 
+  AlertCircle, 
+  FileCheck, 
+  Globe, 
+  Zap, 
+  RotateCcw 
 } from "lucide-react";
 
 export interface DocumentViewerProps {
@@ -33,7 +31,7 @@ export interface DocumentViewerProps {
   category?: string;
 }
 
-type ViewerEngine = "google" | "proxy" | "native" | "image";
+type ViewerEngine = "image" | "proxy" | "native" | "google";
 
 export function DocumentViewerModal({
   isOpen,
@@ -49,16 +47,24 @@ export function DocumentViewerModal({
   const [showDownloadSuccess, setShowDownloadSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [activeEngine, setActiveEngine] = useState<ViewerEngine>("google");
+  const [activeEngine, setActiveEngine] = useState<ViewerEngine>("image");
   const modalRef = useRef<HTMLDivElement>(null);
 
   // Safe lower URL
   const urlLower = (docUrl || "").toLowerCase();
 
-  // Determine file formats
+  // Determine probable file formats
   const isBase64Image = !!docUrl && docUrl.startsWith("data:image/");
   const isBase64Pdf = !!docUrl && docUrl.startsWith("data:application/pdf");
-  const isDirectImage = !!docUrl && (
+  
+  const isExplicitPdf = !!docUrl && (
+    isBase64Pdf ||
+    urlLower.endsWith(".pdf") ||
+    urlLower.includes(".pdf?") ||
+    docTitle.toLowerCase().includes("pdf")
+  );
+
+  const isExplicitImage = !!docUrl && (
     isBase64Image ||
     urlLower.endsWith(".jpg") ||
     urlLower.endsWith(".jpeg") ||
@@ -67,17 +73,8 @@ export function DocumentViewerModal({
     urlLower.endsWith(".svg") ||
     urlLower.endsWith(".gif") ||
     urlLower.endsWith(".bmp") ||
-    (urlLower.includes("/image/upload/") && !urlLower.endsWith(".pdf") && !urlLower.includes(".pdf?"))
-  );
-
-  const isPdf = !!docUrl && !isDirectImage && (
-    isBase64Pdf ||
-    urlLower.endsWith(".pdf") ||
-    urlLower.includes(".pdf?") ||
-    urlLower.includes("/raw/") ||
-    urlLower.includes("pdf") ||
-    urlLower.startsWith("http://") ||
-    urlLower.startsWith("https://")
+    urlLower.endsWith(".jfif") ||
+    urlLower.includes("/image/upload/")
   );
 
   // Reset state whenever modal opens or docUrl changes
@@ -89,17 +86,18 @@ export function DocumentViewerModal({
       setIsLoading(true);
       setLoadError(false);
 
-      // Default engine selection
-      if (isDirectImage) {
+      if (isExplicitPdf) {
+        // For explicit PDFs, use high-speed direct stream proxy
+        setActiveEngine("proxy");
+      } else if (isExplicitImage || !docUrl.startsWith("http")) {
+        // For images & base64 photos, use direct image engine
         setActiveEngine("image");
-      } else if (isBase64Pdf || !docUrl.startsWith("http")) {
-        setActiveEngine("native");
       } else {
-        // Remote URL (Cloudinary, AWS, server) -> Use Google Docs Viewer for 100% reliable in-modal preview
-        setActiveEngine("google");
+        // For general Cloudinary URLs, default to direct image first (99% of ID proofs are photos)
+        setActiveEngine("image");
       }
     }
-  }, [isOpen, docUrl, isDirectImage, isBase64Pdf]);
+  }, [isOpen, docUrl, isExplicitPdf, isExplicitImage]);
 
   // Handle Escape key to close
   useEffect(() => {
@@ -113,12 +111,12 @@ export function DocumentViewerModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
-  // Fallback timeout for iframe loading indicator
+  // Timeout guard for loading spinner
   useEffect(() => {
     if (isLoading) {
       const timer = setTimeout(() => {
         setIsLoading(false);
-      }, 3500);
+      }, 2500);
       return () => clearTimeout(timer);
     }
   }, [isLoading, activeEngine]);
@@ -128,36 +126,24 @@ export function DocumentViewerModal({
   // Generate safe filename for download
   const cleanApplicant = applicantName ? applicantName.replace(/[^a-zA-Z0-9]/g, "_") + "_" : "";
   const cleanTitle = docTitle.replace(/[^a-zA-Z0-9]/g, "_");
-  const ext = isDirectImage ? ".jpg" : ".pdf";
+  const ext = activeEngine === "image" ? ".jpg" : ".pdf";
   const downloadFileName = `${cleanApplicant}${cleanTitle}${ext}`;
 
-  // Build rendered URLs based on selected engine
-  const googleViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(docUrl)}&embedded=true`;
+  // Build rendered URLs
   const proxyViewerUrl = `/api/proxy-document?url=${encodeURIComponent(docUrl)}`;
-  const cloudinaryImageUrl = docUrl.includes("cloudinary.com") 
-    ? docUrl.replace(/\.pdf($|\?)/i, ".jpg") 
-    : docUrl;
+  const googleViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(docUrl)}&embedded=true`;
 
   // Safe download trigger
   const handleDownload = () => {
     try {
-      if (docUrl.startsWith("data:") || docUrl.startsWith("blob:")) {
-        const link = document.createElement("a");
-        link.href = docUrl;
-        link.download = downloadFileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } else {
-        const link = document.createElement("a");
-        link.href = docUrl;
-        link.download = downloadFileName;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
+      const link = document.createElement("a");
+      link.href = docUrl;
+      link.download = downloadFileName;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       setShowDownloadSuccess(true);
       setTimeout(() => setShowDownloadSuccess(false), 3000);
     } catch (err) {
@@ -168,7 +154,7 @@ export function DocumentViewerModal({
 
   // Safe print trigger
   const handlePrint = () => {
-    if (isDirectImage || activeEngine === "image") {
+    if (activeEngine === "image") {
       const printWindow = window.open("", "_blank");
       if (printWindow) {
         printWindow.document.write(`
@@ -213,9 +199,9 @@ export function DocumentViewerModal({
           {/* Left: Document Info */}
           <div className="flex items-center gap-3 min-w-0">
             <div className="h-10 w-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0 shadow-inner">
-              {isDirectImage ? (
+              {activeEngine === "image" ? (
                 <ImageIcon className="h-5 w-5 text-[#ffd700]" />
-              ) : isPdf ? (
+              ) : isExplicitPdf ? (
                 <FileText className="h-5 w-5 text-rose-400" />
               ) : (
                 <FileCheck className="h-5 w-5 text-emerald-400" />
@@ -227,7 +213,7 @@ export function DocumentViewerModal({
                   {docTitle}
                 </span>
                 <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#ffd700]/20 text-[#ffd700] border border-[#ffd700]/40 shrink-0">
-                  {isDirectImage ? "Image Proof" : isPdf ? "PDF Document" : "Attachment"}
+                  {activeEngine === "image" ? "Photo / Image" : "Document / PDF"}
                 </span>
               </div>
               <div className="flex items-center gap-2 text-[11px] text-slate-300 mt-0.5">
@@ -242,67 +228,86 @@ export function DocumentViewerModal({
             </div>
           </div>
 
-          {/* Center/Right: Engine Switcher for Remote PDFs */}
-          {!isDirectImage && docUrl.startsWith("http") && (
-            <div className="hidden lg:flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/10 text-xs">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsLoading(true);
-                  setActiveEngine("google");
-                }}
-                className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                  activeEngine === "google" 
-                    ? "bg-[#ffd700] text-slate-950 shadow-sm" 
-                    : "text-slate-300 hover:text-white hover:bg-white/10"
-                }`}
-                title="Google Docs Cloud Engine (Best compatibility)"
-              >
-                <Globe className="h-3.5 w-3.5" />
-                <span>Google View</span>
-              </button>
+          {/* Center: Engine Switcher Toolbar */}
+          <div className="hidden md:flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/10 text-xs">
+            <button
+              type="button"
+              onClick={() => {
+                setIsLoading(true);
+                setLoadError(false);
+                setActiveEngine("image");
+              }}
+              className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                activeEngine === "image" 
+                  ? "bg-[#ffd700] text-slate-950 shadow-sm" 
+                  : "text-slate-300 hover:text-white hover:bg-white/10"
+              }`}
+              title="Direct Image View (Best for Aadhaar cards, photos & ID scans)"
+            >
+              <ImageIcon className="h-3.5 w-3.5" />
+              <span>Direct Photo</span>
+            </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setIsLoading(true);
-                  setActiveEngine("proxy");
-                }}
-                className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                  activeEngine === "proxy" 
-                    ? "bg-[#ffd700] text-slate-950 shadow-sm" 
-                    : "text-slate-300 hover:text-white hover:bg-white/10"
-                }`}
-                title="Direct Stream Engine"
-              >
-                <Zap className="h-3.5 w-3.5" />
-                <span>Direct Stream</span>
-              </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsLoading(true);
+                setLoadError(false);
+                setActiveEngine("proxy");
+              }}
+              className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                activeEngine === "proxy" 
+                  ? "bg-[#ffd700] text-slate-950 shadow-sm" 
+                  : "text-slate-300 hover:text-white hover:bg-white/10"
+              }`}
+              title="Amma Seva High-Speed Stream (Direct PDF/Doc Stream)"
+            >
+              <Zap className="h-3.5 w-3.5" />
+              <span>Stream View</span>
+            </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setIsLoading(true);
-                  setActiveEngine("native");
-                }}
-                className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                  activeEngine === "native" 
-                    ? "bg-[#ffd700] text-slate-950 shadow-sm" 
-                    : "text-slate-300 hover:text-white hover:bg-white/10"
-                }`}
-                title="Native Browser PDF Engine"
-              >
-                <Layers className="h-3.5 w-3.5" />
-                <span>Native Engine</span>
-              </button>
-            </div>
-          )}
+            <button
+              type="button"
+              onClick={() => {
+                setIsLoading(true);
+                setLoadError(false);
+                setActiveEngine("native");
+              }}
+              className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                activeEngine === "native" 
+                  ? "bg-[#ffd700] text-slate-950 shadow-sm" 
+                  : "text-slate-300 hover:text-white hover:bg-white/10"
+              }`}
+              title="Native Browser Object Engine"
+            >
+              <Layers className="h-3.5 w-3.5" />
+              <span>Native PDF</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsLoading(true);
+                setLoadError(false);
+                setActiveEngine("google");
+              }}
+              className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                activeEngine === "google" 
+                  ? "bg-[#ffd700] text-slate-950 shadow-sm" 
+                  : "text-slate-300 hover:text-white hover:bg-white/10"
+              }`}
+              title="Google Docs Cloud Engine"
+            >
+              <Globe className="h-3.5 w-3.5" />
+              <span>Google View</span>
+            </button>
+          </div>
 
           {/* Right: Actions (Zoom, Download, Print, Close) */}
           <div className="flex items-center gap-1.5 sm:gap-2 ml-auto">
             
             {/* Image Zoom & Rotate Controls */}
-            {(isDirectImage || activeEngine === "image") && (
+            {activeEngine === "image" && (
               <div className="flex items-center gap-1 bg-white/10 rounded-xl p-1 border border-white/10 mr-1">
                 <button
                   type="button"
@@ -424,7 +429,7 @@ export function DocumentViewerModal({
           )}
 
           {/* 1. DIRECT IMAGE VIEWER */}
-          {(isDirectImage || activeEngine === "image") ? (
+          {activeEngine === "image" && (
             <div className="relative w-full h-full flex items-center justify-center overflow-auto p-4 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]">
               <div 
                 className="transition-transform duration-200 ease-out origin-center flex items-center justify-center max-w-full max-h-full"
@@ -433,125 +438,118 @@ export function DocumentViewerModal({
                 }}
               >
                 <img
-                  src={activeEngine === "image" ? cloudinaryImageUrl : docUrl}
+                  src={docUrl}
                   alt={docTitle}
-                  onLoad={() => setIsLoading(false)}
+                  onLoad={() => {
+                    setIsLoading(false);
+                    setLoadError(false);
+                  }}
                   onError={() => {
                     setIsLoading(false);
-                    setLoadError(true);
+                    // If image fails, it might be a PDF, switch automatically to proxy stream
+                    setActiveEngine("proxy");
                   }}
                   className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl border border-white/10 select-none pointer-events-auto bg-white"
                 />
               </div>
             </div>
-          ) : (
-            /* 2. PDF & DOCUMENT VIEWER ENGINES */
+          )}
+
+          {/* 2. AMMA SEVA INLINE STREAM PROXY ENGINE */}
+          {activeEngine === "proxy" && (
             <div className="w-full h-full rounded-xl overflow-hidden bg-white shadow-2xl flex flex-col relative">
-              
-              {/* GOOGLE DOCS VIEWER ENGINE (DEFAULT FOR REMOTE URLS) */}
-              {activeEngine === "google" && (
+              <iframe
+                src={proxyViewerUrl}
+                title={docTitle}
+                onLoad={() => setIsLoading(false)}
+                onError={() => {
+                  setIsLoading(false);
+                  setLoadError(true);
+                }}
+                className="w-full h-full border-0 rounded-xl bg-white"
+              />
+            </div>
+          )}
+
+          {/* 3. NATIVE OBJECT / IFRAME ENGINE */}
+          {activeEngine === "native" && (
+            <div className="w-full h-full rounded-xl overflow-hidden bg-white shadow-2xl flex flex-col relative">
+              <object
+                data={docUrl}
+                type="application/pdf"
+                className="w-full h-full rounded-xl border-0 bg-white"
+                onLoad={() => setIsLoading(false)}
+              >
                 <iframe
-                  src={googleViewerUrl}
+                  src={docUrl}
                   title={docTitle}
                   onLoad={() => setIsLoading(false)}
-                  onError={() => {
-                    setIsLoading(false);
-                    setLoadError(true);
-                  }}
-                  className="w-full h-full border-0 rounded-xl bg-white"
+                  className="w-full h-full border-0 bg-white"
                 />
-              )}
+              </object>
+            </div>
+          )}
 
-              {/* AMMA SEVA INLINE STREAM PROXY ENGINE */}
-              {activeEngine === "proxy" && (
-                <iframe
-                  src={proxyViewerUrl}
-                  title={docTitle}
-                  onLoad={() => setIsLoading(false)}
-                  onError={() => {
-                    setIsLoading(false);
-                    setLoadError(true);
+          {/* 4. GOOGLE DOCS VIEWER ENGINE */}
+          {activeEngine === "google" && (
+            <div className="w-full h-full rounded-xl overflow-hidden bg-white shadow-2xl flex flex-col relative">
+              <iframe
+                src={googleViewerUrl}
+                title={docTitle}
+                onLoad={() => setIsLoading(false)}
+                onError={() => {
+                  setIsLoading(false);
+                  setLoadError(true);
+                }}
+                className="w-full h-full border-0 rounded-xl bg-white"
+              />
+            </div>
+          )}
+
+          {/* ERROR STATE OVERLAY */}
+          {loadError && (
+            <div className="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-6 text-center space-y-4 z-30">
+              <div className="h-14 w-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                <AlertCircle className="h-7 w-7" />
+              </div>
+              <div className="space-y-1 max-w-md">
+                <h4 className="text-base font-bold text-white">Document Preview</h4>
+                <p className="text-xs text-slate-400">
+                  Select an alternate engine below or open the original document directly in a new tab.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoadError(false);
+                    setIsLoading(true);
+                    setActiveEngine("image");
                   }}
-                  className="w-full h-full border-0 rounded-xl bg-white"
-                />
-              )}
-
-              {/* NATIVE OBJECT / IFRAME ENGINE */}
-              {activeEngine === "native" && (
-                <object
-                  data={docUrl}
-                  type="application/pdf"
-                  className="w-full h-full rounded-xl border-0 bg-white"
-                  onLoad={() => setIsLoading(false)}
+                  className="px-3.5 py-2 rounded-xl bg-[#ffd700] text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-md cursor-pointer"
                 >
-                  <iframe
-                    src={docUrl}
-                    title={docTitle}
-                    onLoad={() => setIsLoading(false)}
-                    className="w-full h-full border-0 bg-white"
-                  >
-                    <div className="flex flex-col items-center justify-center h-full p-6 text-center space-y-3 bg-slate-900 text-white">
-                      <FileText className="h-10 w-10 text-[#ffd700]" />
-                      <p className="text-sm font-semibold">Your browser did not allow direct inline embedding.</p>
-                      <button
-                        type="button"
-                        onClick={() => setActiveEngine("google")}
-                        className="px-4 py-2 rounded-xl bg-[#ffd700] text-slate-950 font-bold text-xs"
-                      >
-                        Switch to Google Viewer
-                      </button>
-                    </div>
-                  </iframe>
-                </object>
-              )}
-
-              {/* ERROR STATE OVERLAY */}
-              {loadError && (
-                <div className="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-6 text-center space-y-4">
-                  <div className="h-14 w-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
-                    <AlertCircle className="h-7 w-7" />
-                  </div>
-                  <div className="space-y-1 max-w-md">
-                    <h4 className="text-base font-bold text-white">Document Preview Options</h4>
-                    <p className="text-xs text-slate-400">
-                      The current rendering engine encountered an access restriction. Switch viewing mode below or open directly.
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center justify-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLoadError(false);
-                        setIsLoading(true);
-                        setActiveEngine("google");
-                      }}
-                      className="px-3.5 py-2 rounded-xl bg-[#ffd700] text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-md cursor-pointer"
-                    >
-                      <Globe className="h-3.5 w-3.5" /> View with Google Engine
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLoadError(false);
-                        setIsLoading(true);
-                        setActiveEngine("proxy");
-                      }}
-                      className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center gap-1.5 border border-white/20 cursor-pointer"
-                    >
-                      <Zap className="h-3.5 w-3.5 text-amber-300" /> Direct Stream
-                    </button>
-                    <a
-                      href={docUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" /> Open in New Tab
-                    </a>
-                  </div>
-                </div>
-              )}
-
+                  <ImageIcon className="h-3.5 w-3.5" /> Direct Photo View
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoadError(false);
+                    setIsLoading(true);
+                    setActiveEngine("proxy");
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center gap-1.5 border border-white/20 cursor-pointer"
+                >
+                  <Zap className="h-3.5 w-3.5 text-amber-300" /> Direct Stream
+                </button>
+                <a
+                  href={docUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" /> Open in New Tab
+                </a>
+              </div>
             </div>
           )}
 
@@ -565,20 +563,21 @@ export function DocumentViewerModal({
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Engine switcher quick badges on mobile / small screens */}
-            {!isDirectImage && (
-              <div className="flex sm:hidden items-center gap-1 text-[10px]">
-                <button
-                  type="button"
-                  onClick={() => setActiveEngine(activeEngine === "google" ? "proxy" : "google")}
-                  className="px-2 py-0.5 rounded bg-white/10 text-amber-300 font-bold border border-white/15"
-                >
-                  Switch Engine
-                </button>
-              </div>
-            )}
+            {/* Quick Engine Switch on Small Screens */}
+            <div className="flex md:hidden items-center gap-1 text-[10px]">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLoading(true);
+                  setActiveEngine(activeEngine === "image" ? "proxy" : "image");
+                }}
+                className="px-2 py-0.5 rounded bg-white/10 text-amber-300 font-bold border border-white/15"
+              >
+                Switch Mode ({activeEngine})
+              </button>
+            </div>
 
-            <span className="text-slate-500 hidden sm:inline">
+            <span className="text-slate-500 hidden md:inline">
               Active Mode: <strong className="text-slate-300 uppercase">{activeEngine}</strong>
             </span>
             <button

@@ -47,14 +47,16 @@ const uploadToCloudinary = async (base64Str) => {
     return base64Str
   }
   try {
-    // Check if the base64 string is a PDF or document format to force raw storage
+    // Check if base64 data header explicitly denotes a PDF or Office document
     const isDoc = base64Str.startsWith('data:application/pdf') || 
                   base64Str.startsWith('data:application/msword') || 
                   base64Str.startsWith('data:application/vnd.openxmlformats-officedocument') ||
-                  base64Str.includes('pdf'); // fallback match check
+                  base64Str.startsWith('data:@file/pdf')
                   
+    const isImage = base64Str.startsWith('data:image/')
+
     const uploadResponse = await cloudinary.uploader.upload(base64Str, {
-      resource_type: isDoc ? 'raw' : 'auto', // Force raw for documents to bypass Ghostscript
+      resource_type: isImage ? 'image' : (isDoc ? 'raw' : 'auto'),
       folder: 'ammaseva_verification'
     })
     return uploadResponse.secure_url
@@ -1562,8 +1564,63 @@ app.delete('/api/admin/mtp/tasks/:id', authenticateAdmin, async (req, res) => {
   }
 })
 
+// GET Proxy Document Stream (renders PDF and image documents directly without 3rd party viewer failures)
+app.get('/api/proxy-document', async (req, res) => {
+  const { url } = req.query
+  if (!url || typeof url !== 'string') {
+    return res.status(400).send('Missing document URL parameter.')
+  }
+  
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    return res.status(400).send('Invalid document URL scheme.')
+  }
 
+  try {
+    const upstreamRes = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': '*/*'
+      }
+    })
+    if (!upstreamRes.ok) {
+      return res.status(upstreamRes.status).send(`Failed to retrieve document: ${upstreamRes.statusText}`)
+    }
 
+    const arrayBuffer = await upstreamRes.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+
+    // Sniff content type from magic bytes if header is generic or missing
+    let contentType = upstreamRes.headers.get('content-type') || ''
+    
+    // Check magic bytes for PDF, JPEG, PNG, WEBP, GIF
+    if (buffer.length >= 4) {
+      if (buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46) {
+        contentType = 'application/pdf'
+      } else if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) {
+        contentType = 'image/jpeg'
+      } else if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
+        contentType = 'image/png'
+      } else if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46) {
+        contentType = 'image/webp'
+      } else if (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46) {
+        contentType = 'image/gif'
+      }
+    }
+
+    if (!contentType || contentType === 'application/octet-stream') {
+      contentType = url.toLowerCase().includes('.pdf') ? 'application/pdf' : 'image/jpeg'
+    }
+
+    res.setHeader('Content-Type', contentType)
+    res.setHeader('Content-Disposition', 'inline')
+    res.setHeader('Cache-Control', 'public, max-age=86400')
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.send(buffer)
+  } catch (err) {
+    console.error('Document stream proxy error:', err)
+    res.status(500).send('Failed to stream document.')
+  }
+})
 
 // GET all bookings (Admin Panel)
 app.get('/api/bookings', authenticateAdmin, async (req, res) => {
