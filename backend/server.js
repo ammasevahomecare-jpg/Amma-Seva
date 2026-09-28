@@ -640,7 +640,7 @@ app.get('/api/proxy-document', async (req, res) => {
   }
 })
 
-// MSG91 Mobile SMS OTP Dispatcher
+// MSG91 Mobile SMS OTP Dispatcher (Dual Flow & OTP Multi-Delivery)
 const sendMsg91SmsOtp = async (rawMobile, otp) => {
   if (!rawMobile) return false
   const cleanDigits = String(rawMobile).replace(/\D/g, '')
@@ -655,23 +655,61 @@ const sendMsg91SmsOtp = async (rawMobile, otp) => {
   const senderId = (process.env.MSG91_SENDER_ID || 'AMMASV').trim()
   const otpVar = (process.env.MSG91_OTP_VAR_NAME || 'AMMASEVAOTP').trim()
 
-  const url = `https://control.msg91.com/api/v5/otp?template_id=${encodeURIComponent(templateId)}&mobile=${encodeURIComponent(formattedMobile)}&authkey=${encodeURIComponent(authKey)}&sender=${encodeURIComponent(senderId)}&${encodeURIComponent(otpVar)}=${encodeURIComponent(otp)}&otp=${encodeURIComponent(otp)}`
+  let sent = false
 
+  // 1. Dispatch via MSG91 Flow SMS Engine (Uses DLT Template ID & Sender ID)
   try {
-    const response = await fetch(url, {
+    const flowResponse = await fetch('https://control.msg91.com/api/v5/flow/', {
+      method: 'POST',
+      headers: {
+        'authkey': authKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        template_id: templateId,
+        sender: senderId,
+        short_url: '0',
+        recipients: [
+          {
+            mobiles: formattedMobile,
+            [otpVar]: String(otp),
+            otp: String(otp),
+            OTP: String(otp),
+            VAR1: String(otp),
+            AMMASEVAOTP: String(otp)
+          }
+        ]
+      })
+    })
+    const flowData = await flowResponse.json().catch(() => ({}))
+    console.log(`[MSG91 Flow SMS] Dispatched to +${formattedMobile}:`, flowData)
+    if (flowData.type === 'success' || flowResponse.ok) {
+      sent = true
+    }
+  } catch (err) {
+    console.error(`[MSG91 Flow Error] Failed to send SMS via flow to +${formattedMobile}:`, err.message)
+  }
+
+  // 2. Dispatch via MSG91 OTP v5 API Engine
+  try {
+    const otpUrl = `https://control.msg91.com/api/v5/otp?template_id=${encodeURIComponent(templateId)}&mobile=${encodeURIComponent(formattedMobile)}&authkey=${encodeURIComponent(authKey)}&sender=${encodeURIComponent(senderId)}&${encodeURIComponent(otpVar)}=${encodeURIComponent(otp)}&otp=${encodeURIComponent(otp)}`
+    const otpResponse = await fetch(otpUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'authkey': authKey
       }
     })
-    const data = await response.json().catch(() => ({}))
-    console.log(`[MSG91 SMS OTP] Dispatched OTP ${otp} to +${formattedMobile}:`, data)
-    return true
+    const otpData = await otpResponse.json().catch(() => ({}))
+    console.log(`[MSG91 OTP API] Dispatched to +${formattedMobile}:`, otpData)
+    if (otpData.type === 'success' || otpResponse.ok) {
+      sent = true
+    }
   } catch (err) {
-    console.error(`[MSG91 SMS OTP Error] Failed to send SMS to +${formattedMobile}:`, err.message)
-    return false
+    console.error(`[MSG91 OTP Error] Failed to send SMS via OTP endpoint to +${formattedMobile}:`, err.message)
   }
+
+  return sent
 }
 
 // Helper: Check if identifier matches Admin (email or mobile)
