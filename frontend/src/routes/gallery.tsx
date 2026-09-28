@@ -35,7 +35,7 @@ function GalleryPage() {
     : items.filter((i) => i.category === selectedCategory);
 
   return (
-    <SiteLayout>
+    <SiteLayout showInauguration={true}>
       {/* Header Banner */}
       <section className="border-b border-border/70 bg-gradient-to-b from-cream/60 via-cream/20 to-background py-10 sm:py-14">
         <div className="mx-auto max-w-7xl px-4 text-left sm:px-6 lg:px-8">

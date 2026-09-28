@@ -2,10 +2,14 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
 import { Check, Phone, Clock, IndianRupee, Star, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { SiteLayout, contact } from "@/components/SiteLayout";
+import { validateName, validatePhone } from "@/lib/validation";
 import { fetchServices } from "@/lib/services";
 import motherBaby from "@/assets/service-mother-baby.jpg";
 import nursing from "@/assets/service-nursing.jpg";
 import elderly from "@/assets/service-elderly.jpg";
+import attendant from "@/assets/service-bedside-attendant.jpg";
+import doctor from "@/assets/service-doctor.jpg";
+import mtp from "@/assets/service-mtp.jpg";
 
 function getServiceDetails(slug: string) {
   const details: Record<string, { category: string; badgeClass: string; image: string; images: string[] }> = {
@@ -81,7 +85,23 @@ function getServiceDetails(slug: string) {
       image: nursing,
       images: [nursing, elderly, motherBaby],
     },
+    "mtp": {
+      category: "MTP & Companion Tasks",
+      badgeClass: "bg-amber-50 text-amber-800 border border-amber-200/60",
+      image: mtp,
+      images: [mtp, attendant, nursing],
+    },
   };
+
+  if (slug.startsWith("mtp") || slug.includes("transport") || slug.includes("escort") || slug.includes("errand")) {
+    return {
+      category: "MTP & Companion Tasks",
+      badgeClass: "bg-amber-50 text-amber-800 border border-amber-200/60",
+      image: mtp,
+      images: [mtp, attendant, nursing],
+    };
+  }
+
   return details[slug] || {
     category: "Specialized",
     badgeClass: "bg-teal-50 text-teal-700 border border-teal-200/60",
@@ -92,6 +112,8 @@ function getServiceDetails(slug: string) {
 
 function getSecondaryTag(category: string): [string, string] {
   switch (category) {
+    case "MTP & Companion Tasks":
+      return ["On-Demand Companion", "Pay on Service"];
     case "Maternal":
       return ["Postnatal Care", "Newborn Support"];
     case "Prenatal":
@@ -302,28 +324,52 @@ function ServicePage() {
             </div>
 
             {/* Pricing Options Card */}
-            <div className="border border-border/85 bg-[#f8f9fc] rounded-2xl p-6 shadow-xs text-left flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+            <div className={`border rounded-2xl p-6 shadow-xs text-left flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 ${
+              service.isMtp || service.slug.startsWith("mtp") 
+                ? "border-amber-200 bg-amber-50/40" 
+                : "border-border/85 bg-[#f8f9fc]"
+            }`}>
               <div className="space-y-1 flex-1">
-                <h3 className="text-lg font-bold text-primary">Pricing Options</h3>
-                <p className="text-sm text-slate-500">Flexible packages tailored to your care timeline.</p>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-bold text-primary">Pricing Options</h3>
+                  {service.isMtp && (
+                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                      Pay on Service / Quote
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-slate-500">
+                  {service.isMtp 
+                    ? "No upfront payment required! Exact task quote confirmed upon booking." 
+                    : "Flexible packages tailored to your care timeline."}
+                </p>
               </div>
               <div className="text-left sm:text-right shrink-0">
-                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Starts at</div>
-                <div className="text-3xl font-extrabold text-emerald-600 mt-1">
-                  {service.pricing || "₹1,200"}
+                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  {service.isMtp ? "Estimated Rate" : "Starts at"}
                 </div>
-                <div className="text-xs text-slate-400 mt-0.5">{service.duration || "per shift"}</div>
+                <div className={`text-3xl font-extrabold mt-1 ${service.isMtp ? "text-amber-900" : "text-emerald-600"}`}>
+                  {service.pricing || (service.isMtp ? "Custom Quote" : "₹1,200")}
+                </div>
+                <div className="text-xs text-slate-400 mt-0.5">
+                  {service.isMtp ? "0 advance needed" : (service.duration || "per shift")}
+                </div>
               </div>
               <div className="shrink-0 w-full sm:w-auto">
                 <a
                   href={
-                    localStorage.getItem("ammaseva_user_token")
+                    typeof window !== "undefined" && localStorage.getItem("ammaseva_user_token")
                       ? `/dashboard?service=${service.slug}`
-                      : `/login?redirect=/dashboard?service=${service.slug}`
+                      : `/login?redirect=${encodeURIComponent(`/dashboard?service=${service.slug}`)}`
                   }
-                  className="btn-primary w-full py-2.5 px-5 flex items-center justify-center gap-1.5 font-bold text-xs shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-white text-center"
+                  className={`w-full py-2.5 px-5 flex items-center justify-center gap-1.5 font-bold text-xs rounded-xl shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-white text-center transition-all ${
+                    service.isMtp
+                      ? "bg-gradient-to-r from-amber-700 via-amber-800 to-amber-900 hover:from-amber-800 hover:to-amber-950"
+                      : "btn-primary"
+                  }`}
                 >
-                  Book Care Now <ArrowRight className="h-3.5 w-3.5" />
+                  <span>{service.isMtp ? "Book MTP Task (No Advance)" : "Book Care Now"}</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
                 </a>
               </div>
             </div>
@@ -356,48 +402,69 @@ function ServicePage() {
                       : "border-transparent text-slate-400 hover:text-slate-600"
                   }`}
                 >
-                  Book Care Shift
+                  {service.isMtp ? "Book MTP Task" : "Book Care Shift"}
                 </button>
               </div>
 
               {activeTab === "book" ? (
                 <div className="space-y-5 py-2 animate-in fade-in duration-200">
-                  <div className="rounded-2xl bg-indigo-50/50 border border-indigo-100/40 p-4 text-center space-y-3.5">
-                    <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-inner mx-auto">
+                  <div className={`rounded-2xl p-4 text-center space-y-3.5 border ${
+                    service.isMtp ? "bg-amber-50/60 border-amber-200" : "bg-indigo-50/50 border-indigo-100/40"
+                  }`}>
+                    <span className={`inline-flex h-12 w-12 items-center justify-center rounded-full shadow-inner mx-auto border ${
+                      service.isMtp 
+                        ? "bg-amber-100 text-amber-800 border-amber-200" 
+                        : "bg-indigo-50 text-indigo-600 border-indigo-100"
+                    }`}>
                       <Clock className="h-6 w-6" />
                     </span>
                     <div className="space-y-1">
-                      <h4 className="text-sm font-bold text-slate-800">Direct Online Booking</h4>
+                      <h4 className="text-sm font-bold text-slate-800">
+                        {service.isMtp ? "Instant MTP Booking (Zero Advance)" : "Direct Online Booking"}
+                      </h4>
                       <p className="text-[11px] text-slate-500 leading-relaxed">
-                        Skip callbacks and wait times. Set your care shift times, specify patient needs, and confirm caregivers online.
+                        {service.isMtp 
+                          ? "Select your scheduled date and time. No payment required at booking time; settle directly with our care coordinator."
+                          : "Skip callbacks and wait times. Set your care shift times, specify patient needs, and confirm caregivers online."}
                       </p>
                     </div>
                   </div>
 
                   <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 flex justify-between items-center text-xs">
                     <div>
-                      <span className="text-slate-400 block mb-0.5">Starting Rate</span>
-                      <span className="font-semibold text-slate-700">{service.pricing || "₹1,200"}</span>
+                      <span className="text-slate-400 block mb-0.5">
+                        {service.isMtp ? "Payment Option" : "Starting Rate"}
+                      </span>
+                      <span className="font-semibold text-slate-700">
+                        {service.pricing || (service.isMtp ? "Pay on Service" : "₹1,200")}
+                      </span>
                     </div>
                     <div className="text-right">
                       <span className="text-slate-400 block mb-0.5">Billing Basis</span>
-                      <span className="font-bold text-primary">{service.duration || "Per shift"}</span>
+                      <span className="font-bold text-primary">
+                        {service.duration || (service.isMtp ? "Per Task" : "Per shift")}
+                      </span>
                     </div>
                   </div>
 
                   <a
                     href={
-                      localStorage.getItem("ammaseva_user_token")
+                      typeof window !== "undefined" && localStorage.getItem("ammaseva_user_token")
                         ? `/dashboard?service=${service.slug}`
-                        : `/login?redirect=/dashboard?service=${service.slug}`
+                        : `/login?redirect=${encodeURIComponent(`/dashboard?service=${service.slug}`)}`
                     }
-                    className="btn-primary w-full py-3 flex items-center justify-center gap-2 font-bold text-sm shadow-sm hover:shadow-md cursor-pointer text-center text-white"
+                    className={`w-full py-3 flex items-center justify-center gap-2 font-bold text-sm rounded-xl shadow-sm hover:shadow-md cursor-pointer text-center text-white transition-all ${
+                      service.isMtp
+                        ? "bg-gradient-to-r from-amber-700 via-amber-800 to-amber-900 hover:from-amber-800 hover:to-amber-950"
+                        : "btn-primary"
+                    }`}
                   >
-                    Proceed to Booking Form <ArrowRight className="h-4 w-4" />
+                    <span>{service.isMtp ? "Book MTP Task Now (0 Advance)" : "Proceed to Booking Form"}</span>
+                    <ArrowRight className="h-4 w-4" />
                   </a>
 
                   <p className="text-[10px] text-slate-400 text-center font-medium">
-                    🔒 Secure authentication &amp; encrypted payments.
+                    🔒 100% Background-checked &amp; doctor-supervised staff.
                   </p>
                 </div>
               ) : (
@@ -414,9 +481,24 @@ function ServicePage() {
                       e.preventDefault();
                       const form = e.target as HTMLFormElement;
                       const formData = new FormData(form);
+                      const name = (formData.get("name") as string) || "";
+                      const phone = (formData.get("phone") as string) || "";
+
+                      const nameErr = validateName(name, "Full name");
+                      if (nameErr) {
+                        alert(nameErr);
+                        return;
+                      }
+
+                      const phoneErr = validatePhone(phone, "Phone number");
+                      if (phoneErr) {
+                        alert(phoneErr);
+                        return;
+                      }
+
                       const data = {
-                        name: formData.get("name") as string,
-                        phone: formData.get("phone") as string,
+                        name: name.trim(),
+                        phone: phone.replace(/\D/g, ""),
                         date: formData.get("date") as string,
                         message: formData.get("message") as string,
                         service: service.title,

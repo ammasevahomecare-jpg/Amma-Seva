@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SiteLayout, contact } from "@/components/SiteLayout";
+import { validateName, validatePhone, validateEmail } from "@/lib/validation";
 import { 
   HeartHandshake, ShieldCheck, Award, Clock, ArrowRight, Phone, 
   Gift, CheckCircle2, Lock, Sparkles, AlertCircle, Check 
@@ -69,19 +70,25 @@ function Careers() {
     e.preventDefault();
     setErrorMessage(null);
 
-    const cleanPhone = phone.replace(/[^0-9]/g, "").trim();
-    if (cleanPhone.length !== 10) {
-      setErrorMessage("Please enter a valid 10-digit mobile number.");
+    const nameErr = validateName(fullName, "Full name");
+    if (nameErr) {
+      setErrorMessage(nameErr);
       return;
     }
 
-    if (email.trim()) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email.trim())) {
-        setErrorMessage("Please enter a valid email address.");
-        return;
-      }
+    const phoneErr = validatePhone(phone, "Mobile phone number");
+    if (phoneErr) {
+      setErrorMessage(phoneErr);
+      return;
     }
+
+    const emailErr = validateEmail(email, false, "Email address");
+    if (emailErr) {
+      setErrorMessage(emailErr);
+      return;
+    }
+
+    const cleanPhone = phone.replace(/\D/g, "").trim();
 
     setIsSubmitting(true);
     try {

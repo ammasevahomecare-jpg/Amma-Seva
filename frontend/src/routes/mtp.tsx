@@ -24,9 +24,11 @@ import {
   FileCheck,
   CreditCard,
   GraduationCap,
-  ShieldAlert
+  ShieldAlert,
+  X
 } from "lucide-react";
 import { toast } from "sonner";
+import confetti from "canvas-confetti";
 
 export const Route = createFileRoute("/mtp")({
   head: () => ({
@@ -111,6 +113,7 @@ function MTPPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedData, setSubmittedData] = useState<any | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const handleFileUpload = (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -165,25 +168,100 @@ function MTPPage() {
     }
   };
 
+  const handleCloseModal = () => {
+    setShowSuccessModal(false);
+    setSubmittedData(null);
+    setName("");
+    setPhone("");
+    setEmail("");
+    setAge("");
+    setAadhaar("");
+    setEmergencyContact("");
+    setSkillsSummary("");
+    setAadhaarDoc("");
+    setAadhaarDocName("");
+    setPanDoc("");
+    setPanDocName("");
+    setDrivingLicenseDoc("");
+    setDrivingLicenseDocName("");
+    setTenthCertificateDoc("");
+    setTenthCertificateDocName("");
+    setPoliceVerificationDoc("");
+    setPoliceVerificationDocName("");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name.trim()) {
+    // 1. Full Name Validation
+    const cleanName = name.trim();
+    if (!cleanName) {
       toast.error("Please enter your full name.");
       return;
     }
-
-    const cleanPhone = phone.replace(/[^0-9]/g, "");
-    if (cleanPhone.length < 10) {
-      toast.error("Please enter a valid 10-digit mobile number.");
+    if (cleanName.length < 3) {
+      toast.error("Full name must be at least 3 characters long.");
+      return;
+    }
+    if (!/^[a-zA-Z\s.'-]{3,60}$/.test(cleanName)) {
+      toast.error("Please enter a valid full name (letters and spaces only).");
       return;
     }
 
+    // 2. Mobile Number Validation (Strict Indian 10-digit mobile starting with 6,7,8,9)
+    const cleanPhone = phone.replace(/[^0-9]/g, "");
+    if (!cleanPhone) {
+      toast.error("Please enter your mobile / WhatsApp number.");
+      return;
+    }
+    if (cleanPhone.length !== 10) {
+      toast.error("Mobile number must be exactly 10 digits.");
+      return;
+    }
+    if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+      toast.error("Please enter a valid Indian mobile number starting with 6, 7, 8, or 9.");
+      return;
+    }
+
+    // 3. Email Validation (If provided, must be valid RFC-compliant format)
+    const cleanEmail = email.trim();
+    if (cleanEmail) {
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!emailRegex.test(cleanEmail)) {
+        toast.error("Please enter a valid email address (e.g. yourname@gmail.com).");
+        return;
+      }
+    }
+
+    // 4. Age Validation
+    if (age) {
+      const numAge = Number(age);
+      if (isNaN(numAge) || numAge < 18 || numAge > 70) {
+        toast.error("Applicant age must be between 18 and 70 years.");
+        return;
+      }
+    }
+
+    // 5. Aadhaar Number Validation (If provided, must be exactly 12 digits)
+    const cleanAadhaar = aadhaar.replace(/[^0-9]/g, "");
+    if (cleanAadhaar && cleanAadhaar.length !== 12) {
+      toast.error("Aadhaar Number must be exactly 12 digits.");
+      return;
+    }
+
+    // 6. Selected Roles Validation
     if (selectedRoles.length === 0) {
       toast.error("Please select at least one preferred task or role.");
       return;
     }
 
+    // 7. Emergency Contact Validation
+    if (!emergencyContact.trim()) {
+      toast.error("Please provide an Emergency Contact (Name & Phone).");
+      return;
+    }
+
+    // 8. Required KYC Documents Validation
     if (!aadhaarDoc) {
       toast.error("Please upload your Aadhaar Card document for identity verification.");
       return;
@@ -195,7 +273,7 @@ function MTPPage() {
     }
 
     if (!policeVerificationDoc) {
-      toast.error("Please upload your Police Verification Certificate or verification acknowledgment.");
+      toast.error("Please upload your Police Verification Certificate or acknowledgment copy.");
       return;
     }
 
@@ -203,9 +281,9 @@ function MTPPage() {
 
     try {
       const payload = {
-        name: name.trim(),
+        name: cleanName,
         phone: cleanPhone,
-        email: email.trim(),
+        email: cleanEmail,
         gender,
         age: age.trim(),
         city: "Hyderabad",
@@ -216,7 +294,7 @@ function MTPPage() {
         drivingLicense,
         experience,
         skillsSummary: skillsSummary.trim(),
-        aadhaar: aadhaar.trim(),
+        aadhaar: cleanAadhaar,
         emergencyContact: emergencyContact.trim(),
         aadhaarDoc,
         panDoc,
@@ -234,8 +312,19 @@ function MTPPage() {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        toast.success("MTP Registration successful! Welcome to the Amma Seva Network.");
-        setSubmittedData(data.data || payload);
+        const finalData = data.data || payload;
+        setSubmittedData(finalData);
+        setShowSuccessModal(true);
+        try {
+          confetti({
+            particleCount: 110,
+            spread: 75,
+            origin: { y: 0.6 }
+          });
+        } catch (e) {
+          // ignore confetti execution error if canvas fails
+        }
+        toast.success("MTP Registration submitted successfully! Welcome to Amma Seva.");
       } else {
         toast.error(data.error || "Failed to submit registration. Please try again.");
       }
@@ -450,97 +539,26 @@ function MTPPage() {
       {/* Registration Form Section */}
       <section id="register-form" className="py-12 bg-slate-50/60 border-t border-slate-100">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          
-          {submittedData ? (
-            <div className="rounded-3xl border-2 border-emerald-400 bg-emerald-50/50 p-8 sm:p-12 text-center space-y-6 shadow-xl animate-in fade-in zoom-in-95 duration-500">
-              <div className="mx-auto h-20 w-20 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-lg">
-                <CheckCircle2 className="h-10 w-10" />
-              </div>
-
-              <div className="space-y-2">
-                <span className="text-xs font-bold uppercase tracking-widest text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full">
-                  Registration Successful
-                </span>
-                <h3 className="text-2xl sm:text-3xl font-extrabold text-primary font-display">
-                  Welcome aboard, {submittedData.name}!
-                </h3>
-                <p className="text-sm text-slate-600 max-w-lg mx-auto">
-                  Your application to join Amma Seva as a <strong>Multi Tasking Professional (MTP)</strong> has been recorded under Reference ID <strong>#{submittedData.id || "MTP-PENDING"}</strong>.
+          <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-10 lg:p-12 shadow-xl shadow-slate-900/5 text-left space-y-8">
+            <div className="border-b border-slate-100 pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 text-gold font-bold text-xs uppercase tracking-wider mb-1.5">
+                  <Briefcase className="h-4 w-4" /> Official Registration Form
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-primary font-display tracking-tight">
+                  MTP Registration — Amma Seva Network
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                  Fill in your accurate details below. No application fees. Safe, transparent and flexible.
                 </p>
               </div>
-
-              <div className="bg-white rounded-2xl border border-emerald-200 p-5 max-w-md mx-auto text-left text-xs space-y-2 text-slate-600 shadow-sm">
-                <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                  <span className="text-slate-400">Applicant Name:</span>
-                  <span className="font-bold text-primary">{submittedData.name}</span>
-                </div>
-                <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                  <span className="text-slate-400">Mobile Number:</span>
-                  <span className="font-bold text-primary">{submittedData.phone}</span>
-                </div>
-                <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                  <span className="text-slate-400">Preferred Zone:</span>
-                  <span className="font-bold text-primary">{submittedData.locality}</span>
-                </div>
-                <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                  <span className="text-slate-400">Availability:</span>
-                  <span className="font-bold text-primary">{submittedData.availability}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Status:</span>
-                  <span className="font-bold text-emerald-600">Pending Coordinator Review</span>
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row justify-center gap-3 pt-2">
-                <a
-                  href={`https://wa.me/${contact.WHATSAPP}?text=Hi%20Amma%20Seva%20Team,%20I%20just%20registered%20as%20an%20MTP%20(${submittedData.name}%20-%20${submittedData.phone}).%20Please%20verify%20my%20profile.`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-6 py-3 text-sm font-bold text-white shadow-md hover:bg-emerald-600 transition-all"
-                >
-                  <MessageCircle className="h-4 w-4" /> Message Coordinator on WhatsApp
-                </a>
-                <button
-                  onClick={() => {
-                    setSubmittedData(null);
-                    setName("");
-                    setPhone("");
-                    setEmail("");
-                    setSkillsSummary("");
-                    setAadhaarDoc("");
-                    setPanDoc("");
-                    setDrivingLicenseDoc("");
-                    setTenthCertificateDoc("");
-                    setPoliceVerificationDoc("");
-                  }}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer"
-                >
-                  Register Another Profile
-                </button>
+              <div className="shrink-0 hidden sm:flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full">
+                <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                <span>Free KYC Verification</span>
               </div>
             </div>
-          ) : (
-            <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-10 lg:p-12 shadow-xl shadow-slate-900/5 text-left space-y-8">
-              <div className="border-b border-slate-100 pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2 text-gold font-bold text-xs uppercase tracking-wider mb-1.5">
-                    <Briefcase className="h-4 w-4" /> Official Registration Form
-                  </div>
-                  <h2 className="text-2xl sm:text-3xl font-extrabold text-primary font-display tracking-tight">
-                    MTP Registration — Amma Seva Network
-                  </h2>
-                  <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                    Fill in your accurate details below. No application fees. Safe, transparent and flexible.
-                  </p>
-                </div>
-                <div className="shrink-0 hidden sm:flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full">
-                  <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                  <span>Free KYC Verification</span>
-                </div>
-              </div>
 
-              <form onSubmit={handleSubmit} className="space-y-8">
+            <form onSubmit={handleSubmit} className="space-y-8">
                 
                 {/* 1. Basic Personal Info (3 in a Row) */}
                 <div className="space-y-4">
@@ -1013,7 +1031,6 @@ function MTPPage() {
                 </div>
               </form>
             </div>
-          )}
         </div>
       </section>
 
@@ -1106,6 +1123,121 @@ function MTPPage() {
 
         </div>
       </section>
+
+      {/* High-Converting Success / Congratulations Modal */}
+      {showSuccessModal && submittedData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg rounded-3xl bg-white p-6 sm:p-8 shadow-2xl border-2 border-gold/40 text-center animate-in zoom-in-95 duration-200 space-y-6 my-auto max-h-[92vh] overflow-y-auto">
+            
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={handleCloseModal}
+              className="absolute top-4 right-4 h-9 w-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            {/* Top Celebration Icon & Badge */}
+            <div className="space-y-3">
+              <div className="mx-auto h-20 w-20 rounded-full bg-gradient-to-tr from-emerald-600 to-emerald-400 text-white flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                <CheckCircle2 className="h-10 w-10" />
+              </div>
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3.5 py-1 text-xs font-bold text-emerald-800 tracking-wider uppercase">
+                <Sparkles className="h-3.5 w-3.5 text-emerald-600" /> Registration Confirmed
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-primary font-display tracking-tight">
+                Congratulations, {submittedData.name}! 🎉
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
+                You have successfully registered as a <strong>Multi Tasking Professional (MTP)</strong> with Amma Seva Hyderabad.
+              </p>
+            </div>
+
+            {/* Reference ID Card */}
+            <div className="rounded-2xl bg-gradient-to-r from-[#091438] via-[#1e2a5a] to-[#091438] p-4 sm:p-5 text-white shadow-md border border-gold/40 space-y-1">
+              <div className="text-[11px] font-bold uppercase tracking-widest text-gold">Official MTP Reference ID</div>
+              <div className="text-2xl sm:text-3xl font-extrabold tracking-wider font-mono text-white">
+                #{submittedData.id || "MTP-PENDING"}
+              </div>
+              <div className="text-[10px] text-slate-300">
+                Please save this ID for all coordination and payout inquiries.
+              </div>
+            </div>
+
+            {/* Details Summary Table */}
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-left text-xs space-y-2.5 text-slate-700">
+              <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
+                <span className="text-slate-500">Applicant:</span>
+                <span className="font-bold text-primary">{submittedData.name}</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
+                <span className="text-slate-500">Registered Mobile:</span>
+                <span className="font-bold text-primary font-mono">{submittedData.phone}</span>
+              </div>
+              {submittedData.email && (
+                <div className="flex justify-between border-b border-slate-200/60 pb-1.5 items-center">
+                  <span className="text-slate-500">Email Address:</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-medium text-slate-800">{submittedData.email}</span>
+                    <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-800 shrink-0">
+                      ✉️ Email Sent
+                    </span>
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
+                <span className="text-slate-500">Preferred Zone:</span>
+                <span className="font-bold text-primary">{submittedData.locality}</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
+                <span className="text-slate-500">Assigned Tasks:</span>
+                <span className="font-bold text-emerald-700 max-w-[240px] text-right truncate">
+                  {Array.isArray(submittedData.roles) ? submittedData.roles.join(', ') : submittedData.roles}
+                </span>
+              </div>
+              <div className="flex justify-between items-center pt-0.5">
+                <span className="text-slate-500">KYC Status:</span>
+                <span className="inline-flex items-center gap-1 font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 text-[10px]">
+                  ⏳ Under Review (4–12 Hours)
+                </span>
+              </div>
+            </div>
+
+            {/* What Happens Next Steps */}
+            <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/50 p-4 text-left space-y-1.5 text-xs text-emerald-900">
+              <div className="font-bold text-emerald-950 flex items-center gap-1.5">
+                <ShieldCheck className="h-4 w-4 text-emerald-600" /> What Happens Next?
+              </div>
+              <p className="text-[11px] text-emerald-800/90 leading-relaxed">
+                1. Our Hyderabad coordination desk will verify your Aadhaar, PAN & Police verification records.<br />
+                2. You will receive a 10-minute safety orientation and start receiving task alerts on WhatsApp!
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-1">
+              <a
+                href={`https://wa.me/${contact.WHATSAPP}?text=Hi%20Amma%20Seva%20Team,%20I%20registered%20as%20an%20MTP%20(${encodeURIComponent(submittedData.name)}%20-%20${encodeURIComponent(submittedData.phone)}).%20My%20MTP%20Reference%20ID%20is%20%23${submittedData.id || "PENDING"}.%20Please%20verify%20my%20profile.`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-5 py-3 text-xs sm:text-sm font-bold text-white shadow-md hover:bg-emerald-600 transition-all cursor-pointer"
+              >
+                <MessageCircle className="h-4 w-4" /> Message Coordinator on WhatsApp
+              </a>
+              <button
+                type="button"
+                onClick={handleCloseModal}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3 text-xs sm:text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer"
+              >
+                Done &amp; Close
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </SiteLayout>
   );
 }

@@ -235,7 +235,7 @@ function Home() {
   }, []);
 
   return (
-    <SiteLayout>
+    <SiteLayout showInauguration={true}>
       {/* ============================================================ */}
       {/* 1. HERO SECTION (LUXURY RADIANT HEALTHCARE LAYOUT)            */}
       {/* ============================================================ */}

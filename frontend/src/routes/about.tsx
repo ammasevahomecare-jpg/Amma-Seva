@@ -26,7 +26,7 @@ const VALUES = [
 
 function About() {
   return (
-    <SiteLayout>
+    <SiteLayout showInauguration={true}>
       {/* Premium Hero Header Section */}
       <section className="bg-gradient-to-b from-cream/60 to-background border-b border-border/60 py-10">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

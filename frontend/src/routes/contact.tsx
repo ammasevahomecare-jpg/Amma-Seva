@@ -2,6 +2,7 @@ import React from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Phone, MessageCircle, Mail, MapPin, Send, ArrowRight, Instagram } from "lucide-react";
 import { SiteLayout, contact } from "@/components/SiteLayout";
+import { validateName, validatePhone, validateEmail } from "@/lib/validation";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
@@ -116,27 +117,32 @@ function Contact() {
                 e.preventDefault();
                 const form = e.target as HTMLFormElement;
                 const formData = new FormData(form);
+                const name = (formData.get("name") as string) || "";
                 const phone = (formData.get("phone") as string) || "";
                 const email = (formData.get("email") as string) || "";
 
-                const phoneRegex = /^[0-9]{10}$/;
-                if (!phoneRegex.test(phone.trim())) {
-                  alert("Phone number must be exactly 10 digits and contain only numbers.");
+                const nameError = validateName(name, "Full name");
+                if (nameError) {
+                  alert(nameError);
                   return;
                 }
 
-                if (email.trim()) {
-                  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                  if (!emailRegex.test(email.trim())) {
-                    alert("Please enter a valid email address.");
-                    return;
-                  }
+                const phoneError = validatePhone(phone, "Phone number");
+                if (phoneError) {
+                  alert(phoneError);
+                  return;
+                }
+
+                const emailError = validateEmail(email, false, "Email address");
+                if (emailError) {
+                  alert(emailError);
+                  return;
                 }
 
                 const data = {
-                  name: formData.get("name") as string,
-                  phone,
-                  email,
+                  name: name.trim(),
+                  phone: phone.replace(/\D/g, ""),
+                  email: email.trim(),
                   service: formData.get("service") as string,
                   message: formData.get("message") as string,
                 };

@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { DocumentViewerModal } from "@/components/DocumentViewerModal";
+import { validateName, validatePhone, validateEmail, validateAddress, validateAadhaar, validatePAN } from "@/lib/validation";
 import { 
   Trash2, RefreshCw, Mail, Phone, MapPin, ClipboardList, 
   Users, Calendar, DollarSign, ShieldAlert, LogOut, CheckCircle2, 
@@ -137,6 +138,10 @@ interface ServiceRecord {
   price: string;
   category: string;
   image?: string;
+  advance?: number | string;
+  unit?: string;
+  rate?: number;
+  isMtp?: boolean;
 }
 
 interface NotificationRecord {
@@ -149,6 +154,7 @@ interface NotificationRecord {
 
 interface ReferralReferee {
   id: number;
+  candidateId?: number;
   name: string;
   phone: string;
   email: string;
@@ -217,8 +223,43 @@ function AdminPage() {
     navigate({ to: "/login" });
   };
 
+  const VALID_ADMIN_TABS = [
+    "overview", "bookings", "caregivers", "referrals", "mtps", 
+    "users", "services", "payments", "salaries", "notifications", 
+    "enquiries", "blogs", "faqs", "gallery"
+  ] as const;
+  type AdminTab = typeof VALID_ADMIN_TABS[number];
+
+  const getInitialAdminTab = (): AdminTab => {
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const paramTab = searchParams.get("tab") as AdminTab;
+      if (paramTab && VALID_ADMIN_TABS.includes(paramTab)) {
+        return paramTab;
+      }
+      const savedTab = localStorage.getItem("ammaseva_admin_active_tab") as AdminTab;
+      if (savedTab && VALID_ADMIN_TABS.includes(savedTab)) {
+        return savedTab;
+      }
+    } catch (e) {
+      console.error("Failed to read initial admin tab:", e);
+    }
+    return "overview";
+  };
+
+  const getInitialMtpSubTab = (): "applicants" | "tasks" => {
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const sub = searchParams.get("subtab");
+      if (sub === "applicants" || sub === "tasks") return sub;
+      const saved = localStorage.getItem("ammaseva_admin_mtp_subtab");
+      if (saved === "applicants" || saved === "tasks") return saved;
+    } catch (e) {}
+    return "applicants";
+  };
+
   // Navigation and Search
-  const [activeTab, setActiveTab] = useState<"overview" | "bookings" | "caregivers" | "mtps" | "enquiries" | "services" | "users" | "notifications" | "payments" | "blogs" | "faqs" | "gallery" | "salaries" | "referrals">("overview");
+  const [activeTab, setActiveTab] = useState<AdminTab>(getInitialAdminTab);
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -236,7 +277,7 @@ function AdminPage() {
   const [gallery, setGallery] = useState<any[]>([]);
   const [mtps, setMTPs] = useState<any[]>([]);
   const [mtpTasks, setMtpTasks] = useState<any[]>([]);
-  const [mtpSubTab, setMtpSubTab] = useState<"applicants" | "tasks">("applicants");
+  const [mtpSubTab, setMtpSubTab] = useState<"applicants" | "tasks">(getInitialMtpSubTab);
 
   // Referral Network State
   const [referralsData, setReferralsData] = useState<ReferralsData | null>(null);
@@ -430,6 +471,60 @@ function AdminPage() {
       navigate({ to: "/login" });
     }
   }, [navigate, isLoggedIn]);
+
+  // Scroll to top on initial mount
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, []);
+
+  // Sync activeTab to URL query parameter and localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem("ammaseva_admin_active_tab", activeTab);
+      const url = new URL(window.location.href);
+      if (activeTab === "overview") {
+        url.searchParams.delete("tab");
+      } else {
+        url.searchParams.set("tab", activeTab);
+      }
+      window.history.replaceState({}, "", url.toString());
+    } catch (e) {
+      console.error("Failed to sync admin active tab:", e);
+    }
+    // Always scroll page & main panel to top on tab change
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    const mainEl = document.querySelector("main");
+    if (mainEl) {
+      mainEl.scrollTop = 0;
+    }
+  }, [activeTab]);
+
+  // Sync mtpSubTab to URL & localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem("ammaseva_admin_mtp_subtab", mtpSubTab);
+      const url = new URL(window.location.href);
+      if (activeTab === "mtps" && mtpSubTab === "tasks") {
+        url.searchParams.set("subtab", "tasks");
+      } else {
+        url.searchParams.delete("subtab");
+      }
+      window.history.replaceState({}, "", url.toString());
+    } catch (e) {}
+  }, [mtpSubTab, activeTab]);
+
+  // Listen to browser Back / Forward buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      const searchParams = new URLSearchParams(window.location.search);
+      const paramTab = (searchParams.get("tab") as AdminTab) || "overview";
+      if (VALID_ADMIN_TABS.includes(paramTab)) {
+        setActiveTab(paramTab);
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   // Fetch all dashboard data
   const fetchDashboardData = async () => {
@@ -1030,14 +1125,21 @@ function AdminPage() {
     let bodyData: any = {};
 
     if (modalType === "booking") {
-      const trimmedPhone = bookingPhone.trim();
-      if (!trimmedPhone) {
-        alert("Please enter a valid 10-digit phone number.");
+      const nameErr = validateName(bookingName, "Customer name");
+      if (nameErr) {
+        alert(nameErr);
         return;
       }
-      const phoneRegex = /^[0-9]{10}$/;
-      if (!phoneRegex.test(trimmedPhone)) {
-        alert("Phone number must be exactly 10 digits and contain only numbers.");
+
+      const phoneErr = validatePhone(bookingPhone, "Customer phone number");
+      if (phoneErr) {
+        alert(phoneErr);
+        return;
+      }
+
+      const addrErr = validateAddress(bookingAddress, "Patient location address");
+      if (addrErr) {
+        alert(addrErr);
         return;
       }
 
@@ -1045,13 +1147,13 @@ function AdminPage() {
       url = modalMode === "add" ? "/api/admin/booking" : `/api/admin/booking/${selectedId}`;
       method = modalMode === "add" ? "POST" : "PUT";
       bodyData = {
-        name: bookingName,
-        phone: bookingPhone,
+        name: bookingName.trim(),
+        phone: bookingPhone.replace(/\D/g, ""),
         service: bookingService,
         date: bookingDate,
         time: bookingTime,
         duration: bookingDuration,
-        address: bookingAddress,
+        address: bookingAddress.trim(),
         amount: Number(bookingAmount) || 1200,
         caretakerPayout: Number(bookingCaretakerPayout) || 0,
         caretakerPayoutStatus: bookingCaretakerPayoutStatus,
@@ -1065,24 +1167,33 @@ function AdminPage() {
         paymentDate: bookingPaymentDate
       };
     } else if (modalType === "caregiver") {
-      const trimmedPhone = caregiverPhone.trim();
-      if (!trimmedPhone) {
-        alert("Please enter a valid 10-digit phone number.");
+      const nameErr = validateName(caregiverName, "Staff full name");
+      if (nameErr) {
+        alert(nameErr);
         return;
       }
-      const phoneRegex = /^[0-9]{10}$/;
-      if (!phoneRegex.test(trimmedPhone)) {
-        alert("Phone number must be exactly 10 digits and contain only numbers.");
+
+      const phoneErr = validatePhone(caregiverPhone, "Staff phone number");
+      if (phoneErr) {
+        alert(phoneErr);
         return;
       }
-      const trimmedEmail = caregiverEmail.trim();
-      if (!trimmedEmail) {
-        alert("Please enter caregiver's email address.");
+
+      const emailErr = validateEmail(caregiverEmail, true, "Staff email address");
+      if (emailErr) {
+        alert(emailErr);
         return;
       }
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(trimmedEmail)) {
-        alert("Please enter a valid email address.");
+
+      const aadhaarErr = validateAadhaar(caregiverAadhaar, false);
+      if (aadhaarErr) {
+        alert(aadhaarErr);
+        return;
+      }
+
+      const panErr = validatePAN(caregiverPan, false);
+      if (panErr) {
+        alert(panErr);
         return;
       }
 
@@ -1090,9 +1201,9 @@ function AdminPage() {
       url = modalMode === "add" ? "/api/caregiver" : `/api/admin/caregiver/${selectedId}`;
       method = modalMode === "add" ? "POST" : "PUT";
       bodyData = {
-        name: caregiverName,
-        phone: caregiverPhone,
-        email: caregiverEmail,
+        name: caregiverName.trim(),
+        phone: caregiverPhone.replace(/\D/g, ""),
+        email: caregiverEmail.trim().toLowerCase(),
         specialty: caregiverSpecialty,
         experience: Number(caregiverExperience) || 1,
         status: caregiverStatus,

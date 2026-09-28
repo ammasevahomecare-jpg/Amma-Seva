@@ -106,22 +106,22 @@ export function InaugurationSection() {
   const activePhoto = activePhotoIndex !== null ? INAUGURATION_MOMENTS[activePhotoIndex] : null;
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-[#07112c] via-[#0b1b44] to-[#081438] text-white border-t-2 border-[#d4af37]/40 shadow-2xl py-14 sm:py-20">
+    <section className="relative overflow-hidden bg-gradient-to-b from-[#0d1733] via-[#091024] to-[#060b19] text-white border-t border-slate-800 shadow-2xl py-14 sm:py-20">
       {/* Background Decorative Gold Ambient Gradients */}
-      <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-[#d4af37]/10 blur-[130px] rounded-full" />
-      <div className="pointer-events-none absolute bottom-0 right-0 w-96 h-96 bg-primary/40 blur-[100px] rounded-full" />
+      <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-amber-500/10 blur-[130px] rounded-full" />
+      <div className="pointer-events-none absolute bottom-0 right-0 w-96 h-96 bg-primary/30 blur-[100px] rounded-full" />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         
         {/* TOP COMMEMORATIVE HEADER */}
         <div className="text-center max-w-4xl mx-auto space-y-4">
-          <div className="inline-flex items-center gap-2 rounded-full bg-[#d4af37]/15 border border-[#d4af37]/60 px-4 py-1 text-xs font-extrabold uppercase tracking-widest text-[#ffd700] shadow-[0_0_20px_rgba(212,175,55,0.25)]">
-            <Award className="h-4 w-4 text-[#ffd700]" />
+          <div className="inline-flex items-center gap-2 rounded-full bg-amber-400/15 border border-amber-400/40 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-amber-300 shadow-sm">
+            <Award className="h-4 w-4 text-amber-400" />
             <span>Official State Inauguration &amp; Dedication</span>
           </div>
 
           <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight">
-            Grand Inauguration of <span className="text-[#ffd700] underline decoration-[#d4af37]/60 underline-offset-8">Amma Seva</span>
+            Grand Inauguration of <span className="text-amber-400">Amma Seva</span>
           </h2>
 
           <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-3xl mx-auto">

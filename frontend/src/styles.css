@@ -204,16 +204,16 @@
   justify-content: center;
   gap: 0.5rem;
   padding: 0.65rem 1.5rem;
-  border-radius: 1.5rem 0.25rem;
+  border-radius: 0.75rem;
   background: var(--primary);
   color: var(--primary-foreground);
-  font-weight: 500;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 12px -4px rgba(30, 42, 90, 0.1);
+  font-weight: 600;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 14px -3px rgba(30, 42, 90, 0.25);
   &:hover {
     background: color-mix(in oklab, var(--primary) 92%, black);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px -6px var(--primary);
+    transform: translateY(-1.5px);
+    box-shadow: 0 8px 20px -4px rgba(30, 42, 90, 0.35);
   }
   &:active {
     transform: translateY(0);
@@ -226,16 +226,16 @@
   justify-content: center;
   gap: 0.5rem;
   padding: 0.65rem 1.5rem;
-  border-radius: 1.5rem 0.25rem;
+  border-radius: 0.75rem;
   background: var(--gold);
-  color: var(--gold-foreground);
-  font-weight: 500;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 12px -4px rgba(201, 162, 76, 0.1);
+  color: #ffffff;
+  font-weight: 600;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 14px -3px rgba(201, 162, 76, 0.3);
   &:hover {
-    background: color-mix(in oklab, var(--gold) 92%, black);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px -6px var(--gold);
+    background: color-mix(in oklab, var(--gold) 90%, black);
+    transform: translateY(-1.5px);
+    box-shadow: 0 8px 20px -4px rgba(201, 162, 76, 0.4);
   }
   &:active {
     transform: translateY(0);
@@ -248,17 +248,17 @@
   justify-content: center;
   gap: 0.5rem;
   padding: 0.65rem 1.5rem;
-  border-radius: 1.5rem 0.25rem;
-  border: 1px solid var(--primary);
+  border-radius: 0.75rem;
+  border: 1.5px solid var(--primary);
   color: var(--primary);
   background: transparent;
-  font-weight: 500;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 600;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   &:hover {
     background: var(--primary);
     color: var(--primary-foreground);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px -6px var(--primary);
+    transform: translateY(-1.5px);
+    box-shadow: 0 8px 20px -4px rgba(30, 42, 90, 0.25);
   }
   &:active {
     transform: translateY(0);

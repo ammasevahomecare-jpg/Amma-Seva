@@ -83,6 +83,46 @@ const transporter = nodemailer.createTransport({
   }
 })
 
+// Validation helpers
+const isValidPhone = (phone) => {
+  if (!phone) return false
+  const clean = String(phone).replace(/\D/g, '')
+  if (clean.length !== 10) return false
+  if (!/^[6-9]\d{9}$/.test(clean)) return false
+  if (/^(\d)\1{9}$/.test(clean)) return false
+  if (clean === '1234567890' || clean === '9876543210' || clean === '0123456789' || clean === '1122334455') return false
+  return true
+}
+
+const isValidName = (name) => {
+  if (!name) return false
+  const clean = String(name).trim()
+  if (clean.length < 3 || clean.length > 60) return false
+  if (!/^[a-zA-Z\s.'-]{3,60}$/.test(clean)) return false
+  const letterCount = (clean.match(/[a-zA-Z]/g) || []).length
+  if (letterCount < 3) return false
+  if (/^([a-zA-Z])\1+$/.test(clean.replace(/\s+/g, ''))) return false
+  return true
+}
+
+const isValidEmail = (email) => {
+  if (!email) return false
+  const clean = String(email).trim().toLowerCase()
+  const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+  if (!regex.test(clean)) return false
+  if (clean.endsWith('@test.com') || clean.endsWith('@example.com') || clean.startsWith('test@') || clean.startsWith('temp@')) return false
+  return true
+}
+
+const isValidAddress = (address) => {
+  if (!address) return false
+  const clean = String(address).trim()
+  if (clean.length < 8 || clean.length > 250) return false
+  const words = clean.split(/\s+/).filter(w => w.length > 0)
+  if (words.length < 2) return false
+  return true
+}
+
 const handleBookingEmailNotification = async (bookingId, oldBooking, newStatus, newAssignedStaff) => {
   try {
     const booking = await db.getBookingById(bookingId)
@@ -397,6 +437,121 @@ const sendCaregiverApprovalEmail = async (caregiver, status) => {
     }
   }
 }
+
+// 4. MTP (Multi Tasking Professional) Registration Welcome Email
+const sendMTPRegistrationEmail = async (mtp) => {
+  if (!mtp || !mtp.email || !mtp.email.includes('@') || mtp.email.includes('@applicant.ammaseva.in')) {
+    return
+  }
+  const cleanEmail = mtp.email.trim()
+  const name = mtp.name || 'Professional'
+  const phone = mtp.phone || 'N/A'
+  const id = mtp.id ? `MTP-${mtp.id}` : 'MTP-PENDING'
+  const locality = mtp.locality || 'Hyderabad'
+  const roles = Array.isArray(mtp.roles) ? mtp.roles.join(', ') : (mtp.roles || 'On-Demand Care & Mobility Services')
+  const availability = mtp.availability || 'Flexible / On-Demand'
+
+  const mailOptions = {
+    from: `"Amma Seva MTP Network" <${cleanSmtpEmail}>`,
+    to: cleanEmail,
+    subject: `🎉 Registration Confirmed: Welcome to Amma Seva MTP Network (#${id})`,
+    html: `
+      <div style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 620px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
+        
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #091438 0%, #1e2a5a 50%, #091438 100%); padding: 32px 24px; text-align: center; border-bottom: 3px solid #c9a24c;">
+          <div style="display: inline-block; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); padding: 8px 18px; margin-bottom: 12px; border-radius: 30px;">
+            <span style="color: #ffd700; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;">✨ MTP Registration Confirmed</span>
+          </div>
+          <h1 style="color: #ffffff; font-size: 24px; margin: 0; font-weight: 800; letter-spacing: -0.5px;">Congratulations, ${name}!</h1>
+          <p style="color: #cbd5e1; font-size: 13px; margin: 6px 0 0 0;">Welcome to Amma Seva Multi Tasking Professionals (MTP) Network</p>
+        </div>
+
+        <!-- Body -->
+        <div style="padding: 32px 28px; color: #334155; line-height: 1.6;">
+          <p style="font-size: 16px; font-weight: bold; color: #091438; margin-top: 0;">Dear ${name},</p>
+          <p style="font-size: 14px; color: #475569; margin-bottom: 20px;">
+            Thank you for registering as a <strong>Multi Tasking Professional (MTP)</strong> with <strong>Amma Seva</strong>. We have received your application and KYC verification documents.
+          </p>
+
+          <!-- Status Card -->
+          <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #16a34a; border-radius: 12px; padding: 18px 20px; margin-bottom: 24px;">
+            <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #15803d; letter-spacing: 1px;">Application Status</div>
+            <div style="font-size: 15px; font-weight: 800; color: #166534; margin-top: 2px;">
+              ⏳ Document Verification in Progress (4–12 Hours)
+            </div>
+            <div style="font-size: 12px; color: #15803d; margin-top: 4px;">
+              Our Hyderabad Care Coordination Desk is reviewing your submitted documents. Once verified, you will receive real-time gig and shift alerts directly on WhatsApp / Phone.
+            </div>
+          </div>
+
+          <!-- Application Summary Table -->
+          <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #334155; margin-bottom: 24px; background: #ffffff; border: 1px solid #f1f5f9; border-radius: 12px;">
+            <tr style="border-bottom: 1px solid #f1f5f9; background: #fafafa;">
+              <td style="padding: 10px 14px; font-weight: bold; color: #64748b;">MTP Reference ID</td>
+              <td style="padding: 10px 14px; text-align: right; font-weight: bold; color: #1e2a5a; font-family: monospace;">#${id}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+              <td style="padding: 10px 14px; font-weight: bold; color: #64748b;">Applicant Name</td>
+              <td style="padding: 10px 14px; text-align: right; font-weight: 600;">${name}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+              <td style="padding: 10px 14px; font-weight: bold; color: #64748b;">Registered Phone</td>
+              <td style="padding: 10px 14px; text-align: right; font-weight: 600;">${phone}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+              <td style="padding: 10px 14px; font-weight: bold; color: #64748b;">Preferred Locality</td>
+              <td style="padding: 10px 14px; text-align: right;">${locality}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+              <td style="padding: 10px 14px; font-weight: bold; color: #64748b;">Selected Tasks / Roles</td>
+              <td style="padding: 10px 14px; text-align: right; color: #0284c7; font-weight: 600;">${roles}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 14px; font-weight: bold; color: #64748b;">Availability</td>
+              <td style="padding: 10px 14px; text-align: right;">${availability}</td>
+            </tr>
+          </table>
+
+          <!-- Next Steps Box -->
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px; text-align: left; margin-bottom: 24px;">
+            <h3 style="color: #091438; font-size: 14px; margin: 0 0 8px 0; font-weight: 800;">📋 What Happens Next?</h3>
+            <ul style="margin: 0; padding-left: 20px; font-size: 12px; color: #475569; line-height: 1.7;">
+              <li><strong>Step 1:</strong> Our coordinator will verify your Aadhaar, PAN and Police Verification documents.</li>
+              <li><strong>Step 2:</strong> You will receive a brief 10-minute telephonic orientation on standard patient safety protocols.</li>
+              <li><strong>Step 3:</strong> You will start receiving local task alerts (hospital drops, medicine errands, elder walks) on WhatsApp.</li>
+              <li><strong>Step 4:</strong> Payouts are transferred weekly directly to your bank/UPI account.</li>
+            </ul>
+          </div>
+
+          <!-- WhatsApp Connect CTA -->
+          <div style="text-align: center; margin-bottom: 24px;">
+            <a href="https://wa.me/919494516543?text=Hi%20Amma%20Seva%20Team,%20I%20registered%20as%20an%20MTP%20(${encodeURIComponent(name)}%20-%20${encodeURIComponent(phone)}).%20My%20Ref%20ID%20is%20${id}." style="display: inline-block; background-color: #25D366; color: #ffffff; font-size: 14px; font-weight: 800; text-decoration: none; padding: 13px 32px; border-radius: 12px; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);">
+              💬 Connect with Coordinator on WhatsApp →
+            </a>
+          </div>
+
+          <p style="font-size: 12px; color: #94a3b8; text-align: center; margin-bottom: 0;">
+            Questions? Contact our 24/7 care desk at <a href="tel:+919494516543" style="color: #1e2a5a; font-weight: bold; text-decoration: none;">+91 94945 16543</a> or email <a href="mailto:ammasevahomecare@gmail.com" style="color: #1e2a5a; text-decoration: none;">ammasevahomecare@gmail.com</a>.
+          </p>
+        </div>
+
+        <!-- Footer -->
+        <div style="background-color: #f8fafc; padding: 16px 24px; text-align: center; border-top: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8;">
+          © ${new Date().getFullYear()} Amma Seva Home Healthcare • Hyderabad, Telangana • All Rights Reserved
+        </div>
+      </div>
+    `
+  }
+
+  try {
+    await transporter.sendMail(mailOptions)
+    console.log(`[MTP Onboarding Email] Sent registration confirmation email to ${cleanEmail}`)
+  } catch (err) {
+    console.error('Failed to send MTP registration email:', err.message)
+  }
+}
+
 
 
 
@@ -1269,13 +1424,23 @@ app.post('/api/user/register', async (req, res) => {
   if (!name || !email || !phone) {
     return res.status(400).json({ error: 'Name, email, and phone are required.' })
   }
+  if (!isValidName(name)) {
+    return res.status(400).json({ error: 'Please enter a valid full name (letters only, at least 3 characters).' })
+  }
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ error: 'Please enter a valid email address.' })
+  }
+  if (!isValidPhone(phone)) {
+    return res.status(400).json({ error: 'Please enter a valid 10-digit Indian phone number starting with 6, 7, 8, or 9.' })
+  }
+  const cleanPhone = String(phone).replace(/\D/g, '')
   const regPassword = password || (Math.random().toString(36).slice(-8) + 'A1!')
   try {
     const existingUser = await db.getUserByEmail(email)
     if (existingUser) {
       return res.status(409).json({ error: 'An account with this email address already exists.' })
     }
-    const newUser = await db.addUser({ name, email, phone, password: regPassword })
+    const newUser = await db.addUser({ name: name.trim(), email: email.trim().toLowerCase(), phone: cleanPhone, password: regPassword })
     
     // Optional welcome email
     const mailOptions = {
@@ -1366,6 +1531,16 @@ app.post('/api/caretaker/register', async (req, res) => {
   if (!name || !phone || !specialty) {
     return res.status(400).json({ error: 'Name, phone, and specialty are required.' })
   }
+  if (!isValidName(name)) {
+    return res.status(400).json({ error: 'Please enter a valid full name (letters only, at least 3 characters).' })
+  }
+  if (!isValidPhone(phone)) {
+    return res.status(400).json({ error: 'Please enter a valid 10-digit Indian phone number starting with 6, 7, 8, or 9.' })
+  }
+  if (email && !isValidEmail(email)) {
+    return res.status(400).json({ error: 'Please enter a valid email address.' })
+  }
+  const cleanPhone = String(phone).replace(/\D/g, '')
 
   try {
     if (email) {
@@ -1558,9 +1733,20 @@ app.post('/api/enquiry', async (req, res) => {
   if (!name || !phone) {
     return res.status(400).json({ error: 'Name and phone are required fields.' })
   }
+  if (!isValidName(name)) {
+    return res.status(400).json({ error: 'Please enter a valid full name (letters only, at least 3 characters).' })
+  }
+  if (!isValidPhone(phone)) {
+    return res.status(400).json({ error: 'Please enter a valid 10-digit Indian phone number starting with 6, 7, 8, or 9.' })
+  }
+  if (email && !isValidEmail(email)) {
+    return res.status(400).json({ error: 'Please enter a valid email address.' })
+  }
+
+  const cleanPhone = String(phone).replace(/\D/g, '')
 
   try {
-    const newEnquiry = await db.addEnquiry({ name, phone, email, service, city, message })
+    const newEnquiry = await db.addEnquiry({ name: name.trim(), phone: cleanPhone, email: email ? email.trim() : '', service, city, message })
     res.status(201).json({
       success: true,
       message: 'Enquiry successfully recorded!',
@@ -1568,6 +1754,47 @@ app.post('/api/enquiry', async (req, res) => {
     })
   } catch (err) {
     res.status(500).json({ error: 'Failed to record enquiry.' })
+  }
+})
+
+// POST careers / caregiver onboarding application
+app.post('/api/careers/apply', async (req, res) => {
+  const { name, phone, email, city, role, experience, about, referredBy } = req.body
+
+  if (!name || !phone) {
+    return res.status(400).json({ error: 'Name and phone are required.' })
+  }
+  if (!isValidName(name)) {
+    return res.status(400).json({ error: 'Please enter a valid full name (letters only, at least 3 characters).' })
+  }
+  if (!isValidPhone(phone)) {
+    return res.status(400).json({ error: 'Please enter a valid 10-digit Indian phone number starting with 6, 7, 8, or 9.' })
+  }
+  if (email && !isValidEmail(email)) {
+    return res.status(400).json({ error: 'Please enter a valid email address.' })
+  }
+
+  const cleanPhone = String(phone).replace(/\D/g, '')
+
+  try {
+    const newCaregiver = await db.addCaregiverWithPassword({
+      name: name.trim(),
+      phone: cleanPhone,
+      email: email ? email.trim().toLowerCase() : `${cleanPhone}@applicant.ammaseva.in`,
+      specialty: role === 'nurse' ? 'Home Nursing Services' : role === 'physiotherapist' ? 'Physiotherapy' : 'Elderly Care',
+      experience: Number(experience) || 1,
+      city: city || 'Hyderabad',
+      experienceDetails: about || '',
+      referredBy: (referredBy || '').trim().toUpperCase()
+    })
+    res.status(201).json({
+      success: true,
+      message: 'Careers application submitted successfully!',
+      data: newCaregiver
+    })
+  } catch (err) {
+    console.error('Failed to submit career application:', err)
+    res.status(500).json({ error: 'Failed to submit application. Please try again.' })
   }
 })
 
@@ -1615,6 +1842,18 @@ app.post('/api/mtp/register', async (req, res) => {
   if (!name || !phone) {
     return res.status(400).json({ success: false, error: 'Full name and phone number are required.' })
   }
+  if (!isValidName(name)) {
+    return res.status(400).json({ success: false, error: 'Please enter a valid full name (letters only, at least 3 characters).' })
+  }
+  if (!isValidPhone(phone)) {
+    return res.status(400).json({ success: false, error: 'Please enter a valid 10-digit Indian phone number starting with 6, 7, 8, or 9.' })
+  }
+  if (email && !isValidEmail(email)) {
+    return res.status(400).json({ success: false, error: 'Please enter a valid email address.' })
+  }
+  if (emergencyContact && !isValidPhone(emergencyContact)) {
+    return res.status(400).json({ success: false, error: 'Please enter a valid 10-digit emergency contact phone number.' })
+  }
 
   try {
     const uploadedAadhaar = await uploadToCloudinary(aadhaarDoc)
@@ -1647,6 +1886,11 @@ app.post('/api/mtp/register', async (req, res) => {
     })
 
     console.log(`[MTP Registration] New applicant registered: ${name} (${phone}) for roles: ${Array.isArray(roles) ? roles.join(', ') : roles}`)
+
+    // Send confirmation email asynchronously if email was provided
+    if (newMTP && newMTP.email && newMTP.email.includes('@')) {
+      sendMTPRegistrationEmail(newMTP).catch(err => console.error('[MTP Email Async Error]:', err.message))
+    }
 
     res.status(201).json({
       success: true,
@@ -1955,6 +2199,9 @@ app.post('/api/booking', async (req, res) => {
   try {
     const uploadedPrescription = prescription ? await uploadToCloudinary(prescription) : ''
 
+    const parsedAmount = typeof amount === 'number' ? amount : (amount !== undefined && amount !== '' ? Number(amount) : (paymentMethod === 'pay_on_service' ? 0 : 1200))
+    const statusOfPayment = req.body.paymentStatus || (paymentMethod === 'razorpay' ? 'Advance Paid' : (paymentMethod === 'pay_on_service' ? 'Pay on Service' : 'Unpaid'))
+
     const newBooking = await db.addBookingForUser({ 
       name, 
       phone, 
@@ -1963,14 +2210,14 @@ app.post('/api/booking', async (req, res) => {
       time, 
       duration, 
       address, 
-      amount: amount || 1200, 
+      amount: parsedAmount, 
       userId: authUserId,
       patientName: patientName || '',
       patientAge: patientAge || '',
       patientNeeds: patientNeeds || '',
       prescription: uploadedPrescription,
       googleMapLocation: googleMapLocation || '',
-      paymentStatus: paymentMethod === 'razorpay' ? 'Advance Paid' : 'Unpaid',
+      paymentStatus: statusOfPayment,
       paymentMethod: paymentMethod || 'pay_later',
       transactionId: razorpay_payment_id || '',
       paymentDate: paymentMethod === 'razorpay' ? new Date().toISOString() : '',

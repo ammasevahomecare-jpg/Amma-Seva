@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { SiteLayout } from "@/components/SiteLayout";
+import { validateName, validatePhone, validateEmail } from "@/lib/validation";
 import { fetchServices, type Service } from "../lib/services";
 import { 
   Lock, Mail, User, Phone, ShieldAlert, CheckCircle2, 
@@ -199,64 +200,54 @@ function LoginPage() {
     const trimmedEmail = email.toLowerCase().trim();
 
     if (mode === "register") {
-      if (!name.trim()) {
-        setError("Please enter your name.");
+      const nameErr = validateName(name, "Full name");
+      if (nameErr) {
+        setError(nameErr);
         return;
       }
-      if (!trimmedEmail) {
-        setError("Please enter your email.");
+
+      const emailErr = validateEmail(trimmedEmail, true, "Email address");
+      if (emailErr) {
+        setError(emailErr);
         return;
       }
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(trimmedEmail)) {
-        setError("Please enter a valid email address.");
-        return;
-      }
-      const trimmedPhone = phone.trim();
-      if (!trimmedPhone) {
-        setError("Please enter your 10-digit phone number.");
-        return;
-      }
-      const phoneRegex = /^[0-9]{10}$/;
-      if (!phoneRegex.test(trimmedPhone)) {
-        setError("Phone number must be exactly 10 digits and contain only numbers.");
+
+      const phoneErr = validatePhone(phone, "Phone number");
+      if (phoneErr) {
+        setError(phoneErr);
         return;
       }
 
       if (role === "caretaker") {
-        if (!experienceDetails.trim()) {
-          setError("Please enter experience details.");
+        if (!experienceDetails.trim() || experienceDetails.trim().length < 5) {
+          setError("Please provide a brief description of your caregiving/nursing experience (at least 5 characters).");
           return;
         }
-        if (!workingLocations.trim()) {
-          setError("Please enter preferred working locations.");
+        if (!workingLocations.trim() || workingLocations.trim().length < 3) {
+          setError("Please enter preferred working locations/localities.");
           return;
         }
         if (!availableTimings.trim()) {
-          setError("Please enter your available timings.");
+          setError("Please enter your available timings (e.g. 12hr Day Shift / 24hr Live-in).");
           return;
         }
         if (!stateName.trim()) {
-          setError("Please select/enter your State.");
+          setError("Please select your State.");
           return;
         }
-        if (!cityName.trim()) {
-          setError("Please select/enter your City.");
+        if (!cityName.trim() || cityName.trim().length < 2) {
+          setError("Please enter your City (e.g. Hyderabad).");
           return;
         }
         if (!agreeTerms) {
-          setError("You must agree to the Terms of Service & Privacy Policy.");
+          setError("You must agree to the Terms of Service & Care Policies.");
           return;
         }
       }
     } else {
-      if (!trimmedEmail) {
-        setError("Please enter your email address.");
-        return;
-      }
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(trimmedEmail)) {
-        setError("Please enter a valid email address.");
+      const emailErr = validateEmail(trimmedEmail, true, "Email address");
+      if (emailErr) {
+        setError(emailErr);
         return;
       }
     }

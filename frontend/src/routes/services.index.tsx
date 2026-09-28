@@ -145,6 +145,7 @@ function ServicesPage() {
 
   const categories = [
     { label: "✨ All Services", value: "All" },
+    { label: "🚗 MTP & Companion Tasks", value: "MTP" },
     { label: "👴 Elderly & Senior Care", value: "Elderly" },
     { label: "🍼 Maternal & Newborn", value: "Maternal" },
     { label: "🩺 Clinical Nursing & ICU", value: "Clinical" },
@@ -160,10 +161,17 @@ function ServicesPage() {
     return services.filter((s: Service) => {
       // Category filter
       let matchesCat = true;
-      if (selectedCategory === "Elderly") matchesCat = elderlySlugs.includes(s.slug);
-      else if (selectedCategory === "Maternal") matchesCat = maternalSlugs.includes(s.slug);
-      else if (selectedCategory === "Clinical") matchesCat = clinicalSlugs.includes(s.slug);
-      else if (selectedCategory === "Therapy") matchesCat = therapySlugs.includes(s.slug);
+      if (selectedCategory === "MTP") {
+        matchesCat = !!s.isMtp || s.slug.startsWith("mtp") || (s.category && s.category.toLowerCase().includes("mtp"));
+      } else if (selectedCategory === "Elderly") {
+        matchesCat = elderlySlugs.includes(s.slug) || (s.category && s.category.toLowerCase().includes("elderly"));
+      } else if (selectedCategory === "Maternal") {
+        matchesCat = maternalSlugs.includes(s.slug) || (s.category && s.category.toLowerCase().includes("maternal"));
+      } else if (selectedCategory === "Clinical") {
+        matchesCat = clinicalSlugs.includes(s.slug) || (s.category && s.category.toLowerCase().includes("clinical"));
+      } else if (selectedCategory === "Therapy") {
+        matchesCat = therapySlugs.includes(s.slug) || (s.category && s.category.toLowerCase().includes("therapy"));
+      }
 
       // Search query filter
       const q = searchQuery.toLowerCase().trim();
@@ -319,13 +327,17 @@ function ServicesPage() {
               {filteredServices.map((s: Service) => {
                 const details = getServiceDetails(s.slug);
                 const cardImage = s.image || details.image;
-                const cardPrice = s.price || s.pricing || "Starting ₹799 / shift";
+                const cardPrice = s.isMtp 
+                  ? (s.pricing || "Pay on Service") 
+                  : (s.price || s.pricing || "Starting ₹799 / shift");
                 const cardHighlights = (s.highlights && s.highlights.length > 0) ? s.highlights.slice(0, 3) : details.highlights;
 
                 return (
                   <div
                     key={s.slug}
-                    className="group flex flex-col overflow-hidden rounded-3xl bg-white border border-slate-200/90 shadow-sm hover:shadow-2xl hover:border-gold/50 transition-all duration-300 hover:-translate-y-1.5 text-left"
+                    className={`group flex flex-col overflow-hidden rounded-3xl bg-white border shadow-sm hover:shadow-2xl transition-all duration-300 hover:-translate-y-1.5 text-left ${
+                      s.isMtp ? "border-amber-300/80 hover:border-amber-500" : "border-slate-200/90 hover:border-gold/50"
+                    }`}
                   >
                     {/* Card Image Container */}
                     <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100">
@@ -340,13 +352,17 @@ function ServicesPage() {
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       
                       {/* Floating Price Badge */}
-                      <div className="absolute top-3.5 right-3.5 bg-[#1e2a5a]/95 backdrop-blur-xs text-white px-3.5 py-1 rounded-xl text-xs font-bold shadow-md border border-white/20">
-                        {cardPrice}
+                      <div className={`absolute top-3.5 right-3.5 backdrop-blur-xs px-3.5 py-1 rounded-xl text-xs font-bold shadow-md border ${
+                        s.isMtp 
+                          ? "bg-amber-900/90 text-[#fcedc7] border-amber-400/40" 
+                          : "bg-[#1e2a5a]/95 text-white border-white/20"
+                      }`}>
+                        {s.isMtp ? `✨ ${cardPrice}` : cardPrice}
                       </div>
 
                       {/* Verified Badge */}
                       <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-xs text-emerald-800 px-2.5 py-1 rounded-lg text-[10px] font-extrabold flex items-center gap-1 shadow-sm">
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Verified Staff
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> {s.isMtp ? "Verified MTP Companion" : "Verified Staff"}
                       </div>
                     </div>
                     
@@ -356,12 +372,19 @@ function ServicesPage() {
                         
                         {/* Categories & Badges */}
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`inline-flex items-center rounded-lg px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider border ${details.badgeClass}`}>
-                            {s.category || details.category}
+                          <span className={`inline-flex items-center rounded-lg px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider border ${
+                            s.isMtp ? "bg-amber-50 text-amber-900 border-amber-200" : details.badgeClass
+                          }`}>
+                            {s.category || (s.isMtp ? "MTP & Companion Tasks" : details.category)}
                           </span>
                           <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
-                            {details.shiftType}
+                            {s.shiftType || s.duration || details.shiftType}
                           </span>
+                          {s.isMtp && (
+                            <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
+                              Zero Advance Required
+                            </span>
+                          )}
                         </div>
 
                         {/* Title */}
@@ -405,9 +428,13 @@ function ServicesPage() {
                               ? `/dashboard?service=${s.slug}`
                               : `/login?redirect=${encodeURIComponent(`/dashboard?service=${s.slug}`)}`
                           }
-                          className="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-[#1e2a5a] via-[#283870] to-[#1e2a5a] hover:from-[#151e42] hover:to-[#223068] text-white text-xs font-bold transition-all text-center shadow-md shadow-[#1e2a5a]/20 flex items-center justify-center gap-1 cursor-pointer group/btn"
+                          className={`flex-1 py-2.5 px-3 rounded-xl text-white text-xs font-bold transition-all text-center shadow-md flex items-center justify-center gap-1 cursor-pointer group/btn ${
+                            s.isMtp 
+                              ? "bg-gradient-to-r from-amber-700 via-amber-800 to-amber-900 hover:from-amber-800 hover:to-amber-950 shadow-amber-900/20"
+                              : "bg-gradient-to-r from-[#1e2a5a] via-[#283870] to-[#1e2a5a] hover:from-[#151e42] hover:to-[#223068] shadow-[#1e2a5a]/20"
+                          }`}
                         >
-                          <span>Book Now</span>
+                          <span>{s.isMtp ? "Book MTP Task" : "Book Now"}</span>
                           <ChevronRight className="h-3.5 w-3.5 text-gold transition-transform group-hover/btn:translate-x-0.5" />
                         </a>
                       </div>
