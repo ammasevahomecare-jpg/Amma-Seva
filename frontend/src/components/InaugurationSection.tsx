@@ -111,7 +111,7 @@ export function InaugurationSection() {
       <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-amber-500/10 blur-[130px] rounded-full" />
       <div className="pointer-events-none absolute bottom-0 right-0 w-96 h-96 bg-primary/30 blur-[100px] rounded-full" />
 
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="relative mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
         
         {/* TOP COMMEMORATIVE HEADER */}
         <div className="text-center max-w-4xl mx-auto space-y-4">

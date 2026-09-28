@@ -1269,7 +1269,7 @@ function CustomerDashboard() {
     return (
       <SiteLayout>
         <div className="min-h-screen bg-slate-50/50 py-10 px-4 sm:px-6 lg:px-8 animate-in fade-in duration-300">
-          <div className="mx-auto max-w-7xl space-y-6">
+          <div className="mx-auto max-w-[1440px] space-y-6">
             
             {/* Premium Two-Column Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
@@ -2809,7 +2809,7 @@ function CustomerDashboard() {
   return (
     <SiteLayout>
       <div className="min-h-screen bg-slate-50 py-10 px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-6xl">
+        <div className="mx-auto max-w-[1440px]">
           
           {/* Dashboard Header Bar */}
           <div className="relative overflow-hidden rounded-3xl border border-[#c9a24c]/40 bg-gradient-to-tr from-[#1e2a5a] via-[#151c3e] to-[#0c1024] p-6 sm:p-8 shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 text-left">

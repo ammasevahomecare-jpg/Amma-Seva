@@ -123,7 +123,7 @@ function BlogDetails() {
   return (
     <SiteLayout>
       {/* Breadcrumbs link */}
-      <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8 text-left">
+      <div className="mx-auto max-w-[1440px] px-4 pt-6 sm:px-6 lg:px-8 xl:px-12 text-left">
         <Link 
           to="/blog" 
           className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-gold hover:text-gold/80 transition-colors"
@@ -134,7 +134,7 @@ function BlogDetails() {
 
       {/* Article Hero Banner */}
       <section className="py-6">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
           <div className="relative w-full h-[340px] md:h-[460px] rounded-3xl overflow-hidden shadow-xl border border-slate-200">
             <img 
               src={blog.image} 
@@ -178,7 +178,7 @@ function BlogDetails() {
 
       {/* Main Content Layout Grid */}
       <section className="py-6 pb-16">
-        <div className="mx-auto grid max-w-7xl grid-cols-1 lg:grid-cols-12 gap-8 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto grid max-w-[1440px] grid-cols-1 lg:grid-cols-12 gap-8 px-4 sm:px-6 lg:px-8 xl:px-12">
           
           {/* Left Column Blog Post Body */}
           <div className="lg:col-span-8 space-y-8 text-left">

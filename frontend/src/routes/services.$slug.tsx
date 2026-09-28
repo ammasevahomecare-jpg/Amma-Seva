@@ -186,7 +186,7 @@ function ServicePage() {
   return (
     <SiteLayout>
       {/* Breadcrumb link */}
-      <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8 text-left">
+      <div className="mx-auto max-w-[1440px] px-4 pt-6 sm:px-6 lg:px-8 xl:px-12 text-left">
         <Link 
           to="/services" 
           className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-gold hover:text-gold/80 transition-colors"
@@ -197,7 +197,7 @@ function ServicePage() {
 
       {/* Premium Hero Header & Image Gallery */}
       <section className="py-6">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
           {/* Relative Image Box */}
           <div className="relative w-full h-[320px] md:h-[450px] rounded-3xl overflow-hidden shadow-lg border border-border/40">
             <img 
@@ -248,7 +248,7 @@ function ServicePage() {
 
       {/* Main Details Grid */}
       <section>
-        <div className="mx-auto grid max-w-7xl grid-cols-1 lg:grid-cols-12 gap-8 px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mx-auto grid max-w-[1440px] grid-cols-1 lg:grid-cols-12 gap-8 px-4 py-8 sm:px-6 lg:px-8 xl:px-12">
           <div className="lg:col-span-8 space-y-8">
             
             {/* Service Overview Card */}
@@ -583,7 +583,7 @@ function ServicePage() {
 
       {/* Other Services Section */}
       <section className="border-t border-border bg-cream/40">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1440px] px-4 py-8 sm:px-6 lg:px-8 xl:px-12">
           <h2 className="text-2xl font-semibold text-primary text-left">Other services you may need</h2>
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
             {others.map((o: any) => (

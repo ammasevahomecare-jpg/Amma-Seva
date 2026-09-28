@@ -429,8 +429,8 @@ function LoginPage() {
           <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-[#c9a24c]/10 blur-[130px] pointer-events-none" />
           <div className="absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-indigo-500/10 blur-[140px] pointer-events-none" />
 
-          {/* Main Container - EXACT ALIGNMENT with Navbar max-w-7xl px-4 sm:px-6 lg:px-8 */}
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
+          {/* Main Container - EXACT ALIGNMENT with Navbar max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12 */}
+          <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12 relative z-10">
             <div className="w-full rounded-3xl border border-slate-200/90 bg-white/95 backdrop-blur-2xl p-5 sm:p-8 lg:p-10 shadow-2xl shadow-slate-200/60 text-left transition-all duration-300 animate-in fade-in">
               
               {/* Brand Pill */}

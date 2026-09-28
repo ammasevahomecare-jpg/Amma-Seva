@@ -29,7 +29,7 @@ function About() {
     <SiteLayout showInauguration={true}>
       {/* Premium Hero Header Section */}
       <section className="bg-gradient-to-b from-cream/60 to-background border-b border-border/60 py-10">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-10 items-center">
             
             {/* Left Column Text */}
@@ -71,7 +71,7 @@ function About() {
 
       {/* Mission & Promise Cards Split */}
       <section className="py-6 bg-background">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             
             {/* Mission Card */}
@@ -106,7 +106,7 @@ function About() {
 
       {/* Values Grid Section */}
       <section className="border-t border-border/60 bg-cream/35 py-10">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
           <div className="text-center max-w-3xl mx-auto space-y-3">
             <span className="block text-xs font-bold uppercase tracking-widest text-gold text-center">Corporate Pillars</span>
             <h2 className="text-3xl font-bold text-primary text-center">What we stand for</h2>
@@ -141,7 +141,7 @@ function About() {
           <Users className="h-96 w-96" />
         </div>
         
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
             
             {/* Stat counts columns */}

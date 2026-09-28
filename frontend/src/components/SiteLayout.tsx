@@ -66,7 +66,7 @@ function Header() {
           : "bg-white border-slate-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.03)] py-3.5"
       }`}
     >
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8 xl:px-12">
         
         {/* Brand Logo & Title */}
         <Link 
@@ -181,7 +181,7 @@ function Header() {
       {/* Mobile Menu Dropdown */}
       {open && (
         <div className="border-t border-slate-100 bg-white/98 backdrop-blur-lg lg:hidden shadow-xl animate-in slide-in-from-top-2 duration-200">
-          <div className="mx-auto flex max-w-7xl flex-col gap-1.5 px-4 py-4 text-left">
+          <div className="mx-auto flex max-w-[1440px] flex-col gap-1.5 px-4 py-4 text-left">
             {dynamicNav.map((n) => (
               <Link
                 key={n.label + n.to}
@@ -277,7 +277,7 @@ function Footer() {
       
       {/* 1. Trust & Confidence Strip */}
       <div className="border-b border-white/[0.08] bg-white/[0.02]">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8 xl:px-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           <div className="flex items-center gap-3 bg-white/[0.02] p-3 rounded-2xl border border-white/[0.05]">
             <div className="h-10 w-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
               <ShieldCheck className="h-5 w-5" />
@@ -321,7 +321,7 @@ function Footer() {
       </div>
 
       {/* 2. Main 4-Column Grid */}
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-12 lg:px-8">
+      <div className="mx-auto grid max-w-[1440px] gap-10 px-4 py-14 sm:px-6 lg:grid-cols-12 lg:px-8 xl:px-12">
         
         {/* Brand details */}
         <div className="lg:col-span-4 space-y-4 text-left">
@@ -498,7 +498,7 @@ function Footer() {
 
       {/* 3. Regional Presence Bar */}
       <div className="border-t border-white/[0.08] bg-black/40 py-3.5 px-4">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-3 sm:gap-6 text-xs text-slate-300">
+        <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-center gap-3 sm:gap-6 text-xs text-slate-300 px-4 sm:px-6 lg:px-8 xl:px-12">
           <span className="text-[11px] uppercase font-bold tracking-wider text-slate-500">Service Coverage Hubs:</span>
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] border border-white/10 font-medium">
             <Building2 className="h-3.5 w-3.5 text-amber-400" />
@@ -517,7 +517,7 @@ function Footer() {
 
       {/* 4. Bottom Legal & Copyright */}
       <div className="bg-[#03060f] py-4 border-t border-white/5 text-[11px] text-slate-500">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2.5 px-4 sm:px-6 lg:flex-row lg:px-8">
+        <div className="mx-auto flex max-w-[1440px] flex-col items-center justify-between gap-2.5 px-4 sm:px-6 lg:flex-row lg:px-8 xl:px-12">
           <div className="flex flex-col sm:flex-row items-center gap-2 text-center sm:text-left">
             <span>© {new Date().getFullYear()} Amma Seva Home Healthcare. All rights reserved.</span>
             <span className="hidden sm:inline text-slate-700">•</span>

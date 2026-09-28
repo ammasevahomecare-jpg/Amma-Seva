@@ -245,8 +245,8 @@ function Home() {
         <div className="absolute top-0 right-10 -z-10 h-96 w-96 rounded-full bg-gold/15 blur-[120px] pointer-events-none" />
         <div className="absolute top-40 left-10 -z-10 h-96 w-96 rounded-full bg-[#0b183b]/5 blur-[120px] pointer-events-none" />
 
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-8 pb-16 sm:pb-20 lg:pt-12 lg:pb-28">
-          <div className="grid gap-12 lg:grid-cols-12 lg:gap-8 items-center">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12 pt-8 pb-16 sm:pb-20 lg:pt-12 lg:pb-28">
+          <div className="grid gap-12 lg:grid-cols-12 lg:gap-10 xl:gap-14 items-center">
             
             {/* Left Column: Text, Value Propositions & CTAs */}
             <div className="flex flex-col justify-center text-left lg:col-span-6 space-y-6 z-10">
@@ -264,7 +264,7 @@ function Home() {
               </h1>
 
               {/* Subtitle */}
-              <p className="max-w-xl text-sm sm:text-base text-slate-600 leading-relaxed font-sans font-medium">
+              <p className="max-w-2xl text-sm sm:text-base text-slate-600 leading-relaxed font-sans font-medium">
                 Certified nurses, compassionate elderly attendants, newborn specialists, and on-demand MTP hospital escorts — delivering hospital-standard healthcare to the comfort of your home.
               </p>
 
@@ -370,7 +370,7 @@ function Home() {
       {/* ============================================================ */}
       {/* 2. FLOATING 4-METRIC STATS OVERLAY BAR                      */}
       {/* ============================================================ */}
-      <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 sm:-mt-14">
+      <div className="relative z-20 max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 -mt-10 sm:-mt-14">
         <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xl shadow-slate-900/5 p-6 sm:p-7 grid grid-cols-2 lg:grid-cols-4 gap-6 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 text-left">
           
           {/* Stat 1 */}
@@ -424,7 +424,7 @@ function Home() {
       {/* 3. 4-PILLAR FEATURE ROW (EXPERT, SAFE, COMPASSION, RAPID)   */}
       {/* ============================================================ */}
       <section className="py-12 sm:py-16 bg-white text-left">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             
             {/* Feature 1 */}
@@ -487,7 +487,7 @@ function Home() {
       {/* 4. COMPREHENSIVE SERVICES CATALOG                           */}
       {/* ============================================================ */}
       <section className="py-14 sm:py-20 bg-slate-50/60 border-t border-slate-200/80">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
           
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 text-left">
             <div className="max-w-2xl space-y-2">
@@ -647,7 +647,7 @@ function Home() {
         <div className="absolute top-0 right-1/4 w-96 h-96 rounded-full bg-gold/15 blur-[130px] pointer-events-none" />
         <div className="absolute bottom-0 left-1/4 w-96 h-96 rounded-full bg-indigo-500/15 blur-[130px] pointer-events-none" />
 
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12 relative z-10">
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-10 border-b border-white/10 pb-8">
             <div className="space-y-3 max-w-2xl">
               <span className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-gold/30 bg-gold/10 text-xs text-[#edd392] font-semibold uppercase tracking-wider">
@@ -754,7 +754,7 @@ function Home() {
       {/* 6. 6 PILLARS OF TRUST (WHY AMMA SEVA)                        */}
       {/* ============================================================ */}
       <section className="py-14 sm:py-20 bg-white border-t border-slate-100 text-left">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
           
           <div className="text-center max-w-3xl mx-auto mb-12 space-y-3">
             <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border border-gold/30 bg-gold/10 text-xs font-bold text-[#966b1a] uppercase tracking-wider">
@@ -799,7 +799,7 @@ function Home() {
       {/* 7. HOW IT WORKS (SEAMLESS 4-STEP TIMELINE)                  */}
       {/* ============================================================ */}
       <section className="py-14 sm:py-20 bg-gradient-to-b from-slate-50 to-amber-50/20 border-t border-slate-200/80 text-left">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
           
           <div className="text-center max-w-2xl mx-auto mb-12 space-y-3">
             <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border border-slate-200 bg-white text-xs font-bold text-[#0b183b] uppercase tracking-wider">
@@ -850,7 +850,7 @@ function Home() {
       {/* 8. VERIFIED REVIEWS & PATIENT TESTIMONIALS                  */}
       {/* ============================================================ */}
       <section className="py-14 sm:py-20 bg-white border-t border-slate-100 text-left">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
           
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
             <div className="max-w-2xl space-y-2">
@@ -928,7 +928,7 @@ function Home() {
           style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "32px 32px" }}
         />
         
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12 relative z-10">
           <div className="relative rounded-[2.5rem] bg-gradient-to-r from-white/[0.09] via-white/[0.04] to-white/[0.08] border border-gold/35 shadow-[0_30px_70px_-15px_rgba(0,0,0,0.8),0_0_50px_rgba(201,162,76,0.18)] backdrop-blur-2xl p-8 sm:p-12 lg:p-14 overflow-hidden">
             
             {/* Ambient Gold Header Line */}
@@ -1066,7 +1066,7 @@ function Home() {
       {/* 10. FREQUENTLY ASKED QUESTIONS                              */}
       {/* ============================================================ */}
       <section className="py-14 sm:py-20 bg-slate-50/70 border-t border-slate-200/80 text-left">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
           
           <div className="text-center max-w-2xl mx-auto mb-12 space-y-3">
             <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border border-slate-200 bg-white text-xs font-bold text-[#0b183b] uppercase tracking-wider">

@@ -54,7 +54,7 @@ export function LegalShell({
     <div className="bg-[#fbfbfe] min-h-screen pb-16">
       {/* Top tinted header banner */}
       <section className="bg-gradient-to-b from-cream/60 to-background border-b border-border/60 py-10">
-        <div className="mx-auto max-w-7xl px-4 text-left sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1440px] px-4 text-left sm:px-6 lg:px-8 xl:px-12">
           <div className="space-y-4">
             <span className="inline-flex items-center rounded-full bg-gold/10 px-3.5 py-1 text-xs font-semibold text-gold border border-gold/20 tracking-wider uppercase">
               Official Agreement
@@ -73,7 +73,7 @@ export function LegalShell({
 
       {/* Grid structure to remove big margins and balance space */}
       <section className="mt-8">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             
             {/* Left Column - Documentation card */}

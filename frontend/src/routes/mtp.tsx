@@ -343,7 +343,7 @@ function MTPPage() {
         <div className="absolute top-0 right-0 -z-10 h-96 w-96 rounded-full bg-gold/10 blur-3xl opacity-60" />
         <div className="absolute top-20 left-10 -z-10 h-80 w-80 rounded-full bg-primary/5 blur-3xl opacity-60" />
 
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-left">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12 text-left">
           <div className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/10 px-3.5 py-1 text-xs font-bold text-gold tracking-wider uppercase mb-4">
             <Sparkles className="h-3.5 w-3.5" />
             Hyderabad&apos;s Multi Tasking Professionals (MTP)
@@ -402,7 +402,7 @@ function MTPPage() {
 
       {/* What is an MTP & Tasks Grid */}
       <section className="py-12 bg-white border-b border-border/40">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-left">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12 text-left">
           <div className="max-w-3xl mb-10">
             <h2 className="gold-rule text-3xl font-extrabold text-primary sm:text-4xl font-display">
               What Does an MTP Do?
@@ -447,7 +447,7 @@ function MTPPage() {
 
       {/* Why Join Benefits */}
       <section className="py-12 bg-cream/35 border-b border-border/40">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-left">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12 text-left">
           <div className="grid lg:grid-cols-12 gap-10 items-center">
             <div className="lg:col-span-5 space-y-5">
               <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary uppercase tracking-wider">
@@ -538,7 +538,7 @@ function MTPPage() {
 
       {/* Registration Form Section */}
       <section id="register-form" className="py-12 bg-slate-50/60 border-t border-slate-100">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
           <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-10 lg:p-12 shadow-xl shadow-slate-900/5 text-left space-y-8">
             <div className="border-b border-slate-100 pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
@@ -1036,7 +1036,7 @@ function MTPPage() {
 
       {/* MTP Frequently Asked Questions */}
       <section className="py-14 sm:py-20 bg-cream/35 border-t border-border/40 text-left">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
           
           <div className="text-center max-w-2xl mx-auto mb-10 space-y-3">
             <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border border-slate-200 bg-white text-xs font-bold text-primary uppercase tracking-wider shadow-2xs">

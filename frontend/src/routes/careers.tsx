@@ -124,7 +124,7 @@ function Careers() {
     <SiteLayout>
       {/* Premium Hero Header Section */}
       <section className="bg-gradient-to-b from-[#fbf8f2] via-background to-background border-b border-border/60 py-12">
-        <div className="mx-auto max-w-7xl px-4 text-left sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1440px] px-4 text-left sm:px-6 lg:px-8 xl:px-12">
           <div className="max-w-3xl space-y-4">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-[#c9a24c]/15 px-3.5 py-1 text-xs font-bold text-[#9e761a] border border-[#c9a24c]/30 tracking-wider uppercase">
@@ -149,7 +149,7 @@ function Careers() {
 
       {/* Main Content Layout Grid */}
       <section className="py-10 bg-background">
-        <div className="mx-auto grid max-w-7xl grid-cols-1 lg:grid-cols-12 gap-8 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto grid max-w-[1440px] grid-cols-1 lg:grid-cols-12 gap-8 px-4 sm:px-6 lg:px-8 xl:px-12">
           
           {/* Left Column Information Cards */}
           <div className="lg:col-span-7 space-y-8">

@@ -194,7 +194,7 @@ function ServicesPage() {
         <div className="absolute top-0 right-10 -z-10 h-96 w-96 rounded-full bg-gold/15 blur-[120px] pointer-events-none" />
         <div className="absolute top-10 left-0 -z-10 h-96 w-96 rounded-full bg-indigo-500/10 blur-[130px] pointer-events-none" />
 
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
           <div className="max-w-3xl space-y-4">
             
             {/* Pill Tag */}
@@ -237,7 +237,7 @@ function ServicesPage() {
       {/* 2. SEARCH & FILTER TOOLBAR                                   */}
       {/* ============================================================ */}
       <section className="sticky top-[76px] z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 py-4 shadow-xs">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             
             {/* Category Filter Pills */}
@@ -285,7 +285,7 @@ function ServicesPage() {
       {/* 3. SERVICES CATALOG GRID                                     */}
       {/* ============================================================ */}
       <section className="py-12 sm:py-16 bg-slate-50/50">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
           
           {/* Results Header Counter */}
           <div className="flex items-center justify-between mb-8 text-left">
@@ -455,7 +455,7 @@ function ServicesPage() {
       <section className="py-12 bg-gradient-to-r from-[#0d1427] via-[#101b38] to-[#1e2a5a] text-white text-left relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-gold/10 blur-[130px] pointer-events-none" />
 
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12 relative z-10">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 rounded-3xl bg-white/[0.06] border border-white/15 backdrop-blur-md p-8 sm:p-10 shadow-xl">
             <div className="space-y-3 max-w-2xl">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gold/20 text-[#edd392] text-xs font-bold border border-gold/30">
@@ -487,7 +487,7 @@ function ServicesPage() {
       {/* 5. 24/7 HELPLINE & CONSULTATION DESK                         */}
       {/* ============================================================ */}
       <section className="py-14 sm:py-16 bg-white text-left border-t border-slate-100">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
           <div className="rounded-3xl bg-gradient-to-r from-[#1e2a5a] via-[#24346e] to-[#1e2a5a] text-white p-8 sm:p-12 shadow-2xl flex flex-col lg:flex-row lg:items-center justify-between gap-8 relative overflow-hidden">
             <div className="space-y-3 max-w-2xl relative z-10">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30">
