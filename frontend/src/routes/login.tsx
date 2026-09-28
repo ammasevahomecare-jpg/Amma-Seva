@@ -61,6 +61,7 @@ function LoginPage() {
   // Tabs and mode
   const [role, setRole] = useState<"customer" | "caretaker">(initial.role);
   const [mode, setMode] = useState<"login" | "register">(initial.mode);
+  const [loginMethod, setLoginMethod] = useState<"phone" | "email">("phone");
 
   // Referral states
   const [referredBy, setReferredBy] = useState(initial.referredBy);
@@ -1181,40 +1182,104 @@ function LoginPage() {
                 </div>
               )}
 
+              {/* Method Switcher Tabs: Mobile SMS OTP vs Email OTP */}
+              {authStep === "email" && (
+                <div className="grid grid-cols-2 p-1 bg-slate-100/90 rounded-xl mb-4 border border-slate-200/80">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginMethod("phone");
+                      setEmail("");
+                      setError(null);
+                      setSuccessMsg(null);
+                    }}
+                    className={`py-2 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      loginMethod === "phone"
+                        ? "bg-[#1e2a5a] text-white shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <Phone className="h-3.5 w-3.5 text-emerald-400" /> Mobile SMS OTP
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginMethod("email");
+                      setEmail("");
+                      setError(null);
+                      setSuccessMsg(null);
+                    }}
+                    className={`py-2 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      loginMethod === "email"
+                        ? "bg-[#1e2a5a] text-white shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <Mail className="h-3.5 w-3.5 text-indigo-300" /> Email OTP
+                  </button>
+                </div>
+              )}
+
               {/* Login Form */}
               <form onSubmit={handleSubmit} className="space-y-4">
                 {authStep === "email" ? (
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
-                        Mobile Number or Email <span className="text-rose-500">*</span>
-                      </label>
-                      <span className="text-[10px] font-bold text-[#8c6b16] bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                        📱 SMS OTP / ✉️ Email OTP
-                      </span>
-                    </div>
-                    <div className="relative">
-                      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center text-slate-400">
-                        {email.includes("@") ? (
-                          <Mail className="h-4 w-4" />
-                        ) : (
-                          <Phone className="h-4 w-4" />
-                        )}
+                  loginMethod === "phone" ? (
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
+                          10-Digit Mobile Number <span className="text-rose-500">*</span>
+                        </label>
+                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                          ⚡ MSG91 Instant SMS
+                        </span>
                       </div>
-                      <input
-                        type="text"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="e.g. 94905 87575 or name@example.com"
-                        className="w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 transition-all font-medium text-[#1e2a5a]"
-                      />
+                      <div className="relative flex items-center">
+                        <div className="absolute left-3 flex items-center gap-1 text-xs font-bold text-slate-600 border-r border-slate-200 pr-2 pointer-events-none">
+                          <span>🇮🇳</span>
+                          <span>+91</span>
+                        </div>
+                        <input
+                          type="tel"
+                          required
+                          maxLength={10}
+                          value={email.replace(/\D/g, "")}
+                          onChange={(e) => setEmail(e.target.value.replace(/\D/g, ""))}
+                          placeholder="e.g. 94905 87575"
+                          className="w-full pl-16 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 transition-all font-bold tracking-wider text-[#1e2a5a]"
+                        />
+                      </div>
+                      <div className="mt-1.5 flex flex-col gap-0.5 text-[11px] text-slate-400">
+                        <span>• Patients &amp; Caregivers: Enter registered 10-digit mobile number.</span>
+                        <span>• Admin access: Enter <strong className="text-slate-700 font-bold">94905 87575</strong></span>
+                      </div>
                     </div>
-                    <div className="mt-1.5 flex flex-col gap-0.5 text-[11px] text-slate-400">
-                      <span>• Customers &amp; Caregivers: Enter registered 10-digit mobile number or email.</span>
-                      <span>• Admin access: Enter <strong className="text-slate-600 font-bold">94905 87575</strong> or <strong className="text-slate-600 font-bold">ammasevahomecare@gmail.com</strong></span>
+                  ) : (
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
+                          Email Address <span className="text-rose-500">*</span>
+                        </label>
+                        <span className="text-[10px] font-bold text-indigo-800 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                          ✉️ Email OTP
+                        </span>
+                      </div>
+                      <div className="relative">
+                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <input
+                          type="email"
+                          required
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="ammasevahomecare@gmail.com"
+                          className="w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 transition-all font-medium text-[#1e2a5a]"
+                        />
+                      </div>
+                      <div className="mt-1.5 flex flex-col gap-0.5 text-[11px] text-slate-400">
+                        <span>• Patients &amp; Caregivers: Enter registered email.</span>
+                        <span>• Admin access: Enter <strong className="text-slate-700 font-bold">ammasevahomecare@gmail.com</strong></span>
+                      </div>
                     </div>
-                  </div>
+                  )
                 ) : (
                   <div className="space-y-3 pt-1">
                     <div>
