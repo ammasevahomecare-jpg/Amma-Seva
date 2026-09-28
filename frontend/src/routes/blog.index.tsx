@@ -27,11 +27,11 @@ function BlogList() {
   const { blogs } = Route.useLoaderData();
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const categories = ["All", ...Array.from(new Set(blogs.map((b) => b.category)))];
+  const categories: string[] = ["All", ...Array.from<string>(new Set(blogs.map((b: any) => String(b.category || 'General'))))];
 
   const filteredBlogs = selectedCategory === "All"
     ? blogs
-    : blogs.filter((b) => b.category === selectedCategory);
+    : blogs.filter((b: any) => b.category === selectedCategory);
 
   return (
     <SiteLayout>

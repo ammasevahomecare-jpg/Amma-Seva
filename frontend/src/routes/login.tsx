@@ -197,7 +197,7 @@ function LoginPage() {
     setError(null);
     setSuccessMsg(null);
 
-    const trimmedEmail = email.toLowerCase().trim();
+    const inputVal = email.trim();
 
     if (mode === "register") {
       const nameErr = validateName(name, "Full name");
@@ -206,7 +206,7 @@ function LoginPage() {
         return;
       }
 
-      const emailErr = validateEmail(trimmedEmail, true, "Email address");
+      const emailErr = validateEmail(email.toLowerCase().trim(), true, "Email address");
       if (emailErr) {
         setError(emailErr);
         return;
@@ -245,10 +245,30 @@ function LoginPage() {
         }
       }
     } else {
-      const emailErr = validateEmail(trimmedEmail, true, "Email address");
-      if (emailErr) {
-        setError(emailErr);
+      // Login mode validation: Accepts either valid Email OR valid 10-digit Indian Mobile Number
+      if (!inputVal) {
+        setError("Please enter your registered mobile number or email address.");
         return;
+      }
+
+      const isEmail = inputVal.includes("@");
+      if (isEmail) {
+        const emailErr = validateEmail(inputVal.toLowerCase(), true, "Email address");
+        if (emailErr) {
+          setError(emailErr);
+          return;
+        }
+      } else {
+        const cleanDigits = inputVal.replace(/\D/g, "");
+        if (cleanDigits.length < 10) {
+          setError("Please enter a valid 10-digit mobile number or email address.");
+          return;
+        }
+        const last10 = cleanDigits.slice(-10);
+        if (!/^[6-9]\d{9}$/.test(last10) && last10 !== "9490587575") {
+          setError("Please enter a valid 10-digit Indian mobile number (starting with 6, 7, 8, or 9).");
+          return;
+        }
       }
     }
 
@@ -319,7 +339,11 @@ function LoginPage() {
         fetch("/api/auth/send-otp", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: email.toLowerCase().trim() })
+          body: JSON.stringify({ 
+            identifier: inputVal,
+            email: inputVal.includes("@") ? inputVal.toLowerCase() : undefined,
+            phone: !inputVal.includes("@") ? inputVal.replace(/\D/g, "").slice(-10) : undefined
+          })
         })
           .then(async (res) => {
             const data = await res.json();
@@ -331,7 +355,7 @@ function LoginPage() {
           .then((data) => {
             if (data.success) {
               setAuthStep("otp");
-              setSuccessMsg("Verification OTP code has been sent to " + email);
+              setSuccessMsg(data.message || "Verification code has been dispatched.");
               setCountdown(30);
             }
           })
@@ -346,7 +370,12 @@ function LoginPage() {
         fetch("/api/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: email.toLowerCase().trim(), otp: otp.trim() })
+          body: JSON.stringify({ 
+            identifier: inputVal,
+            email: inputVal.includes("@") ? inputVal.toLowerCase() : undefined,
+            phone: !inputVal.includes("@") ? inputVal.replace(/\D/g, "").slice(-10) : undefined,
+            otp: otp.trim() 
+          })
         })
           .then(async (res) => {
             const data = await res.json();
@@ -392,10 +421,16 @@ function LoginPage() {
     setSuccessMsg(null);
     setIsLoading(true);
 
+    const inputVal = email.trim();
+
     fetch("/api/auth/send-otp", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email.toLowerCase().trim() })
+      body: JSON.stringify({ 
+        identifier: inputVal,
+        email: inputVal.includes("@") ? inputVal.toLowerCase() : undefined,
+        phone: !inputVal.includes("@") ? inputVal.replace(/\D/g, "").slice(-10) : undefined
+      })
     })
       .then(async (res) => {
         const data = await res.json();
@@ -406,7 +441,7 @@ function LoginPage() {
       })
       .then((data) => {
         if (data.success) {
-          setSuccessMsg("A new verification code has been sent to " + email);
+          setSuccessMsg(data.message || "A new verification code has been dispatched.");
           setCountdown(30);
         }
       })
@@ -1126,7 +1161,7 @@ function LoginPage() {
                 </h2>
                 <p className="mt-1 text-xs text-slate-500 leading-relaxed font-medium">
                   {authStep === "email" 
-                    ? "Enter your registered email address to receive an instant secure OTP code." 
+                    ? "Enter your registered mobile number or email address to receive an instant secure OTP code." 
                     : `We sent a 6-digit verification code to ${email}`}
                 </p>
               </div>
@@ -1150,19 +1185,34 @@ function LoginPage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 {authStep === "email" ? (
                   <div>
-                    <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-700 mb-1">
-                      Email Address <span className="text-rose-500">*</span>
-                    </label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
+                        Mobile Number or Email <span className="text-rose-500">*</span>
+                      </label>
+                      <span className="text-[10px] font-bold text-[#8c6b16] bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                        📱 SMS OTP / ✉️ Email OTP
+                      </span>
+                    </div>
                     <div className="relative">
-                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center text-slate-400">
+                        {email.includes("@") ? (
+                          <Mail className="h-4 w-4" />
+                        ) : (
+                          <Phone className="h-4 w-4" />
+                        )}
+                      </div>
                       <input
-                        type="email"
+                        type="text"
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="name@example.com"
+                        placeholder="e.g. 94905 87575 or name@example.com"
                         className="w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 transition-all font-medium text-[#1e2a5a]"
                       />
+                    </div>
+                    <div className="mt-1.5 flex flex-col gap-0.5 text-[11px] text-slate-400">
+                      <span>• Customers &amp; Caregivers: Enter registered 10-digit mobile number or email.</span>
+                      <span>• Admin access: Enter <strong className="text-slate-600 font-bold">94905 87575</strong> or <strong className="text-slate-600 font-bold">ammasevahomecare@gmail.com</strong></span>
                     </div>
                   </div>
                 ) : (
@@ -1196,7 +1246,7 @@ function LoginPage() {
                         }}
                         className="text-gold font-bold hover:underline cursor-pointer text-[11px]"
                       >
-                        ← Change Email
+                        ← Change Mobile / Email
                       </button>
                       <button
                         type="button"

@@ -1699,6 +1699,29 @@ export const db = {
     }
   },
 
+  getUserByPhone: async (phone) => {
+    const clean = (phone || '').replace(/[^0-9]/g, '')
+    const last10 = clean.slice(-10)
+    if (!last10) return null
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM users WHERE phone = ? OR phone = ? OR phone LIKE ?', [phone, clean, `%${last10}`])
+      return rows[0] || null
+    } else {
+      const data = await readJSONDb()
+      if (!data.users) data.users = []
+      return data.users.find(u => u.phone && u.phone.replace(/[^0-9]/g, '').slice(-10) === last10) || null
+    }
+  },
+
+  getUserByIdentifier: async (identifier) => {
+    if (!identifier) return null
+    const str = String(identifier).trim()
+    if (str.includes('@')) {
+      return await db.getUserByEmail(str)
+    }
+    return await db.getUserByPhone(str)
+  },
+
   getCaregiverByEmail: async (email) => {
     const normalized = email.toLowerCase().trim()
     if (useMySQL) {
@@ -1723,6 +1746,44 @@ export const db = {
       const code = `${firstName}${last4}`
       return { ...c, referCode: code, referralCode: code, uniqueId: code }
     }
+  },
+
+  getCaregiverByPhone: async (phone) => {
+    const clean = (phone || '').replace(/[^0-9]/g, '')
+    const last10 = clean.slice(-10)
+    if (!last10) return null
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM caregivers WHERE phone = ? OR phone = ? OR phone LIKE ?', [phone, clean, `%${last10}`])
+      if (!rows[0]) return null
+      const rawName = (rows[0].name || 'STAFF').trim()
+      const nameWithoutTitle = rawName.replace(/^(dr\.?|mr\.?|mrs\.?|ms\.?|sister|nurse)\s+/i, '').trim()
+      const firstName = (nameWithoutTitle.split(/\s+/)[0] || 'STAFF').replace(/[^a-zA-Z]/g, '').toUpperCase() || 'STAFF'
+      const cleanPhone = (rows[0].phone || '').replace(/[^0-9]/g, '')
+      const last4 = cleanPhone.length >= 4 ? cleanPhone.slice(-4) : (cleanPhone.padEnd(4, '0') || '0000')
+      const code = `${firstName}${last4}`
+      return { ...rows[0], referCode: code, referralCode: code, uniqueId: code }
+    } else {
+      const data = await readJSONDb()
+      if (!data.caregivers) data.caregivers = []
+      const c = data.caregivers.find(c => c.phone && c.phone.replace(/[^0-9]/g, '').slice(-10) === last10) || null
+      if (!c) return null
+      const rawName = (c.name || 'STAFF').trim()
+      const nameWithoutTitle = rawName.replace(/^(dr\.?|mr\.?|mrs\.?|ms\.?|sister|nurse)\s+/i, '').trim()
+      const firstName = (nameWithoutTitle.split(/\s+/)[0] || 'STAFF').replace(/[^a-zA-Z]/g, '').toUpperCase() || 'STAFF'
+      const cleanPhone = (c.phone || '').replace(/[^0-9]/g, '')
+      const last4 = cleanPhone.length >= 4 ? cleanPhone.slice(-4) : (cleanPhone.padEnd(4, '0') || '0000')
+      const code = `${firstName}${last4}`
+      return { ...c, referCode: code, referralCode: code, uniqueId: code }
+    }
+  },
+
+  getCaregiverByIdentifier: async (identifier) => {
+    if (!identifier) return null
+    const str = String(identifier).trim()
+    if (str.includes('@')) {
+      return await db.getCaregiverByEmail(str)
+    }
+    return await db.getCaregiverByPhone(str)
   },
 
   getCaregiverById: async (id) => {

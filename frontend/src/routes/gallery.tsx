@@ -28,11 +28,11 @@ function GalleryPage() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedItem, setSelectedItem] = useState<GalleryItem | null>(null);
 
-  const categories = ["All", ...Array.from(new Set(items.map((i) => i.category)))];
+  const categories: string[] = ["All", ...Array.from<string>(new Set(items.map((i: any) => String(i.category || 'General'))))];
 
   const filteredItems = selectedCategory === "All"
     ? items
-    : items.filter((i) => i.category === selectedCategory);
+    : items.filter((i: any) => i.category === selectedCategory);
 
   return (
     <SiteLayout showInauguration={true}>
@@ -79,7 +79,7 @@ function GalleryPage() {
             </div>
           ) : (
             <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3">
-              {filteredItems.map((item) => (
+              {filteredItems.map((item: any) => (
                 <div
                   key={item.id}
                   onClick={() => setSelectedItem(item)}

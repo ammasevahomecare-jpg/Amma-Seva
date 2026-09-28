@@ -162,15 +162,15 @@ function ServicesPage() {
       // Category filter
       let matchesCat = true;
       if (selectedCategory === "MTP") {
-        matchesCat = !!s.isMtp || s.slug.startsWith("mtp") || (s.category && s.category.toLowerCase().includes("mtp"));
+        matchesCat = Boolean(s.isMtp || s.slug.startsWith("mtp") || (s.category && s.category.toLowerCase().includes("mtp")));
       } else if (selectedCategory === "Elderly") {
-        matchesCat = elderlySlugs.includes(s.slug) || (s.category && s.category.toLowerCase().includes("elderly"));
+        matchesCat = Boolean(elderlySlugs.includes(s.slug) || (s.category && s.category.toLowerCase().includes("elderly")));
       } else if (selectedCategory === "Maternal") {
-        matchesCat = maternalSlugs.includes(s.slug) || (s.category && s.category.toLowerCase().includes("maternal"));
+        matchesCat = Boolean(maternalSlugs.includes(s.slug) || (s.category && s.category.toLowerCase().includes("maternal")));
       } else if (selectedCategory === "Clinical") {
-        matchesCat = clinicalSlugs.includes(s.slug) || (s.category && s.category.toLowerCase().includes("clinical"));
+        matchesCat = Boolean(clinicalSlugs.includes(s.slug) || (s.category && s.category.toLowerCase().includes("clinical")));
       } else if (selectedCategory === "Therapy") {
-        matchesCat = therapySlugs.includes(s.slug) || (s.category && s.category.toLowerCase().includes("therapy"));
+        matchesCat = Boolean(therapySlugs.includes(s.slug) || (s.category && s.category.toLowerCase().includes("therapy")));
       }
 
       // Search query filter

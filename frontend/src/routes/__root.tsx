@@ -122,7 +122,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ScrollRestoration getKey={() => null} />
+      <ScrollRestoration getKey={(location) => location.pathname} />
       <Outlet />
     </QueryClientProvider>
   );

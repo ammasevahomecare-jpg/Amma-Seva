@@ -640,128 +640,60 @@ app.get('/api/proxy-document', async (req, res) => {
   }
 })
 
-// POST request admin OTP
-app.post('/api/admin/send-otp', async (req, res) => {
-  const { email } = req.body
-
-  if (!email) {
-    return res.status(400).json({ success: false, error: 'Email address is required.' })
+// MSG91 Mobile SMS OTP Dispatcher
+const sendMsg91SmsOtp = async (rawMobile, otp) => {
+  if (!rawMobile) return false
+  const cleanDigits = String(rawMobile).replace(/\D/g, '')
+  const last10 = cleanDigits.slice(-10)
+  if (last10.length !== 10) {
+    console.error(`[MSG91 SMS Error] Invalid phone number length: ${rawMobile}`)
+    return false
   }
+  const formattedMobile = `91${last10}`
+  const authKey = (process.env.MSG91_AUTH_KEY || '567130TfvGdBJkCQO6ab8c37dP1').trim()
+  const templateId = (process.env.MSG91_TEMPLATE_ID || '1477178999154924584').trim()
+  const senderId = (process.env.MSG91_SENDER_ID || 'AMMASV').trim()
+  const otpVar = (process.env.MSG91_OTP_VAR_NAME || 'AMMASEVAOTP').trim()
 
-  const normalizedEmail = email.toLowerCase().trim()
-
-  if (normalizedEmail !== 'ammasevahomecare@gmail.com') {
-    return res.status(401).json({ success: false, error: 'Unauthorized email address.' })
-  }
-
-  // Generate 6-digit OTP
-  const otp = Math.floor(100000 + Math.random() * 900000).toString()
-  // Expire in 5 minutes
-  const expiresAt = Date.now() + 5 * 60 * 1000
-
-  await db.saveOTP(normalizedEmail, otp, 'admin', expiresAt)
-
-  // Send Email
-  const mailOptions = {
-    from: `"Amma Seva Admin" <${process.env.SMTP_EMAIL || 'ammasevahomecare@gmail.com'}>`,
-    to: normalizedEmail,
-    subject: 'Amma Seva - Admin Login Verification OTP Code',
-    html: `
-      <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 16px;">
-        <h2 style="color: #0f172a; margin-bottom: 8px;">Admin OTP Code</h2>
-        <p style="color: #64748b; font-size: 14px; margin-top: 0;">Use the following One-Time Password to access your admin control center:</p>
-        <div style="font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #4f46e5; text-align: center; padding: 16px; margin: 24px 0; background-color: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
-          ${otp}
-        </div>
-        <p style="color: #94a3b8; font-size: 12px; text-align: center;">This code is active for 5 minutes and can only be used once.</p>
-      </div>
-    `
-  }
+  const url = `https://control.msg91.com/api/v5/otp?template_id=${encodeURIComponent(templateId)}&mobile=${encodeURIComponent(formattedMobile)}&authkey=${encodeURIComponent(authKey)}&sender=${encodeURIComponent(senderId)}&${encodeURIComponent(otpVar)}=${encodeURIComponent(otp)}&otp=${encodeURIComponent(otp)}`
 
   try {
-    await transporter.sendMail(mailOptions)
-    console.log(`[OTP] Sent Admin OTP ${otp} successfully to ${normalizedEmail}`)
-    res.json({ success: true, message: 'OTP verification code has been dispatched to your email.' })
-  } catch (err) {
-    console.error('Failed to send OTP email via SMTP:', err.message || err)
-    // Return success with OTP logged so admin is never locked out
-    res.json({ 
-      success: true, 
-      message: 'OTP verification code generated. Please check your inbox (or use master backup code 123456 if email delivery is delayed).' 
-    })
-  }
-})
-
-// POST admin login (verifies OTP)
-app.post('/api/admin/login', async (req, res) => {
-  const { email, otp } = req.body
-
-  if (!email || !otp) {
-    return res.status(400).json({ success: false, error: 'Email and OTP code are required.' })
-  }
-
-  const normalizedEmail = email.toLowerCase().trim()
-
-  if (normalizedEmail !== 'ammasevahomecare@gmail.com') {
-    return res.status(401).json({ success: false, error: 'Unauthorized access.' })
-  }
-
-  const storedData = await db.getOTP(normalizedEmail)
-
-  if (!storedData && otp.trim() !== '123456' && otp.trim() !== '999999') {
-    return res.status(401).json({ success: false, error: 'No OTP requested for this email address.' })
-  }
-
-  if (storedData && Date.now() > Number(storedData.expiresAt)) {
-    await db.deleteOTP(normalizedEmail)
-    return res.status(401).json({ success: false, error: 'OTP verification code has expired.' })
-  }
-
-  const isMatched = (storedData && storedData.otp === otp.trim()) || otp.trim() === '123456' || otp.trim() === '999999'
-  if (!isMatched) {
-    return res.status(401).json({ success: false, error: 'Invalid verification OTP code.' })
-  }
-
-  // Clear OTP on success
-  await db.deleteOTP(normalizedEmail)
-
-  const token = jwt.sign({ role: 'admin', email: normalizedEmail }, JWT_SECRET, { expiresIn: '7d' })
-  res.json({
-    success: true,
-    message: 'Login successful!',
-    token
-  })
-})
-
-// POST unified send OTP
-app.post('/api/auth/send-otp', async (req, res) => {
-  const { email } = req.body
-
-  if (!email) {
-    return res.status(400).json({ success: false, error: 'Email address is required.' })
-  }
-
-  const normalizedEmail = email.toLowerCase().trim()
-
-  // Determine user role
-  let role = null
-  if (normalizedEmail === 'ammasevahomecare@gmail.com') {
-    role = 'admin'
-  } else {
-    // Check in database for caregivers and users
-    const caretaker = await db.getCaregiverByEmail(normalizedEmail)
-    if (caretaker) {
-      role = 'caretaker'
-    } else {
-      const user = await db.getUserByEmail(normalizedEmail)
-      if (user) {
-        role = 'customer'
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'authkey': authKey
       }
-    }
+    })
+    const data = await response.json().catch(() => ({}))
+    console.log(`[MSG91 SMS OTP] Dispatched OTP ${otp} to +${formattedMobile}:`, data)
+    return true
+  } catch (err) {
+    console.error(`[MSG91 SMS OTP Error] Failed to send SMS to +${formattedMobile}:`, err.message)
+    return false
+  }
+}
+
+// Helper: Check if identifier matches Admin (email or mobile)
+const isAdminIdentifier = (val) => {
+  if (!val) return false
+  const clean = String(val).toLowerCase().trim()
+  if (clean === 'ammasevahomecare@gmail.com') return true
+  const digits = clean.replace(/\D/g, '').slice(-10)
+  const adminPhone = (process.env.ADMIN_PHONE || '9490587575').replace(/\D/g, '').slice(-10)
+  return digits === adminPhone || digits === '9490587575'
+}
+
+// POST request admin OTP (supports email or mobile 94905 87575)
+app.post('/api/admin/send-otp', async (req, res) => {
+  const identifier = (req.body.identifier || req.body.email || req.body.phone || '').trim()
+
+  if (!identifier) {
+    return res.status(400).json({ success: false, error: 'Admin email or mobile number is required.' })
   }
 
-  if (!role) {
-    return res.status(404).json({ success: false, error: 'This email is not registered yet. Please click the Register tab above to create your profile.' })
+  if (!isAdminIdentifier(identifier)) {
+    return res.status(401).json({ success: false, error: 'Unauthorized administrative credentials.' })
   }
 
   // Generate 6-digit OTP
@@ -769,18 +701,25 @@ app.post('/api/auth/send-otp', async (req, res) => {
   // Expire in 10 minutes
   const expiresAt = Date.now() + 10 * 60 * 1000
 
-  // Store in persistent database
-  await db.saveOTP(normalizedEmail, otp, role, expiresAt)
+  // Save OTP for all admin identifiers
+  await db.saveOTP('ammasevahomecare@gmail.com', otp, 'admin', expiresAt)
+  await db.saveOTP('9490587575', otp, 'admin', expiresAt)
+  if (identifier !== 'ammasevahomecare@gmail.com' && identifier !== '9490587575') {
+    await db.saveOTP(identifier.toLowerCase(), otp, 'admin', expiresAt)
+  }
 
-  // Send Email
+  // 1. Dispatch SMS OTP via MSG91 to Admin Phone (94905 87575)
+  await sendMsg91SmsOtp('9490587575', otp)
+
+  // 2. Dispatch Email OTP via Nodemailer
   const mailOptions = {
-    from: `"Amma Seva Portal" <${cleanSmtpEmail}>`,
-    to: normalizedEmail,
-    subject: 'Amma Seva - Login Verification OTP Code',
+    from: `"Amma Seva Admin" <${process.env.SMTP_EMAIL || 'ammasevahomecare@gmail.com'}>`,
+    to: 'ammasevahomecare@gmail.com',
+    subject: 'Amma Seva - Admin Login Verification OTP Code',
     html: `
       <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 16px;">
-        <h2 style="color: #0f172a; margin-bottom: 8px;">Login Verification Code</h2>
-        <p style="color: #64748b; font-size: 14px; margin-top: 0;">Use the following One-Time Password to verify your identity and log in to your Amma Seva account:</p>
+        <h2 style="color: #0f172a; margin-bottom: 8px;">Admin OTP Code</h2>
+        <p style="color: #64748b; font-size: 14px; margin-top: 0;">Use the following One-Time Password to access your admin control center:</p>
         <div style="font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #4f46e5; text-align: center; padding: 16px; margin: 24px 0; background-color: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
           ${otp}
         </div>
@@ -791,35 +730,222 @@ app.post('/api/auth/send-otp', async (req, res) => {
 
   try {
     await transporter.sendMail(mailOptions)
-    console.log(`[OTP] Sent OTP ${otp} successfully to ${normalizedEmail} (Role: ${role})`)
-    res.json({ success: true, message: 'Verification code has been dispatched to your email.' })
+    console.log(`[OTP] Sent Admin OTP ${otp} to ammasevahomecare@gmail.com and +91 94905 87575`)
   } catch (err) {
-    console.error('Failed to send OTP email via SMTP:', err.message || err)
-    // Still return success and active OTP in DB so user isn't blocked by cloud mail delays
-    res.json({ 
-      success: true, 
-      message: 'Verification code generated! Please check your email inbox (or use master backup code 123456 if email delivery is delayed).' 
-    })
+    console.error('Failed to send Admin OTP email via SMTP:', err.message || err)
   }
+
+  res.json({ 
+    success: true, 
+    message: 'Admin verification OTP sent to Mobile +91 94905 87575 & Email ammasevahomecare@gmail.com.' 
+  })
 })
 
-// POST unified login verification
-app.post('/api/auth/login', async (req, res) => {
-  const { email, otp } = req.body
+// POST admin login (verifies OTP for email or mobile)
+app.post('/api/admin/login', async (req, res) => {
+  const identifier = (req.body.identifier || req.body.email || req.body.phone || '').trim()
+  const { otp } = req.body
 
-  if (!email || !otp) {
-    return res.status(400).json({ success: false, error: 'Email and OTP code are required.' })
+  if (!identifier || !otp) {
+    return res.status(400).json({ success: false, error: 'Admin Email/Mobile and OTP code are required.' })
   }
 
-  const normalizedEmail = email.toLowerCase().trim()
-  const storedData = await db.getOTP(normalizedEmail)
+  if (!isAdminIdentifier(identifier)) {
+    return res.status(401).json({ success: false, error: 'Unauthorized administrative access.' })
+  }
+
+  const storedData = (await db.getOTP('ammasevahomecare@gmail.com')) || 
+                     (await db.getOTP('9490587575')) || 
+                     (await db.getOTP(identifier.toLowerCase()))
 
   if (!storedData && otp.trim() !== '123456' && otp.trim() !== '999999') {
-    return res.status(401).json({ success: false, error: 'No OTP requested for this email address. Please click Send Code first.' })
+    return res.status(401).json({ success: false, error: 'No OTP requested. Please click Send Code first.' })
+  }
+
+  if (storedData && Date.now() > Number(storedData.expiresAt)) {
+    await db.deleteOTP('ammasevahomecare@gmail.com')
+    await db.deleteOTP('9490587575')
+    return res.status(401).json({ success: false, error: 'OTP verification code has expired.' })
+  }
+
+  const isMatched = (storedData && storedData.otp === otp.trim()) || otp.trim() === '123456' || otp.trim() === '999999'
+  if (!isMatched) {
+    return res.status(401).json({ success: false, error: 'Invalid verification OTP code.' })
+  }
+
+  // Clear OTP on success
+  await db.deleteOTP('ammasevahomecare@gmail.com')
+  await db.deleteOTP('9490587575')
+  if (identifier) await db.deleteOTP(identifier.toLowerCase())
+
+  const token = jwt.sign({ role: 'admin', email: 'ammasevahomecare@gmail.com', phone: '9490587575' }, JWT_SECRET, { expiresIn: '7d' })
+  res.json({
+    success: true,
+    message: 'Admin login successful!',
+    token
+  })
+})
+
+// POST unified send OTP (Supports Email OR Mobile Number)
+app.post('/api/auth/send-otp', async (req, res) => {
+  const rawInput = (req.body.identifier || req.body.email || req.body.phone || '').trim()
+
+  if (!rawInput) {
+    return res.status(400).json({ success: false, error: 'Mobile number or email address is required.' })
+  }
+
+  let role = null
+  let targetEmail = ''
+  let targetPhone = ''
+  let targetName = ''
+
+  // 1. Check if identifier is Admin
+  if (isAdminIdentifier(rawInput)) {
+    role = 'admin'
+    targetEmail = 'ammasevahomecare@gmail.com'
+    targetPhone = '9490587575'
+    targetName = 'Administrator'
+  } else {
+    // 2. Check by Email or Phone in Caregiver and User records
+    const isEmailInput = rawInput.includes('@')
+    const cleanPhoneDigits = rawInput.replace(/\D/g, '').slice(-10)
+
+    let caretaker = null
+    let user = null
+
+    if (isEmailInput) {
+      caretaker = await db.getCaregiverByEmail(rawInput)
+      if (!caretaker) {
+        user = await db.getUserByEmail(rawInput)
+      }
+    } else if (cleanPhoneDigits.length === 10) {
+      caretaker = await db.getCaregiverByPhone(cleanPhoneDigits)
+      if (!caretaker) {
+        user = await db.getUserByPhone(cleanPhoneDigits)
+      }
+    } else {
+      // Fallback try both
+      caretaker = await db.getCaregiverByIdentifier(rawInput)
+      if (!caretaker) {
+        user = await db.getUserByIdentifier(rawInput)
+      }
+    }
+
+    if (caretaker) {
+      role = 'caretaker'
+      targetEmail = caretaker.email && caretaker.email.includes('@') ? caretaker.email.trim() : ''
+      targetPhone = caretaker.phone ? String(caretaker.phone).replace(/\D/g, '').slice(-10) : ''
+      targetName = caretaker.name || 'Caregiver'
+    } else if (user) {
+      role = 'customer'
+      targetEmail = user.email && user.email.includes('@') ? user.email.trim() : ''
+      targetPhone = user.phone ? String(user.phone).replace(/\D/g, '').slice(-10) : ''
+      targetName = user.name || 'Customer'
+    }
+  }
+
+  if (!role) {
+    return res.status(404).json({ 
+      success: false, 
+      error: 'This mobile number / email is not registered yet. Please click the Register tab above to create your profile.' 
+    })
+  }
+
+  // Generate 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString()
+  // Expire in 10 minutes
+  const expiresAt = Date.now() + 10 * 60 * 1000
+
+  // Store OTP in database across all available keys (raw input, email, phone)
+  await db.saveOTP(rawInput.toLowerCase(), otp, role, expiresAt)
+  if (targetEmail) {
+    await db.saveOTP(targetEmail.toLowerCase(), otp, role, expiresAt)
+  }
+  if (targetPhone) {
+    await db.saveOTP(targetPhone, otp, role, expiresAt)
+  }
+
+  // Dispatch via MSG91 Mobile SMS if phone number available
+  let smsSent = false
+  if (targetPhone && targetPhone.length === 10) {
+    smsSent = await sendMsg91SmsOtp(targetPhone, otp)
+  }
+
+  // Dispatch via Email if email address available
+  let emailSent = false
+  if (targetEmail && targetEmail.includes('@') && !targetEmail.includes('@applicant.ammaseva.in')) {
+    const mailOptions = {
+      from: `"Amma Seva Portal" <${cleanSmtpEmail}>`,
+      to: targetEmail,
+      subject: 'Amma Seva - Login Verification OTP Code',
+      html: `
+        <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 16px;">
+          <h2 style="color: #0f172a; margin-bottom: 8px;">Login Verification Code</h2>
+          <p style="color: #64748b; font-size: 14px; margin-top: 0;">Hi ${targetName}, use the following One-Time Password to verify your identity and log in to your Amma Seva account:</p>
+          <div style="font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #4f46e5; text-align: center; padding: 16px; margin: 24px 0; background-color: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+            ${otp}
+          </div>
+          <p style="color: #94a3b8; font-size: 12px; text-align: center;">This code is active for 10 minutes and can only be used once.</p>
+        </div>
+      `
+    }
+    try {
+      await transporter.sendMail(mailOptions)
+      emailSent = true
+      console.log(`[OTP] Sent Email OTP ${otp} to ${targetEmail}`)
+    } catch (err) {
+      console.error('Failed to send OTP email via SMTP:', err.message || err)
+    }
+  }
+
+  // Build user-friendly feedback message
+  let displayDestination = ''
+  if (targetPhone && targetEmail) {
+    const maskedPhone = `+91 ${targetPhone.slice(0, 2)}*****${targetPhone.slice(-3)}`
+    displayDestination = `SMS (${maskedPhone}) & Email (${targetEmail})`
+  } else if (targetPhone) {
+    displayDestination = `SMS (+91 ${targetPhone})`
+  } else {
+    displayDestination = `Email (${targetEmail})`
+  }
+
+  res.json({ 
+    success: true, 
+    message: `Verification code has been dispatched via ${displayDestination}.`,
+    role,
+    smsSent,
+    emailSent
+  })
+})
+
+// POST unified login verification (supports Mobile Number or Email)
+app.post('/api/auth/login', async (req, res) => {
+  const rawInput = (req.body.identifier || req.body.email || req.body.phone || '').trim()
+  const { otp } = req.body
+
+  if (!rawInput || !otp) {
+    return res.status(400).json({ success: false, error: 'Mobile/Email and OTP code are required.' })
+  }
+
+  const cleanDigits = rawInput.replace(/\D/g, '').slice(-10)
+  const normalizedEmail = rawInput.toLowerCase()
+
+  // Retrieve stored OTP by checking raw input, email, or 10-digit phone
+  let storedData = await db.getOTP(normalizedEmail)
+  if (!storedData && cleanDigits.length === 10) {
+    storedData = await db.getOTP(cleanDigits)
+  }
+  if (!storedData && isAdminIdentifier(rawInput)) {
+    storedData = (await db.getOTP('ammasevahomecare@gmail.com')) || (await db.getOTP('9490587575'))
+  }
+
+  if (!storedData && otp.trim() !== '123456' && otp.trim() !== '999999') {
+    return res.status(401).json({ success: false, error: 'No OTP requested for this mobile/email. Please click Send Code first.' })
   }
 
   if (storedData && Date.now() > Number(storedData.expiresAt)) {
     await db.deleteOTP(normalizedEmail)
+    if (cleanDigits) await db.deleteOTP(cleanDigits)
     return res.status(401).json({ success: false, error: 'OTP verification code has expired. Please request a new code.' })
   }
 
@@ -828,29 +954,37 @@ app.post('/api/auth/login', async (req, res) => {
     return res.status(401).json({ success: false, error: 'Invalid verification OTP code.' })
   }
 
+  // Determine user / caregiver / admin record
   let role = storedData ? storedData.role : null
-  if (!role) {
-    if (normalizedEmail === 'ammasevahomecare@gmail.com') role = 'admin'
-    else if (await db.getCaregiverByEmail(normalizedEmail)) role = 'caretaker'
-    else role = 'customer'
+
+  if (isAdminIdentifier(rawInput) || role === 'admin') {
+    role = 'admin'
+  } else if (!role) {
+    if (await db.getCaregiverByIdentifier(rawInput)) role = 'caretaker'
+    else if (await db.getUserByIdentifier(rawInput)) role = 'customer'
   }
 
   // Clear OTP on success
   await db.deleteOTP(normalizedEmail)
+  if (cleanDigits) await db.deleteOTP(cleanDigits)
+  if (role === 'admin') {
+    await db.deleteOTP('ammasevahomecare@gmail.com')
+    await db.deleteOTP('9490587575')
+  }
 
   if (role === 'admin') {
-    const token = jwt.sign({ role: 'admin', email: normalizedEmail }, JWT_SECRET, { expiresIn: '7d' })
+    const token = jwt.sign({ role: 'admin', email: 'ammasevahomecare@gmail.com', phone: '9490587575' }, JWT_SECRET, { expiresIn: '7d' })
     return res.json({
       success: true,
       role: 'admin',
       token
     })
   } else if (role === 'caretaker') {
-    const caretaker = await db.getCaregiverByEmail(normalizedEmail)
+    const caretaker = (await db.getCaregiverByIdentifier(rawInput)) || (cleanDigits ? await db.getCaregiverByPhone(cleanDigits) : null)
     if (!caretaker) {
       return res.status(404).json({ success: false, error: 'Caretaker account record not found.' })
     }
-    const token = jwt.sign({ id: caretaker.id, role: 'caretaker', email: caretaker.email }, JWT_SECRET, { expiresIn: '7d' })
+    const token = jwt.sign({ id: caretaker.id, role: 'caretaker', email: caretaker.email, phone: caretaker.phone }, JWT_SECRET, { expiresIn: '7d' })
     return res.json({
       success: true,
       role: 'caretaker',
@@ -877,11 +1011,11 @@ app.post('/api/auth/login', async (req, res) => {
       }
     })
   } else {
-    const user = await db.getUserByEmail(normalizedEmail)
+    const user = (await db.getUserByIdentifier(rawInput)) || (cleanDigits ? await db.getUserByPhone(cleanDigits) : null)
     if (!user) {
       return res.status(404).json({ success: false, error: 'User account record not found.' })
     }
-    const token = jwt.sign({ id: user.id, role: 'user', email: user.email }, JWT_SECRET, { expiresIn: '7d' })
+    const token = jwt.sign({ id: user.id, role: 'user', email: user.email, phone: user.phone }, JWT_SECRET, { expiresIn: '7d' })
     return res.json({
       success: true,
       role: 'customer',

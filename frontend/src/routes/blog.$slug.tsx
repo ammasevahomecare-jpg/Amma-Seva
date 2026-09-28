@@ -193,7 +193,7 @@ function BlogDetails() {
                   <h3 className="font-display font-bold text-lg text-primary">Key Takeaways for Families &amp; Clinical Caregivers</h3>
                 </div>
                 <ul className="grid gap-2.5 sm:grid-cols-2">
-                  {blog.keyTakeaways.map((takeaway, idx) => (
+                  {blog.keyTakeaways.map((takeaway: string, idx: number) => (
                     <li key={idx} className="flex items-start gap-2 text-xs sm:text-sm text-slate-700 bg-white/80 p-3 rounded-xl border border-slate-100">
                       <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
                       <span className="font-medium leading-snug">{takeaway}</span>

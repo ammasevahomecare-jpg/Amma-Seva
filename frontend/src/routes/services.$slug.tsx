@@ -175,7 +175,7 @@ function ServicePage() {
   // Combine all images available
   const serviceImages = [
     service.image || details.image,
-    ...(service.images || details.images || []).filter(img => img !== (service.image || details.image))
+    ...(service.images || details.images || []).filter((img: string) => img !== (service.image || details.image))
   ].filter(Boolean);
 
   const [activeImage, setActiveImage] = useState(serviceImages[0] || details.image);
