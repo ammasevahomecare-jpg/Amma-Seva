@@ -718,6 +718,7 @@ const sendWhatsAppBookingConfirmation = async (booking) => {
   const authKey = (process.env.MSG91_AUTH_KEY || '567130AQrTo6Hb6aba5f7cP1').trim()
   const integratedNumber = (process.env.MSG91_WHATSAPP_NUMBER || '919494516543').trim()
   const templateName = (process.env.MSG91_WHATSAPP_TEMPLATE_NAME || 'ammaseva_booking_confirmation').trim()
+  const namespace = (process.env.MSG91_WHATSAPP_NAMESPACE || '63c454df_9e23_4f4c_81d2_58201bb7012e').trim()
 
   const customerName = String(booking.name || booking.patientName || 'Valued Customer').trim()
   const bookingId = String(booking.id || 'N/A')
@@ -731,64 +732,64 @@ const sendWhatsAppBookingConfirmation = async (booking) => {
   const customerMobileRaw = String(booking.phone || '').replace(/\D/g, '').slice(-10)
   const adminMobileRaw = (process.env.ADMIN_PHONE || '9490587575').replace(/\D/g, '').slice(-10)
 
-  const targets = []
+  const toList = []
   if (customerMobileRaw.length === 10) {
-    targets.push({ mobile: `91${customerMobileRaw}`, role: 'Customer' })
+    toList.push(`91${customerMobileRaw}`)
   }
-  if (adminMobileRaw.length === 10 && adminMobileRaw !== customerMobileRaw) {
-    targets.push({ mobile: `91${adminMobileRaw}`, role: 'Admin' })
+  if (adminMobileRaw.length === 10 && !toList.includes(`91${adminMobileRaw}`)) {
+    toList.push(`91${adminMobileRaw}`)
   }
 
-  const parameters = [
-    { type: 'text', text: customerName },
-    { type: 'text', text: bookingId },
-    { type: 'text', text: service },
-    { type: 'text', text: scheduleDate },
-    { type: 'text', text: address },
-    { type: 'text', text: totalAmount },
-    { type: 'text', text: advancePaid },
-    { type: 'text', text: balanceDue }
-  ]
+  if (toList.length === 0) return false
 
-  for (const target of targets) {
-    try {
-      // 1. Dispatch via MSG91 WhatsApp Outbound API
-      const response = await fetch('https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/', {
-        method: 'POST',
-        headers: {
-          'authkey': authKey,
-          'Content-Type': 'application/json'
+  const requestBody = {
+    integrated_number: integratedNumber,
+    content_type: "template",
+    payload: {
+      messaging_product: "whatsapp",
+      type: "template",
+      template: {
+        name: templateName,
+        language: {
+          code: "en",
+          policy: "deterministic"
         },
-        body: JSON.stringify({
-          integrated_number: integratedNumber,
-          content_type: 'template',
-          payload: {
-            messaging_product: 'whatsapp',
-            recipient_type: 'individual',
-            to: target.mobile,
-            type: 'template',
-            template: {
-              name: templateName,
-              language: {
-                code: 'en',
-                policy: 'deterministic'
-              },
-              components: [
-                {
-                  type: 'body',
-                  parameters: parameters
-                }
-              ]
+        namespace: namespace,
+        to_and_components: [
+          {
+            to: toList,
+            components: {
+              body_1: { type: "text", value: customerName },
+              body_2: { type: "text", value: bookingId },
+              body_3: { type: "text", value: service },
+              body_4: { type: "text", value: scheduleDate },
+              body_5: { type: "text", value: address },
+              body_6: { type: "text", value: totalAmount },
+              body_7: { type: "text", value: advancePaid },
+              body_8: { type: "text", value: balanceDue }
             }
           }
-        })
-      })
-
-      const resData = await response.json().catch(() => ({}))
-      console.log(`[MSG91 WhatsApp Alert] Booking #${bookingId} dispatched to ${target.role} (+${target.mobile}):`, resData)
-    } catch (err) {
-      console.error(`[MSG91 WhatsApp Alert Error] Failed sending to ${target.role} (+${target.mobile}):`, err.message)
+        ]
+      }
     }
+  }
+
+  try {
+    const response = await fetch('https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/', {
+      method: 'POST',
+      headers: {
+        'authkey': authKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    })
+
+    const resData = await response.json().catch(() => ({}))
+    console.log(`[MSG91 Bulk WhatsApp Alert] Booking #${bookingId} dispatched to [${toList.join(', ')}]:`, resData)
+    return resData
+  } catch (err) {
+    console.error(`[MSG91 Bulk WhatsApp Alert Error] Failed sending to [${toList.join(', ')}]:`, err.message)
+    return false
   }
 }
 
