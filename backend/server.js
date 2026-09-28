@@ -763,6 +763,8 @@ const sendWhatsAppBookingConfirmation = async (booking) => {
           integrated_number: integratedNumber,
           content_type: 'template',
           payload: {
+            messaging_product: 'whatsapp',
+            recipient_type: 'individual',
             to: target.mobile,
             type: 'template',
             template: {

@@ -266,7 +266,7 @@ function LoginPage() {
           return;
         }
         const last10 = cleanDigits.slice(-10);
-        if (!/^[6-9]\d{9}$/.test(last10) && last10 !== "9490587575") {
+        if (!/^[6-9]\d{9}$/.test(last10)) {
           setError("Please enter a valid 10-digit Indian mobile number (starting with 6, 7, 8, or 9).");
           return;
         }
@@ -1244,14 +1244,13 @@ function LoginPage() {
                           maxLength={10}
                           value={email.replace(/\D/g, "")}
                           onChange={(e) => setEmail(e.target.value.replace(/\D/g, ""))}
-                          placeholder="e.g. 94905 87575"
+                          placeholder="e.g. 98765 43210"
                           className="w-full pl-16 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 transition-all font-bold tracking-wider text-[#1e2a5a]"
                         />
                       </div>
-                      <div className="mt-1.5 flex flex-col gap-0.5 text-[11px] text-slate-400">
-                        <span>• Patients &amp; Caregivers: Enter registered 10-digit mobile number.</span>
-                        <span>• Admin access: Enter <strong className="text-slate-700 font-bold">94905 87575</strong></span>
-                      </div>
+                      <p className="mt-1.5 text-[11px] text-slate-500">
+                        Enter your registered 10-digit mobile number to receive instant SMS OTP.
+                      </p>
                     </div>
                   ) : (
                     <div>
@@ -1270,14 +1269,13 @@ function LoginPage() {
                           required
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
-                          placeholder="ammasevahomecare@gmail.com"
+                          placeholder="name@example.com"
                           className="w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 transition-all font-medium text-[#1e2a5a]"
                         />
                       </div>
-                      <div className="mt-1.5 flex flex-col gap-0.5 text-[11px] text-slate-400">
-                        <span>• Patients &amp; Caregivers: Enter registered email.</span>
-                        <span>• Admin access: Enter <strong className="text-slate-700 font-bold">ammasevahomecare@gmail.com</strong></span>
-                      </div>
+                      <p className="mt-1.5 text-[11px] text-slate-500">
+                        Enter your registered email address to receive a secure login OTP code.
+                      </p>
                     </div>
                   )
                 ) : (
