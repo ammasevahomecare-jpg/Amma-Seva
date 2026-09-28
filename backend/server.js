@@ -650,10 +650,10 @@ const sendMsg91SmsOtp = async (rawMobile, otp) => {
     return false
   }
   const formattedMobile = `91${last10}`
-  const authKey = (process.env.MSG91_AUTH_KEY || '567130TfvGdBJkCQO6ab8c37dP1').trim()
-  const templateId = (process.env.MSG91_TEMPLATE_ID || '1477178999154924584').trim()
+  const authKey = (process.env.MSG91_AUTH_KEY || '567130AQrTo6Hb6aba5f7cP1').trim()
+  const templateId = (process.env.MSG91_TEMPLATE_ID || '6ab2184345370dac070a9500').trim()
   const senderId = (process.env.MSG91_SENDER_ID || 'AMMASV').trim()
-  const otpVar = (process.env.MSG91_OTP_VAR_NAME || 'AMMASEVAOTP').trim()
+  const otpVar = (process.env.MSG91_OTP_VAR_NAME || 'OTP').trim()
 
   let sent = false
 
@@ -710,6 +710,84 @@ const sendMsg91SmsOtp = async (rawMobile, otp) => {
   }
 
   return sent
+}
+
+// MSG91 WhatsApp Automated Booking Confirmation Dispatcher
+const sendWhatsAppBookingConfirmation = async (booking) => {
+  if (!booking) return false
+  const authKey = (process.env.MSG91_AUTH_KEY || '567130AQrTo6Hb6aba5f7cP1').trim()
+  const integratedNumber = (process.env.MSG91_WHATSAPP_NUMBER || '919494516543').trim()
+  const templateName = (process.env.MSG91_WHATSAPP_TEMPLATE_NAME || 'ammaseva_booking_confirmation').trim()
+
+  const customerName = String(booking.name || booking.patientName || 'Valued Customer').trim()
+  const bookingId = String(booking.id || 'N/A')
+  const service = String(booking.service || 'Home Care Healthcare').trim()
+  const scheduleDate = `${booking.date || 'Scheduled Date'}${booking.time ? ', ' + booking.time : ''}`
+  const address = String(booking.address || 'Hyderabad, Telangana').trim()
+  const totalAmount = String(booking.amount !== undefined ? booking.amount : '1200')
+  const advancePaid = String(booking.advancePaid !== undefined ? booking.advancePaid : (booking.paymentMethod === 'razorpay' ? totalAmount : '0'))
+  const balanceDue = String(booking.balanceAmount !== undefined ? booking.balanceAmount : (Math.max(0, Number(totalAmount) - Number(advancePaid))))
+
+  const customerMobileRaw = String(booking.phone || '').replace(/\D/g, '').slice(-10)
+  const adminMobileRaw = (process.env.ADMIN_PHONE || '9490587575').replace(/\D/g, '').slice(-10)
+
+  const targets = []
+  if (customerMobileRaw.length === 10) {
+    targets.push({ mobile: `91${customerMobileRaw}`, role: 'Customer' })
+  }
+  if (adminMobileRaw.length === 10 && adminMobileRaw !== customerMobileRaw) {
+    targets.push({ mobile: `91${adminMobileRaw}`, role: 'Admin' })
+  }
+
+  const parameters = [
+    { type: 'text', text: customerName },
+    { type: 'text', text: bookingId },
+    { type: 'text', text: service },
+    { type: 'text', text: scheduleDate },
+    { type: 'text', text: address },
+    { type: 'text', text: totalAmount },
+    { type: 'text', text: advancePaid },
+    { type: 'text', text: balanceDue }
+  ]
+
+  for (const target of targets) {
+    try {
+      // 1. Dispatch via MSG91 WhatsApp Outbound API
+      const response = await fetch('https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/', {
+        method: 'POST',
+        headers: {
+          'authkey': authKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          integrated_number: integratedNumber,
+          content_type: 'template',
+          payload: {
+            to: target.mobile,
+            type: 'template',
+            template: {
+              name: templateName,
+              language: {
+                code: 'en',
+                policy: 'deterministic'
+              },
+              components: [
+                {
+                  type: 'body',
+                  parameters: parameters
+                }
+              ]
+            }
+          }
+        })
+      })
+
+      const resData = await response.json().catch(() => ({}))
+      console.log(`[MSG91 WhatsApp Alert] Booking #${bookingId} dispatched to ${target.role} (+${target.mobile}):`, resData)
+    } catch (err) {
+      console.error(`[MSG91 WhatsApp Alert Error] Failed sending to ${target.role} (+${target.mobile}):`, err.message)
+    }
+  }
 }
 
 // Helper: Check if identifier matches Admin (email or mobile)
@@ -2397,8 +2475,9 @@ app.post('/api/booking', async (req, res) => {
       balanceAmount
     })
 
-    // Prepare notification mock logs
-    console.log(`[SMS/WhatsApp Notification] Booking confirmation alert sent to ${phone} for patient ${patientName || name}.`)
+    // Prepare notification logs and automated WhatsApp confirmation
+    console.log(`[SMS/WhatsApp Notification] Booking confirmation alert triggered for ${phone} (Booking #${newBooking.id}).`)
+    sendWhatsAppBookingConfirmation(newBooking).catch(err => console.error('[WhatsApp Async Dispatch Error]:', err.message))
 
     // Send email confirmation using nodemailer if email is provided
     if (email) {
@@ -2486,13 +2565,41 @@ app.put('/api/booking/:id', authenticateAdmin, async (req, res) => {
     const oldBooking = await db.getBookingById(req.params.id)
     const updated = await db.updateBooking(req.params.id, status, assignedStaff, paymentStatus)
     if (updated) {
+      const refreshedBooking = await db.getBookingById(req.params.id)
       handleBookingEmailNotification(req.params.id, oldBooking, status, assignedStaff)
+      if (refreshedBooking && (status === 'Confirmed' || assignedStaff)) {
+        sendWhatsAppBookingConfirmation(refreshedBooking).catch(err => console.error('[WhatsApp Status Update Error]:', err.message))
+      }
       res.json({ success: true, message: 'Booking successfully updated.' })
     } else {
       res.status(404).json({ error: 'Booking not found.' })
     }
   } catch (err) {
     res.status(500).json({ error: 'Failed to update booking.' })
+  }
+})
+
+// POST test WhatsApp message dispatch
+app.post('/api/admin/test-whatsapp', async (req, res) => {
+  const testPhone = req.body.phone || '9490587575'
+  const mockBooking = {
+    id: 'TEST-' + Math.floor(1000 + Math.random() * 9000),
+    name: req.body.name || 'Test Customer',
+    phone: testPhone,
+    service: 'Elderly Home Care (12 Hours)',
+    date: new Date().toLocaleDateString('en-IN'),
+    time: '10:00 AM',
+    address: 'Kukatpally, Hyderabad, Telangana',
+    amount: 5000,
+    advancePaid: 1000,
+    balanceAmount: 4000
+  }
+
+  try {
+    await sendWhatsAppBookingConfirmation(mockBooking)
+    res.json({ success: true, message: `Test WhatsApp notification sent to ${testPhone} and Admin.` })
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message })
   }
 })
 
