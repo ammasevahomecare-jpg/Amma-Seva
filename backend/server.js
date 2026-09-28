@@ -2409,9 +2409,38 @@ app.post('/api/booking', async (req, res) => {
     advancePaid = 0, balanceAmount = 0
   } = req.body
 
-  if (!name || !phone || !service || !date || !time || !duration || !address) {
-    return res.status(400).json({ error: 'Missing required booking details.' })
+  // Parse authorization header if present
+  let authUserId = userId
+  let authUser = null
+  const authHeader = req.headers.authorization
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1]
+    if (token.startsWith('mock-jwt-user-token-')) {
+      authUserId = Number(token.replace('mock-jwt-user-token-', ''))
+    } else {
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET)
+        authUserId = decoded.id
+      } catch (err) {
+        // Ignore invalid token
+      }
+    }
   }
+
+  if (authUserId) {
+    try {
+      authUser = await db.getUserById(authUserId)
+    } catch (e) {}
+  }
+
+  const effectiveName = String(name || patientName || (authUser && authUser.name) || 'Valued Customer').trim()
+  const effectivePhone = String(phone || (authUser && authUser.phone) || '9490587575').trim()
+  const effectiveEmail = String(email || (authUser && authUser.email) || '').trim()
+  const effectiveService = String(service || 'Home Healthcare Support').trim()
+  const effectiveDate = String(date || new Date().toISOString().split('T')[0]).trim()
+  const effectiveTime = String(time || '09:00 AM').trim()
+  const effectiveDuration = String(duration || '1 Day').trim()
+  const effectiveAddress = String(address || (authUser && authUser.address) || 'Hyderabad, Telangana').trim()
 
   if (paymentMethod === 'razorpay') {
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
@@ -2431,23 +2460,6 @@ app.post('/api/booking', async (req, res) => {
     }
   }
 
-  // Parse authorization header if present
-  let authUserId = userId
-  const authHeader = req.headers.authorization
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.split(' ')[1]
-    if (token.startsWith('mock-jwt-user-token-')) {
-      authUserId = Number(token.replace('mock-jwt-user-token-', ''))
-    } else {
-      try {
-        const decoded = jwt.verify(token, JWT_SECRET)
-        authUserId = decoded.id
-      } catch (err) {
-        // Ignore invalid token
-      }
-    }
-  }
-
   try {
     const uploadedPrescription = prescription ? await uploadToCloudinary(prescription) : ''
 
@@ -2455,16 +2467,16 @@ app.post('/api/booking', async (req, res) => {
     const statusOfPayment = req.body.paymentStatus || (paymentMethod === 'razorpay' ? 'Advance Paid' : (paymentMethod === 'pay_on_service' ? 'Pay on Service' : 'Unpaid'))
 
     const newBooking = await db.addBookingForUser({ 
-      name, 
-      phone, 
-      service, 
-      date, 
-      time, 
-      duration, 
-      address, 
+      name: effectiveName, 
+      phone: effectivePhone, 
+      service: effectiveService, 
+      date: effectiveDate, 
+      time: effectiveTime, 
+      duration: effectiveDuration, 
+      address: effectiveAddress, 
       amount: parsedAmount, 
       userId: authUserId,
-      patientName: patientName || '',
+      patientName: patientName || effectiveName,
       patientAge: patientAge || '',
       patientNeeds: patientNeeds || '',
       prescription: uploadedPrescription,
@@ -2478,11 +2490,11 @@ app.post('/api/booking', async (req, res) => {
     })
 
     // Prepare notification logs and automated WhatsApp confirmation
-    console.log(`[SMS/WhatsApp Notification] Booking confirmation alert triggered for ${phone} (Booking #${newBooking.id}).`)
+    console.log(`[SMS/WhatsApp Notification] Booking confirmation alert triggered for ${effectivePhone} (Booking #${newBooking.id}).`)
     sendWhatsAppBookingConfirmation(newBooking).catch(err => console.error('[WhatsApp Async Dispatch Error]:', err.message))
 
     // Send email confirmation using nodemailer if email is provided
-    if (email) {
+    if (effectiveEmail) {
       const mailOptions = {
         from: `"Amma Seva Bookings" <${process.env.SMTP_EMAIL || 'ammasevahomecare@gmail.com'}>`,
         to: email,
