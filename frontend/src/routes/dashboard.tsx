@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { DocumentViewerModal } from "@/components/DocumentViewerModal";
@@ -93,6 +93,12 @@ const formatStepTime = (isoString?: string) => {
 };
 
 export const Route = createFileRoute("/dashboard")({
+  validateSearch: (search: Record<string, unknown>): { service?: string; book?: string } => {
+    return {
+      service: typeof search.service === "string" ? search.service : undefined,
+      book: typeof search.book === "string" ? search.book : undefined,
+    };
+  },
   head: () => ({
     meta: [
       { title: "Customer Dashboard — Amma Seva" },
@@ -156,6 +162,7 @@ const SERVICES_CATALOG: any[] = [];
 
 function CustomerDashboard() {
   const navigate = useNavigate();
+  const search = Route.useSearch();
 
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     const userToken = localStorage.getItem("ammaseva_user_token");
@@ -490,12 +497,13 @@ function CustomerDashboard() {
   // View states
   const [activeView, setActiveView] = useState<"bookings" | "new-booking">(() => {
     if (typeof window !== "undefined") {
+      const userToken = localStorage.getItem("ammaseva_user_token");
       const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get("service") || urlParams.get("book") === "true") {
+      if (!userToken || urlParams.get("service") || urlParams.get("book") === "true") {
         return "new-booking";
       }
     }
-    return "bookings";
+    return "new-booking";
   });
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [caretakerBookings, setCaretakerBookings] = useState<Booking[]>([]);
@@ -705,8 +713,8 @@ function CustomerDashboard() {
         setServicesList(formatted);
         
         // Pre-select service from URL query params if present
-        const urlParams = new URLSearchParams(window.location.search);
-        const preSelectedService = (urlParams.get("service") || "").toLowerCase().trim();
+        const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
+        const preSelectedService = ((search?.service || urlParams.get("service") || "") as string).toLowerCase().trim();
         if (preSelectedService) {
           const matchingService = formatted.find(s => 
             s.id === preSelectedService || 
@@ -727,13 +735,13 @@ function CustomerDashboard() {
         }
       }
     });
-  }, []);
+  }, [search?.service]);
 
   // Listen to search params reactively
   useEffect(() => {
     if (servicesList.length === 0) return;
-    const urlParams = new URLSearchParams(window.location.search);
-    const preSelectedService = (urlParams.get("service") || "").toLowerCase().trim();
+    const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
+    const preSelectedService = ((search?.service || urlParams.get("service") || "") as string).toLowerCase().trim();
     if (preSelectedService) {
       const matchingService = servicesList.find(s => 
         s.id === preSelectedService || 
@@ -748,7 +756,7 @@ function CustomerDashboard() {
         setActiveView("new-booking");
       }
     }
-  }, [servicesList]);
+  }, [servicesList, search?.service]);
 
   // Load Razorpay checkout script
   useEffect(() => {
@@ -817,10 +825,11 @@ function CustomerDashboard() {
  
   // Calculate pricing
   const currentService = servicesList.find(s => s.id === selectedServiceId) || SERVICES_CATALOG.find(s => s.id === selectedServiceId) || servicesList[0] || SERVICES_CATALOG[0];
+  const isMtpBooking = Boolean(currentService?.isMtp || (selectedServiceId && (selectedServiceId.startsWith("mtp") || selectedServiceId.includes("mtp"))));
   
   const getServiceRates = () => {
     if (!currentService) return { hourly: 0, daily: 0, weekly: 0, monthly: 0, basis: 'day' };
-    if (currentService.isMtp || (selectedServiceId && selectedServiceId.startsWith("mtp"))) {
+    if (isMtpBooking) {
       return { hourly: 0, daily: 0, weekly: 0, monthly: 0, basis: 'task' };
     }
     const base = currentService.rate || 1200;
@@ -862,8 +871,9 @@ function CustomerDashboard() {
   };
 
   const calculateTotal = () => {
-    if (currentService?.isMtp || (selectedServiceId && selectedServiceId.startsWith("mtp"))) {
-      return 0;
+    const isMtpBooking = Boolean(currentService?.isMtp || (selectedServiceId && (selectedServiceId.startsWith("mtp") || selectedServiceId.includes("mtp"))));
+    if (isMtpBooking) {
+      return 100; // Present base fee of ₹100 for MTP task bookings (admin can adjust later)
     }
     const rates = getServiceRates();
     const count = Number(durationCount) || 1;
@@ -877,11 +887,12 @@ function CustomerDashboard() {
   };
 
   const calculateAdvance = () => {
+    const isMtpBooking = Boolean(currentService?.isMtp || (selectedServiceId && (selectedServiceId.startsWith("mtp") || selectedServiceId.includes("mtp"))));
+    if (isMtpBooking) {
+      return paymentMethod === "razorpay" ? 100 : 0;
+    }
     const service = servicesList.find(s => s.id === selectedServiceId) || SERVICES_CATALOG.find(s => s.id === selectedServiceId) || servicesList[0] || SERVICES_CATALOG[0];
     if (!service) return 300;
-    if (service.isMtp || (selectedServiceId && selectedServiceId.startsWith("mtp"))) {
-      return 0; // Zero advance for dynamic MTP bookings
-    }
     const baseAdvance = service.advance !== undefined ? Number(service.advance) : Math.round((service.rate || 1200) * 0.2);
     const count = Number(durationCount) || 1;
     return baseAdvance * count;
@@ -938,19 +949,63 @@ function CustomerDashboard() {
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validateStep1() || !validateStep2()) {
-      return;
-    }
+    const isMtpBooking = Boolean(currentService?.isMtp || (selectedServiceId && (selectedServiceId.startsWith("mtp") || selectedServiceId.includes("mtp"))));
 
-    const addrErr = validateAddress(bookingAddress, "Care address");
-    if (addrErr) {
-      alert(addrErr);
-      return;
-    }
+    if (isMtpBooking) {
+      // Simplified validation for MTP tasks: Name, Phone, Date, Time, Location Address
+      const bookerNameInput = (user?.name || contactName || patientName || "").trim();
+      const nameErr = validateName(bookerNameInput, "Your name");
+      if (nameErr) {
+        alert(nameErr);
+        return;
+      }
+      const bookerPhoneInput = (user?.phone || contactPhone || "").trim();
+      const phoneErr = validatePhone(bookerPhoneInput, "Your mobile number");
+      if (phoneErr) {
+        alert(phoneErr);
+        return;
+      }
+      if (contactEmail && contactEmail.trim()) {
+        const emailErr = validateEmail(contactEmail, false, "Email address");
+        if (emailErr) {
+          alert(emailErr);
+          return;
+        }
+      }
+      if (!bookingDate || !bookingTime) {
+        alert("Please select the task Date and Time.");
+        return;
+      }
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      if (bookingDate < todayStr) {
+        alert("Task date cannot be in the past. Please select today or a future date.");
+        return;
+      }
+      const addrErr = validateAddress(bookingAddress, "Task location address");
+      if (addrErr) {
+        alert(addrErr);
+        return;
+      }
+      if (!agreeTermsBooking) {
+        alert("Please check the box to confirm your MTP task booking.");
+        return;
+      }
+    } else {
+      if (!validateStep1() || !validateStep2()) {
+        return;
+      }
 
-    if (!agreeTermsBooking) {
-      alert("Please check the box to agree to the Amma Seva Patient Booking Terms & Conditions.");
-      return;
+      const addrErr = validateAddress(bookingAddress, "Care address");
+      if (addrErr) {
+        alert(addrErr);
+        return;
+      }
+
+      if (!agreeTermsBooking) {
+        alert("Please check the box to agree to the Amma Seva Patient Booking Terms & Conditions.");
+        return;
+      }
     }
 
     const bookerName = (user?.name || contactName || patientName || "Customer").trim();
@@ -962,7 +1017,6 @@ function CustomerDashboard() {
     const submitBooking = async (payStatus: string, razorpayPaymentDetails?: any) => {
       try {
         const token = localStorage.getItem("ammaseva_user_token");
-        const isMtpBooking = !!currentService?.isMtp || (selectedServiceId && selectedServiceId.startsWith("mtp"));
         const formattedDuration = isMtpBooking
           ? `${durationCount} ${durationCount === 1 ? "Task / Visit" : "Tasks / Visits"}`
           : `${durationCount} ${
@@ -972,9 +1026,11 @@ function CustomerDashboard() {
               (durationCount === 1 ? "Month" : "Months")
             }`;
 
-        const totalCost = isMtpBooking ? 0 : calculateTotal();
-        const advPaid = isMtpBooking ? 0 : (payStatus === "Advance Paid" ? calculateAdvance() : 0);
-        const balDue = isMtpBooking ? 0 : (totalCost - advPaid);
+        const totalCost = isMtpBooking ? 100 : calculateTotal();
+        const advPaid = isMtpBooking 
+          ? (payStatus === "Advance Paid" || payStatus === "Paid" ? 100 : 0)
+          : (payStatus === "Advance Paid" ? calculateAdvance() : 0);
+        const balDue = Math.max(0, totalCost - advPaid);
 
         const res = await fetch("/api/booking", {
           method: "POST",
@@ -986,19 +1042,19 @@ function CustomerDashboard() {
             name: bookerName,
             phone: bookerPhone,
             email: bookerEmail,
-            service: currentService?.title || "Home Care Healthcare",
+            service: currentService?.title || (isMtpBooking ? "MTP Task Companion" : "Home Care Healthcare"),
             date: bookingDate || new Date().toISOString().split("T")[0],
             time: bookingTime || "09:00 AM",
             duration: formattedDuration || "1 Day",
             address: bookingAddress || "Hyderabad, Telangana",
             amount: totalCost,
-            patientName: patientName || bookerName,
-            patientAge,
-            patientNeeds,
-            paymentMethod: isMtpBooking ? "pay_on_service" : (paymentMethod || "pay_later"),
-            paymentStatus: isMtpBooking ? "Pay on Service" : payStatus,
+            patientName: isMtpBooking ? bookerName : (patientName || bookerName),
+            patientAge: isMtpBooking ? "" : patientAge,
+            patientNeeds: patientNeeds || (isMtpBooking ? "MTP On-Demand Task & Errand Companion" : ""),
+            paymentMethod: isMtpBooking ? (paymentMethod === "razorpay" ? "razorpay" : "pay_on_service") : (paymentMethod || "pay_later"),
+            paymentStatus: isMtpBooking ? (payStatus === "Advance Paid" ? "Advance Paid" : "Pay on Service") : payStatus,
             userId: user?.id || undefined,
-            prescription: prescriptionFile,
+            prescription: isMtpBooking ? "" : prescriptionFile,
             googleMapLocation: bookingGoogleMapLocation,
             advancePaid: advPaid,
             balanceAmount: balDue,
@@ -1052,19 +1108,20 @@ function CustomerDashboard() {
       }
     };
 
-    // If MTP task, skip payment gateway directly
-    if (currentService?.isMtp || (selectedServiceId && selectedServiceId.startsWith("mtp"))) {
+    // If MTP task with pay on service selected, submit directly
+    if (isMtpBooking && paymentMethod !== "razorpay") {
       await submitBooking("Pay on Service");
       return;
     }
 
-    if (paymentMethod === "razorpay" && calculateAdvance() > 0) {
+    if (paymentMethod === "razorpay" && (isMtpBooking ? 100 : calculateAdvance()) > 0) {
+      const chargeAmount = isMtpBooking ? 100 : calculateAdvance();
       try {
         setIsPaymentProcessing(true);
         const orderRes = await fetch("/api/payment/order", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: calculateAdvance() })
+          body: JSON.stringify({ amount: chargeAmount })
         });
         const orderData = await orderRes.json();
         if (!orderRes.ok) {
@@ -1089,7 +1146,7 @@ function CustomerDashboard() {
           amount: orderData.amount,
           currency: orderData.currency || "INR",
           name: "Amma Seva",
-          description: `Care Booking - ${currentService?.title || "Service"}`,
+          description: isMtpBooking ? `MTP Task Booking (Fee ₹100)` : `Care Booking - ${currentService?.title || "Service"}`,
           order_id: orderData.orderId,
           handler: async (response: any) => {
             await submitBooking("Advance Paid", {
@@ -1126,12 +1183,12 @@ function CustomerDashboard() {
           });
         }
       } catch (err: any) {
-        alert("Payment initialization notice: " + err.message);
+        alert("Payment initialization error: " + err.message);
         setIsSubmitting(false);
         setIsPaymentProcessing(false);
       }
     } else {
-      await submitBooking("Unpaid");
+      await submitBooking(isMtpBooking ? "Pay on Service" : "Unpaid");
     }
   };
 
@@ -1340,17 +1397,6 @@ function CustomerDashboard() {
       alert("Error: " + err.message);
     }
   };
-
-  if (!isAuthenticated) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-3 border-[#1e2a5a] border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-sm text-muted-foreground font-medium">Verifying credentials...</p>
-        </div>
-      </div>
-    );
-  }
 
   if (isCaretaker) {
     return (
@@ -3703,8 +3749,517 @@ function CustomerDashboard() {
                 );
               })()}
             </div>
+          ) : isMtpBooking ? (
+            // DEDICATED MTP TASK BOOKING VIEW
+            <div className="rounded-3xl bg-white border border-amber-300/80 shadow-xl shadow-amber-900/5 p-4 sm:p-10 text-left animate-fade-in relative overflow-hidden">
+              {/* Top brand accent line */}
+              <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-amber-600 via-gold to-amber-600" />
+              
+              {/* Category Mode Switcher Tabs */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-6 mb-6 border-b border-slate-100">
+                <div className="flex items-center gap-2 p-1 bg-slate-100/80 rounded-2xl border border-slate-200/80">
+                  <button
+                    type="button"
+                    className="px-4 py-2 rounded-xl text-xs font-extrabold transition-all shadow-xs bg-[#1e2a5a] text-gold cursor-pointer"
+                  >
+                    🚗 MTP &amp; Task Companion (Zero Docs)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const standard = servicesList.find(s => !s.isMtp) || servicesList[0];
+                      if (standard) setSelectedServiceId(standard.id);
+                      setBookingStep(1);
+                    }}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-[#1e2a5a] hover:bg-white/80 transition-all cursor-pointer"
+                  >
+                    🏥 Clinical &amp; Nursing Home Care
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-extrabold text-amber-900 bg-amber-100/80 border border-amber-300 px-3 py-1.5 rounded-xl shadow-xs">
+                    ⚡ 1-Step Fast Booking • ₹100 Base Fee
+                  </span>
+                </div>
+              </div>
+
+              {/* Header Section */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 mb-6 border-b border-slate-100">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-200/60 via-amber-100/40 to-transparent border border-amber-300 flex items-center justify-center text-amber-900 shadow-inner">
+                    <Sparkles className="h-6 w-6 text-amber-700" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-xl sm:text-2xl font-bold text-[#1e2a5a] font-display tracking-tight">
+                        Book MTP Task &amp; Companion Partner
+                      </h2>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Verified Task Partner
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      On-demand verified companion for hospital visits, senior walks, medicine collection &amp; city errands across Hyderabad.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <form onSubmit={handleBookingSubmit} className="space-y-6">
+                
+                {/* 1. MTP Task Selection */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-amber-50/50 via-white to-orange-50/30 border border-amber-200/90 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between gap-2 border-b border-amber-200/60 pb-2">
+                    <label className="block text-[11px] font-extrabold uppercase tracking-wider text-amber-950 flex items-center gap-1.5">
+                      <Briefcase className="h-3.5 w-3.5 text-amber-700" /> Select MTP Task Service
+                    </label>
+                    <span className="text-[10px] text-amber-800 font-bold bg-amber-100 px-2 py-0.5 rounded-md">
+                      Instant Dispatch
+                    </span>
+                  </div>
+
+                  <select
+                    value={selectedServiceId}
+                    onChange={(e) => setSelectedServiceId(e.target.value)}
+                    className="w-full px-4 py-3 text-sm rounded-2xl border border-amber-300 bg-white text-slate-900 outline-none transition-all focus:border-amber-600 focus:ring-4 focus:ring-amber-500/15 shadow-sm font-semibold cursor-pointer"
+                  >
+                    <optgroup label="🚗 MTP Companion & Task Services">
+                      {servicesList
+                        .filter(s => s.isMtp)
+                        .map(s => (
+                          <option key={s.id} value={s.id}>✨ {s.title} (₹100 Base Booking)</option>
+                        ))
+                      }
+                      {!servicesList.some(s => s.isMtp) && (
+                        <>
+                          <option value="mtp-hospital-escort">✨ Hospital &amp; Clinic Escort Companion (₹100 Base Booking)</option>
+                          <option value="mtp-senior-walk">✨ Elderly Outdoor Walk &amp; Senior Companion (₹100 Base Booking)</option>
+                          <option value="mtp-medicine-pickup">✨ Medicine &amp; Diagnostic Report Pickup (₹100 Base Booking)</option>
+                          <option value="mtp-grocery-errand">✨ Emergency Grocery &amp; Utility Errand (₹100 Base Booking)</option>
+                          <option value="mtp-bank-assistant">✨ Bank &amp; Government Work Assistant (₹100 Base Booking)</option>
+                          <option value="mtp-general">✨ General Multi-Tasking Partner (MTP) (₹100 Base Booking)</option>
+                        </>
+                      )}
+                    </optgroup>
+                    <optgroup label="🏥 Switch to Clinical Services">
+                      {servicesList
+                        .filter(s => !s.isMtp)
+                        .map(s => (
+                          <option key={s.id} value={s.id}>🩺 {s.title} (Clinical Care)</option>
+                        ))
+                      }
+                    </optgroup>
+                  </select>
+
+                  {currentService?.desc && (
+                    <div className="p-3 rounded-xl bg-white border border-amber-200/70 text-slate-700 text-xs flex items-start gap-2">
+                      <span className="text-amber-600 font-bold shrink-0">✦</span>
+                      <span className="leading-relaxed font-medium">{currentService?.desc}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. Customer Contact Details */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/70 border border-slate-200/90 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between gap-2 border-b border-slate-200/70 pb-2">
+                    <span className="text-xs font-extrabold uppercase tracking-wider text-[#1e2a5a] flex items-center gap-1.5 font-display">
+                      <User className="h-3.5 w-3.5 text-indigo-600" /> Customer Contact Details
+                    </span>
+                    {!user ? (
+                      <span className="text-[10px] text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full font-bold">
+                        Direct Booking
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-indigo-800 bg-indigo-100 px-2 py-0.5 rounded-full font-bold">
+                        Logged-in: {user.name}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        Your Full Name <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={user?.name || contactName}
+                        onChange={(e) => setContactName(sanitizeName(e.target.value))}
+                        placeholder="e.g. Suresh Kumar"
+                        className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-semibold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        Mobile Number (For Coordinator Call) <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        maxLength={10}
+                        value={user?.phone || contactPhone}
+                        onChange={(e) => setContactPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                        placeholder="10-digit mobile number"
+                        className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-semibold font-mono"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex justify-between">
+                        <span>Email Address (For Invoices &amp; Updates)</span>
+                        <span className="text-[10px] text-slate-400 font-medium">Optional</span>
+                      </label>
+                      <input
+                        type="email"
+                        value={user?.email || contactEmail}
+                        onChange={(e) => setContactEmail(e.target.value)}
+                        placeholder="e.g. suresh.kumar@gmail.com"
+                        className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-medium"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Schedule & Timing */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/70 border border-slate-200/90 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between gap-2 border-b border-slate-200/70 pb-2">
+                    <span className="text-xs font-extrabold uppercase tracking-wider text-[#1e2a5a] flex items-center gap-1.5 font-display">
+                      <Calendar className="h-3.5 w-3.5 text-indigo-600" /> Task Date &amp; Time Schedule
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-medium">
+                      Today or upcoming date
+                    </span>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        Task Date <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        min={todayStr}
+                        max="2099-12-31"
+                        value={bookingDate}
+                        onChange={(e) => {
+                          let val = e.target.value;
+                          if (val) {
+                            const parts = val.split("-");
+                            if (parts[0] && parts[0].length > 4) {
+                              parts[0] = parts[0].slice(0, 4);
+                              val = parts.join("-");
+                            }
+                            if (val.length === 10 && val < todayStr) {
+                              alert("Booking date cannot be in the past. Please select today or a future date.");
+                              val = todayStr;
+                            }
+                          }
+                          setBookingDate(val);
+                        }}
+                        className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-semibold cursor-pointer"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        Preferred Start Time <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="time"
+                        required
+                        value={bookingTime}
+                        onChange={(e) => setBookingTime(e.target.value)}
+                        className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-semibold cursor-pointer"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        Estimated Scope / Visits
+                      </label>
+                      <select
+                        value={durationCount}
+                        onChange={(e) => setDurationCount(Math.max(1, Number(e.target.value)))}
+                        className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-semibold cursor-pointer"
+                      >
+                        <option value={1}>1 Task / Single Visit</option>
+                        <option value={2}>2 Hours Assistant</option>
+                        <option value={4}>4 Hours (Half Day)</option>
+                        <option value={8}>8 Hours (Full Day Companion)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Task Location & GPS */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/70 border border-slate-200/90 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between gap-2 border-b border-slate-200/70 pb-2">
+                    <span className="text-xs font-extrabold uppercase tracking-wider text-[#1e2a5a] flex items-center gap-1.5 font-display">
+                      <MapPin className="h-3.5 w-3.5 text-indigo-600" /> Task Location &amp; Navigation
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-medium">
+                      Exact address in Hyderabad
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                      Complete Task Location / Address <span className="text-rose-500">*</span>
+                    </label>
+                    <textarea
+                      rows={2}
+                      required
+                      value={bookingAddress}
+                      onChange={(e) => setBookingAddress(e.target.value)}
+                      placeholder="Enter flat/door no, building, street, landmark, area & pincode (e.g. Flat 302, Fortune Towers, Road No 10, Banjara Hills, Hyderabad)"
+                      className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-medium leading-relaxed"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex justify-between">
+                      <span>Exact Geolocation GPS Pin (For Task Partner Navigation)</span>
+                      <span className="text-[10px] text-slate-400">Optional / Recommended</span>
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        readOnly
+                        value={bookingGoogleMapLocation}
+                        placeholder="Click Fetch GPS to pin exact location..."
+                        className="min-w-0 flex-1 px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 bg-slate-100 text-slate-700 outline-none truncate font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!navigator.geolocation) {
+                            alert("Geolocation is not supported by your browser");
+                            return;
+                          }
+                          setIsFetchingLocationBooking(true);
+                          navigator.geolocation.getCurrentPosition(
+                            (position) => {
+                              const lat = position.coords.latitude;
+                              const lng = position.coords.longitude;
+                              setBookingGoogleMapLocation(`https://www.google.com/maps?q=${lat},${lng}`);
+                              setIsFetchingLocationBooking(false);
+                            },
+                            () => {
+                              alert("Failed to fetch GPS coordinates. Please ensure location permissions are granted.");
+                              setIsFetchingLocationBooking(false);
+                            }
+                          );
+                        }}
+                        disabled={isFetchingLocationBooking}
+                        className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-gold via-amber-400 to-gold hover:opacity-90 text-slate-900 text-xs font-bold rounded-xl flex items-center gap-1.5 shrink-0 disabled:opacity-50 cursor-pointer shadow-sm transition-all whitespace-nowrap"
+                      >
+                        {isFetchingLocationBooking ? (
+                          <>
+                            <span className="w-3.5 h-3.5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+                            <span>Fetching GPS...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>📍</span>
+                            <span>Fetch GPS Pin</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    {bookingGoogleMapLocation && (
+                      <div className="flex justify-between items-center text-xs mt-2 px-1">
+                        <span className="text-emerald-700 font-bold flex items-center gap-1">
+                          ✓ GPS Pin coordinates saved!
+                        </span>
+                        <a
+                          href={bookingGoogleMapLocation}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:text-gold font-bold underline"
+                        >
+                          Open in Google Maps ↗
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 5. Task Instructions & Notes */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/70 border border-slate-200/90 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between gap-2 border-b border-slate-200/70 pb-2">
+                    <span className="text-xs font-extrabold uppercase tracking-wider text-[#1e2a5a] flex items-center gap-1.5 font-display">
+                      <MessageSquare className="h-3.5 w-3.5 text-indigo-600" /> Task Details &amp; Instructions
+                    </span>
+                    <span className="text-[10px] text-slate-500">Brief details</span>
+                  </div>
+
+                  <textarea
+                    rows={3}
+                    value={patientNeeds}
+                    onChange={(e) => setPatientNeeds(e.target.value)}
+                    placeholder="Describe what task you need done (e.g. Escort grandfather to Apollo Clinic for consultation, help with wheelchair, collect prescription from chemist, bank work accompaniment)..."
+                    className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-medium leading-relaxed"
+                  />
+
+                  {/* Quick Tag Suggestion Chips */}
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Quick Tags:</span>
+                    {[
+                      "Hospital Escort",
+                      "Medicine Pickup",
+                      "Senior Walk Companion",
+                      "Bank & Govt Work",
+                      "Grocery & Utility Errand",
+                      "Wheelchair Support"
+                    ].map((tag) => (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => {
+                          if (patientNeeds.includes(tag)) return;
+                          setPatientNeeds(prev => prev ? `${prev}, ${tag}` : tag);
+                        }}
+                        className="text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 hover:text-amber-900 text-slate-600 border border-slate-200 transition-all cursor-pointer shadow-2xs"
+                      >
+                        + {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 6. No Medical Documents Required Card */}
+                <div className="rounded-2xl border-2 border-emerald-300/80 bg-gradient-to-r from-emerald-50 via-emerald-50/70 to-teal-50/40 p-4 sm:p-5 text-emerald-950 flex items-start gap-3.5 shadow-xs">
+                  <div className="p-2 rounded-xl bg-emerald-200/80 text-emerald-900 shrink-0 mt-0.5">
+                    <CheckCircle2 className="h-5 w-5" />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="font-extrabold block text-sm text-emerald-950 font-display">
+                      ✓ No Medical Documents or Prescriptions Required
+                    </span>
+                    <p className="text-emerald-900 text-xs leading-relaxed font-medium">
+                      MTP companion and errand tasks are non-clinical personal assistance services. You do <strong>not</strong> need to upload any doctor prescriptions, medical case files, or patient health histories.
+                    </p>
+                  </div>
+                </div>
+
+                {/* 7. Pricing Summary & Payment Option */}
+                <div className="rounded-2xl border-2 border-amber-300 bg-gradient-to-r from-amber-50 via-amber-50/70 to-orange-50/40 p-5 sm:p-6 text-amber-950 space-y-4 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-amber-200/80">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-amber-800 block">Initial Booking Charge</span>
+                      <div className="flex items-baseline gap-2 mt-0.5">
+                        <span className="text-3xl font-black text-amber-950 font-display">₹100</span>
+                        <span className="text-xs text-amber-800 font-bold">(Present Base Token Fee)</span>
+                      </div>
+                      <p className="text-[11px] text-amber-900 mt-1 leading-relaxed">
+                        Fixed initial dispatch fee. Our coordinator / admin can review travel distance or additional hours and adjust or provide the final quote if needed.
+                      </p>
+                    </div>
+
+                    <div className="shrink-0">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold text-xs">
+                        <ShieldCheck className="h-4 w-4 text-emerald-700" /> 100% Escrow Protected
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Payment Method Selector */}
+                  <div className="space-y-2">
+                    <label className="block text-[11px] font-extrabold uppercase tracking-wider text-amber-950">
+                      Choose How You Wish to Pay
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <label 
+                        onClick={() => setPaymentMethod("razorpay")}
+                        className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-3 ${
+                          paymentMethod === "razorpay" 
+                            ? "bg-white border-amber-600 shadow-md ring-2 ring-amber-500/20" 
+                            : "bg-amber-100/50 border-amber-200/80 hover:bg-white"
+                        }`}
+                      >
+                        <input 
+                          type="radio" 
+                          name="mtp_payment_method" 
+                          checked={paymentMethod === "razorpay"} 
+                          onChange={() => setPaymentMethod("razorpay")} 
+                          className="h-4 w-4 text-amber-600 accent-amber-600"
+                        />
+                        <div className="text-left">
+                          <span className="text-xs font-bold text-slate-900 block flex items-center gap-1.5">
+                            <CreditCard className="h-3.5 w-3.5 text-amber-700" /> Pay ₹100 Online Now
+                          </span>
+                          <span className="text-[10px] text-slate-500 block">Instant UPI, Cards &amp; NetBanking</span>
+                        </div>
+                      </label>
+
+                      <label 
+                        onClick={() => setPaymentMethod("pay_later")}
+                        className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-3 ${
+                          paymentMethod === "pay_later" 
+                            ? "bg-white border-amber-600 shadow-md ring-2 ring-amber-500/20" 
+                            : "bg-amber-100/50 border-amber-200/80 hover:bg-white"
+                        }`}
+                      >
+                        <input 
+                          type="radio" 
+                          name="mtp_payment_method" 
+                          checked={paymentMethod === "pay_later"} 
+                          onChange={() => setPaymentMethod("pay_later")} 
+                          className="h-4 w-4 text-amber-600 accent-amber-600"
+                        />
+                        <div className="text-left">
+                          <span className="text-xs font-bold text-slate-900 block flex items-center gap-1.5">
+                            <Clock className="h-3.5 w-3.5 text-amber-700" /> Pay on Service (₹100 on Arrival)
+                          </span>
+                          <span className="text-[10px] text-slate-500 block">Cash or Direct UPI upon task start</span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 8. Agreement & Instant Submit */}
+                <div className="pt-2 space-y-4">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      required
+                      checked={agreeTermsBooking}
+                      onChange={(e) => setAgreeTermsBooking(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary focus:ring-gold cursor-pointer accent-[#c9a24c]"
+                    />
+                    <span className="text-xs font-semibold text-slate-700 select-none">
+                      I confirm this MTP Task Booking (₹100 base fee) and agree to Amma Seva terms.
+                    </span>
+                  </label>
+
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      type="submit"
+                      disabled={isSubmitting || isPaymentProcessing || !agreeTermsBooking}
+                      className="btn-primary py-3.5 sm:py-4 px-8 font-extrabold uppercase tracking-wider text-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 w-full shadow-xl shadow-amber-900/15 hover:scale-[1.01] transition-all bg-gradient-to-r from-amber-700 via-amber-800 to-amber-900 hover:from-amber-800 hover:to-amber-950 text-white"
+                    >
+                      {(isSubmitting || isPaymentProcessing) && (
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
+                      )}
+                      {isPaymentProcessing 
+                        ? "Opening Razorpay Gateway..." 
+                        : isSubmitting 
+                          ? "Registering Task Partner..." 
+                          : paymentMethod === "razorpay"
+                            ? "Pay ₹100 & Confirm MTP Booking"
+                            : "Confirm MTP Task Booking (Pay ₹100 on Service)"}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
           ) : (
-            // NEW BOOKING VIEW
+            // STANDARD CLINICAL HEALTHCARE BOOKING VIEW (3-STEP WIZARD)
             <div className="rounded-3xl bg-white border border-slate-200/90 shadow-xl shadow-slate-200/40 p-4 sm:p-10 text-left animate-fade-in relative overflow-hidden">
               {/* Subtle top brand accent line */}
               <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary via-gold to-primary" />
@@ -3794,7 +4349,7 @@ function CustomerDashboard() {
                       {/* Select Service */}
                       <div className="md:col-span-2">
                         <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-                          Select Healthcare or MTP Service
+                          Select Healthcare Service
                         </label>
                         <div className="relative">
                           <select
@@ -3811,11 +4366,11 @@ function CustomerDashboard() {
                               }
                             </optgroup>
                             {servicesList.some(s => s.isMtp) && (
-                              <optgroup label="🚗 MTP & Multi-Tasking Tasks (Zero Advance / Pay on Service)">
+                              <optgroup label="🚗 MTP & Multi-Tasking Tasks (Zero Docs • ₹100 Base Fee)">
                                 {servicesList
                                   .filter(s => s.isMtp)
                                   .map(s => (
-                                    <option key={s.id} value={s.id}>✨ {s.title} — Pay on Service / Custom Quote</option>
+                                    <option key={s.id} value={s.id}>✨ {s.title} (₹100 Base Booking)</option>
                                   ))
                                 }
                               </optgroup>
@@ -3832,27 +4387,10 @@ function CustomerDashboard() {
                         )}
                       </div>
 
-                      {/* MTP Notice Banner */}
-                      {currentService?.isMtp && (
-                        <div className="md:col-span-2 rounded-2xl border-2 border-amber-300 bg-gradient-to-r from-amber-50 via-amber-50/70 to-orange-50/40 p-5 text-amber-950 text-xs flex gap-3.5 items-start shadow-xs">
-                          <div className="p-2 rounded-xl bg-amber-200/60 text-amber-800 shrink-0">
-                            <Sparkles className="h-5 w-5" />
-                          </div>
-                          <div className="space-y-1">
-                            <span className="font-extrabold block text-sm text-amber-950 font-display">
-                              🚗 Multi-Tasking Professional (MTP) Service Selected
-                            </span>
-                            <p className="text-amber-900 text-[11px] leading-relaxed font-medium">
-                              Payment terms for this dynamic MTP service are on a <strong>Pay on Service / Custom Quote</strong> basis. You do <strong>NOT</strong> need to pay any advance online right now. Book the task, and our care coordinator will confirm assignment and rates.
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
                       {/* Duration Selector */}
                       <div>
                         <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-                          {currentService?.isMtp ? "Service Frequency / Shifts" : "Billing Option"}
+                          Billing Option
                         </label>
                         <select
                           value={bookingDuration}
@@ -3862,10 +4400,10 @@ function CustomerDashboard() {
                           }}
                           className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-slate-50/60 text-slate-900 outline-none transition-all focus:bg-white focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-semibold cursor-pointer"
                         >
-                          <option value="Daily">{currentService?.isMtp ? "Task / Visit Shift" : "Daily"}</option>
+                          <option value="Daily">Daily</option>
                           <option value="Hourly">Hourly</option>
-                          {!currentService?.isMtp && <option value="Weekly">Weekly</option>}
-                          {!currentService?.isMtp && <option value="Monthly">Monthly</option>}
+                          <option value="Weekly">Weekly</option>
+                          <option value="Monthly">Monthly</option>
                         </select>
                       </div>
 
@@ -3873,26 +4411,22 @@ function CustomerDashboard() {
                       <div>
                         <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 flex justify-between items-center">
                           <span>
-                            {currentService?.isMtp 
-                              ? (bookingDuration === "Hourly" ? "Number of Hours" : "Number of Tasks / Visits")
-                              : (bookingDuration === "Hourly" ? "Number of Hours" :
-                                 bookingDuration === "Daily" ? "Number of Days" :
-                                 bookingDuration === "Weekly" ? "Number of Weeks" : "Number of Months")}
+                            {bookingDuration === "Hourly" ? "Number of Hours" :
+                             bookingDuration === "Daily" ? "Number of Days" :
+                             bookingDuration === "Weekly" ? "Number of Weeks" : "Number of Months"}
                           </span>
-                          {!currentService?.isMtp && (
-                            <span className="text-[11px] text-primary font-bold px-2 py-0.5 rounded-md bg-gold/15 border border-gold/30">
-                              ₹{
-                                bookingDuration === "Hourly" ? getServiceRates().hourly :
-                                bookingDuration === "Daily" ? getServiceRates().daily :
-                                bookingDuration === "Weekly" ? getServiceRates().weekly :
-                                getServiceRates().monthly
-                              } / {
-                                bookingDuration === "Hourly" ? "hr" :
-                                bookingDuration === "Daily" ? "day" :
-                                bookingDuration === "Weekly" ? "wk" : "mo"
-                              }
-                            </span>
-                          )}
+                          <span className="text-[11px] text-primary font-bold px-2 py-0.5 rounded-md bg-gold/15 border border-gold/30">
+                            ₹{
+                              bookingDuration === "Hourly" ? getServiceRates().hourly :
+                              bookingDuration === "Daily" ? getServiceRates().daily :
+                              bookingDuration === "Weekly" ? getServiceRates().weekly :
+                              getServiceRates().monthly
+                            } / {
+                              bookingDuration === "Hourly" ? "hr" :
+                              bookingDuration === "Daily" ? "day" :
+                              bookingDuration === "Weekly" ? "wk" : "mo"
+                            }
+                          </span>
                         </label>
                         <input
                           type="number"
@@ -4240,13 +4774,13 @@ function CustomerDashboard() {
                     {/* Document Upload */}
                     <div>
                       <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-                        Doctor Prescription or Case File (PDF / Image) {currentService?.isMtp ? "(Optional for MTP Tasks)" : "(Required for Clinical Care)"}
+                        Doctor Prescription or Case File (PDF / Image) (Required for Clinical Care)
                       </label>
                       <div className="p-4 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 hover:bg-gold/5 hover:border-gold/50 transition-all">
                         <input
                           type="file"
                           accept="image/*,application/pdf"
-                          required={!currentService?.isMtp}
+                          required
                           onChange={(e) => handleCaretakerFileChange(e, setPrescriptionFile)}
                           className="w-full text-xs text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-primary file:text-gold hover:file:bg-primary/90 cursor-pointer"
                         />
@@ -4263,40 +4797,24 @@ function CustomerDashboard() {
                       <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-3">
                         Payment &amp; Escrow Guarantee
                       </label>
-                      {currentService?.isMtp ? (
-                        <div className="p-5 border-2 border-amber-300 bg-gradient-to-r from-amber-50 via-amber-50/80 to-orange-50/50 text-amber-950 rounded-2xl flex items-center gap-4 shadow-sm">
-                          <div className="p-3 rounded-2xl bg-amber-200/70 text-amber-900 shrink-0">
-                            <Clock className="h-6 w-6" />
-                          </div>
-                          <div className="text-left">
-                            <span className="block text-sm font-bold text-amber-950 font-display">
-                              Pay on Service / Quote Basis (₹0 Advance Required Online)
-                            </span>
-                            <span className="text-xs text-amber-900 block mt-1 leading-relaxed font-medium">
-                              Payment pricing for MTP companion tasks is settled on a direct visit basis. No online advance charge is required now.
-                            </span>
-                          </div>
+                      <div className="p-5 border-2 border-gold/40 bg-gradient-to-br from-[#091129] to-[#182858] text-white rounded-2xl flex items-center gap-4 shadow-lg shadow-slate-900/10">
+                        <div className="p-3 rounded-2xl bg-gold/20 text-gold border border-gold/40 shrink-0">
+                          <CreditCard className="h-6 w-6" />
                         </div>
-                      ) : (
-                        <div className="p-5 border-2 border-gold/40 bg-gradient-to-br from-[#091129] to-[#182858] text-white rounded-2xl flex items-center gap-4 shadow-lg shadow-slate-900/10">
-                          <div className="p-3 rounded-2xl bg-gold/20 text-gold border border-gold/40 shrink-0">
-                            <CreditCard className="h-6 w-6" />
-                          </div>
-                          <div className="text-left">
-                            <div className="flex items-center gap-2">
-                              <span className="block text-sm font-bold text-white font-display">
-                                Razorpay Escrow Protection
-                              </span>
-                              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-gold text-primary">
-                                Verified Secure
-                              </span>
-                            </div>
-                            <span className="text-xs text-slate-300 block mt-1 leading-relaxed">
-                              Pay only the 20% advance booking allocation fee online. Your remaining balance is payable only after your caregiver delivers the scheduled shifts!
+                        <div className="text-left">
+                          <div className="flex items-center gap-2">
+                            <span className="block text-sm font-bold text-white font-display">
+                              Razorpay Escrow Protection
+                            </span>
+                            <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-gold text-primary">
+                              Verified Secure
                             </span>
                           </div>
+                          <span className="text-xs text-slate-300 block mt-1 leading-relaxed">
+                            Pay only the 20% advance booking allocation fee online. Your remaining balance is payable only after your caregiver delivers the scheduled shifts!
+                          </span>
                         </div>
-                      )}
+                      </div>
                     </div>
 
                     {/* Terms and Conditions */}
@@ -4327,92 +4845,57 @@ function CustomerDashboard() {
                     </div>
 
                     {/* Cost Summary & Actions */}
-                    <div className="border-t border-slate-200 pt-6 flex flex-col justify-between items-stretch gap-6 bg-slate-50/80 -mx-4 sm:-mx-10 -mb-4 sm:-mb-10 p-4 sm:p-8 rounded-b-3xl text-left border-t">
-                      {currentService?.isMtp ? (
-                        <>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-b border-slate-200 pb-5">
-                            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
-                              <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Task Category</span>
-                              <span className="block text-sm font-extrabold text-primary font-display mt-1">MTP Companion Task</span>
-                            </div>
-                            <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-200/70 shadow-xs">
-                              <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-700 block">Advance Due Online</span>
-                              <span className="block text-xl font-extrabold text-emerald-700 font-display mt-1">₹0 (Zero Advance)</span>
-                            </div>
-                            <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-200/70 shadow-xs">
-                              <span className="text-[10px] uppercase font-bold tracking-wider text-amber-700 block">Billing Terms</span>
-                              <span className="block text-sm font-extrabold text-amber-800 font-display mt-1">Pay on Service / Quote</span>
-                            </div>
-                          </div>
+                    <div className="border-t border-slate-200 pt-6 flex flex-col justify-between items-stretch gap-6 bg-slate-50/80 -mx-4 sm:-mx-10 -mb-4 sm:-mb-10 p-4 sm:p-8 rounded-b-3xl text-left">
+                      {/* Step Progress visual indicator */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                          <span className="text-emerald-700">1. Pay Advance (20%)</span>
+                          <span className="text-amber-700">2. Pay Balance (80%) After Shifts</span>
+                        </div>
+                        <div className="h-2 bg-slate-200 rounded-full overflow-hidden flex">
+                          <div className="w-[20%] bg-emerald-500 h-full rounded-l-full" />
+                          <div className="w-[80%] bg-amber-400 h-full rounded-r-full" />
+                        </div>
+                      </div>
 
-                          <div className="flex items-start gap-3 bg-amber-100/50 border border-amber-300/80 p-4 rounded-2xl text-amber-950 text-xs leading-relaxed">
-                            <span className="text-base shrink-0">✨</span>
-                            <div>
-                              <strong className="font-extrabold block text-amber-950 mb-0.5">Zero-Advance Booking Guarantee</strong>
-                              Your MTP booking will be registered immediately. No payment is required right now. Our support team will confirm your professional match and coordinate the details directly.
-                            </div>
-                          </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-b border-slate-200 pb-5">
+                        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Total Estimated Cost</span>
+                          <span className="block text-xl font-extrabold text-primary font-display mt-1">₹{calculateTotal().toLocaleString()}</span>
+                        </div>
+                        <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-200/70 shadow-xs">
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-700 block">Advance to Pay Now</span>
+                          <span className="block text-xl font-extrabold text-emerald-700 font-display mt-1">₹{calculateAdvance().toLocaleString()}</span>
+                        </div>
+                        <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-200/70 shadow-xs">
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-amber-700 block">Pending Balance (After Care)</span>
+                          <span className="block text-xl font-extrabold text-amber-700 font-display mt-1">₹{(calculateTotal() - calculateAdvance()).toLocaleString()}</span>
+                        </div>
+                      </div>
 
-                          <div>
-                            <p className="text-xs text-slate-500 leading-relaxed font-semibold">
-                              Task: {currentService?.title || "Service"} • Frequency: {durationCount} {bookingDuration?.toLowerCase() || 'day'}(s) • Advance required online: ₹0
-                            </p>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          {/* Step Progress visual indicator */}
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                              <span className="text-emerald-700">1. Pay Advance (20%)</span>
-                              <span className="text-amber-700">2. Pay Balance (80%) After Shifts</span>
-                            </div>
-                            <div className="h-2 bg-slate-200 rounded-full overflow-hidden flex">
-                              <div className="w-[20%] bg-emerald-500 h-full rounded-l-full" />
-                              <div className="w-[80%] bg-amber-400 h-full rounded-r-full" />
-                            </div>
-                          </div>
+                      {/* Escrow Guarantee Trust Banner */}
+                      <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-emerald-900 text-xs leading-relaxed">
+                        <span className="text-base shrink-0">🛡️</span>
+                        <div>
+                          <strong className="font-extrabold block text-emerald-950 mb-0.5 font-display">Amma Seva Escrow Guarantee</strong>
+                          Pay only the verified advance of <span className="font-extrabold text-emerald-800">₹{calculateAdvance().toLocaleString()}</span> now to secure your caregiver. Pay the remaining balance of <span className="font-extrabold text-emerald-800">₹{(calculateTotal() - calculateAdvance()).toLocaleString()}</span> only after the shift is safely completed!
+                        </div>
+                      </div>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-b border-slate-200 pb-5">
-                            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
-                              <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Total Estimated Cost</span>
-                              <span className="block text-xl font-extrabold text-primary font-display mt-1">₹{calculateTotal().toLocaleString()}</span>
-                            </div>
-                            <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-200/70 shadow-xs">
-                              <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-700 block">Advance to Pay Now</span>
-                              <span className="block text-xl font-extrabold text-emerald-700 font-display mt-1">₹{calculateAdvance().toLocaleString()}</span>
-                            </div>
-                            <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-200/70 shadow-xs">
-                              <span className="text-[10px] uppercase font-bold tracking-wider text-amber-700 block">Pending Balance (After Care)</span>
-                              <span className="block text-xl font-extrabold text-amber-700 font-display mt-1">₹{(calculateTotal() - calculateAdvance()).toLocaleString()}</span>
-                            </div>
-                          </div>
-
-                          {/* Escrow Guarantee Trust Banner */}
-                          <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-emerald-900 text-xs leading-relaxed">
-                            <span className="text-base shrink-0">🛡️</span>
-                            <div>
-                              <strong className="font-extrabold block text-emerald-950 mb-0.5 font-display">Amma Seva Escrow Guarantee</strong>
-                              Pay only the verified advance of <span className="font-extrabold text-emerald-800">₹{calculateAdvance().toLocaleString()}</span> now to secure your caregiver. Pay the remaining balance of <span className="font-extrabold text-emerald-800">₹{(calculateTotal() - calculateAdvance()).toLocaleString()}</span> only after the shift is safely completed!
-                            </div>
-                          </div>
-
-                          <div>
-                            <p className="text-[11px] text-slate-500 leading-relaxed font-semibold">
-                              Calculation: ₹{
-                                bookingDuration === "Hourly" ? getServiceRates().hourly :
-                                bookingDuration === "Daily" ? getServiceRates().daily :
-                                bookingDuration === "Weekly" ? getServiceRates().weekly :
-                                getServiceRates().monthly
-                              } per {
-                                bookingDuration === "Hourly" ? "Hour" :
-                                bookingDuration === "Daily" ? "Day" :
-                                bookingDuration === "Weekly" ? "Week" : "Month"
-                              } × {durationCount} units = ₹{calculateTotal().toLocaleString()} (Advance: ₹{calculateAdvance().toLocaleString()} | Balance: ₹{(calculateTotal() - calculateAdvance()).toLocaleString()})
-                            </p>
-                          </div>
-                        </>
-                      )}
+                      <div>
+                        <p className="text-[11px] text-slate-500 leading-relaxed font-semibold">
+                          Calculation: ₹{
+                            bookingDuration === "Hourly" ? getServiceRates().hourly :
+                            bookingDuration === "Daily" ? getServiceRates().daily :
+                            bookingDuration === "Weekly" ? getServiceRates().weekly :
+                            getServiceRates().monthly
+                          } per {
+                            bookingDuration === "Hourly" ? "Hour" :
+                            bookingDuration === "Daily" ? "Day" :
+                            bookingDuration === "Weekly" ? "Week" : "Month"
+                          } × {durationCount} units = ₹{calculateTotal().toLocaleString()} (Advance: ₹{calculateAdvance().toLocaleString()} | Balance: ₹{(calculateTotal() - calculateAdvance()).toLocaleString()})
+                        </p>
+                      </div>
 
                       <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3.5 w-full pt-2">
                         <button
@@ -4434,9 +4917,7 @@ function CustomerDashboard() {
                             ? "Verifying Razorpay Gateway..." 
                             : isSubmitting 
                               ? "Securing Shift Allocation..." 
-                              : currentService?.isMtp
-                                ? "Confirm MTP Booking (₹0 Advance Required)"
-                                : `Pay Advance & Book Shift (₹${calculateAdvance().toLocaleString()})`}
+                              : `Pay Advance & Book Shift (₹${calculateAdvance().toLocaleString()})`}
                         </button>
                       </div>
                     </div>

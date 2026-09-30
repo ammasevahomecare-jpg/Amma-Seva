@@ -248,8 +248,10 @@ function Home() {
               key={imgSrc}
               src={imgSrc}
               alt="Amma Seva Healthcare Services"
-              className={`absolute inset-0 w-full h-full object-cover object-center transition-all duration-1000 ease-in-out ${idx === currentBgIndex ? "opacity-35 scale-100" : "opacity-0 scale-105"
-                }`}
+              style={{ opacity: idx === currentBgIndex ? 0.35 : 0 }}
+              className={`absolute inset-0 w-full h-full object-cover object-center transition-all duration-1000 ease-in-out ${
+                idx === currentBgIndex ? "scale-100" : "scale-105"
+              }`}
             />
           ))}
           {/* Subtle light gradient wash to ensure crystal-clear text readability */}

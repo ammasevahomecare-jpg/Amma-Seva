@@ -1173,7 +1173,12 @@ function AdminPage() {
         paymentStatus: bookingPaymentStatus,
         paymentMethod: bookingPaymentMethod,
         transactionId: bookingTransactionId,
-        paymentDate: bookingPaymentDate
+        paymentDate: bookingPaymentDate,
+        patientName: bookingPatientName,
+        patientAge: bookingPatientAge,
+        patientNeeds: bookingPatientNeeds,
+        prescription: bookingPrescription,
+        googleMapLocation: bookingGoogleMapLocation
       };
     } else if (modalType === "caregiver") {
       const nameErr = validateName(caregiverName, "Staff full name");
@@ -5136,7 +5141,27 @@ function AdminPage() {
                         <DollarSign className="h-3.5 w-3.5 text-[#c9a24c]" /> Payout &amp; Assignment Status
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Total Fee (₹) *</label>
+                          <input 
+                            type="number" 
+                            required 
+                            value={bookingAmount} 
+                            onChange={e => {
+                              const val = e.target.value;
+                              setBookingAmount(val);
+                              if (payoutCalcMode === "percentage") {
+                                const amt = Number(val) || 0;
+                                const pct = Number(payoutPercentValue) || 85;
+                                setBookingCaretakerPayout(Math.round(amt * (pct / 100)).toString());
+                              }
+                            }}
+                            disabled={isRecordCaretakerPaymentMode}
+                            placeholder="e.g. 100"
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-bold text-[#1e2a5a] disabled:opacity-70"
+                          />
+                        </div>
                         <div>
                           <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Booking Status</label>
                           <select 
@@ -5146,6 +5171,7 @@ function AdminPage() {
                           >
                             <option value="Pending">Pending</option>
                             <option value="Confirmed">Confirmed</option>
+                            <option value="Completed">Completed</option>
                             <option value="Cancelled">Cancelled</option>
                           </select>
                         </div>
@@ -5170,11 +5196,16 @@ function AdminPage() {
                             value={bookingPaymentStatus} onChange={e => setBookingPaymentStatus(e.target.value)}
                             disabled={isRecordCaretakerPaymentMode}
                             className={`w-full px-3 py-1.5 border rounded-xl outline-none text-xs font-extrabold cursor-pointer ${
-                              bookingPaymentStatus === "Paid" ? "bg-emerald-50 text-emerald-800 border-emerald-300" : "bg-amber-50 text-amber-800 border-amber-300"
+                              bookingPaymentStatus === "Paid" ? "bg-emerald-50 text-emerald-800 border-emerald-300" :
+                              bookingPaymentStatus === "Advance Paid" ? "bg-indigo-50 text-indigo-800 border-indigo-300" :
+                              bookingPaymentStatus === "Pay on Service" ? "bg-amber-50 text-amber-900 border-amber-300" :
+                              "bg-slate-50 text-slate-700 border-slate-300"
                             }`}
                           >
                             <option value="Unpaid">Unpaid</option>
-                            <option value="Paid">Paid</option>
+                            <option value="Advance Paid">Advance Paid</option>
+                            <option value="Pay on Service">Pay on Service</option>
+                            <option value="Paid">Paid (Full)</option>
                           </select>
                         </div>
                       </div>

@@ -2215,17 +2215,27 @@ export const db = {
 
   // Admin CRUD operations: Bookings (Full Edit & Delete)
   adminUpdateBooking: async (id, bookingData) => {
-    const { name, phone, service, date, time, duration, address, status, assignedStaff, amount, paymentStatus, paymentMethod = '', transactionId = '', paymentDate = '', caretakerPayout, caretakerPayoutStatus, caretakerPayoutMethod, caretakerPayoutRef } = bookingData
+    const { 
+      name, phone, service, date, time, duration, address, status, 
+      assignedStaff, amount, paymentStatus, paymentMethod = '', 
+      transactionId = '', paymentDate = '', caretakerPayout, 
+      caretakerPayoutStatus, caretakerPayoutMethod, caretakerPayoutRef,
+      advancePaid, balanceAmount, patientName, patientAge, patientNeeds, googleMapLocation
+    } = bookingData
     if (useMySQL) {
       const [result] = await pool.query(
-        'UPDATE bookings SET name = ?, phone = ?, service = ?, date = ?, time = ?, duration = ?, address = ?, status = ?, assignedStaff = ?, amount = ?, paymentStatus = ?, paymentMethod = ?, transactionId = ?, paymentDate = ? WHERE id = ?',
-        [name, phone, service, date, time, duration, address, status, assignedStaff || null, amount, paymentStatus, paymentMethod, transactionId, paymentDate, id]
+        'UPDATE bookings SET name = ?, phone = ?, service = ?, date = ?, time = ?, duration = ?, address = ?, status = ?, assignedStaff = ?, amount = ?, paymentStatus = ?, paymentMethod = ?, transactionId = ?, paymentDate = ?, advancePaid = COALESCE(?, advancePaid), balanceAmount = COALESCE(?, balanceAmount), patientName = COALESCE(?, patientName), patientNeeds = COALESCE(?, patientNeeds), googleMapLocation = COALESCE(?, googleMapLocation) WHERE id = ?',
+        [name, phone, service, date, time, duration, address, status, assignedStaff || null, amount, paymentStatus, paymentMethod, transactionId, paymentDate, advancePaid !== undefined ? advancePaid : null, balanceAmount !== undefined ? balanceAmount : null, patientName !== undefined ? patientName : null, patientNeeds !== undefined ? patientNeeds : null, googleMapLocation !== undefined ? googleMapLocation : null, id]
       )
       return result.affectedRows > 0
     } else {
       const data = await readJSONDb()
       const idx = data.bookings.findIndex(b => b.id === Number(id))
       if (idx > -1) {
+        const parsedAmount = Number(amount)
+        const currentAdv = advancePaid !== undefined ? Number(advancePaid) : (data.bookings[idx].advancePaid || 0)
+        const calculatedBal = balanceAmount !== undefined ? Number(balanceAmount) : Math.max(0, parsedAmount - currentAdv)
+
         data.bookings[idx] = {
           ...data.bookings[idx],
           name,
@@ -2237,7 +2247,13 @@ export const db = {
           address,
           status,
           assignedStaff: assignedStaff || null,
-          amount: Number(amount),
+          amount: parsedAmount,
+          advancePaid: currentAdv,
+          balanceAmount: calculatedBal,
+          patientName: patientName !== undefined ? patientName : data.bookings[idx].patientName,
+          patientAge: patientAge !== undefined ? patientAge : data.bookings[idx].patientAge,
+          patientNeeds: patientNeeds !== undefined ? patientNeeds : data.bookings[idx].patientNeeds,
+          googleMapLocation: googleMapLocation !== undefined ? googleMapLocation : data.bookings[idx].googleMapLocation,
           caretakerPayout: caretakerPayout !== undefined ? Number(caretakerPayout) : (data.bookings[idx].caretakerPayout || 0),
           caretakerPayoutStatus: caretakerPayoutStatus !== undefined ? caretakerPayoutStatus : (data.bookings[idx].caretakerPayoutStatus || 'Unpaid'),
           caretakerPayoutMethod: caretakerPayoutMethod !== undefined ? caretakerPayoutMethod : (data.bookings[idx].caretakerPayoutMethod || ''),
