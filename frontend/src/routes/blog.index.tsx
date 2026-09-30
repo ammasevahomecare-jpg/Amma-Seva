@@ -36,7 +36,7 @@ function BlogList() {
   return (
     <SiteLayout>
       {/* Blog Hero Header Section */}
-      <section className="bg-gradient-to-b from-cream/60 via-cream/20 to-background border-b border-border/60 py-12 sm:py-16">
+      <section className="bg-gradient-to-b from-cream/60 via-cream/20 to-background border-b border-border/60 py-8 sm:py-10">
         <div className="mx-auto max-w-[1440px] px-4 text-left sm:px-6 lg:px-8 xl:px-12">
           <div className="max-w-3xl space-y-3">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-gold/15 px-3.5 py-1 text-xs font-bold text-gold border border-gold/30 tracking-wider uppercase">
@@ -51,7 +51,7 @@ function BlogList() {
           </div>
 
           {/* Categories Horizontal Filtering Tabs */}
-          <div className="mt-8 flex flex-wrap gap-2 pt-2 border-t border-border/40">
+          <div className="mt-6 flex flex-wrap gap-2 pt-2 border-t border-border/40">
             {categories.map((cat) => (
               <button
                 key={cat}
@@ -70,7 +70,7 @@ function BlogList() {
       </section>
 
       {/* Blogs Listings Grid */}
-      <section className="py-12 sm:py-16 bg-[#f8fafc]">
+      <section className="py-8 sm:py-10 bg-[#f8fafc]">
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
           {filteredBlogs.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">

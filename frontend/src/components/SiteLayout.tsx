@@ -280,9 +280,9 @@ function Footer() {
       
       {/* 1. Trust & Confidence Strip */}
       <div className="border-b border-white/[0.08] bg-white/[0.02]">
-        <div className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8 xl:px-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          <div className="flex items-center gap-3 bg-white/[0.02] p-3 rounded-2xl border border-white/[0.05]">
-            <div className="h-10 w-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+        <div className="mx-auto max-w-[1440px] px-4 py-4 sm:px-6 lg:px-8 xl:px-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+          <div className="flex items-center gap-3 bg-white/[0.02] p-2.5 rounded-2xl border border-white/[0.05]">
+            <div className="h-9 w-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div className="text-left">
@@ -291,8 +291,8 @@ function Footer() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 bg-white/[0.02] p-3 rounded-2xl border border-white/[0.05]">
-            <div className="h-10 w-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+          <div className="flex items-center gap-3 bg-white/[0.02] p-2.5 rounded-2xl border border-white/[0.05]">
+            <div className="h-9 w-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
               <Clock className="h-5 w-5" />
             </div>
             <div className="text-left">
@@ -301,8 +301,8 @@ function Footer() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 bg-white/[0.02] p-3 rounded-2xl border border-white/[0.05]">
-            <div className="h-10 w-10 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
+          <div className="flex items-center gap-3 bg-white/[0.02] p-2.5 rounded-2xl border border-white/[0.05]">
+            <div className="h-9 w-9 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
               <Heart className="h-5 w-5" />
             </div>
             <div className="text-left">
@@ -311,8 +311,8 @@ function Footer() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 bg-white/[0.02] p-3 rounded-2xl border border-white/[0.05]">
-            <div className="h-10 w-10 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400 shrink-0">
+          <div className="flex items-center gap-3 bg-white/[0.02] p-2.5 rounded-2xl border border-white/[0.05]">
+            <div className="h-9 w-9 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400 shrink-0">
               <Sparkles className="h-5 w-5" />
             </div>
             <div className="text-left">
@@ -324,7 +324,7 @@ function Footer() {
       </div>
 
       {/* 2. Main 4-Column Grid */}
-      <div className="mx-auto grid max-w-[1440px] gap-10 px-4 py-14 sm:px-6 lg:grid-cols-12 lg:px-8 xl:px-12">
+      <div className="mx-auto grid max-w-[1440px] gap-8 px-4 py-8 sm:py-10 sm:px-6 lg:grid-cols-12 lg:px-8 xl:px-12">
         
         {/* Brand details */}
         <div className="lg:col-span-4 space-y-4 text-left">

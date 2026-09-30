@@ -354,12 +354,12 @@ function MTPPage() {
   return (
     <SiteLayout>
       {/* Hero Header Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#fbfbfe] via-cream/30 to-white pb-12 pt-10 border-b border-border/40">
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#fbfbfe] via-cream/30 to-white py-8 sm:py-10 border-b border-border/40">
         <div className="absolute top-0 right-0 -z-10 h-96 w-96 rounded-full bg-gold/10 blur-3xl opacity-60" />
         <div className="absolute top-20 left-10 -z-10 h-80 w-80 rounded-full bg-primary/5 blur-3xl opacity-60" />
 
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12 text-left">
-          <div className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/10 px-3.5 py-1 text-xs font-bold text-gold tracking-wider uppercase mb-4">
+          <div className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/10 px-3.5 py-1 text-xs font-bold text-gold tracking-wider uppercase mb-3">
             <Sparkles className="h-3.5 w-3.5" />
             Hyderabad&apos;s Multi Tasking Professionals (MTP)
           </div>
@@ -391,7 +391,7 @@ function MTPPage() {
               </div>
             </div>
 
-            <div className="lg:col-span-4 bg-white/90 backdrop-blur-md rounded-2xl border border-gold/30 p-6 shadow-xl space-y-4 text-left">
+            <div className="lg:col-span-4 bg-white/90 backdrop-blur-md rounded-2xl border border-gold/30 p-5 sm:p-6 shadow-xl space-y-3.5 text-left">
               <div className="flex items-center gap-3">
                 <div className="h-12 w-12 rounded-xl bg-gold/15 flex items-center justify-center text-gold font-bold">
                   <Car className="h-6 w-6" />
@@ -416,9 +416,9 @@ function MTPPage() {
       </section>
 
       {/* What is an MTP & Tasks Grid */}
-      <section className="py-12 bg-white border-b border-border/40">
+      <section className="py-8 sm:py-10 bg-white border-b border-border/40">
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12 text-left">
-          <div className="max-w-3xl mb-10">
+          <div className="max-w-3xl mb-6 sm:mb-8">
             <h2 className="gold-rule text-3xl font-extrabold text-primary sm:text-4xl font-display">
               What Does an MTP Do?
             </h2>
@@ -461,10 +461,10 @@ function MTPPage() {
       </section>
 
       {/* Why Join Benefits */}
-      <section className="py-12 bg-cream/35 border-b border-border/40">
+      <section className="py-8 sm:py-10 bg-cream/35 border-b border-border/40">
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12 text-left">
-          <div className="grid lg:grid-cols-12 gap-10 items-center">
-            <div className="lg:col-span-5 space-y-5">
+          <div className="grid lg:grid-cols-12 gap-8 lg:gap-10 items-center">
+            <div className="lg:col-span-5 space-y-4">
               <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary uppercase tracking-wider">
                 Why Join Amma Seva
               </span>
@@ -510,11 +510,11 @@ function MTPPage() {
 
             {/* How It Works Steps */}
             <div className="lg:col-span-7 bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-sm">
-              <h3 className="text-xl font-bold text-primary font-display mb-6">
+              <h3 className="text-xl font-bold text-primary font-display mb-5">
                 How Onboarding Works (4 Simple Steps)
               </h3>
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-5 space-y-2">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 space-y-1.5">
                   <div className="h-8 w-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs">
                     01
                   </div>
@@ -522,7 +522,7 @@ function MTPPage() {
                   <p className="text-xs text-slate-500">Fill your contact, preferred localities and task interests below.</p>
                 </div>
 
-                <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-5 space-y-2">
+                <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 space-y-1.5">
                   <div className="h-8 w-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs">
                     02
                   </div>
@@ -530,7 +530,7 @@ function MTPPage() {
                   <p className="text-xs text-slate-500">Our coordinator verifies your ID and gives a 10-min safety briefing.</p>
                 </div>
 
-                <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-5 space-y-2">
+                <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 space-y-1.5">
                   <div className="h-8 w-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs">
                     03
                   </div>
@@ -538,7 +538,7 @@ function MTPPage() {
                   <p className="text-xs text-slate-500">Get nearby task requests via WhatsApp or phone call. Accept what fits.</p>
                 </div>
 
-                <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-5 space-y-2">
+                <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 space-y-1.5">
                   <div className="h-8 w-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs">
                     04
                   </div>
@@ -552,7 +552,7 @@ function MTPPage() {
       </section>
 
       {/* Registration Form Section */}
-      <section id="register-form" className="py-12 bg-slate-50/60 border-t border-slate-100">
+      <section id="register-form" className="py-8 sm:py-10 bg-slate-50/60 border-t border-slate-100">
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
           <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-10 lg:p-12 shadow-xl shadow-slate-900/5 text-left space-y-8">
             <div className="border-b border-slate-100 pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">

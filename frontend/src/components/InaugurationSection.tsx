@@ -10,7 +10,8 @@ import {
   HeartHandshake, 
   Calendar,
   CheckCircle2,
-  Camera
+  Camera,
+  Sparkles
 } from "lucide-react";
 
 import iasPhoto from "@/assets/sandeep-nanduri-ias.jpg";
@@ -103,159 +104,160 @@ export function InaugurationSection() {
   const activePhoto = activePhotoIndex !== null ? INAUGURATION_MOMENTS[activePhotoIndex] : null;
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-[#0d1733] via-[#091024] to-[#060b19] text-white border-t border-slate-800 shadow-2xl py-14 sm:py-20">
-      {/* Background Decorative Gold Ambient Gradients */}
-      <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-amber-500/10 blur-[130px] rounded-full" />
-      <div className="pointer-events-none absolute bottom-0 right-0 w-96 h-96 bg-primary/30 blur-[100px] rounded-full" />
+    <section className="relative overflow-hidden bg-white text-slate-800 py-8 sm:py-10 border-t border-slate-200/80">
+      {/* Background Subtle Soft Gradients */}
+      <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-gradient-to-b from-amber-100/40 via-gold/5 to-transparent blur-[120px] rounded-full" />
+      <div className="pointer-events-none absolute bottom-0 right-0 w-80 h-80 bg-primary/5 blur-[90px] rounded-full" />
 
-      <div className="relative mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         
         {/* TOP COMMEMORATIVE HEADER */}
-        <div className="text-center max-w-4xl mx-auto space-y-4">
-          <div className="inline-flex items-center gap-2 rounded-full bg-amber-400/15 border border-amber-400/40 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-amber-300 shadow-sm">
-            <Award className="h-4 w-4 text-amber-400" />
+        <div className="text-center max-w-3xl mx-auto space-y-2">
+          <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-50 via-amber-100/70 to-amber-50 border border-amber-300/80 px-4 py-1 text-[11px] sm:text-xs font-black uppercase tracking-wider text-[#8f6414] shadow-xs">
+            <Sparkles className="h-3.5 w-3.5 text-[#b8860b]" />
             <span>Official State Inauguration &amp; Dedication</span>
           </div>
 
-          <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight">
-            Grand Inauguration of <span className="text-amber-400">Amma Seva</span>
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#0b183b] tracking-tight leading-tight">
+            Grand Inauguration of <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#b38228] via-[#d4af37] to-[#8c6014]">Amma Seva</span>
           </h2>
 
-          <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-3xl mx-auto">
-            Amma Seva Home Healthcare was officially inaugurated and dedicated to community public health service by esteemed dignitary <strong className="text-white font-semibold">Thiru Sandeep Nanduri, IAS.</strong>
+          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-2xl mx-auto font-medium">
+            Amma Seva Home Healthcare was officially inaugurated and dedicated to public healthcare service by esteemed dignitary <strong className="text-[#0b183b] font-bold">Thiru Sandeep Nanduri, IAS.</strong>
           </p>
         </div>
 
         {/* MAIN SHOWCASE: DIGNITARY HERO CARD + CEREMONIAL PHOTO GALLERY */}
-        <div className="mt-12 grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+        <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-stretch">
           
           {/* LEFT: DIGNITARY PROFILE & HONORS (5 COLS) */}
-          <div className="lg:col-span-5 flex flex-col justify-between rounded-3xl bg-gradient-to-b from-white/[0.08] to-white/[0.03] p-4 sm:p-8 border-2 border-[#d4af37]/50 shadow-[0_0_35px_rgba(0,0,0,0.4)] backdrop-blur-md">
-            <div>
+          <div className="lg:col-span-5 flex flex-col justify-between rounded-3xl bg-slate-50/70 p-5 sm:p-7 border border-slate-200/90 shadow-lg shadow-slate-200/50 hover:shadow-xl transition-all">
+            <div className="space-y-4">
               {/* Photo Frame */}
               <div 
                 onClick={() => setActivePhotoIndex(5)} 
-                className="group relative cursor-pointer overflow-hidden rounded-2xl border-2 border-[#ffd700] shadow-[0_0_25px_rgba(212,175,55,0.3)] bg-slate-950 aspect-[16/11]"
+                className="group relative cursor-pointer overflow-hidden rounded-2xl border-2 border-[#d4af37] shadow-md bg-slate-900 aspect-[16/10]"
               >
                 <img
                   src={iasPhoto}
                   alt="Thiru Sandeep Nanduri, IAS., Secretary to Government"
-                  className="h-full w-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
+                  className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
                   loading="lazy"
                 />
                 
                 {/* Floating Badge */}
-                <div className="absolute top-3 left-3 bg-[#09132e]/90 border border-[#ffd700]/70 rounded-full px-3 py-1 text-[11px] font-bold text-[#ffd700] uppercase tracking-wider backdrop-blur-md flex items-center gap-1.5 shadow-lg">
-                  <Award className="h-3.5 w-3.5 text-[#ffd700]" />
+                <div className="absolute top-3 left-3 bg-[#0b183b]/90 border border-gold/60 rounded-full px-3 py-1 text-[10px] font-black text-white uppercase tracking-wider backdrop-blur-md flex items-center gap-1.5 shadow-md">
+                  <Award className="h-3.5 w-3.5 text-gold" />
                   <span>Chief Guest &amp; Dignitary</span>
                 </div>
 
                 {/* Bottom overlay */}
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-3 pt-6 flex items-center justify-between text-white text-xs">
-                  <span className="flex items-center gap-1 text-amber-200 font-medium">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-[#ffd700]" /> Government of Tamil Nadu
+                  <span className="flex items-center gap-1 text-amber-200 text-[11px] font-semibold">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-gold" /> Government of Tamil Nadu
                   </span>
-                  <span className="bg-[#ffd700] text-slate-950 px-2 py-0.5 rounded text-[10px] font-black uppercase">
+                  <span className="bg-gradient-to-r from-gold via-amber-300 to-gold text-[#0b183b] px-2 py-0.5 rounded-md text-[10px] font-black uppercase shadow-xs">
                     IAS Officer
                   </span>
                 </div>
 
                 {/* Hover overlay */}
-                <div className="absolute inset-0 bg-[#09132e]/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                  <span className="bg-white/95 text-slate-950 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-lg">
-                    <ZoomIn className="h-4 w-4 text-[#d4af37]" /> View Portrait
+                <div className="absolute inset-0 bg-[#0b183b]/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                  <span className="bg-white text-[#0b183b] px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-xl">
+                    <ZoomIn className="h-4 w-4 text-gold" /> View Full Portrait
                   </span>
                 </div>
               </div>
 
               {/* Dignitary Name & Official Designation */}
-              <div className="mt-5 space-y-2 text-left">
-                <div className="inline-flex items-center gap-1.5 rounded-md bg-[#ffd700]/15 border border-[#ffd700]/40 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-[#ffd700]">
-                  <ShieldCheck className="h-3.5 w-3.5 text-[#ffd700]" />
+              <div className="space-y-2.5 text-left">
+                <div className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 border border-amber-200/80 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#8f6414]">
+                  <ShieldCheck className="h-3.5 w-3.5 text-[#8f6414]" />
                   <span>Inaugurated &amp; Dedicated By</span>
                 </div>
 
-                <h3 className="font-display text-2xl sm:text-3xl font-extrabold text-white tracking-wide leading-snug">
-                  Thiru Sandeep Nanduri, <span className="text-[#ffd700]">IAS.</span>
-                </h3>
-
-                <div className="rounded-xl bg-white/[0.05] p-3.5 border border-white/10 space-y-1">
-                  <p className="text-sm font-bold text-amber-300">
-                    Secretary to Government
-                  </p>
-                  <p className="text-xs text-slate-200 font-medium leading-relaxed">
-                    Youth Welfare and Sports Development Department, Government of Tamil Nadu
-                  </p>
+                <div>
+                  <h3 className="text-xl sm:text-2xl font-black text-[#0b183b] tracking-tight">
+                    Thiru Sandeep Nanduri, <span className="text-[#a8781d]">IAS.</span>
+                  </h3>
+                  <div className="mt-1.5 rounded-xl bg-white p-3 border border-slate-200/80 shadow-2xs space-y-0.5">
+                    <p className="text-xs font-extrabold text-[#0b183b]">
+                      Secretary to Government
+                    </p>
+                    <p className="text-[11px] text-slate-500 font-semibold leading-relaxed">
+                      Youth Welfare and Sports Development Department, Government of Tamil Nadu
+                    </p>
+                  </div>
                 </div>
 
                 {/* Quote / Commemoration Note */}
-                <blockquote className="italic text-xs text-slate-300 border-l-2 border-[#ffd700] pl-3 py-1 my-3 bg-white/[0.02] rounded-r-lg">
+                <blockquote className="text-xs text-slate-700 italic border-l-3 border-[#c9a24c] pl-3 py-1 bg-amber-50/60 rounded-r-xl leading-relaxed">
                   &ldquo;A transformative healthcare step ensuring every household receives authentic, hospital-grade nursing, patient rehabilitation, and caregiving at home.&rdquo;
                 </blockquote>
               </div>
             </div>
 
             {/* Commemorative Highlights Pills */}
-            <div className="grid grid-cols-2 gap-2.5 pt-4 border-t border-white/10 text-xs">
-              <div className="flex items-center gap-2 rounded-xl bg-white/[0.04] p-2.5 border border-white/10 text-slate-200">
-                <Building2 className="h-4 w-4 text-[#ffd700] shrink-0" />
-                <span className="text-[11px] font-medium leading-tight">State Administrative Dedication</span>
+            <div className="grid grid-cols-2 gap-2.5 pt-4 mt-3 border-t border-slate-200/70 text-xs">
+              <div className="flex items-center gap-2 rounded-xl bg-white p-2.5 border border-slate-200/80 text-slate-700 shadow-2xs">
+                <Building2 className="h-4 w-4 text-gold shrink-0" />
+                <span className="text-[11px] font-bold text-[#0b183b] leading-tight">State Administrative Dedication</span>
               </div>
-              <div className="flex items-center gap-2 rounded-xl bg-white/[0.04] p-2.5 border border-white/10 text-slate-200">
-                <HeartHandshake className="h-4 w-4 text-emerald-400 shrink-0" />
-                <span className="text-[11px] font-medium leading-tight">Compassionate Home Healthcare</span>
+              <div className="flex items-center gap-2 rounded-xl bg-white p-2.5 border border-slate-200/80 text-slate-700 shadow-2xs">
+                <HeartHandshake className="h-4 w-4 text-emerald-600 shrink-0" />
+                <span className="text-[11px] font-bold text-[#0b183b] leading-tight">Compassionate Home Healthcare</span>
               </div>
             </div>
           </div>
 
           {/* RIGHT: INAUGURATION CEREMONY PHOTO GALLERY (7 COLS) */}
-          <div className="lg:col-span-7 flex flex-col justify-between rounded-3xl bg-gradient-to-b from-white/[0.08] to-white/[0.03] p-4 sm:p-8 border border-white/15 shadow-xl backdrop-blur-md">
+          <div className="lg:col-span-7 flex flex-col justify-between rounded-3xl bg-slate-50/70 p-5 sm:p-7 border border-slate-200/90 shadow-lg shadow-slate-200/50 hover:shadow-xl transition-all">
             <div className="space-y-4">
               
               {/* Gallery Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/80 pb-3">
                 <div className="text-left">
-                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    <Camera className="h-5 w-5 text-[#ffd700]" />
+                  <h3 className="text-base sm:text-lg font-black text-[#0b183b] flex items-center gap-2">
+                    <Camera className="h-4 w-4 sm:h-5 sm:w-5 text-gold" />
                     Inauguration Ceremony Moments
                   </h3>
-                  <p className="text-xs text-slate-300">
+                  <p className="text-[11px] text-slate-500 font-medium">
                     Capturing key memories from the launch event with the Chief Guest &amp; team
                   </p>
                 </div>
-                <span className="text-[11px] font-semibold text-amber-300 bg-[#ffd700]/15 border border-[#ffd700]/30 px-3 py-1 rounded-full shrink-0 w-fit">
+                <span className="text-[10px] font-extrabold text-[#8f6414] bg-amber-100/80 border border-amber-300/80 px-2.5 py-1 rounded-full shrink-0 w-fit">
                   {INAUGURATION_MOMENTS.length} Authentic Photos
                 </span>
               </div>
 
               {/* Photo Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3.5">
                 {INAUGURATION_MOMENTS.map((moment, idx) => (
                   <div
                     key={moment.id}
                     onClick={() => setActivePhotoIndex(idx)}
-                    className="group relative cursor-pointer overflow-hidden rounded-2xl bg-slate-900 border border-white/15 hover:border-[#ffd700] shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex flex-col aspect-[4/3]"
+                    className="group relative cursor-pointer overflow-hidden rounded-2xl bg-slate-900 border border-slate-200 hover:border-gold shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 flex flex-col aspect-[4/3]"
                   >
                     <img
                       src={moment.image}
                       alt={moment.title}
                       loading="lazy"
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-108"
                     />
                     
-                    {/* Top Tag - Single line pill with no wrap or overlap */}
-                    <div className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 right-1.5 sm:right-2 z-10 pointer-events-none flex items-start">
-                      <span className="inline-block max-w-full truncate bg-[#09132e]/95 backdrop-blur-sm text-[#ffd700] border border-[#ffd700]/50 rounded-full px-1.5 sm:px-2 py-0.5 text-[8px] sm:text-[9px] font-extrabold uppercase tracking-tight sm:tracking-wider shadow-sm whitespace-nowrap">
+                    {/* Top Tag - Clean Pill */}
+                    <div className="absolute top-2 left-2 right-2 z-10 pointer-events-none flex items-start">
+                      <span className="inline-block max-w-full truncate bg-[#0b183b]/90 backdrop-blur-xs text-amber-200 border border-gold/40 rounded-full px-2 py-0.5 text-[8.5px] font-black uppercase tracking-tight shadow-sm whitespace-nowrap">
                         {moment.tag}
                       </span>
                     </div>
 
                     {/* Hover Zoom Overlay */}
-                    <div className="absolute inset-0 bg-[#09132e]/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-end p-2.5 text-center">
-                      <div className="mb-1 rounded-full bg-[#ffd700] p-1.5 text-slate-950 shadow-md transform scale-75 group-hover:scale-100 transition-transform">
-                        <ZoomIn className="h-4 w-4" />
+                    <div className="absolute inset-0 bg-[#0b183b]/65 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-end p-2.5 text-center">
+                      <div className="mb-1 rounded-full bg-gold p-1 text-slate-950 shadow-md transform scale-75 group-hover:scale-100 transition-transform">
+                        <ZoomIn className="h-3.5 w-3.5" />
                       </div>
-                      <p className="text-[10px] font-bold text-white line-clamp-2 leading-tight">
+                      <p className="text-[9.5px] font-bold text-white line-clamp-2 leading-tight">
                         {moment.title}
                       </p>
                     </div>
@@ -263,17 +265,16 @@ export function InaugurationSection() {
                 ))}
               </div>
 
-
             </div>
 
             {/* Bottom Note */}
-            <div className="pt-3 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400">
-              <span className="flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5 text-[#ffd700]" />
+            <div className="pt-3.5 mt-3 border-t border-slate-200/80 flex items-center justify-between text-[11px] text-slate-500">
+              <span className="flex items-center gap-1.5 font-medium">
+                <Calendar className="h-3.5 w-3.5 text-gold" />
                 Official Inauguration Archive
               </span>
-              <span className="text-[#ffd700] font-medium">
-                Click any photo to view full resolution
+              <span className="text-[#8f6414] font-bold text-[11px] cursor-pointer hover:underline">
+                Click any photo to view in HD →
               </span>
             </div>
           </div>
@@ -307,7 +308,7 @@ export function InaugurationSection() {
                 activePhotoIndex === 0 ? INAUGURATION_MOMENTS.length - 1 : activePhotoIndex - 1
               );
             }}
-            className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 bg-white/15 hover:bg-[#ffd700] hover:text-slate-950 text-white p-3 rounded-full cursor-pointer transition-all z-50 shadow-xl"
+            className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 bg-white/15 hover:bg-gold hover:text-slate-950 text-white p-3 rounded-full cursor-pointer transition-all z-50 shadow-xl"
             aria-label="Previous photo"
           >
             <ChevronLeft className="h-6 w-6" />
@@ -322,7 +323,7 @@ export function InaugurationSection() {
                 activePhotoIndex === INAUGURATION_MOMENTS.length - 1 ? 0 : activePhotoIndex + 1
               );
             }}
-            className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 bg-white/15 hover:bg-[#ffd700] hover:text-slate-950 text-white p-3 rounded-full cursor-pointer transition-all z-50 shadow-xl"
+            className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 bg-white/15 hover:bg-gold hover:text-slate-950 text-white p-3 rounded-full cursor-pointer transition-all z-50 shadow-xl"
             aria-label="Next photo"
           >
             <ChevronRight className="h-6 w-6" />
@@ -330,39 +331,39 @@ export function InaugurationSection() {
 
           {/* Modal Content Box */}
           <div
-            className="relative max-h-[92vh] max-w-5xl w-full bg-slate-950 rounded-3xl overflow-hidden shadow-2xl border-2 border-[#ffd700]/60 flex flex-col animate-in zoom-in-95 duration-200"
+            className="relative max-h-[92vh] max-w-4xl w-full bg-slate-950 rounded-3xl overflow-hidden shadow-2xl border-2 border-gold/60 flex flex-col animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Image Container */}
-            <div className="relative bg-black flex items-center justify-center max-h-[65vh] overflow-hidden">
+            <div className="relative bg-black flex items-center justify-center max-h-[62vh] overflow-hidden">
               <img
                 src={activePhoto.image}
                 alt={activePhoto.title}
-                className="max-h-[65vh] w-full object-contain"
+                className="max-h-[62vh] w-full object-contain"
               />
               
               {/* Photo Counter */}
-              <div className="absolute top-4 left-4 bg-slate-950/80 border border-[#ffd700]/50 rounded-full px-3 py-1 text-xs font-bold text-[#ffd700] backdrop-blur-md">
+              <div className="absolute top-4 left-4 bg-slate-950/80 border border-gold/50 rounded-full px-3 py-1 text-xs font-bold text-gold backdrop-blur-md">
                 Photo {activePhotoIndex + 1} of {INAUGURATION_MOMENTS.length}
               </div>
 
               {/* Tag Badge */}
-              <div className="absolute top-4 right-14 sm:right-4 bg-[#ffd700] text-slate-950 rounded-full px-3 py-1 text-xs font-black uppercase tracking-wider shadow-md">
+              <div className="absolute top-4 right-14 sm:right-4 bg-gradient-to-r from-gold via-amber-300 to-gold text-[#0b183b] rounded-full px-3 py-1 text-xs font-black uppercase tracking-wider shadow-md">
                 {activePhoto.tag}
               </div>
             </div>
 
             {/* Photo Narrative */}
-            <div className="p-5 sm:p-6 bg-gradient-to-r from-[#07112c] via-[#091535] to-[#07112c] text-left space-y-2 border-t border-[#ffd700]/30">
+            <div className="p-5 sm:p-6 bg-[#0b183b] text-left space-y-2 border-t border-gold/30">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 className="font-display font-bold text-lg sm:text-xl text-white">
+                <h3 className="font-black text-base sm:text-lg text-white">
                   {activePhoto.title}
                 </h3>
                 <span className="text-xs text-amber-300 font-medium">
                   Inaugurated by Thiru Sandeep Nanduri, IAS.
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">
                 {activePhoto.description}
               </p>
 
@@ -374,7 +375,7 @@ export function InaugurationSection() {
                     onClick={() => setActivePhotoIndex(idx)}
                     className={`relative h-12 w-16 rounded-lg overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
                       idx === activePhotoIndex
-                        ? "border-[#ffd700] scale-105 shadow-md shadow-[#ffd700]/30"
+                        ? "border-gold scale-105 shadow-md shadow-gold/30"
                         : "border-white/20 opacity-60 hover:opacity-100"
                     }`}
                   >

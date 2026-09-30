@@ -136,7 +136,7 @@ function Careers() {
   return (
     <SiteLayout>
       {/* Premium Hero Header Section */}
-      <section className="bg-gradient-to-b from-[#fbf8f2] via-background to-background border-b border-border/60 py-12">
+      <section className="bg-gradient-to-b from-[#fbf8f2] via-background to-background border-b border-border/60 py-8 sm:py-10">
         <div className="mx-auto max-w-[1440px] px-4 text-left sm:px-6 lg:px-8 xl:px-12">
           <div className="max-w-3xl space-y-4">
             <div className="flex items-center gap-2 flex-wrap">
@@ -161,7 +161,7 @@ function Careers() {
       </section>
 
       {/* Main Content Layout Grid */}
-      <section className="py-10 bg-background">
+      <section className="py-8 sm:py-10 bg-background">
         <div className="mx-auto grid max-w-[1440px] grid-cols-1 lg:grid-cols-12 gap-8 px-4 sm:px-6 lg:px-8 xl:px-12">
           
           {/* Left Column Information Cards */}

@@ -321,11 +321,11 @@ function Home() {
         {/* ============================================================ */}
         {/* PANORAMIC SILHOUETTE HEALTHCARE BORDER ACROSS HERO BOTTOM    */}
         {/* ============================================================ */}
-        <div className="w-full relative mt-2 overflow-hidden">
+        <div className="w-full relative mt-0 overflow-hidden">
           <HealthcareSilhouetteBorder
             fillColor="#0b183b"
             accentColor="#c9a24c"
-            className="w-full h-24 sm:h-32 md:h-40 lg:h-48 text-[#0b183b]"
+            className="w-full h-20 sm:h-28 md:h-36 lg:h-44 text-[#0b183b]"
           />
         </div>
 
@@ -334,13 +334,13 @@ function Home() {
       {/* ============================================================ */}
       {/* 2. FLOATING 4-METRIC STATS OVERLAY BAR                      */}
       {/* ============================================================ */}
-      <div className="relative z-20 max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 mt-4 sm:mt-6">
-        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xl shadow-slate-900/5 p-6 sm:p-7 grid grid-cols-2 lg:grid-cols-4 gap-6 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 text-left">
+      <div className="relative z-20 max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 mt-1 sm:mt-2">
+        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xl shadow-slate-900/5 p-5 sm:p-6 grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 text-left">
 
           {/* Stat 1 */}
-          <div className="flex items-center gap-4 pt-4 sm:pt-0 sm:pl-3">
-            <div className="h-13 w-13 rounded-2xl bg-gradient-to-br from-[#0b183b] to-[#1e2a5a] flex items-center justify-center text-gold shrink-0 shadow-md">
-              <Users className="h-6 w-6 text-gold" />
+          <div className="flex items-center gap-3.5 pt-3 sm:pt-0 sm:pl-3">
+            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-[#0b183b] to-[#1e2a5a] flex items-center justify-center text-gold shrink-0 shadow-md">
+              <Users className="h-5 w-5 text-gold" />
             </div>
             <div>
               <div className="font-display text-2xl sm:text-3xl font-extrabold text-[#0b183b] tracking-tight">
@@ -351,9 +351,9 @@ function Home() {
           </div>
 
           {/* Stat 2 */}
-          <div className="flex items-center gap-4 pt-4 sm:pt-0 sm:pl-6">
-            <div className="h-13 w-13 rounded-2xl bg-gradient-to-br from-[#0b183b] to-[#1e2a5a] flex items-center justify-center text-gold shrink-0 shadow-md">
-              <BadgeCheck className="h-6 w-6 text-gold" />
+          <div className="flex items-center gap-3.5 pt-3 sm:pt-0 sm:pl-5">
+            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-[#0b183b] to-[#1e2a5a] flex items-center justify-center text-gold shrink-0 shadow-md">
+              <BadgeCheck className="h-5 w-5 text-gold" />
             </div>
             <div>
               <div className="font-display text-2xl sm:text-3xl font-extrabold text-[#0b183b] tracking-tight">
@@ -364,9 +364,9 @@ function Home() {
           </div>
 
           {/* Stat 3 */}
-          <div className="flex items-center gap-4 pt-4 sm:pt-0 sm:pl-6">
-            <div className="h-13 w-13 rounded-2xl bg-gradient-to-br from-[#0b183b] to-[#1e2a5a] flex items-center justify-center text-gold shrink-0 shadow-md">
-              <Headphones className="h-6 w-6 text-gold" />
+          <div className="flex items-center gap-3.5 pt-3 sm:pt-0 sm:pl-5">
+            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-[#0b183b] to-[#1e2a5a] flex items-center justify-center text-gold shrink-0 shadow-md">
+              <Headphones className="h-5 w-5 text-gold" />
             </div>
             <div>
               <div className="font-display text-2xl sm:text-3xl font-extrabold text-[#0b183b] tracking-tight">
@@ -377,9 +377,9 @@ function Home() {
           </div>
 
           {/* Stat 4 */}
-          <div className="flex items-center gap-4 pt-4 sm:pt-0 sm:pl-6">
-            <div className="h-13 w-13 rounded-2xl bg-gradient-to-br from-[#0b183b] to-[#1e2a5a] flex items-center justify-center text-gold shrink-0 shadow-md">
-              <ShieldCheck className="h-6 w-6 text-gold" />
+          <div className="flex items-center gap-3.5 pt-3 sm:pt-0 sm:pl-5">
+            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-[#0b183b] to-[#1e2a5a] flex items-center justify-center text-gold shrink-0 shadow-md">
+              <ShieldCheck className="h-5 w-5 text-gold" />
             </div>
             <div>
               <div className="font-display text-2xl sm:text-3xl font-extrabold text-[#0b183b] tracking-tight">
@@ -395,16 +395,16 @@ function Home() {
       {/* ============================================================ */}
       {/* 3. 4-PILLAR FEATURE ROW (EXPERT, SAFE, COMPASSION, RAPID)   */}
       {/* ============================================================ */}
-      <section className="py-12 sm:py-16 bg-white text-left">
+      <section className="py-6 sm:py-8 bg-white text-left">
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
 
             {/* Feature 1 */}
-            <div className="group rounded-2xl border border-slate-100 bg-slate-50/50 p-5 space-y-3 hover:border-gold/50 hover:bg-white hover:shadow-lg transition-all duration-300">
-              <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100/80 border border-indigo-200/60 flex items-center justify-center text-indigo-700 shadow-2xs group-hover:scale-105 transition-transform">
+            <div className="group rounded-2xl border border-slate-100 bg-slate-50/50 p-4 sm:p-5 space-y-2.5 hover:border-gold/50 hover:bg-white hover:shadow-lg transition-all duration-300">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100/80 border border-indigo-200/60 flex items-center justify-center text-indigo-700 shadow-2xs group-hover:scale-105 transition-transform">
                 <Stethoscope className="h-5 w-5" />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 <h4 className="font-bold text-[#0b183b] text-sm font-display">Hospital-Trained Staff</h4>
                 <p className="text-xs text-slate-500 leading-relaxed">
                   Qualified ANM/GNM nurses and trained attendants for clinical &amp; daily care.
@@ -413,11 +413,11 @@ function Home() {
             </div>
 
             {/* Feature 2 */}
-            <div className="group rounded-2xl border border-slate-100 bg-slate-50/50 p-5 space-y-3 hover:border-gold/50 hover:bg-white hover:shadow-lg transition-all duration-300">
-              <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/80 border border-emerald-200/60 flex items-center justify-center text-emerald-700 shadow-2xs group-hover:scale-105 transition-transform">
+            <div className="group rounded-2xl border border-slate-100 bg-slate-50/50 p-4 sm:p-5 space-y-2.5 hover:border-gold/50 hover:bg-white hover:shadow-lg transition-all duration-300">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/80 border border-emerald-200/60 flex items-center justify-center text-emerald-700 shadow-2xs group-hover:scale-105 transition-transform">
                 <Shield className="h-5 w-5" />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 <h4 className="font-bold text-[#0b183b] text-sm font-display">100% Background Cleared</h4>
                 <p className="text-xs text-slate-500 leading-relaxed">
                   Rigorous 3-tier police, Aadhaar, and medical background verification.
@@ -426,11 +426,11 @@ function Home() {
             </div>
 
             {/* Feature 3 */}
-            <div className="group rounded-2xl border border-slate-100 bg-slate-50/50 p-5 space-y-3 hover:border-gold/50 hover:bg-white hover:shadow-lg transition-all duration-300">
-              <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-rose-50 to-rose-100/80 border border-rose-200/60 flex items-center justify-center text-rose-700 shadow-2xs group-hover:scale-105 transition-transform">
+            <div className="group rounded-2xl border border-slate-100 bg-slate-50/50 p-4 sm:p-5 space-y-2.5 hover:border-gold/50 hover:bg-white hover:shadow-lg transition-all duration-300">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-rose-50 to-rose-100/80 border border-rose-200/60 flex items-center justify-center text-rose-700 shadow-2xs group-hover:scale-105 transition-transform">
                 <Heart className="h-5 w-5" />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 <h4 className="font-bold text-[#0b183b] text-sm font-display">Compassionate Care</h4>
                 <p className="text-xs text-slate-500 leading-relaxed">
                   Dignifying, empathetic assistance with a warm mother&apos;s touch in every shift.
@@ -439,11 +439,11 @@ function Home() {
             </div>
 
             {/* Feature 4 */}
-            <div className="group rounded-2xl border border-slate-100 bg-slate-50/50 p-5 space-y-3 hover:border-gold/50 hover:bg-white hover:shadow-lg transition-all duration-300">
-              <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100/80 border border-amber-200/60 flex items-center justify-center text-amber-700 shadow-2xs group-hover:scale-105 transition-transform">
+            <div className="group rounded-2xl border border-slate-100 bg-slate-50/50 p-4 sm:p-5 space-y-2.5 hover:border-gold/50 hover:bg-white hover:shadow-lg transition-all duration-300">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100/80 border border-amber-200/60 flex items-center justify-center text-amber-700 shadow-2xs group-hover:scale-105 transition-transform">
                 <Clock className="h-5 w-5" />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 <h4 className="font-bold text-[#0b183b] text-sm font-display">Punctual &amp; On-Time</h4>
                 <p className="text-xs text-slate-500 leading-relaxed">
                   Guaranteed punctuality with 24/7 standby replacement coverage across Hyderabad.
@@ -458,31 +458,31 @@ function Home() {
       {/* ============================================================ */}
       {/* 4. COMPREHENSIVE SERVICES CATALOG                           */}
       {/* ============================================================ */}
-      <section className="py-14 sm:py-20 bg-slate-50/60 border-t border-slate-200/80">
+      <section className="py-8 sm:py-10 bg-slate-50/60 border-t border-slate-200/80">
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
 
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 text-left">
-            <div className="max-w-xl lg:max-w-2xl space-y-2">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5 text-left">
+            <div className="max-w-xl lg:max-w-2xl space-y-1.5">
               <div className="inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-widest text-[#966b1a]">
                 <Activity className="h-3.5 w-3.5 text-gold" /> Personalized Healthcare Solutions
               </div>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0b183b] font-display">
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0b183b] font-display">
                 Tailored Home Healthcare Services
               </h2>
-              <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-medium">
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-medium">
                 From newborn nourishment to compassionate geriatric support — specialized clinical &amp; daily care tailored to your family.
               </p>
             </div>
 
-            <div className="flex items-center gap-4 sm:gap-6 self-start md:self-center">
+            <div className="flex items-center gap-3 sm:gap-5 self-start md:self-center">
               <img
                 src={cartoonHealthcareCare}
                 alt="Amma Seva Compassionate Doctors & Nurses"
-                className="h-20 sm:h-24 md:h-28 lg:h-32 w-auto object-contain select-none drop-shadow-sm hover:scale-105 transition-transform duration-300"
+                className="h-16 sm:h-20 md:h-24 w-auto object-contain select-none drop-shadow-sm hover:scale-105 transition-transform duration-300"
               />
               <Link
                 to="/services"
-                className="px-5 py-2.5 rounded-xl border border-[#0b183b] text-[#0b183b] hover:bg-[#0b183b] hover:text-white font-bold text-xs transition-all duration-200 flex items-center gap-1.5 shrink-0 max-w-fit shadow-sm"
+                className="px-4 py-2 rounded-xl border border-[#0b183b] text-[#0b183b] hover:bg-[#0b183b] hover:text-white font-bold text-xs transition-all duration-200 flex items-center gap-1.5 shrink-0 max-w-fit shadow-sm"
               >
                 <span>Explore All 12+ Services</span>
                 <ChevronRight className="h-4 w-4" />
@@ -491,7 +491,7 @@ function Home() {
           </div>
 
           {/* Interactive Category Filter Pills */}
-          <div className="flex flex-wrap gap-2 mb-8 text-left">
+          <div className="flex flex-wrap gap-2 mb-5 text-left">
             {[
               { label: "✨ All Services", value: "All" },
               { label: "👴 Elderly & Senior Care", value: "Elderly" },
@@ -501,7 +501,7 @@ function Home() {
               <button
                 key={tag.value}
                 onClick={() => setSelectedTag(tag.value)}
-                className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all duration-200 cursor-pointer ${selectedTag === tag.value
+                className={`px-3.5 py-1.5 text-xs font-bold rounded-xl border transition-all duration-200 cursor-pointer ${selectedTag === tag.value
                     ? "bg-[#0b183b] text-white border-[#0b183b] shadow-md shadow-[#0b183b]/20 scale-[1.02]"
                     : "bg-white text-slate-600 border-slate-200 hover:border-gold hover:text-gold"
                   }`}
@@ -512,7 +512,7 @@ function Home() {
           </div>
 
           {/* Services Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
             {(() => {
               const elderlySlugs = ["elderly-care", "patient-care-attendant", "bedridden-patient-care", "physiotherapy"];
               const maternalSlugs = ["mother-baby-care", "pregnancy-care", "newborn-baby-care"];
@@ -535,7 +535,7 @@ function Home() {
                 return (
                   <div
                     key={s.slug}
-                    className="group flex flex-col overflow-hidden rounded-3xl bg-white border border-slate-200/90 shadow-sm hover:shadow-[0_22px_45px_-12px_rgba(201,162,76,0.25)] hover:border-gold/70 transition-all duration-500 ease-out hover:-translate-y-2 text-left relative"
+                    className="group flex flex-col overflow-hidden rounded-3xl bg-white border border-slate-200/90 shadow-sm hover:shadow-[0_18px_35px_-10px_rgba(201,162,76,0.22)] hover:border-gold/70 transition-all duration-400 ease-out hover:-translate-y-1.5 text-left relative"
                   >
                     {/* Card Image */}
                     <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100">
@@ -545,24 +545,24 @@ function Home() {
                         width={1200}
                         height={900}
                         loading="lazy"
-                        className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-108"
+                        className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-108"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
                       {/* Price Pill */}
-                      <div className="absolute top-3.5 right-3.5 bg-[#0b183b]/90 backdrop-blur-xs text-white px-3 py-1 rounded-xl text-xs font-bold shadow-md border border-white/20 group-hover:border-gold/50 transition-colors">
+                      <div className="absolute top-3 right-3 bg-[#0b183b]/90 backdrop-blur-xs text-white px-2.5 py-0.5 rounded-xl text-[11px] font-bold shadow-md border border-white/20 group-hover:border-gold/50 transition-colors">
                         {cardPrice}
                       </div>
 
                       {/* Verified Badge */}
-                      <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-xs text-emerald-800 px-2.5 py-0.5 rounded-lg text-[10px] font-extrabold flex items-center gap-1 shadow-sm">
+                      <div className="absolute bottom-2.5 left-2.5 bg-white/90 backdrop-blur-xs text-emerald-800 px-2 py-0.5 rounded-lg text-[10px] font-extrabold flex items-center gap-1 shadow-sm">
                         <CheckCircle2 className="h-3 w-3 text-emerald-600" /> 100% Verified
                       </div>
                     </div>
 
                     {/* Card Content */}
-                    <div className="flex flex-1 flex-col p-5 justify-between space-y-4">
-                      <div className="space-y-2">
+                    <div className="flex flex-1 flex-col p-4 sm:p-5 justify-between space-y-3">
+                      <div className="space-y-1.5">
                         <span className={`inline-flex items-center rounded-lg px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider border ${details.badgeClass}`}>
                           {s.category || details.category}
                         </span>
@@ -570,7 +570,7 @@ function Home() {
                         <Link
                           to="/services/$slug"
                           params={{ slug: s.slug }}
-                          className="block text-lg font-bold text-[#0b183b] group-hover:text-gold transition-colors font-display"
+                          className="block text-base sm:text-lg font-bold text-[#0b183b] group-hover:text-gold transition-colors font-display"
                         >
                           {s.title}
                         </Link>
@@ -580,7 +580,7 @@ function Home() {
                         </p>
 
                         {/* Feature Highlights */}
-                        <div className="pt-2 space-y-1.5">
+                        <div className="pt-1.5 space-y-1">
                           {cardHighlights.map((h: string, i: number) => (
                             <div key={i} className="flex items-center gap-1.5 text-[11px] text-slate-600 font-medium">
                               <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
@@ -591,17 +591,17 @@ function Home() {
                       </div>
 
                       {/* Action CTA */}
-                      <div className="pt-3 border-t border-slate-100 flex items-center gap-2">
+                      <div className="pt-2.5 border-t border-slate-100 flex items-center gap-2">
                         <Link
                           to="/services/$slug"
                           params={{ slug: s.slug }}
-                          className="flex-1 py-2 px-3 rounded-xl bg-slate-100 hover:bg-[#0b183b] hover:text-white text-[#0b183b] text-xs font-bold transition-all text-center"
+                          className="flex-1 py-1.5 px-3 rounded-xl bg-slate-100 hover:bg-[#0b183b] hover:text-white text-[#0b183b] text-xs font-bold transition-all text-center"
                         >
                           Details
                         </Link>
                         <a
                           href={getBookingUrl(s.slug)}
-                          className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-[#0b183b] to-[#1e2a5a] hover:from-[#07112b] hover:to-[#141f42] text-white text-xs font-bold transition-all text-center shadow-xs hover:shadow-md flex items-center justify-center gap-1 group/btn cursor-pointer"
+                          className="flex-1 py-1.5 px-3 rounded-xl bg-gradient-to-r from-[#0b183b] to-[#1e2a5a] hover:from-[#07112b] hover:to-[#141f42] text-white text-xs font-bold transition-all text-center shadow-xs hover:shadow-md flex items-center justify-center gap-1 group/btn cursor-pointer"
                         >
                           <span>Book</span>
                           <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-0.5" />
@@ -620,39 +620,39 @@ function Home() {
       {/* ============================================================ */}
       {/* 5. SPOTLIGHT: MTP (MULTI-TASKING PROFESSIONALS) SERVICES    */}
       {/* ============================================================ */}
-      <section className="py-14 sm:py-20 bg-gradient-to-br from-[#060b17] via-[#0f1a38] to-[#1e2a5a] text-white relative overflow-hidden text-left">
+      <section className="py-8 sm:py-10 bg-gradient-to-br from-[#060b17] via-[#0f1a38] to-[#1e2a5a] text-white relative overflow-hidden text-left">
         {/* Glow circles */}
         <div className="absolute top-0 right-1/4 w-96 h-96 rounded-full bg-gold/15 blur-[130px] pointer-events-none" />
         <div className="absolute bottom-0 left-1/4 w-96 h-96 rounded-full bg-indigo-500/15 blur-[130px] pointer-events-none" />
 
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12 relative z-10">
-          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-10 border-b border-white/10 pb-8">
-            <div className="space-y-3 max-w-2xl">
-              <span className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-gold/30 bg-gold/10 text-xs text-[#edd392] font-semibold uppercase tracking-wider">
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 mb-6 border-b border-white/10 pb-5">
+            <div className="space-y-2 max-w-2xl">
+              <span className="inline-flex items-center gap-2 px-3 py-0.5 rounded-full border border-gold/30 bg-gold/10 text-[11px] text-[#edd392] font-semibold uppercase tracking-wider">
                 <Car className="h-3.5 w-3.5 text-gold" /> Introducing MTP Services
               </span>
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold font-display leading-tight tracking-tight">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold font-display leading-tight tracking-tight">
                 Multi-Tasking Professionals <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#edd392] via-[#c9a24c] to-[#f5e6be]">
                   For Flexible On-Demand Support
                 </span>
               </h2>
-              <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
                 Need someone to escort a parent safely to the hospital, pick up urgent prescriptions, or assist a mother? Our verified MTP Task Force is on standby.
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2.5">
               <a
                 href={getBookingUrl("mtp")}
-                className="px-6 py-3 rounded-2xl bg-gradient-to-r from-[#c9a24c] to-[#b38938] hover:from-[#b38938] hover:to-[#966b1a] text-[#081023] font-extrabold text-xs shadow-lg shadow-gold/20 hover:scale-[1.02] transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-[#c9a24c] to-[#b38938] hover:from-[#b38938] hover:to-[#966b1a] text-[#081023] font-extrabold text-xs shadow-lg shadow-gold/20 hover:scale-[1.02] transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <span>Book MTP Care Task</span>
                 <ArrowRight className="h-4 w-4" />
               </a>
               <Link
                 to="/mtp"
-                className="px-6 py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs backdrop-blur-md transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-5 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs backdrop-blur-md transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <span>Join as MTP Partner</span>
               </Link>
@@ -660,66 +660,66 @@ function Home() {
           </div>
 
           {/* 4 MTP Showcase Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            <div className="p-6 rounded-3xl bg-white/[0.06] border border-white/15 backdrop-blur-md hover:bg-white/[0.12] hover:border-gold/70 transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_35px_-10px_rgba(0,0,0,0.5),0_0_25px_rgba(201,162,76,0.3)] flex flex-col justify-between space-y-4 relative group">
-              <div className="space-y-3">
-                <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-gold/30 to-gold/10 border border-gold/40 flex items-center justify-center text-gold group-hover:scale-110 transition-transform">
-                  <Car className="h-6 w-6" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-5 rounded-3xl bg-white/[0.06] border border-white/15 backdrop-blur-md hover:bg-white/[0.12] hover:border-gold/70 transition-all duration-400 hover:-translate-y-1.5 flex flex-col justify-between space-y-3 relative group">
+              <div className="space-y-2.5">
+                <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-gold/30 to-gold/10 border border-gold/40 flex items-center justify-center text-gold group-hover:scale-110 transition-transform">
+                  <Car className="h-5 w-5" />
                 </div>
-                <h3 className="text-lg font-bold font-display text-white group-hover:text-[#edd392] transition-colors">Hospital Escort &amp; Dropping</h3>
+                <h3 className="text-base font-bold font-display text-white group-hover:text-[#edd392] transition-colors">Hospital Escort &amp; Dropping</h3>
                 <p className="text-xs text-slate-300 leading-relaxed">
                   Safely escorting elderly &amp; patients to doctor appointments, OPD queues, scans &amp; diagnostic visits.
                 </p>
               </div>
-              <div className="text-[11px] font-bold text-[#edd392] pt-3 border-t border-white/10 flex items-center justify-between">
+              <div className="text-[11px] font-bold text-[#edd392] pt-2.5 border-t border-white/10 flex items-center justify-between">
                 <span>Part-time / Hourly</span>
                 <span>From ₹300 / task</span>
               </div>
             </div>
 
-            <div className="p-6 rounded-3xl bg-white/[0.06] border border-white/15 backdrop-blur-md hover:bg-white/[0.12] hover:border-gold/70 transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_35px_-10px_rgba(0,0,0,0.5),0_0_25px_rgba(201,162,76,0.3)] flex flex-col justify-between space-y-4 relative group">
-              <div className="space-y-3">
-                <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-emerald-500/30 to-emerald-500/10 border border-emerald-400/40 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
-                  <Zap className="h-6 w-6" />
+            <div className="p-5 rounded-3xl bg-white/[0.06] border border-white/15 backdrop-blur-md hover:bg-white/[0.12] hover:border-gold/70 transition-all duration-400 hover:-translate-y-1.5 flex flex-col justify-between space-y-3 relative group">
+              <div className="space-y-2.5">
+                <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-emerald-500/30 to-emerald-500/10 border border-emerald-400/40 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
+                  <Zap className="h-5 w-5" />
                 </div>
-                <h3 className="text-lg font-bold font-display text-white group-hover:text-[#edd392] transition-colors">Medicine &amp; Errand Delivery</h3>
+                <h3 className="text-base font-bold font-display text-white group-hover:text-[#edd392] transition-colors">Medicine &amp; Errand Delivery</h3>
                 <p className="text-xs text-slate-300 leading-relaxed">
                   Urgent pharmacy pickups, grocery support, and medical report fetching directly to your door.
                 </p>
               </div>
-              <div className="text-[11px] font-bold text-[#edd392] pt-3 border-t border-white/10 flex items-center justify-between">
+              <div className="text-[11px] font-bold text-[#edd392] pt-2.5 border-t border-white/10 flex items-center justify-between">
                 <span>Rapid Delivery</span>
                 <span>From ₹200 / task</span>
               </div>
             </div>
 
-            <div className="p-6 rounded-3xl bg-white/[0.06] border border-white/15 backdrop-blur-md hover:bg-white/[0.12] hover:border-gold/70 transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_35px_-10px_rgba(0,0,0,0.5),0_0_25px_rgba(201,162,76,0.3)] flex flex-col justify-between space-y-4 relative group">
-              <div className="space-y-3">
-                <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-indigo-500/30 to-indigo-500/10 border border-indigo-400/40 flex items-center justify-center text-indigo-300 group-hover:scale-110 transition-transform">
-                  <Users className="h-6 w-6" />
+            <div className="p-5 rounded-3xl bg-white/[0.06] border border-white/15 backdrop-blur-md hover:bg-white/[0.12] hover:border-gold/70 transition-all duration-400 hover:-translate-y-1.5 flex flex-col justify-between space-y-3 relative group">
+              <div className="space-y-2.5">
+                <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-indigo-500/30 to-indigo-500/10 border border-indigo-400/40 flex items-center justify-center text-indigo-300 group-hover:scale-110 transition-transform">
+                  <Users className="h-5 w-5" />
                 </div>
-                <h3 className="text-lg font-bold font-display text-white group-hover:text-[#edd392] transition-colors">Senior Walking &amp; Companion</h3>
+                <h3 className="text-base font-bold font-display text-white group-hover:text-[#edd392] transition-colors">Senior Walking &amp; Companion</h3>
                 <p className="text-xs text-slate-300 leading-relaxed">
                   Morning/evening park strolls, uplifting conversations, mobility assistance &amp; reading support.
                 </p>
               </div>
-              <div className="text-[11px] font-bold text-[#edd392] pt-3 border-t border-white/10 flex items-center justify-between">
+              <div className="text-[11px] font-bold text-[#edd392] pt-2.5 border-t border-white/10 flex items-center justify-between">
                 <span>Morning / Evening</span>
                 <span>From ₹350 / shift</span>
               </div>
             </div>
 
-            <div className="p-6 rounded-3xl bg-white/[0.06] border border-white/15 backdrop-blur-md hover:bg-white/[0.12] hover:border-gold/70 transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_35px_-10px_rgba(0,0,0,0.5),0_0_25px_rgba(201,162,76,0.3)] flex flex-col justify-between space-y-4 relative group">
-              <div className="space-y-3">
-                <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-rose-500/30 to-rose-500/10 border border-rose-400/40 flex items-center justify-center text-rose-300 group-hover:scale-110 transition-transform">
-                  <HeartHandshake className="h-6 w-6" />
+            <div className="p-5 rounded-3xl bg-white/[0.06] border border-white/15 backdrop-blur-md hover:bg-white/[0.12] hover:border-gold/70 transition-all duration-400 hover:-translate-y-1.5 flex flex-col justify-between space-y-3 relative group">
+              <div className="space-y-2.5">
+                <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-rose-500/30 to-rose-500/10 border border-rose-400/40 flex items-center justify-center text-rose-300 group-hover:scale-110 transition-transform">
+                  <HeartHandshake className="h-5 w-5" />
                 </div>
-                <h3 className="text-lg font-bold font-display text-white group-hover:text-[#edd392] transition-colors">Mother &amp; Baby Helper</h3>
+                <h3 className="text-base font-bold font-display text-white group-hover:text-[#edd392] transition-colors">Mother &amp; Baby Helper</h3>
                 <p className="text-xs text-slate-300 leading-relaxed">
                   Support for new mothers with nursery setup, laundry, light baby tasks &amp; household assistance.
                 </p>
               </div>
-              <div className="text-[11px] font-bold text-[#edd392] pt-3 border-t border-white/10 flex items-center justify-between">
+              <div className="text-[11px] font-bold text-[#edd392] pt-2.5 border-t border-white/10 flex items-center justify-between">
                 <span>Flexible Hours</span>
                 <span>From ₹500 / shift</span>
               </div>
@@ -731,17 +731,17 @@ function Home() {
       {/* ============================================================ */}
       {/* 6. 6 PILLARS OF TRUST (WHY AMMA SEVA - AUTO SCROLLING)       */}
       {/* ============================================================ */}
-      <section className="py-14 sm:py-20 bg-gradient-to-b from-white via-amber-50/10 to-slate-50/60 border-t border-slate-100 text-left overflow-hidden relative">
-        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12 mb-10">
+      <section className="py-8 sm:py-10 bg-gradient-to-b from-white via-amber-50/10 to-slate-50/60 border-t border-slate-100 text-left overflow-hidden relative">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12 mb-6">
 
-          <div className="text-center max-w-3xl mx-auto space-y-3">
-            <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border border-gold/30 bg-gold/10 text-xs font-bold text-[#966b1a] uppercase tracking-wider shadow-2xs">
+          <div className="text-center max-w-3xl mx-auto space-y-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full border border-gold/30 bg-gold/10 text-[11px] font-bold text-[#966b1a] uppercase tracking-wider shadow-2xs">
               <ShieldCheck className="h-3.5 w-3.5 text-gold" /> The Amma Seva Assurance
             </span>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#0b183b] font-display tracking-tight">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#0b183b] font-display tracking-tight">
               Why 5,000+ Hyderabad Families Trust Us
             </h2>
-            <p className="text-sm sm:text-base text-slate-500 font-medium max-w-2xl mx-auto">
+            <p className="text-xs sm:text-sm text-slate-500 font-medium max-w-2xl mx-auto">
               We understand that inviting someone into your home for healthcare requires unwavering trust, clinical competence, and deep empathy.
             </p>
           </div>
@@ -749,39 +749,39 @@ function Home() {
         </div>
 
         {/* Auto-scrolling Ribbon Wrapper with Edge Fade Mask */}
-        <div className="relative w-full overflow-hidden group py-4">
+        <div className="relative w-full overflow-hidden group py-2">
           {/* Left Gradient Fade */}
           <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-12 sm:w-32 bg-gradient-to-r from-white via-white/80 to-transparent z-10" />
           {/* Right Gradient Fade */}
           <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-12 sm:w-32 bg-gradient-to-l from-white via-white/80 to-transparent z-10" />
 
           {/* Marquee Track (Duplicated for Seamless Infinite Loop) */}
-          <div className="flex animate-marquee gap-6 items-stretch">
+          <div className="flex animate-marquee gap-5 items-stretch">
             {[...WHY, ...WHY].map((w, index) => {
               const originalIndex = index % WHY.length;
               return (
                 <div
                   key={`${w.title}-${index}`}
-                  className="w-[300px] sm:w-[380px] lg:w-[410px] shrink-0 rounded-3xl border border-slate-200/90 bg-white/95 p-6 sm:p-7 shadow-md shadow-slate-900/4 hover:shadow-[0_20px_40px_-10px_rgba(201,162,76,0.28)] hover:border-gold hover:bg-white transition-all duration-300 hover:-translate-y-2 relative flex flex-col justify-between group/card cursor-pointer"
+                  className="w-[280px] sm:w-[350px] lg:w-[380px] shrink-0 rounded-3xl border border-slate-200/90 bg-white/95 p-5 sm:p-6 shadow-md shadow-slate-900/4 hover:shadow-[0_18px_35px_-10px_rgba(201,162,76,0.25)] hover:border-gold hover:bg-white transition-all duration-300 hover:-translate-y-1.5 relative flex flex-col justify-between group/card cursor-pointer"
                 >
                   <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0b183b] to-[#1e2a5a] text-gold shadow-md group-hover/card:scale-110 group-hover/card:shadow-gold/20 transition-all">
-                        <w.icon className="h-6 w-6 text-gold" />
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0b183b] to-[#1e2a5a] text-gold shadow-md group-hover/card:scale-110 transition-all">
+                        <w.icon className="h-5 w-5 text-gold" />
                       </div>
-                      <span className="text-xs font-mono font-bold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 group-hover/card:border-gold/50 group-hover/card:text-[#8c6b16] group-hover/card:bg-gold/10 transition-colors">
+                      <span className="text-[11px] font-mono font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-200 group-hover/card:border-gold/50 group-hover/card:text-[#8c6b16] group-hover/card:bg-gold/10 transition-colors">
                         0{originalIndex + 1}
                       </span>
                     </div>
-                    <h3 className="text-lg font-bold text-[#0b183b] font-display mb-2 group-hover/card:text-gold transition-colors">
+                    <h3 className="text-base font-bold text-[#0b183b] font-display mb-1.5 group-hover/card:text-gold transition-colors">
                       {w.title}
                     </h3>
-                    <p className="text-xs sm:text-[13px] text-slate-500 leading-relaxed font-medium">
+                    <p className="text-xs text-slate-500 leading-relaxed font-medium">
                       {w.desc}
                     </p>
                   </div>
 
-                  <div className="mt-5 pt-3.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-400">
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold text-slate-400">
                     <span className="flex items-center gap-1 text-emerald-700">
                       <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Verified Standard
                     </span>
@@ -794,7 +794,7 @@ function Home() {
         </div>
 
         {/* Interactive Tip Indicator */}
-        <div className="mt-4 flex items-center justify-center gap-2 text-xs font-bold text-slate-400">
+        <div className="mt-2 flex items-center justify-center gap-2 text-xs font-bold text-slate-400">
           <span className="h-1.5 w-1.5 rounded-full bg-gold animate-ping" />
           <span className="text-slate-500 text-[11px] font-medium">✨ Smooth Auto-Scroll • Hover any card to pause &amp; read</span>
         </div>
@@ -803,14 +803,14 @@ function Home() {
       {/* ============================================================ */}
       {/* 7. HOW IT WORKS (SEAMLESS 4-STEP TIMELINE)                  */}
       {/* ============================================================ */}
-      <section className="py-14 sm:py-20 bg-gradient-to-b from-slate-50 to-amber-50/20 border-t border-slate-200/80 text-left">
+      <section className="py-8 sm:py-10 bg-gradient-to-b from-slate-50 to-amber-50/20 border-t border-slate-200/80 text-left">
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
 
-          <div className="text-center max-w-2xl mx-auto mb-12 space-y-3">
-            <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border border-slate-200 bg-white text-xs font-bold text-[#0b183b] uppercase tracking-wider">
+          <div className="text-center max-w-2xl mx-auto mb-6 space-y-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full border border-slate-200 bg-white text-[11px] font-bold text-[#0b183b] uppercase tracking-wider">
               <Clock className="h-3.5 w-3.5 text-gold" /> Effortless Process
             </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0b183b] font-display">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0b183b] font-display">
               Doorstep Care in 4 Simple Steps
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 font-medium">
@@ -818,22 +818,22 @@ function Home() {
             </p>
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 relative">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 relative">
             {STEPS.map((s, idx) => (
               <div
                 key={s.n}
-                className="relative rounded-3xl border border-slate-200/90 bg-white p-6 shadow-sm hover:shadow-[0_20px_40px_-10px_rgba(201,162,76,0.2)] hover:border-gold/60 transition-all duration-500 hover:-translate-y-2 flex flex-col justify-between group"
+                className="relative rounded-3xl border border-slate-200/90 bg-white p-5 shadow-sm hover:shadow-[0_18px_35px_-10px_rgba(201,162,76,0.2)] hover:border-gold/60 transition-all duration-400 hover:-translate-y-1.5 flex flex-col justify-between group"
               >
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <span className="h-10 w-10 rounded-2xl bg-[#0b183b] text-gold font-black text-sm flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+                    <span className="h-9 w-9 rounded-2xl bg-[#0b183b] text-gold font-black text-xs flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
                       {s.n}
                     </span>
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                       Step {idx + 1}
                     </span>
                   </div>
-                  <h3 className="text-base font-bold text-[#0b183b] font-display group-hover:text-gold transition-colors">
+                  <h3 className="text-sm sm:text-base font-bold text-[#0b183b] font-display group-hover:text-gold transition-colors">
                     {s.t}
                   </h3>
                   <p className="text-xs text-slate-500 leading-relaxed">
@@ -841,7 +841,7 @@ function Home() {
                   </p>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-100 text-[11px] font-bold text-emerald-700 flex items-center gap-1">
+                <div className="mt-3 pt-2.5 border-t border-slate-100 text-[10px] font-bold text-emerald-700 flex items-center gap-1">
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Guaranteed Support
                 </div>
               </div>
@@ -854,40 +854,40 @@ function Home() {
       {/* ============================================================ */}
       {/* 8. VERIFIED REVIEWS & PATIENT TESTIMONIALS                  */}
       {/* ============================================================ */}
-      <section className="py-14 sm:py-20 bg-white border-t border-slate-100 text-left">
+      <section className="py-8 sm:py-10 bg-white border-t border-slate-100 text-left">
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
 
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
-            <div className="max-w-2xl space-y-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-gold/30 bg-gold/10 text-xs font-bold text-[#966b1a] uppercase tracking-wider">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+            <div className="max-w-2xl space-y-1.5">
+              <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full border border-gold/30 bg-gold/10 text-[11px] font-bold text-[#966b1a] uppercase tracking-wider">
                 <Star className="h-3.5 w-3.5 fill-gold text-gold" /> Real Family Experiences
               </span>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0b183b] font-display">
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0b183b] font-display">
                 Loved by Families Across Hyderabad
               </h2>
-              <p className="text-sm text-slate-500 font-medium">
+              <p className="text-xs sm:text-sm text-slate-500 font-medium">
                 Hear what daughters, sons, doctors, and new mothers say about our home care services.
               </p>
             </div>
 
-            <div className="flex items-center gap-2 text-sm font-bold text-[#0b183b]">
+            <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#0b183b]">
               <div className="flex text-gold">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} className="h-4 w-4 fill-gold text-gold" />
+                  <Star key={i} className="h-3.5 w-3.5 fill-gold text-gold" />
                 ))}
               </div>
               <span>4.9 / 5 Average Rating</span>
             </div>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className="grid gap-4 sm:gap-5 lg:grid-cols-3">
             {TESTIMONIALS.map((t) => (
               <figure
                 key={t.name}
-                className="relative rounded-3xl border border-slate-200/90 bg-slate-50/50 p-6 shadow-sm hover:shadow-[0_20px_40px_-10px_rgba(201,162,76,0.2)] hover:bg-white hover:border-gold/60 transition-all duration-500 hover:-translate-y-2 flex flex-col justify-between group"
+                className="relative rounded-3xl border border-slate-200/90 bg-slate-50/50 p-5 shadow-sm hover:shadow-[0_18px_35px_-10px_rgba(201,162,76,0.2)] hover:bg-white hover:border-gold/60 transition-all duration-400 hover:-translate-y-1.5 flex flex-col justify-between group"
               >
                 <div>
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center justify-between mb-2.5">
                     <div className="flex gap-1 text-gold">
                       {Array.from({ length: 5 }).map((_, i) => (
                         <Star key={i} className="h-3.5 w-3.5 fill-gold text-gold" />
@@ -897,18 +897,18 @@ function Home() {
                       {t.tag}
                     </span>
                   </div>
-                  <blockquote className="text-xs sm:text-sm text-slate-600 leading-relaxed italic">
+                  <blockquote className="text-xs sm:text-[13px] text-slate-600 leading-relaxed italic">
                     “{t.quote}”
                   </blockquote>
                 </div>
 
-                <figcaption className="mt-5 flex items-center gap-3 border-t border-slate-200/70 pt-3">
-                  <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#0b183b] to-[#1e2a5a] flex items-center justify-center font-bold text-gold text-xs shrink-0 shadow-xs group-hover:scale-110 transition-transform">
+                <figcaption className="mt-4 flex items-center gap-2.5 border-t border-slate-200/70 pt-2.5">
+                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#0b183b] to-[#1e2a5a] flex items-center justify-center font-bold text-gold text-xs shrink-0 shadow-xs group-hover:scale-110 transition-transform">
                     {t.name[0]}
                   </div>
                   <div className="text-xs">
-                    <div className="font-bold text-[#0b183b] font-display text-sm group-hover:text-gold transition-colors">{t.name}</div>
-                    <div className="text-slate-400 font-medium">{t.role} • <span className="text-slate-500">{t.location}</span></div>
+                    <div className="font-bold text-[#0b183b] font-display text-xs sm:text-sm group-hover:text-gold transition-colors">{t.name}</div>
+                    <div className="text-slate-400 font-medium text-[11px]">{t.role} • <span className="text-slate-500">{t.location}</span></div>
                   </div>
                 </figcaption>
               </figure>
@@ -921,7 +921,7 @@ function Home() {
       {/* ============================================================ */}
       {/* 9. 24/7 EMERGENCY HELP & SEVA PARCHMENT PAPER BANNER         */}
       {/* ============================================================ */}
-      <section className="py-10 sm:py-14 seva-paper-bg text-slate-800 text-left relative overflow-hidden border-t border-b border-[#c9a24c]/25">
+      <section className="py-6 sm:py-8 seva-paper-bg text-slate-800 text-left relative overflow-hidden border-t border-b border-[#c9a24c]/25">
 
         {/* Sacred Seva Lotus / Mandala Decorative SVG Watermark 1 (Top Right) */}
         <div className="absolute -top-12 -right-12 w-64 h-64 text-[#c9a24c]/10 pointer-events-none transform rotate-12">
@@ -953,7 +953,7 @@ function Home() {
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12 relative z-10">
 
           {/* Main Seva Parchment Paper Card (Compact & Refined) */}
-          <div className="relative rounded-3xl seva-paper-card border-2 border-[#c9a24c]/45 p-6 sm:p-8 lg:p-9 overflow-hidden ring-1 ring-[#c9a24c]/20">
+          <div className="relative rounded-3xl seva-paper-card border-2 border-[#c9a24c]/45 p-5 sm:p-7 lg:p-8 overflow-hidden ring-1 ring-[#c9a24c]/20">
 
             {/* Traditional Gold Filigree Corner Accents */}
             <div className="absolute top-2.5 left-2.5 w-6 h-6 border-t-2 border-l-2 border-[#c9a24c]/70 rounded-tl-lg pointer-events-none" />
@@ -976,10 +976,10 @@ function Home() {
               </svg>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-7 items-center">
 
               {/* Left Column: Heading, Badges, Value Guarantees */}
-              <div className="lg:col-span-7 space-y-4">
+              <div className="lg:col-span-7 space-y-3">
 
                 {/* Live Radar Pill + Helping Hands Sticker Badge */}
                 <div className="flex flex-wrap items-center gap-2">
@@ -1001,22 +1001,22 @@ function Home() {
                 </div>
 
                 {/* Headline */}
-                <div className="space-y-1.5">
-                  <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold font-display leading-tight tracking-tight text-[#0b183b]">
+                <div className="space-y-1">
+                  <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold font-display leading-tight tracking-tight text-[#0b183b]">
                     Need In-Home Care Assistance in Hyderabad?
                   </h2>
-                  <p className="text-sm sm:text-base font-display font-bold text-[#966b1a]">
+                  <p className="text-xs sm:text-sm font-display font-bold text-[#966b1a]">
                     Verified Nurses, Attendants &amp; ICU Care at Your Doorstep in 60 Minutes.
                   </p>
                 </div>
 
-                <p className="text-xs sm:text-[13px] text-slate-700 leading-relaxed max-w-xl font-medium">
+                <p className="text-xs text-slate-700 leading-relaxed max-w-xl font-medium">
                   Emergency bedside elderly care, nursing, and recovery support dispatched across Hyderabad with motherly compassion.
                 </p>
 
                 {/* 3 Value Guarantee Cards (Compact Parchment Seal Tiles) */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-                  <div className="p-2.5 sm:p-3 rounded-xl bg-white/90 border border-[#c9a24c]/30 shadow-2xs space-y-0.5 hover:border-[#c9a24c] hover:shadow-xs transition-all group/tile">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                  <div className="p-2 sm:p-2.5 rounded-xl bg-white/90 border border-[#c9a24c]/30 shadow-2xs space-y-0.5 hover:border-[#c9a24c] hover:shadow-xs transition-all group/tile">
                     <div className="flex items-center gap-1.5 text-[#966b1a]">
                       <Zap className="h-3.5 w-3.5 text-[#c9a24c] group-hover/tile:scale-110 transition-transform" />
                       <span className="text-[11px] font-bold text-[#0b183b]">&lt; 60 Min Arrival</span>
@@ -1024,7 +1024,7 @@ function Home() {
                     <p className="text-[10px] text-slate-600 font-medium">Fast doorstep dispatch</p>
                   </div>
 
-                  <div className="p-2.5 sm:p-3 rounded-xl bg-white/90 border border-[#c9a24c]/30 shadow-2xs space-y-0.5 hover:border-[#c9a24c] hover:shadow-xs transition-all group/tile">
+                  <div className="p-2 sm:p-2.5 rounded-xl bg-white/90 border border-[#c9a24c]/30 shadow-2xs space-y-0.5 hover:border-[#c9a24c] hover:shadow-xs transition-all group/tile">
                     <div className="flex items-center gap-1.5 text-emerald-700">
                       <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 group-hover/tile:scale-110 transition-transform" />
                       <span className="text-[11px] font-bold text-[#0b183b]">100% Verified</span>
@@ -1032,7 +1032,7 @@ function Home() {
                     <p className="text-[10px] text-slate-600 font-medium">Police &amp; medically cleared</p>
                   </div>
 
-                  <div className="p-2.5 sm:p-3 rounded-xl bg-white/90 border border-[#c9a24c]/30 shadow-2xs space-y-0.5 hover:border-[#c9a24c] hover:shadow-xs transition-all group/tile">
+                  <div className="p-2 sm:p-2.5 rounded-xl bg-white/90 border border-[#c9a24c]/30 shadow-2xs space-y-0.5 hover:border-[#c9a24c] hover:shadow-xs transition-all group/tile">
                     <div className="flex items-center gap-1.5 text-indigo-700">
                       <Headphones className="h-3.5 w-3.5 text-indigo-600 group-hover/tile:scale-110 transition-transform" />
                       <span className="text-[11px] font-bold text-[#0b183b]">24/7 Live Desk</span>
@@ -1045,7 +1045,7 @@ function Home() {
 
               {/* Right Column: Compact Action Hub (Royal Navy & Gold Seal Box) */}
               <div className="lg:col-span-5">
-                <div className="rounded-2xl bg-gradient-to-b from-[#0b183b] via-[#11214a] to-[#1e2a5a] border-2 border-[#c9a24c]/50 p-4 sm:p-6 text-white shadow-xl space-y-3 sm:space-y-3.5 text-left relative group">
+                <div className="rounded-2xl bg-gradient-to-b from-[#0b183b] via-[#11214a] to-[#1e2a5a] border-2 border-[#c9a24c]/50 p-4 sm:p-5 text-white shadow-xl space-y-2.5 sm:space-y-3 text-left relative group">
 
                   {/* Floating Helping Hands Stamp */}
                   <div className="absolute -top-3 -right-2 sm:-right-3 bg-gradient-to-r from-[#c9a24c] via-[#f7e4b2] to-[#b38938] text-[#081023] text-[8.5px] sm:text-[9px] font-black uppercase tracking-wider px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full shadow-md border border-white/80 flex items-center gap-1 transform rotate-2 group-hover:rotate-0 transition-transform z-20 whitespace-nowrap">
@@ -1056,22 +1056,22 @@ function Home() {
                   {/* Glowing ambient ring */}
                   <div className="absolute -top-10 -right-10 w-32 h-32 bg-gold/15 rounded-full blur-xl pointer-events-none" />
 
-                  <div className="flex items-center justify-between border-b border-white/15 pb-2.5 sm:pb-3">
+                  <div className="flex items-center justify-between border-b border-white/15 pb-2">
                     <div>
                       <span className="text-[10px] uppercase tracking-wider text-[#edd392] font-bold block">
                         Direct Care Hotline
                       </span>
-                      <h3 className="text-sm sm:text-base font-bold text-white font-display">Speak to Coordinator</h3>
+                      <h3 className="text-sm font-bold text-white font-display">Speak to Coordinator</h3>
                     </div>
-                    <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-xl bg-gold/20 border border-gold/40 flex items-center justify-center text-gold shadow-xs shrink-0">
-                      <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-bounce" />
+                    <div className="h-7 w-7 rounded-xl bg-gold/20 border border-gold/40 flex items-center justify-center text-gold shadow-xs shrink-0">
+                      <Phone className="h-3.5 w-3.5 animate-bounce" />
                     </div>
                   </div>
 
                   {/* Primary CTA: Phone Button */}
                   <a
                     href={`tel:${contact.PHONE_TEL}`}
-                    className="w-full py-2.5 sm:py-3 px-3.5 sm:px-4 rounded-xl bg-gradient-to-r from-[#c9a24c] via-[#dfba63] to-[#b38938] hover:from-[#b38938] hover:to-[#966b1a] text-[#081023] font-black text-xs shadow-md hover:shadow-lg hover:scale-101 transition-all flex items-center justify-between group/btn cursor-pointer"
+                    className="w-full py-2.5 px-3.5 sm:px-4 rounded-xl bg-gradient-to-r from-[#c9a24c] via-[#dfba63] to-[#b38938] hover:from-[#b38938] hover:to-[#966b1a] text-[#081023] font-black text-xs shadow-md hover:shadow-lg hover:scale-101 transition-all flex items-center justify-between group/btn cursor-pointer"
                   >
                     <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                       <div className="h-7 w-7 rounded-lg bg-[#081023]/15 flex items-center justify-center shrink-0">
@@ -1090,9 +1090,9 @@ function Home() {
                     href={`https://wa.me/${contact.WHATSAPP}?text=Hello%20Amma%20Seva%2C%20I%20need%20urgent%20home%20healthcare%20support`}
                     target="_blank"
                     rel="noreferrer"
-                    className="w-full py-2.5 px-3.5 sm:px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 border border-emerald-400/40 text-white font-bold text-[11px] shadow-md hover:scale-101 transition-all flex items-center justify-between group/wa cursor-pointer"
+                    className="w-full py-2 px-3.5 sm:px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 border border-emerald-400/40 text-white font-bold text-[11px] shadow-md hover:scale-101 transition-all flex items-center justify-between group/wa cursor-pointer"
                   >
-                    <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
                       <div className="h-6 w-6 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
                         <MessageCircle className="h-3.5 w-3.5 text-white" />
                       </div>
@@ -1105,7 +1105,7 @@ function Home() {
                   </a>
 
                   {/* Social Proof & Trust Footer */}
-                  <div className="pt-2 border-t border-white/15 flex items-center justify-between text-[10px] text-slate-300">
+                  <div className="pt-1.5 border-t border-white/15 flex items-center justify-between text-[10px] text-slate-300">
                     <div className="flex items-center gap-1 text-[#edd392] font-bold whitespace-nowrap">
                       <Star className="h-3 w-3 fill-[#edd392] text-[#edd392] shrink-0" />
                       <span>4.9 / 5 Rating</span>
@@ -1125,14 +1125,14 @@ function Home() {
       {/* ============================================================ */}
       {/* 10. FREQUENTLY ASKED QUESTIONS                              */}
       {/* ============================================================ */}
-      <section className="py-14 sm:py-20 bg-slate-50/70 border-t border-slate-200/80 text-left">
+      <section className="py-7 sm:py-8 bg-slate-50/70 border-t border-slate-200/80 text-left">
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
 
-          <div className="text-center max-w-2xl mx-auto mb-12 space-y-3">
-            <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border border-slate-200 bg-white text-xs font-bold text-[#0b183b] uppercase tracking-wider">
+          <div className="text-center max-w-2xl mx-auto mb-5 space-y-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full border border-slate-200 bg-white text-[11px] font-bold text-[#0b183b] uppercase tracking-wider">
               <HelpCircle className="h-3.5 w-3.5 text-gold" /> Got Questions?
             </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0b183b] font-display">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0b183b] font-display">
               Frequently Asked Questions
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 font-medium">
@@ -1140,17 +1140,17 @@ function Home() {
             </p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 items-start">
+          <div className="grid gap-3.5 md:grid-cols-2 items-start">
             {faqs.map((f: any) => (
               <details
                 key={f.id}
-                className="group rounded-2xl border border-slate-200/90 bg-white p-5 hover:border-gold/70 transition-all duration-300 open:border-gold/80 open:shadow-[0_10px_25px_-5px_rgba(201,162,76,0.15)] hover:shadow-md hover:-translate-y-0.5 cursor-pointer"
+                className="group rounded-2xl border border-slate-200/90 bg-white p-4 sm:p-5 hover:border-gold/70 transition-all duration-300 open:border-gold/80 open:shadow-[0_10px_25px_-5px_rgba(201,162,76,0.15)] hover:shadow-md hover:-translate-y-0.5 cursor-pointer"
               >
-                <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-bold text-[#0b183b] transition-colors group-open:text-gold select-none outline-none">
+                <summary className="flex cursor-pointer list-none items-center justify-between text-xs sm:text-sm font-bold text-[#0b183b] transition-colors group-open:text-gold select-none outline-none">
                   <span className="pr-4">{f.question}</span>
                   <ChevronRight className="h-4 w-4 text-gold/80 transition-transform group-open:rotate-90 shrink-0" />
                 </summary>
-                <div className="mt-3 text-xs text-slate-600 leading-relaxed pl-3.5 border-l-2 border-gold/40">
+                <div className="mt-2.5 text-xs text-slate-600 leading-relaxed pl-3 border-l-2 border-gold/40">
                   {f.answer}
                 </div>
               </details>
@@ -1163,4 +1163,5 @@ function Home() {
     </SiteLayout>
   );
 }
+
 
