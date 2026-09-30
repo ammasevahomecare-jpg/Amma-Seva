@@ -560,15 +560,8 @@ function FloatingActions() {
       <div className="fixed bottom-5 left-3 sm:left-5 z-50 flex flex-col gap-2.5 sm:gap-3 items-start pointer-events-auto">
         
         {/* 1. Book Care Service Sticky Button */}
-        <Link
-          to="/services"
-          hash="services-form"
-          onClick={() => {
-            const el = document.getElementById("services-form");
-            if (el) {
-              el.scrollIntoView({ behavior: "smooth" });
-            }
-          }}
+        <a
+          href={getBookingUrl("elderly-care")}
           aria-label="Book Verified Healthcare Service"
           className="group flex items-center gap-2.5 sm:gap-3 rounded-2xl bg-gradient-to-r from-[#0b183b] via-[#14234f] to-[#1e2a5a] text-white p-2.5 sm:px-4 sm:py-2.5 shadow-2xl border border-gold/40 hover:border-gold hover:scale-[1.04] active:scale-[0.98] transition-all duration-300 cursor-pointer"
         >
@@ -585,18 +578,11 @@ function FloatingActions() {
               Nurses &amp; Attendants
             </div>
           </div>
-        </Link>
+        </a>
 
         {/* 2. Book MTP Task Sticky Button */}
-        <Link
-          to="/mtp"
-          hash="mtp-tasks"
-          onClick={() => {
-            const el = document.getElementById("mtp-tasks");
-            if (el) {
-              el.scrollIntoView({ behavior: "smooth" });
-            }
-          }}
+        <a
+          href={getBookingUrl("mtp")}
           aria-label="Book MTP Care Task"
           className="group flex items-center gap-2.5 sm:gap-3 rounded-2xl bg-gradient-to-r from-[#c9a24c] via-[#dfba63] to-[#b38938] hover:from-[#b38938] hover:to-[#966b1a] text-[#081023] p-2.5 sm:px-4 sm:py-2.5 shadow-2xl border-2 border-white/80 hover:scale-[1.04] active:scale-[0.98] transition-all duration-300 cursor-pointer"
         >
@@ -617,7 +603,7 @@ function FloatingActions() {
               Escort • Errands • Stroll
             </div>
           </div>
-        </Link>
+        </a>
 
       </div>
 

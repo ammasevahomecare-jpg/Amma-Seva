@@ -416,7 +416,7 @@ function MTPPage() {
       </section>
 
       {/* What is an MTP & Tasks Grid */}
-      <section id="mtp-tasks" className="py-8 sm:py-10 bg-white border-b border-border/40 scroll-mt-20">
+      <section className="py-8 sm:py-10 bg-white border-b border-border/40">
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12 text-left">
           <div className="max-w-3xl mb-6 sm:mb-8">
             <h2 className="gold-rule text-3xl font-extrabold text-primary sm:text-4xl font-display">

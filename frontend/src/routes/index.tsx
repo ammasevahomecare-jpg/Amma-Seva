@@ -296,14 +296,13 @@ function Home() {
 
           {/* Dual Action Buttons (Centered) */}
           <div className="flex flex-wrap items-center justify-center gap-3.5 sm:gap-4 pt-5">
-            <Link
-              to="/services"
-              hash="services-form"
+            <a
+              href={getBookingUrl()}
               className="px-7 sm:px-8 py-3 sm:py-3.5 rounded-2xl bg-gradient-to-r from-[#0b183b] via-[#14234f] to-[#1e2a5a] hover:from-[#07112b] hover:to-[#121c3d] text-white font-bold text-xs sm:text-sm shadow-xl shadow-[#0b183b]/25 hover:scale-[1.03] active:scale-[0.98] transition-all flex items-center gap-2.5 cursor-pointer"
             >
               <Calendar className="h-4 w-4 text-gold" />
               <span>Book a Verified Caregiver</span>
-            </Link>
+            </a>
 
             <a
               href={`tel:${contact.PHONE_TEL}`}
@@ -641,14 +640,13 @@ function Home() {
             </div>
 
             <div className="flex flex-wrap gap-2.5">
-              <Link
-                to="/mtp"
-                hash="mtp-tasks"
+              <a
+                href={getBookingUrl("mtp")}
                 className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-[#c9a24c] to-[#b38938] hover:from-[#b38938] hover:to-[#966b1a] text-[#081023] font-extrabold text-xs shadow-lg shadow-gold/20 hover:scale-[1.02] transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <span>Book MTP Care Task</span>
                 <ArrowRight className="h-4 w-4" />
-              </Link>
+              </a>
               <Link
                 to="/mtp"
                 className="px-5 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs backdrop-blur-md transition-all flex items-center gap-1.5 cursor-pointer"
