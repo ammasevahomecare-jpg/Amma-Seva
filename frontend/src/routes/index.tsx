@@ -274,9 +274,10 @@ function Home() {
             <span>HYDERABAD&apos;S #1 TRUSTED HOME HEALTHCARE &amp; CAREGIVING NETWORK</span>
           </div>
 
-          {/* Main Headline (Single Line on Desktop with rich contrast) */}
-          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-[46px] xl:text-[52px] font-extrabold text-[#0b183b] font-display tracking-tight leading-tight max-w-5xl text-center whitespace-normal lg:whitespace-nowrap">
-            Professional Bedside Healthcare, <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#b38228] via-[#d4af37] to-[#8c6014] font-bold">with a Mother&apos;s Touch.</span>
+          {/* Main Headline (Balanced & Elegant - Never Cropped) */}
+          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-[42px] xl:text-[48px] font-extrabold text-[#0b183b] font-display tracking-tight leading-[1.25] sm:leading-[1.2] max-w-4xl mx-auto text-center">
+            Professional Bedside Healthcare, <br className="hidden sm:inline" />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#b38228] via-[#d4af37] to-[#8c6014] font-extrabold">with a Mother&apos;s Touch.</span>
           </h1>
 
           {/* Subtitle (Refined, Warm & Crystal-Clear) */}

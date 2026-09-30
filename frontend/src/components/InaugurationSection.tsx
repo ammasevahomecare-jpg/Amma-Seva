@@ -131,8 +131,8 @@ export function InaugurationSection() {
         <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-stretch">
           
           {/* LEFT: DIGNITARY PROFILE & HONORS (5 COLS) */}
-          <div className="lg:col-span-5 flex flex-col justify-between rounded-3xl bg-slate-50/70 p-5 sm:p-7 border border-slate-200/90 shadow-lg shadow-slate-200/50 hover:shadow-xl transition-all">
-            <div className="space-y-4">
+          <div className="lg:col-span-5 flex flex-col justify-between rounded-3xl bg-slate-50/70 p-5 sm:p-6 border border-slate-200/90 shadow-lg shadow-slate-200/50 hover:shadow-xl transition-all">
+            <div className="space-y-3.5">
               {/* Photo Frame */}
               <div 
                 onClick={() => setActivePhotoIndex(5)} 
@@ -146,17 +146,17 @@ export function InaugurationSection() {
                 />
                 
                 {/* Floating Badge */}
-                <div className="absolute top-3 left-3 bg-[#0b183b]/90 border border-gold/60 rounded-full px-3 py-1 text-[10px] font-black text-white uppercase tracking-wider backdrop-blur-md flex items-center gap-1.5 shadow-md">
+                <div className="absolute top-2.5 left-2.5 bg-[#0b183b]/90 border border-gold/60 rounded-full px-3 py-0.5 text-[10px] font-black text-white uppercase tracking-wider backdrop-blur-md flex items-center gap-1.5 shadow-md">
                   <Award className="h-3.5 w-3.5 text-gold" />
                   <span>Chief Guest &amp; Dignitary</span>
                 </div>
 
                 {/* Bottom overlay */}
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-3 pt-6 flex items-center justify-between text-white text-xs">
-                  <span className="flex items-center gap-1 text-amber-200 text-[11px] font-semibold">
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-2.5 pt-6 flex items-center justify-between text-white text-xs">
+                  <span className="flex items-center gap-1 text-amber-200 text-[10.5px] font-semibold">
                     <CheckCircle2 className="h-3.5 w-3.5 text-gold" /> Government of Tamil Nadu
                   </span>
-                  <span className="bg-gradient-to-r from-gold via-amber-300 to-gold text-[#0b183b] px-2 py-0.5 rounded-md text-[10px] font-black uppercase shadow-xs">
+                  <span className="bg-gradient-to-r from-gold via-amber-300 to-gold text-[#0b183b] px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase shadow-xs">
                     IAS Officer
                   </span>
                 </div>
@@ -170,8 +170,8 @@ export function InaugurationSection() {
               </div>
 
               {/* Dignitary Name & Official Designation */}
-              <div className="space-y-2.5 text-left">
-                <div className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 border border-amber-200/80 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#8f6414]">
+              <div className="space-y-2 text-left">
+                <div className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 border border-amber-200/80 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-[#8f6414]">
                   <ShieldCheck className="h-3.5 w-3.5 text-[#8f6414]" />
                   <span>Inaugurated &amp; Dedicated By</span>
                 </div>
@@ -180,7 +180,7 @@ export function InaugurationSection() {
                   <h3 className="text-xl sm:text-2xl font-black text-[#0b183b] tracking-tight">
                     Thiru Sandeep Nanduri, <span className="text-[#a8781d]">IAS.</span>
                   </h3>
-                  <div className="mt-1.5 rounded-xl bg-white p-3 border border-slate-200/80 shadow-2xs space-y-0.5">
+                  <div className="mt-1.5 rounded-xl bg-white p-2.5 sm:p-3 border border-slate-200/80 shadow-2xs space-y-0.5">
                     <p className="text-xs font-extrabold text-[#0b183b]">
                       Secretary to Government
                     </p>
@@ -198,31 +198,31 @@ export function InaugurationSection() {
             </div>
 
             {/* Commemorative Highlights Pills */}
-            <div className="grid grid-cols-2 gap-2.5 pt-4 mt-3 border-t border-slate-200/70 text-xs">
-              <div className="flex items-center gap-2 rounded-xl bg-white p-2.5 border border-slate-200/80 text-slate-700 shadow-2xs">
+            <div className="grid grid-cols-2 gap-2 pt-3 mt-2 border-t border-slate-200/70 text-xs">
+              <div className="flex items-center gap-2 rounded-xl bg-white p-2 border border-slate-200/80 text-slate-700 shadow-2xs">
                 <Building2 className="h-4 w-4 text-gold shrink-0" />
-                <span className="text-[11px] font-bold text-[#0b183b] leading-tight">State Administrative Dedication</span>
+                <span className="text-[10.5px] font-bold text-[#0b183b] leading-tight">State Administrative Dedication</span>
               </div>
-              <div className="flex items-center gap-2 rounded-xl bg-white p-2.5 border border-slate-200/80 text-slate-700 shadow-2xs">
+              <div className="flex items-center gap-2 rounded-xl bg-white p-2 border border-slate-200/80 text-slate-700 shadow-2xs">
                 <HeartHandshake className="h-4 w-4 text-emerald-600 shrink-0" />
-                <span className="text-[11px] font-bold text-[#0b183b] leading-tight">Compassionate Home Healthcare</span>
+                <span className="text-[10.5px] font-bold text-[#0b183b] leading-tight">Compassionate Home Healthcare</span>
               </div>
             </div>
           </div>
 
-          {/* RIGHT: INAUGURATION CEREMONY PHOTO GALLERY (7 COLS) */}
-          <div className="lg:col-span-7 flex flex-col justify-between rounded-3xl bg-slate-50/70 p-5 sm:p-7 border border-slate-200/90 shadow-lg shadow-slate-200/50 hover:shadow-xl transition-all">
-            <div className="space-y-4">
+          {/* RIGHT: INAUGURATION CEREMONY PHOTO GALLERY (7 COLS - BALANCED 2x3 GRID) */}
+          <div className="lg:col-span-7 flex flex-col justify-between rounded-3xl bg-slate-50/70 p-5 sm:p-6 border border-slate-200/90 shadow-lg shadow-slate-200/50 hover:shadow-xl transition-all">
+            <div className="space-y-3.5">
               
               {/* Gallery Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/80 pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/80 pb-2.5">
                 <div className="text-left">
                   <h3 className="text-base sm:text-lg font-black text-[#0b183b] flex items-center gap-2">
                     <Camera className="h-4 w-4 sm:h-5 sm:w-5 text-gold" />
                     Inauguration Ceremony Moments
                   </h3>
                   <p className="text-[11px] text-slate-500 font-medium">
-                    Capturing key memories from the launch event with the Chief Guest &amp; team
+                    Key memories from the state launch event with Chief Guest Thiru Sandeep Nanduri, IAS
                   </p>
                 </div>
                 <span className="text-[10px] font-extrabold text-[#8f6414] bg-amber-100/80 border border-amber-300/80 px-2.5 py-1 rounded-full shrink-0 w-fit">
@@ -230,36 +230,43 @@ export function InaugurationSection() {
                 </span>
               </div>
 
-              {/* Photo Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3.5">
+              {/* Photo Grid (2 Columns x 3 Rows - Perfectly fills the height) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5">
                 {INAUGURATION_MOMENTS.map((moment, idx) => (
                   <div
                     key={moment.id}
                     onClick={() => setActivePhotoIndex(idx)}
-                    className="group relative cursor-pointer overflow-hidden rounded-2xl bg-slate-900 border border-slate-200 hover:border-gold shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 flex flex-col aspect-[4/3]"
+                    className="group relative cursor-pointer overflow-hidden rounded-2xl bg-slate-900 border border-slate-200 hover:border-gold shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 flex flex-col aspect-[16/10]"
                   >
                     <img
                       src={moment.image}
                       alt={moment.title}
                       loading="lazy"
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-108"
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-106"
                     />
                     
                     {/* Top Tag - Clean Pill */}
-                    <div className="absolute top-2 left-2 right-2 z-10 pointer-events-none flex items-start">
-                      <span className="inline-block max-w-full truncate bg-[#0b183b]/90 backdrop-blur-xs text-amber-200 border border-gold/40 rounded-full px-2 py-0.5 text-[8.5px] font-black uppercase tracking-tight shadow-sm whitespace-nowrap">
+                    <div className="absolute top-2 left-2 right-2 z-10 pointer-events-none flex items-start justify-between">
+                      <span className="inline-block max-w-[85%] truncate bg-[#0b183b]/90 backdrop-blur-xs text-amber-200 border border-gold/40 rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-tight shadow-sm whitespace-nowrap">
                         {moment.tag}
+                      </span>
+                      <span className="h-5 w-5 rounded-full bg-black/60 text-white flex items-center justify-center text-[9px] font-mono font-bold">
+                        0{idx + 1}
                       </span>
                     </div>
 
-                    {/* Hover Zoom Overlay */}
-                    <div className="absolute inset-0 bg-[#0b183b]/65 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-end p-2.5 text-center">
-                      <div className="mb-1 rounded-full bg-gold p-1 text-slate-950 shadow-md transform scale-75 group-hover:scale-100 transition-transform">
-                        <ZoomIn className="h-3.5 w-3.5" />
-                      </div>
-                      <p className="text-[9.5px] font-bold text-white line-clamp-2 leading-tight">
+                    {/* Bottom Title Gradient Strip */}
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-2.5 pt-5 text-left">
+                      <p className="text-[11px] font-bold text-white leading-tight line-clamp-1 group-hover:text-amber-200 transition-colors">
                         {moment.title}
                       </p>
+                    </div>
+
+                    {/* Hover Zoom Overlay */}
+                    <div className="absolute inset-0 bg-[#0b183b]/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                      <div className="rounded-full bg-white text-[#0b183b] px-3 py-1 text-[11px] font-extrabold flex items-center gap-1.5 shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
+                        <ZoomIn className="h-3.5 w-3.5 text-gold" /> View in HD
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -268,13 +275,17 @@ export function InaugurationSection() {
             </div>
 
             {/* Bottom Note */}
-            <div className="pt-3.5 mt-3 border-t border-slate-200/80 flex items-center justify-between text-[11px] text-slate-500">
+            <div className="pt-2.5 mt-2 border-t border-slate-200/80 flex items-center justify-between text-[11px] text-slate-500">
               <span className="flex items-center gap-1.5 font-medium">
                 <Calendar className="h-3.5 w-3.5 text-gold" />
                 Official Inauguration Archive
               </span>
-              <span className="text-[#8f6414] font-bold text-[11px] cursor-pointer hover:underline">
-                Click any photo to view in HD →
+              <span 
+                onClick={() => setActivePhotoIndex(0)}
+                className="text-[#8f6414] font-bold text-[11px] cursor-pointer hover:underline flex items-center gap-1"
+              >
+                <span>Click any photo to view in HD</span>
+                <ChevronRight className="h-3 w-3" />
               </span>
             </div>
           </div>
