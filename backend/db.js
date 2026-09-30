@@ -3521,5 +3521,61 @@ export const db = {
       }
       return false
     }
+  },
+
+  // Enquiry operations
+  getEnquiries: async () => {
+    if (useMySQL) {
+      try {
+        const [rows] = await pool.query('SELECT * FROM enquiries ORDER BY id DESC')
+        return rows
+      } catch (e) {
+        return []
+      }
+    } else {
+      const data = await readJSONDb()
+      return (data.enquiries || []).slice().reverse()
+    }
+  },
+
+  addEnquiry: async (enquiryData) => {
+    const data = await readJSONDb()
+    if (!data.enquiries) data.enquiries = []
+    const newEnquiry = {
+      ...enquiryData,
+      id: data.enquiries.length > 0 ? Math.max(...data.enquiries.map(e => e.id || 0)) + 1 : 1,
+      status: enquiryData.status || 'New',
+      createdAt: enquiryData.createdAt || new Date().toISOString()
+    }
+    data.enquiries.push(newEnquiry)
+    await writeJSONDb(data)
+    return newEnquiry
+  },
+
+  updateEnquiryStatus: async (id, status) => {
+    const data = await readJSONDb()
+    if (data.enquiries) {
+      const item = data.enquiries.find(e => e.id === Number(id))
+      if (item) {
+        item.status = status
+        await writeJSONDb(data)
+        return true
+      }
+    }
+    return false
+  },
+
+  deleteEnquiry: async (id) => {
+    const data = await readJSONDb()
+    if (data.enquiries) {
+      const prevLength = data.enquiries.length
+      data.enquiries = data.enquiries.filter(e => e.id !== Number(id))
+      if (data.enquiries.length < prevLength) {
+        await writeJSONDb(data)
+        return true
+      }
+    }
+    return false
   }
 }
+

@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { Link } from "@tanstack/react-router";
 import { 
   Award, 
-  Sparkles, 
   ChevronLeft, 
   ChevronRight, 
   X, 
@@ -12,7 +10,6 @@ import {
   HeartHandshake, 
   Calendar,
   CheckCircle2,
-  ExternalLink,
   Camera
 } from "lucide-react";
 
@@ -133,7 +130,7 @@ export function InaugurationSection() {
         <div className="mt-12 grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
           
           {/* LEFT: DIGNITARY PROFILE & HONORS (5 COLS) */}
-          <div className="lg:col-span-5 flex flex-col justify-between rounded-3xl bg-gradient-to-b from-white/[0.08] to-white/[0.03] p-6 sm:p-8 border-2 border-[#d4af37]/50 shadow-[0_0_35px_rgba(0,0,0,0.4)] backdrop-blur-md">
+          <div className="lg:col-span-5 flex flex-col justify-between rounded-3xl bg-gradient-to-b from-white/[0.08] to-white/[0.03] p-4 sm:p-8 border-2 border-[#d4af37]/50 shadow-[0_0_35px_rgba(0,0,0,0.4)] backdrop-blur-md">
             <div>
               {/* Photo Frame */}
               <div 
@@ -212,7 +209,7 @@ export function InaugurationSection() {
           </div>
 
           {/* RIGHT: INAUGURATION CEREMONY PHOTO GALLERY (7 COLS) */}
-          <div className="lg:col-span-7 flex flex-col justify-between rounded-3xl bg-gradient-to-b from-white/[0.08] to-white/[0.03] p-6 sm:p-8 border border-white/15 shadow-xl backdrop-blur-md">
+          <div className="lg:col-span-7 flex flex-col justify-between rounded-3xl bg-gradient-to-b from-white/[0.08] to-white/[0.03] p-4 sm:p-8 border border-white/15 shadow-xl backdrop-blur-md">
             <div className="space-y-4">
               
               {/* Gallery Header */}
@@ -232,7 +229,7 @@ export function InaugurationSection() {
               </div>
 
               {/* Photo Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-4">
                 {INAUGURATION_MOMENTS.map((moment, idx) => (
                   <div
                     key={moment.id}
@@ -246,9 +243,9 @@ export function InaugurationSection() {
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                     />
                     
-                    {/* Top Tag */}
-                    <div className="absolute top-2 left-2 z-10">
-                      <span className="bg-[#09132e]/90 backdrop-blur-xs text-[#ffd700] border border-[#ffd700]/40 rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider shadow-sm">
+                    {/* Top Tag - Single line pill with no wrap or overlap */}
+                    <div className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 right-1.5 sm:right-2 z-10 pointer-events-none flex items-start">
+                      <span className="inline-block max-w-full truncate bg-[#09132e]/95 backdrop-blur-sm text-[#ffd700] border border-[#ffd700]/50 rounded-full px-1.5 sm:px-2 py-0.5 text-[8px] sm:text-[9px] font-extrabold uppercase tracking-tight sm:tracking-wider shadow-sm whitespace-nowrap">
                         {moment.tag}
                       </span>
                     </div>
@@ -266,25 +263,6 @@ export function InaugurationSection() {
                 ))}
               </div>
 
-              {/* Featured Moment Highlight Card */}
-              <div className="rounded-2xl bg-[#09132e]/80 border border-[#ffd700]/30 p-4 text-left flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-[11px] text-amber-300 font-semibold">
-                    <Sparkles className="h-3.5 w-3.5 text-[#ffd700]" />
-                    <span>A Historic Milestone for Home Healthcare in Telangana &amp; Beyond</span>
-                  </div>
-                  <p className="text-xs text-slate-300 leading-relaxed">
-                    Explore all certified care moments, doctor consultations, bedside assistance, and post-operative recovery galleries.
-                  </p>
-                </div>
-                <Link
-                  to="/gallery"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-[#ffd700] hover:bg-[#ffd700]/90 text-slate-950 px-4 py-2 text-xs font-extrabold transition-all shadow-md shrink-0 hover:scale-105 active:scale-95"
-                >
-                  <span>Explore Gallery</span>
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </Link>
-              </div>
 
             </div>
 

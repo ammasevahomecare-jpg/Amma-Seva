@@ -2,7 +2,7 @@ import React from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Phone, MessageCircle, Mail, MapPin, Send, ArrowRight, Instagram } from "lucide-react";
 import { SiteLayout, contact } from "@/components/SiteLayout";
-import { validateName, validatePhone, validateEmail } from "@/lib/validation";
+import { validateName, validatePhone, validateEmail, sanitizeIndianPhone, sanitizeName } from "@/lib/validation";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
@@ -59,7 +59,7 @@ function Contact() {
                 label="WhatsApp Care Desk" 
                 value="Chat with us on WhatsApp" 
                 subtext="Message for fast consultation and rates."
-                href={`https://wa.me/${contact.WHATSAPP}`} 
+                href={contact.WHATSAPP_URL} 
               />
               <ContactRow 
                 icon={Mail} 
@@ -74,18 +74,6 @@ function Contact() {
                 value="@amma.seva" 
                 subtext="Follow us for care tips, moments, and updates."
                 href={contact.INSTAGRAM} 
-              />
-              <ContactRow 
-                icon={MapPin} 
-                label="Head Office" 
-                value="Chennai, Tamil Nadu" 
-                subtext="Shop No. S101, Door No. 769, Spencer Plaza, Anna Salai, Anna Road, Chennai, Tamil Nadu, 600002, India"
-              />
-              <ContactRow 
-                icon={MapPin} 
-                label="Branches" 
-                value="Amaravathi &amp; Hyderabad" 
-                subtext="Amaravathi, Hyderabad"
               />
             </div>
 
@@ -113,7 +101,7 @@ function Contact() {
           <div className="lg:col-span-7">
             <form
               className="rounded-3xl premium-card bg-white p-6 sm:p-8 shadow-md text-left space-y-5"
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault();
                 const form = e.target as HTMLFormElement;
                 const formData = new FormData(form);
@@ -147,25 +135,23 @@ function Contact() {
                   message: formData.get("message") as string,
                 };
 
-                fetch("/api/enquiry", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(data),
-                })
-                  .then((res) => res.json())
-                  .then((resData) => {
-                    if (resData.success) {
-                      alert("Thanks! Our care team will reach you shortly.");
-                      form.reset();
-                    } else {
-                      alert("Error: " + (resData.error || "Failed to submit enquiry."));
-                    }
-                  })
-                  .catch((err) => {
-                    console.error(err);
-                    alert("Thanks! Our care team will reach you shortly.");
-                    form.reset();
+                try {
+                  const res = await fetch("/api/enquiry", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(data),
                   });
+                  const resData = await res.json().catch(() => ({}));
+                  if (res.ok && resData.success) {
+                    alert(resData.message || "Thanks! Our care team will reach you shortly.");
+                    form.reset();
+                  } else {
+                    alert("Error: " + (resData.error || "Failed to submit enquiry. Please check your inputs."));
+                  }
+                } catch (err) {
+                  console.error(err);
+                  alert("Unable to submit enquiry at this time. Please call our 24/7 helpline at +91 94945 16543.");
+                }
               }}
             >
               <div>
@@ -214,6 +200,22 @@ function Contact() {
                 <Send className="h-4 w-4" /> Send Enquiry Message <ArrowRight className="h-4 w-4" />
               </button>
             </form>
+
+            {/* Office & Branch Locations */}
+            <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <ContactRow 
+                icon={MapPin} 
+                label="Head Office" 
+                value="Chennai, Tamil Nadu" 
+                subtext="Shop No. S101, Door No. 769, Spencer Plaza, Anna Salai, Anna Road, Chennai, Tamil Nadu, 600002, India"
+              />
+              <ContactRow 
+                icon={MapPin} 
+                label="Branches" 
+                value="Amaravathi &amp; Hyderabad" 
+                subtext="Amaravathi, Hyderabad"
+              />
+            </div>
           </div>
 
         </div>
@@ -246,24 +248,43 @@ function ContactRow({ icon: Icon, label, value, subtext, href }: { icon: React.C
 
 function Field({ label, name, type = "text", required, placeholder }: { label: string; name: string; type?: string; required?: boolean; placeholder?: string }) {
   const [val, setVal] = React.useState("");
+  const isTel = type === "tel";
+
   return (
     <div className="text-left">
-      <label className="text-xs font-semibold text-slate-500 block mb-1">{label}</label>
-      <input
-        name={name}
-        type={type}
-        required={required}
-        value={val}
-        onChange={(e) => {
-          let value = e.target.value;
-          if (type === "tel") {
-            value = value.replace(/[^0-9]/g, "").slice(0, 10);
-          }
-          setVal(value);
-        }}
-        placeholder={placeholder}
-        className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-gold focus:border-gold text-slate-800"
-      />
+      <label className="text-xs font-semibold text-slate-600 block mb-1">
+        {label} {required && <span className="text-rose-500">*</span>}
+      </label>
+      <div className="relative flex items-center">
+        {isTel && (
+          <div className="absolute left-3 flex items-center gap-1.5 text-xs font-extrabold text-slate-700 pointer-events-none select-none border-r border-slate-200 pr-2.5">
+            <span>🇮🇳</span>
+            <span>+91</span>
+          </div>
+        )}
+        <input
+          name={name}
+          type={type}
+          inputMode={isTel ? "numeric" : undefined}
+          maxLength={isTel ? 10 : undefined}
+          required={required}
+          value={val}
+          onChange={(e) => {
+            let value = e.target.value;
+            if (isTel) {
+              value = sanitizeIndianPhone(value);
+            } else if (name === "name" || label.toLowerCase().includes("name")) {
+              value = sanitizeName(value);
+            }
+            setVal(value);
+          }}
+          placeholder={placeholder}
+          className={`w-full rounded-lg border border-slate-200 bg-slate-50/50 py-2 text-sm outline-none focus:ring-1 focus:ring-gold focus:border-gold text-slate-800 ${
+            isTel ? "pl-20 pr-3 font-mono font-bold tracking-wider" : "px-3"
+          }`}
+        />
+      </div>
+      {isTel && <p className="text-[10px] text-slate-400 mt-1">10-digit Indian mobile number</p>}
     </div>
   );
 }

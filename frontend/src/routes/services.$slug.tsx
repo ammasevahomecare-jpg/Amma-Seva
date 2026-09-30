@@ -2,7 +2,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
 import { Check, Phone, Clock, IndianRupee, Star, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { SiteLayout, contact } from "@/components/SiteLayout";
-import { validateName, validatePhone } from "@/lib/validation";
+import { validateName, validatePhone, sanitizeIndianPhone, sanitizeName } from "@/lib/validation";
 import { fetchServices } from "@/lib/services";
 import motherBaby from "@/assets/service-mother-baby.jpg";
 import nursing from "@/assets/service-nursing.jpg";
@@ -180,6 +180,19 @@ function ServicePage() {
 
   const [activeImage, setActiveImage] = useState(serviceImages[0] || details.image);
   const [activeTab, setActiveTab] = useState<"enquiry" | "book">("enquiry");
+  const [enquiryName, setEnquiryName] = useState("");
+  const [enquiryPhone, setEnquiryPhone] = useState("");
+  const [enquiryDate, setEnquiryDate] = useState("");
+
+  const getTodayISO = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const todayStr = getTodayISO();
   
   const others = allServices.filter((s: any) => s.slug !== service.slug).slice(0, 3);
 
@@ -198,19 +211,22 @@ function ServicePage() {
       {/* Premium Hero Header & Image Gallery */}
       <section className="py-6">
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
-          {/* Relative Image Box */}
-          <div className="relative w-full h-[320px] md:h-[450px] rounded-3xl overflow-hidden shadow-lg border border-border/40">
-            <img 
-              src={activeImage} 
-              alt={service.title} 
-              className="w-full h-full object-cover transition-all duration-300" 
-            />
-            {/* Dark gradient mask on bottom/left for readability on small screens */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent md:from-black/30" />
+          {/* Responsive Hero Header & Image Container */}
+          <div className="relative w-full rounded-3xl overflow-hidden shadow-lg border border-border/40 bg-white">
+            {/* Image Banner */}
+            <div className="relative w-full h-[220px] sm:h-[280px] md:h-[450px] overflow-hidden bg-slate-100">
+              <img 
+                src={activeImage} 
+                alt={service.title} 
+                className="w-full h-full object-cover transition-all duration-300" 
+              />
+              {/* Subtle gradient vignette on desktop */}
+              <div className="hidden md:block absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
+            </div>
             
-            {/* Floating Card - absolutely positioned on desktop, sits below or overlapping on mobile */}
-            <div className="absolute bottom-6 left-6 right-6 md:right-auto md:max-w-xl bg-white p-6 rounded-2xl shadow-2xl border border-slate-100 text-left">
-              <div className="flex flex-wrap gap-2 mb-3">
+            {/* Details Content Card: clean flow below image on mobile, floating overlay on desktop */}
+            <div className="p-5 sm:p-6 md:absolute md:bottom-6 md:left-6 md:right-auto md:max-w-xl md:bg-white/95 md:backdrop-blur-md md:rounded-2xl md:shadow-2xl md:border md:border-slate-100 text-left bg-white">
+              <div className="flex flex-wrap gap-2 mb-2.5">
                 <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-0.5 text-xs font-semibold text-slate-700">
                   {getSecondaryTag(service.category || details.category)[0]}
                 </span>
@@ -218,10 +234,10 @@ function ServicePage() {
                   {getSecondaryTag(service.category || details.category)[1]}
                 </span>
               </div>
-              <h1 className="text-2xl md:text-3xl font-extrabold text-primary leading-tight">
+              <h1 className="text-2xl md:text-3xl font-extrabold text-primary leading-tight font-display">
                 {service.title}
               </h1>
-              <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+              <p className="mt-2 text-xs sm:text-sm text-slate-600 leading-relaxed">
                 {service.short}
               </p>
             </div>
@@ -477,12 +493,12 @@ function ServicePage() {
                   </div>
                   <form
                     className="space-y-4"
-                    onSubmit={(e) => {
+                    onSubmit={async (e) => {
                       e.preventDefault();
                       const form = e.target as HTMLFormElement;
                       const formData = new FormData(form);
                       const name = (formData.get("name") as string) || "";
-                      const phone = (formData.get("phone") as string) || "";
+                      const phone = enquiryPhone || (formData.get("phone") as string) || "";
 
                       const nameErr = validateName(name, "Full name");
                       if (nameErr) {
@@ -496,64 +512,133 @@ function ServicePage() {
                         return;
                       }
 
+                      const dateVal = enquiryDate || (formData.get("date") as string) || "";
+                      if (dateVal) {
+                        const [yearStr] = dateVal.split("-");
+                        const yearNum = Number(yearStr);
+                        const currentYear = new Date().getFullYear();
+                        if (!yearStr || yearStr.length !== 4 || isNaN(yearNum) || yearNum < currentYear || yearNum > 2099) {
+                          alert(`Please enter a valid 4-digit year (between ${currentYear} and 2099).`);
+                          return;
+                        }
+                        if (dateVal < todayStr) {
+                          alert("Please select today or a future date for your expected start date. Past dates are not allowed.");
+                          return;
+                        }
+                      }
+
                       const data = {
                         name: name.trim(),
                         phone: phone.replace(/\D/g, ""),
-                        date: formData.get("date") as string,
-                        message: formData.get("message") as string,
+                        date: dateVal,
+                        message: (formData.get("message") as string) || "",
                         service: service.title,
                       };
 
-                      fetch("/api/enquiry", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(data),
-                      })
-                        .then((res) => res.json())
-                        .then((resData) => {
-                          if (resData.success) {
-                            alert("Thank you! Our care coordinator will contact you shortly.");
-                            form.reset();
-                          } else {
-                            alert("Error: " + (resData.error || "Failed to submit enquiry."));
-                          }
-                        })
-                        .catch((err) => {
-                          console.error(err);
-                          alert("Thank you! Our care coordinator will contact you shortly.");
-                          form.reset();
+                      try {
+                        const res = await fetch("/api/enquiry", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify(data),
                         });
+                        const resData = await res.json().catch(() => ({}));
+                        if (res.ok && resData.success) {
+                          alert(resData.message || "Thank you! Our care coordinator will contact you shortly.");
+                          form.reset();
+                          setEnquiryName("");
+                          setEnquiryPhone("");
+                          setEnquiryDate("");
+                        } else {
+                          alert("Error: " + (resData.error || "Failed to submit enquiry. Please check your inputs."));
+                        }
+                      } catch (err) {
+                        console.error(err);
+                        alert("Unable to reach the server. Please check your internet connection or call our 24/7 helpline at +91 94945 16543.");
+                      }
                     }}
                   >
                     <div>
-                      <label className="text-xs font-semibold text-slate-500 block mb-1">Full Name</label>
+                      <label className="text-xs font-semibold text-slate-600 block mb-1">Full Name</label>
                       <input
                         name="name"
                         type="text"
                         required
+                        value={enquiryName}
+                        onChange={(e) => setEnquiryName(sanitizeName(e.target.value))}
                         placeholder="Jane Doe"
                         className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-gold focus:border-gold"
                       />
                     </div>
                     
                     <div>
-                      <label className="text-xs font-semibold text-slate-500 block mb-1">Phone Number</label>
-                      <input
-                        name="phone"
-                        type="tel"
-                        required
-                        placeholder="+91 98765 43210"
-                        className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-gold focus:border-gold"
-                      />
+                      <label className="text-xs font-semibold text-slate-600 block mb-1">
+                        Phone Number <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative flex items-center">
+                        <div className="absolute left-3 flex items-center gap-1.5 text-xs font-extrabold text-slate-700 pointer-events-none select-none border-r border-slate-200 pr-2.5">
+                          <span>🇮🇳</span>
+                          <span>+91</span>
+                        </div>
+                        <input
+                          name="phone"
+                          type="tel"
+                          inputMode="numeric"
+                          maxLength={10}
+                          required
+                          value={enquiryPhone}
+                          onChange={(e) => setEnquiryPhone(sanitizeIndianPhone(e.target.value))}
+                          placeholder="98765 43210"
+                          className="w-full rounded-lg border border-slate-200 bg-slate-50/50 pl-20 pr-3 py-2 text-sm outline-none focus:ring-1 focus:ring-gold focus:border-gold font-mono font-bold text-slate-800 tracking-wider"
+                        />
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-1">Enter 10-digit Indian mobile number (starts with 6, 7, 8, 9)</p>
                     </div>
 
                     <div>
-                      <label className="text-xs font-semibold text-slate-500 block mb-1">Expected Start Date (Optional)</label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-semibold text-slate-600 block">Expected Start Date (Optional)</label>
+                        <span className="text-[10px] text-slate-400 font-medium">4-digit year (YYYY)</span>
+                      </div>
                       <input
                         name="date"
                         type="date"
-                        className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-gold focus:border-gold text-slate-500"
+                        min={todayStr}
+                        max="2099-12-31"
+                        value={enquiryDate}
+                        onChange={(e) => {
+                          let val = e.target.value;
+                          if (val) {
+                            const parts = val.split("-");
+                            if (parts[0] && parts[0].length > 4) {
+                              parts[0] = parts[0].slice(0, 4);
+                              val = parts.join("-");
+                            }
+                          }
+                          setEnquiryDate(val);
+                        }}
+                        className={`w-full rounded-lg border bg-slate-50/50 px-3 py-2 text-sm outline-none focus:ring-1 text-slate-700 cursor-pointer ${
+                          enquiryDate && enquiryDate.length === 10 && enquiryDate < todayStr
+                            ? "border-rose-400 focus:ring-rose-400 focus:border-rose-400 bg-rose-50/30"
+                            : "border-slate-200 focus:ring-gold focus:border-gold"
+                        }`}
                       />
+                      {enquiryDate && (() => {
+                        const yearPart = enquiryDate.split("-")[0];
+                        const yearNum = Number(yearPart);
+                        const currentYear = new Date().getFullYear();
+                        if (yearPart && yearPart.length > 4) {
+                          return <p className="text-[11px] text-rose-600 font-medium mt-1">⚠️ Year must be 4 digits only.</p>;
+                        }
+                        if (enquiryDate.length === 10) {
+                          if (yearNum > 2099 || yearNum < currentYear) {
+                            return <p className="text-[11px] text-rose-600 font-medium mt-1">⚠️ Year must be between {currentYear} and 2099.</p>;
+                          }
+                          if (enquiryDate < todayStr) {
+                            return <p className="text-[11px] text-rose-600 font-medium mt-1">⚠️ Start date cannot be in the past. Please select today or a future date.</p>;
+                          }
+                        }
+                        return null;
+                      })()}
                     </div>
 
                     <div>

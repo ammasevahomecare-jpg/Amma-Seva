@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { HeartHandshake, ShieldCheck, Users, Sparkles, Target, Award, Clock, ChevronRight } from "lucide-react";
 import { SiteLayout } from "@/components/SiteLayout";
+import { AnimatedCounter } from "@/components/AnimatedCounter";
 import elderly from "@/assets/service-elderly.jpg";
 
 export const Route = createFileRoute("/about")({
@@ -145,18 +146,24 @@ function About() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
             
             {/* Stat counts columns */}
-            <div className="lg:col-span-7 grid grid-cols-3 gap-6 text-center">
-              <div className="space-y-1">
-                <div className="text-3xl sm:text-4xl font-extrabold text-gold">10,000+</div>
-                <div className="text-xs sm:text-sm font-medium text-white/70">Families Served</div>
+            <div className="lg:col-span-7 grid grid-cols-3 gap-1 sm:gap-4 md:gap-6 text-center">
+              <div className="space-y-0.5 sm:space-y-1 px-1">
+                <div className="text-base sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-gold tracking-tight whitespace-nowrap">
+                  <AnimatedCounter target={10000} suffix="+" duration={1800} />
+                </div>
+                <div className="text-[10px] sm:text-xs md:text-sm font-medium text-white/70">Families Served</div>
               </div>
-              <div className="space-y-1 border-l border-white/10">
-                <div className="text-3xl sm:text-4xl font-extrabold text-gold">250+</div>
-                <div className="text-xs sm:text-sm font-medium text-white/70">Caregivers</div>
+              <div className="space-y-0.5 sm:space-y-1 border-l border-white/10 px-1">
+                <div className="text-base sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-gold tracking-tight whitespace-nowrap">
+                  <AnimatedCounter target={250} suffix="+" duration={1500} />
+                </div>
+                <div className="text-[10px] sm:text-xs md:text-sm font-medium text-white/70">Caregivers</div>
               </div>
-              <div className="space-y-1 border-l border-white/10">
-                <div className="text-3xl sm:text-4xl font-extrabold text-gold">4.8/5</div>
-                <div className="text-xs sm:text-sm font-medium text-white/70">Google Rating</div>
+              <div className="space-y-0.5 sm:space-y-1 border-l border-white/10 px-1">
+                <div className="text-base sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-gold tracking-tight whitespace-nowrap">
+                  <span>4.8</span><span className="text-xs sm:text-base md:text-xl lg:text-2xl text-white/70 font-bold">/5</span>
+                </div>
+                <div className="text-[10px] sm:text-xs md:text-sm font-medium text-white/70">Google Rating</div>
               </div>
             </div>
 

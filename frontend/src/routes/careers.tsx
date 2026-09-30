@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SiteLayout, contact } from "@/components/SiteLayout";
-import { validateName, validatePhone, validateEmail } from "@/lib/validation";
+import { validateName, validatePhone, validateEmail, sanitizeIndianPhone, sanitizeName, sanitizeEmail, COMMON_EMAIL_DOMAIN_TYPOS } from "@/lib/validation";
 import { 
   HeartHandshake, ShieldCheck, Award, Clock, ArrowRight, Phone, 
   Gift, CheckCircle2, Lock, Sparkles, AlertCircle, Check 
@@ -36,6 +36,19 @@ function Careers() {
   const [role, setRole] = useState("caregiver");
   const [experience, setExperience] = useState("3");
   const [about, setAbout] = useState("");
+
+  const getEmailSuggestion = (val: string) => {
+    if (!val || !val.includes("@")) return null;
+    const parts = val.toLowerCase().trim().split("@");
+    if (parts.length === 2) {
+      const [local, domain] = parts;
+      if (COMMON_EMAIL_DOMAIN_TYPOS[domain]) {
+        return `${local}@${COMMON_EMAIL_DOMAIN_TYPOS[domain]}`;
+      }
+    }
+    return null;
+  };
+  const emailSuggestion = getEmailSuggestion(email);
 
   useEffect(() => {
     // Check URL search parameters for referral code
@@ -306,7 +319,7 @@ function Careers() {
                     </div>
                   )}
 
-                  <form className="space-y-4" onSubmit={handleSubmit}>
+                  <form className="space-y-4" onSubmit={handleSubmit} noValidate>
                     
                     {/* Referral Code Banner / Field */}
                     {isLockedFromUrl ? (
@@ -356,7 +369,7 @@ function Careers() {
                           type="text"
                           required
                           value={fullName}
-                          onChange={(e) => setFullName(e.target.value)}
+                          onChange={(e) => setFullName(sanitizeName(e.target.value))}
                           placeholder="e.g. Priya Sharma"
                           className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs font-semibold text-slate-800 outline-none focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c]"
                         />
@@ -365,9 +378,11 @@ function Careers() {
                         <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Mobile Phone (10-Digits) *</label>
                         <input
                           type="tel"
+                          inputMode="numeric"
+                          maxLength={10}
                           required
                           value={phone}
-                          onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
+                          onChange={(e) => setPhone(sanitizeIndianPhone(e.target.value))}
                           placeholder="9876543210"
                           className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs font-mono font-bold text-slate-800 outline-none focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c]"
                         />
@@ -376,14 +391,40 @@ function Careers() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Email Address</label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Email Address</label>
+                          {email && validateEmail(email, false, "Email") && (
+                            <span className="text-[10px] text-rose-500 font-bold flex items-center gap-0.5">
+                              <AlertCircle className="h-3 w-3" /> Invalid
+                            </span>
+                          )}
+                        </div>
                         <input
-                          type="email"
+                          type="text"
                           value={email}
-                          onChange={(e) => setEmail(e.target.value)}
+                          onChange={(e) => setEmail(e.target.value.toLowerCase().replace(/\s+/g, ''))}
                           placeholder="name@example.com"
-                          className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs font-semibold text-slate-800 outline-none focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c]"
+                          className={`w-full rounded-xl border px-3 py-2 text-xs font-semibold text-slate-800 outline-none transition-all ${
+                            email && validateEmail(email, false, "Email")
+                              ? "border-rose-400 bg-rose-50/30 focus:ring-1 focus:ring-rose-500 focus:border-rose-500"
+                              : "border-slate-200 bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c]"
+                          }`}
                         />
+                        {email && validateEmail(email, false, "Email address") && (
+                          <p className="mt-1 text-[11px] text-rose-600 font-semibold leading-tight">
+                            {validateEmail(email, false, "Email address")}
+                          </p>
+                        )}
+                        {emailSuggestion && (
+                          <button
+                            type="button"
+                            onClick={() => setEmail(emailSuggestion)}
+                            className="mt-1.5 w-full text-[11px] text-amber-900 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg hover:bg-amber-100 transition-colors flex items-center justify-between font-medium cursor-pointer shadow-2xs"
+                          >
+                            <span>Did you mean <strong>{emailSuggestion}</strong>?</span>
+                            <span className="font-bold text-[#9e761a] underline">Fix &rarr;</span>
+                          </button>
+                        )}
                       </div>
                       <div>
                         <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">City / Town *</label>
@@ -391,7 +432,7 @@ function Careers() {
                           type="text"
                           required
                           value={city}
-                          onChange={(e) => setCity(e.target.value)}
+                          onChange={(e) => setCity(sanitizeName(e.target.value))}
                           placeholder="Hyderabad"
                           className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs font-semibold text-slate-800 outline-none focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c]"
                         />

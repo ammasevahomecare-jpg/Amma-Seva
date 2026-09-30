@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { DocumentViewerModal } from "@/components/DocumentViewerModal";
-import { validateName, validatePhone, validateEmail, validateAddress, validateAadhaar, validatePAN } from "@/lib/validation";
+import { validateName, validatePhone, validateEmail, validateAddress, validateAadhaar, validatePAN, sanitizeIndianPhone, sanitizeName } from "@/lib/validation";
 import { 
   Trash2, RefreshCw, Mail, Phone, MapPin, ClipboardList, 
   Users, Calendar, DollarSign, ShieldAlert, LogOut, CheckCircle2, 
@@ -5032,7 +5032,7 @@ function AdminPage() {
                         <div>
                           <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Customer Name *</label>
                           <input 
-                            type="text" required value={bookingName} onChange={e => setBookingName(e.target.value)}
+                            type="text" required value={bookingName} onChange={e => setBookingName(sanitizeName(e.target.value))}
                             disabled={isRecordCaretakerPaymentMode}
                             className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800 disabled:opacity-70 disabled:bg-slate-100/50"
                           />
@@ -5040,7 +5040,7 @@ function AdminPage() {
                         <div>
                           <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Phone Number *</label>
                           <input 
-                            type="tel" required value={bookingPhone} onChange={e => setBookingPhone(e.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
+                            type="tel" inputMode="numeric" maxLength={10} required value={bookingPhone} onChange={e => setBookingPhone(sanitizeIndianPhone(e.target.value))}
                             placeholder="10-digit number"
                             disabled={isRecordCaretakerPaymentMode}
                             className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800 font-mono disabled:opacity-70 disabled:bg-slate-100/50"
@@ -5080,9 +5080,24 @@ function AdminPage() {
                         <div>
                           <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Booking Date</label>
                           <input 
-                            type="date" required value={bookingDate} onChange={e => setBookingDate(e.target.value)}
+                            type="date" 
+                            required 
+                            min={new Date().toLocaleDateString("en-CA")}
+                            max="2099-12-31"
+                            value={bookingDate} 
+                            onChange={e => {
+                              let val = e.target.value;
+                              if (val) {
+                                const parts = val.split("-");
+                                if (parts[0] && parts[0].length > 4) {
+                                  parts[0] = parts[0].slice(0, 4);
+                                  val = parts.join("-");
+                                }
+                              }
+                              setBookingDate(val);
+                            }}
                             disabled={isRecordCaretakerPaymentMode}
-                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800 disabled:opacity-70 disabled:bg-slate-100/50"
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800 disabled:opacity-70 disabled:bg-slate-100/50 cursor-pointer"
                           />
                         </div>
                         <div>
@@ -5348,7 +5363,7 @@ function AdminPage() {
                         <div>
                           <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Staff Name *</label>
                           <input 
-                            type="text" required value={caregiverName} onChange={e => setCaregiverName(e.target.value)}
+                            type="text" required value={caregiverName} onChange={e => setCaregiverName(sanitizeName(e.target.value))}
                             placeholder="Full Name"
                             className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] bg-white text-xs font-semibold text-slate-800"
                           />
@@ -5356,7 +5371,7 @@ function AdminPage() {
                         <div>
                           <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Phone Number *</label>
                           <input 
-                            type="tel" required value={caregiverPhone} onChange={e => setCaregiverPhone(e.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
+                            type="tel" inputMode="numeric" maxLength={10} required value={caregiverPhone} onChange={e => setCaregiverPhone(sanitizeIndianPhone(e.target.value))}
                             placeholder="10-digit phone"
                             className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] bg-white text-xs font-semibold text-slate-800 font-mono"
                           />

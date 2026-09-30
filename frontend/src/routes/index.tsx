@@ -8,6 +8,7 @@ import {
   Shield, Heart
 } from "lucide-react";
 import { SiteLayout, contact } from "@/components/SiteLayout";
+import { AnimatedCounter } from "@/components/AnimatedCounter";
 import { fetchServices } from "@/lib/services";
 import { fetchFaqs } from "@/lib/faqs";
 import hero from "@/assets/hero-care.jpg";
@@ -19,6 +20,7 @@ import icuRecovery from "@/assets/service-icu-recovery.jpg";
 import bedsideAttendant from "@/assets/service-bedside-attendant.jpg";
 import doctor from "@/assets/service-doctor.jpg";
 import mtp from "@/assets/service-mtp.jpg";
+import cartoonHealthcareCare from "@/assets/cartoon-healthcare-care.png";
 
 const HERO_IMAGES = [hero, motherBaby, physiotherapy, elderly, icuRecovery, bedsideAttendant, doctor];
 
@@ -222,147 +224,110 @@ function getBookingUrl(serviceSlug?: string) {
   return `/login?redirect=${encodeURIComponent(dest)}`;
 }
 
+import { HealthcareSilhouetteBorder } from "@/components/HealthcareSilhouetteBorder";
+
 function Home() {
   const { services, faqs } = Route.useLoaderData();
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [currentBgIndex, setCurrentBgIndex] = useState(0);
   const [selectedTag, setSelectedTag] = useState("All");
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentImageIndex((prev) => (prev + 1) % HERO_IMAGES.length);
-    }, 4000);
+      setCurrentBgIndex((prev) => (prev + 1) % HERO_IMAGES.length);
+    }, 4500);
     return () => clearInterval(timer);
   }, []);
 
   return (
     <SiteLayout showInauguration={true}>
       {/* ============================================================ */}
-      {/* 1. HERO SECTION (LUXURY RADIANT HEALTHCARE LAYOUT)            */}
+      {/* 1. HERO SECTION (NOBLE CENTERED HEALTHCARE WITH BG CAROUSEL) */}
       {/* ============================================================ */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#faf8f5] via-[#f7f3ec]/60 to-white border-b border-slate-100">
+      <section className="relative overflow-hidden bg-[#faf8f5] pt-3 sm:pt-4 pb-0 border-b border-slate-100">
         
+        {/* Background Image Carousel Layer with Light Opacity & Cross-Fade */}
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none">
+          {HERO_IMAGES.map((imgSrc, idx) => (
+            <img 
+              key={imgSrc}
+              src={imgSrc} 
+              alt="Amma Seva Healthcare Services" 
+              className={`absolute inset-0 w-full h-full object-cover object-center transition-all duration-1000 ease-in-out ${
+                idx === currentBgIndex ? "opacity-35 scale-100" : "opacity-0 scale-105"
+              }`}
+            />
+          ))}
+          {/* Subtle light gradient wash to ensure crystal-clear text readability */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#faf8f5]/65 via-[#faf8f5]/45 to-[#faf8f5]" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#faf8f5]/60 via-transparent to-[#faf8f5]/60" />
+        </div>
+
         {/* Subtle background ambient glows */}
-        <div className="absolute top-0 right-10 -z-10 h-96 w-96 rounded-full bg-gold/15 blur-[120px] pointer-events-none" />
-        <div className="absolute top-40 left-10 -z-10 h-96 w-96 rounded-full bg-[#0b183b]/5 blur-[120px] pointer-events-none" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-0 h-[400px] w-[1000px] rounded-full bg-gradient-to-b from-amber-200/30 via-gold/10 to-transparent blur-[140px] pointer-events-none" />
+        <div className="absolute top-10 left-8 z-0 h-64 w-64 rounded-full bg-[#0b183b]/5 blur-[100px] pointer-events-none" />
+        <div className="absolute top-10 right-8 z-0 h-64 w-64 rounded-full bg-gold/15 blur-[100px] pointer-events-none" />
 
-        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12 pt-8 pb-16 sm:pb-20 lg:pt-12 lg:pb-28">
-          <div className="grid gap-12 lg:grid-cols-12 lg:gap-10 xl:gap-14 items-center">
-            
-            {/* Left Column: Text, Value Propositions & CTAs */}
-            <div className="flex flex-col justify-center text-left lg:col-span-6 space-y-6 z-10">
-              
-              {/* Premium Pill Badge */}
-              <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/80 bg-gradient-to-r from-amber-50 to-amber-100/60 px-4 py-1.5 text-[11px] font-extrabold text-[#8f6414] tracking-wider uppercase max-w-fit shadow-xs">
-                <Sparkles className="h-3.5 w-3.5 text-gold" />
-                <span>HYDERABAD&apos;S PREMIER HOME HEALTHCARE NETWORK</span>
-              </div>
-
-              {/* Main Headline */}
-              <h1 className="text-4xl sm:text-5xl lg:text-[58px] font-extrabold text-[#0b183b] font-display tracking-tight leading-[1.12]">
-                Professional Care, <br />
-                with a <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#c9a24c] via-[#dfba63] to-[#b38938] italic font-semibold">Mother&apos;s Touch.</span>
-              </h1>
-
-              {/* Subtitle */}
-              <p className="max-w-2xl text-sm sm:text-base text-slate-600 leading-relaxed font-sans font-medium">
-                Certified nurses, compassionate elderly attendants, newborn specialists, and on-demand MTP hospital escorts — delivering hospital-standard healthcare to the comfort of your home.
-              </p>
-
-              {/* Verified Trust Badges */}
-              <div className="flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-700 pt-1">
-                <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-2xs">
-                  <ShieldCheck className="h-4 w-4 text-emerald-600" /> 100% Police &amp; Aadhaar Verified
-                </span>
-                <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-2xs">
-                  <Clock className="h-4 w-4 text-gold" /> 60-Min Quick Dispatch
-                </span>
-              </div>
-
-              {/* Dual Action Buttons */}
-              <div className="flex flex-wrap items-center gap-4 pt-2">
-                <a 
-                  href={getBookingUrl()} 
-                  className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-[#0b183b] to-[#14234f] hover:from-[#07112b] hover:to-[#0f1b3f] text-white font-bold text-xs sm:text-sm shadow-xl shadow-[#0b183b]/25 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2.5 cursor-pointer"
-                >
-                  <Calendar className="h-4 w-4 text-gold" />
-                  <span>Book a Verified Caregiver</span>
-                </a>
-
-                <a 
-                  href={`tel:${contact.PHONE_TEL}`} 
-                  className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-[#c9a24c] to-[#b38938] hover:from-[#b38938] hover:to-[#966b1a] text-white font-bold text-xs sm:text-sm shadow-lg shadow-gold/25 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2.5 cursor-pointer"
-                >
-                  <Phone className="h-4 w-4" />
-                  <span>24/7 Care Helpline</span>
-                </a>
-              </div>
-
-            </div>
-
-            {/* Right Column: Hero Visual with Glassmorphic Floating Cards */}
-            <div className="relative flex items-center justify-center lg:col-span-6">
-              
-              {/* Organic Curved Container with Shadow */}
-              <div className="relative overflow-hidden rounded-[2.5rem] sm:rounded-[3rem] border-4 border-white shadow-2xl shadow-slate-900/10 aspect-[4/3] sm:aspect-[16/12] w-full bg-slate-100 group">
-                {HERO_IMAGES.map((imgSrc, idx) => (
-                  <img
-                    key={imgSrc}
-                    src={imgSrc}
-                    alt="Amma Seva professional home care"
-                    width={1600}
-                    height={1200}
-                    className={`absolute inset-0 h-full w-full object-cover transition-all duration-1000 ease-in-out ${
-                      idx === currentImageIndex ? "opacity-100 scale-100" : "opacity-0 scale-105 pointer-events-none"
-                    }`}
-                  />
-                ))}
-
-                {/* Subtle lighting overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent pointer-events-none" />
-
-                {/* Dot navigation indicator */}
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-20 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/20">
-                  {HERO_IMAGES.map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setCurrentImageIndex(i)}
-                      className={`h-1.5 rounded-full transition-all duration-300 ${
-                        i === currentImageIndex ? "w-5 bg-gold" : "w-1.5 bg-white/60 hover:bg-white"
-                      }`}
-                      aria-label={`Slide ${i + 1}`}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Floating Glassmorphic Badge 1 (Top Left) */}
-              <div className="absolute -top-4 -left-4 sm:-top-6 sm:-left-6 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-xl p-3.5 sm:p-4 text-left space-y-0.5 animate-in fade-in zoom-in duration-700 hidden sm:block z-20">
-                <div className="flex items-center gap-1.5 text-gold text-xs font-bold">
-                  <div className="flex">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star key={i} className="h-3.5 w-3.5 fill-gold text-gold" />
-                    ))}
-                  </div>
-                  <span className="text-slate-800 font-extrabold">4.9 / 5.0</span>
-                </div>
-                <div className="text-[11px] font-bold text-slate-600">5,000+ Happy Families Assisted</div>
-              </div>
-
-              {/* Floating Glassmorphic Badge 2 (Bottom Right) */}
-              <div className="absolute -bottom-4 -right-4 sm:-bottom-6 sm:-right-6 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-xl p-3.5 sm:p-4 text-left space-y-1 animate-in fade-in zoom-in duration-700 hidden sm:block z-20">
-                <div className="flex items-center gap-2 text-xs font-bold text-emerald-700">
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                  </span>
-                  <span>Verified Staff On-Duty</span>
-                </div>
-                <div className="text-[11px] text-slate-500 font-medium">Quick 60-Min Hyderabad Dispatch</div>
-              </div>
-
-            </div>
-
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 pt-1 sm:pt-2 pb-6 sm:pb-8 text-center flex flex-col items-center relative z-10">
+          
+          {/* Premium Pill Badge (Centered) */}
+          <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/80 bg-gradient-to-r from-amber-50 via-amber-100/60 to-amber-50 px-4 sm:px-5 py-1.5 text-[11px] sm:text-xs font-extrabold text-[#8f6414] tracking-wider uppercase shadow-xs mb-3.5 sm:mb-4 hover:scale-102 transition-transform">
+            <Sparkles className="h-3.5 w-3.5 text-[#b8860b] animate-pulse" />
+            <span>HYDERABAD&apos;S #1 TRUSTED HOME HEALTHCARE &amp; CAREGIVING NETWORK</span>
           </div>
+
+          {/* Main Headline (Single Line on Desktop with rich contrast) */}
+          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-[46px] xl:text-[52px] font-extrabold text-[#0b183b] font-display tracking-tight leading-tight max-w-5xl text-center whitespace-normal lg:whitespace-nowrap">
+            Professional Bedside Healthcare, <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#b38228] via-[#d4af37] to-[#8c6014] font-bold">with a Mother&apos;s Touch.</span>
+          </h1>
+
+          {/* Subtitle (Refined, Warm & Crystal-Clear) */}
+          <p className="mt-3.5 max-w-3xl lg:max-w-4xl mx-auto text-xs sm:text-sm md:text-base text-slate-700 leading-relaxed font-sans font-medium text-center">
+            Doctor-supervised nurses, compassionate elderly caregivers, and verified hospital escorts — <br className="hidden sm:inline" />delivering trusted, hospital-standard clinical care in the comfort of your home.
+          </p>
+
+          {/* Verified Trust Badges (Centered) */}
+          <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3 text-xs font-semibold text-slate-700 pt-4">
+            <span className="inline-flex items-center gap-1.5 bg-white/95 px-3.5 py-1.5 rounded-full border border-slate-200/90 shadow-2xs">
+              <ShieldCheck className="h-4 w-4 text-emerald-600" /> 100% Police &amp; Aadhaar Verified
+            </span>
+            <span className="inline-flex items-center gap-1.5 bg-white/95 px-3.5 py-1.5 rounded-full border border-slate-200/90 shadow-2xs">
+              <Clock className="h-4 w-4 text-gold" /> 60-Min Quick Hyderabad Dispatch
+            </span>
+            <span className="inline-flex items-center gap-1.5 bg-white/95 px-3.5 py-1.5 rounded-full border border-slate-200/90 shadow-2xs">
+              <Star className="h-4 w-4 fill-gold text-gold" /> 4.9 / 5.0 (5,000+ Families Assisted)
+            </span>
+          </div>
+
+          {/* Dual Action Buttons (Centered) */}
+          <div className="flex flex-wrap items-center justify-center gap-3.5 sm:gap-4 pt-5">
+            <a 
+              href={getBookingUrl()} 
+              className="px-7 sm:px-8 py-3 sm:py-3.5 rounded-2xl bg-gradient-to-r from-[#0b183b] via-[#14234f] to-[#1e2a5a] hover:from-[#07112b] hover:to-[#121c3d] text-white font-bold text-xs sm:text-sm shadow-xl shadow-[#0b183b]/25 hover:scale-[1.03] active:scale-[0.98] transition-all flex items-center gap-2.5 cursor-pointer"
+            >
+              <Calendar className="h-4 w-4 text-gold" />
+              <span>Book a Verified Caregiver</span>
+            </a>
+
+            <a 
+              href={`tel:${contact.PHONE_TEL}`} 
+              className="px-7 sm:px-8 py-3 sm:py-3.5 rounded-2xl bg-gradient-to-r from-[#c9a24c] via-[#dfba63] to-[#b38938] hover:from-[#b38938] hover:to-[#966b1a] text-white font-bold text-xs sm:text-sm shadow-lg shadow-gold/25 hover:scale-[1.03] active:scale-[0.98] transition-all flex items-center gap-2.5 cursor-pointer"
+            >
+              <Phone className="h-4 w-4" />
+              <span>24/7 Care Helpline</span>
+            </a>
+          </div>
+
+        </div>
+
+        {/* ============================================================ */}
+        {/* PANORAMIC SILHOUETTE HEALTHCARE BORDER ACROSS HERO BOTTOM    */}
+        {/* ============================================================ */}
+        <div className="w-full relative mt-2 overflow-hidden">
+          <HealthcareSilhouetteBorder
+            fillColor="#0b183b"
+            accentColor="#c9a24c"
+            className="w-full h-24 sm:h-32 md:h-40 lg:h-48 text-[#0b183b]"
+          />
         </div>
 
       </section>
@@ -370,7 +335,7 @@ function Home() {
       {/* ============================================================ */}
       {/* 2. FLOATING 4-METRIC STATS OVERLAY BAR                      */}
       {/* ============================================================ */}
-      <div className="relative z-20 max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 -mt-10 sm:-mt-14">
+      <div className="relative z-20 max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 mt-4 sm:mt-6">
         <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xl shadow-slate-900/5 p-6 sm:p-7 grid grid-cols-2 lg:grid-cols-4 gap-6 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 text-left">
           
           {/* Stat 1 */}
@@ -379,7 +344,9 @@ function Home() {
               <Users className="h-6 w-6 text-gold" />
             </div>
             <div>
-              <div className="font-display text-2xl sm:text-3xl font-extrabold text-[#0b183b] tracking-tight">5,000+</div>
+              <div className="font-display text-2xl sm:text-3xl font-extrabold text-[#0b183b] tracking-tight">
+                <AnimatedCounter target={5000} suffix="+" duration={1800} />
+              </div>
               <div className="text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">HAPPY FAMILIES</div>
             </div>
           </div>
@@ -390,7 +357,9 @@ function Home() {
               <BadgeCheck className="h-6 w-6 text-gold" />
             </div>
             <div>
-              <div className="font-display text-2xl sm:text-3xl font-extrabold text-[#0b183b] tracking-tight">500+</div>
+              <div className="font-display text-2xl sm:text-3xl font-extrabold text-[#0b183b] tracking-tight">
+                <AnimatedCounter target={500} suffix="+" duration={1600} />
+              </div>
               <div className="text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">VERIFIED STAFF</div>
             </div>
           </div>
@@ -401,7 +370,9 @@ function Home() {
               <Headphones className="h-6 w-6 text-gold" />
             </div>
             <div>
-              <div className="font-display text-2xl sm:text-3xl font-extrabold text-[#0b183b] tracking-tight">24/7</div>
+              <div className="font-display text-2xl sm:text-3xl font-extrabold text-[#0b183b] tracking-tight">
+                <AnimatedCounter target={24} suffix="/7" formatCommas={false} duration={1200} />
+              </div>
               <div className="text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">CARE HELPLINE</div>
             </div>
           </div>
@@ -412,7 +383,9 @@ function Home() {
               <ShieldCheck className="h-6 w-6 text-gold" />
             </div>
             <div>
-              <div className="font-display text-2xl sm:text-3xl font-extrabold text-[#0b183b] tracking-tight">100%</div>
+              <div className="font-display text-2xl sm:text-3xl font-extrabold text-[#0b183b] tracking-tight">
+                <AnimatedCounter target={100} suffix="%" formatCommas={false} duration={1400} />
+              </div>
               <div className="text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">POLICE VERIFIED</div>
             </div>
           </div>
@@ -489,8 +462,8 @@ function Home() {
       <section className="py-14 sm:py-20 bg-slate-50/60 border-t border-slate-200/80">
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
           
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 text-left">
-            <div className="max-w-2xl space-y-2">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 text-left">
+            <div className="max-w-xl lg:max-w-2xl space-y-2">
               <div className="inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-widest text-[#966b1a]">
                 <Activity className="h-3.5 w-3.5 text-gold" /> Personalized Healthcare Solutions
               </div>
@@ -502,13 +475,20 @@ function Home() {
               </p>
             </div>
 
-            <Link 
-              to="/services" 
-              className="px-5 py-2.5 rounded-xl border border-[#0b183b] text-[#0b183b] hover:bg-[#0b183b] hover:text-white font-bold text-xs transition-all duration-200 flex items-center gap-1.5 shrink-0 max-w-fit"
-            >
-              <span>Explore All 12+ Services</span>
-              <ChevronRight className="h-4 w-4" />
-            </Link>
+            <div className="flex items-center gap-4 sm:gap-6 self-start md:self-center">
+              <img 
+                src={cartoonHealthcareCare} 
+                alt="Amma Seva Compassionate Doctors & Nurses" 
+                className="h-20 sm:h-24 md:h-28 lg:h-32 w-auto object-contain select-none drop-shadow-sm hover:scale-105 transition-transform duration-300"
+              />
+              <Link 
+                to="/services" 
+                className="px-5 py-2.5 rounded-xl border border-[#0b183b] text-[#0b183b] hover:bg-[#0b183b] hover:text-white font-bold text-xs transition-all duration-200 flex items-center gap-1.5 shrink-0 max-w-fit shadow-sm"
+              >
+                <span>Explore All 12+ Services</span>
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            </div>
           </div>
 
           {/* Interactive Category Filter Pills */}
@@ -665,13 +645,13 @@ function Home() {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <Link 
-                to="/mtp" 
+              <a 
+                href={getBookingUrl("mtp")} 
                 className="px-6 py-3 rounded-2xl bg-gradient-to-r from-[#c9a24c] to-[#b38938] hover:from-[#b38938] hover:to-[#966b1a] text-[#081023] font-extrabold text-xs shadow-lg shadow-gold/20 hover:scale-[1.02] transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <span>Book MTP Care Task</span>
                 <ArrowRight className="h-4 w-4" />
-              </Link>
+              </a>
               <Link 
                 to="/mtp" 
                 className="px-6 py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs backdrop-blur-md transition-all flex items-center gap-1.5 cursor-pointer"
@@ -751,47 +731,74 @@ function Home() {
       </section>
 
       {/* ============================================================ */}
-      {/* 6. 6 PILLARS OF TRUST (WHY AMMA SEVA)                        */}
+      {/* 6. 6 PILLARS OF TRUST (WHY AMMA SEVA - AUTO SCROLLING)       */}
       {/* ============================================================ */}
-      <section className="py-14 sm:py-20 bg-white border-t border-slate-100 text-left">
-        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
+      <section className="py-14 sm:py-20 bg-gradient-to-b from-white via-amber-50/10 to-slate-50/60 border-t border-slate-100 text-left overflow-hidden relative">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12 mb-10">
           
-          <div className="text-center max-w-3xl mx-auto mb-12 space-y-3">
-            <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border border-gold/30 bg-gold/10 text-xs font-bold text-[#966b1a] uppercase tracking-wider">
+          <div className="text-center max-w-3xl mx-auto space-y-3">
+            <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border border-gold/30 bg-gold/10 text-xs font-bold text-[#966b1a] uppercase tracking-wider shadow-2xs">
               <ShieldCheck className="h-3.5 w-3.5 text-gold" /> The Amma Seva Assurance
             </span>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#0b183b] font-display">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#0b183b] font-display tracking-tight">
               Why 5,000+ Hyderabad Families Trust Us
             </h2>
-            <p className="text-sm sm:text-base text-slate-500 font-medium">
+            <p className="text-sm sm:text-base text-slate-500 font-medium max-w-2xl mx-auto">
               We understand that inviting someone into your home for healthcare requires unwavering trust, clinical competence, and deep empathy.
             </p>
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {WHY.map((w, index) => (
-              <div 
-                key={w.title} 
-                className="group rounded-3xl border border-slate-200/90 bg-slate-50/50 p-6 shadow-sm hover:shadow-[0_20px_40px_-10px_rgba(201,162,76,0.22)] hover:border-gold/70 hover:bg-white transition-all duration-500 hover:-translate-y-2 relative"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0b183b] to-[#1e2a5a] text-gold shadow-md group-hover:scale-110 transition-transform">
-                    <w.icon className="h-6 w-6" />
-                  </div>
-                  <span className="text-xs font-mono font-bold text-slate-400 bg-white px-2.5 py-1 rounded-lg border border-slate-200 group-hover:border-gold/50 group-hover:text-gold transition-colors">
-                    0{index + 1}
-                  </span>
-                </div>
-                <h3 className="text-lg font-bold text-[#0b183b] font-display mb-2 group-hover:text-gold transition-colors">
-                  {w.title}
-                </h3>
-                <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
-                  {w.desc}
-                </p>
-              </div>
-            ))}
-          </div>
+        </div>
 
+        {/* Auto-scrolling Ribbon Wrapper with Edge Fade Mask */}
+        <div className="relative w-full overflow-hidden group py-4">
+          {/* Left Gradient Fade */}
+          <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-12 sm:w-32 bg-gradient-to-r from-white via-white/80 to-transparent z-10" />
+          {/* Right Gradient Fade */}
+          <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-12 sm:w-32 bg-gradient-to-l from-white via-white/80 to-transparent z-10" />
+
+          {/* Marquee Track (Duplicated for Seamless Infinite Loop) */}
+          <div className="flex animate-marquee gap-6 items-stretch">
+            {[...WHY, ...WHY].map((w, index) => {
+              const originalIndex = index % WHY.length;
+              return (
+                <div 
+                  key={`${w.title}-${index}`} 
+                  className="w-[300px] sm:w-[380px] lg:w-[410px] shrink-0 rounded-3xl border border-slate-200/90 bg-white/95 p-6 sm:p-7 shadow-md shadow-slate-900/4 hover:shadow-[0_20px_40px_-10px_rgba(201,162,76,0.28)] hover:border-gold hover:bg-white transition-all duration-300 hover:-translate-y-2 relative flex flex-col justify-between group/card cursor-pointer"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0b183b] to-[#1e2a5a] text-gold shadow-md group-hover/card:scale-110 group-hover/card:shadow-gold/20 transition-all">
+                        <w.icon className="h-6 w-6 text-gold" />
+                      </div>
+                      <span className="text-xs font-mono font-bold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 group-hover/card:border-gold/50 group-hover/card:text-[#8c6b16] group-hover/card:bg-gold/10 transition-colors">
+                        0{originalIndex + 1}
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-bold text-[#0b183b] font-display mb-2 group-hover/card:text-gold transition-colors">
+                      {w.title}
+                    </h3>
+                    <p className="text-xs sm:text-[13px] text-slate-500 leading-relaxed font-medium">
+                      {w.desc}
+                    </p>
+                  </div>
+
+                  <div className="mt-5 pt-3.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-400">
+                    <span className="flex items-center gap-1 text-emerald-700">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Verified Standard
+                    </span>
+                    <span className="text-gold font-mono">AMMA-SEVA</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Interactive Tip Indicator */}
+        <div className="mt-4 flex items-center justify-center gap-2 text-xs font-bold text-slate-400">
+          <span className="h-1.5 w-1.5 rounded-full bg-gold animate-ping" />
+          <span className="text-slate-500 text-[11px] font-medium">✨ Smooth Auto-Scroll • Hover any card to pause &amp; read</span>
         </div>
       </section>
 
@@ -914,115 +921,170 @@ function Home() {
       </section>
 
       {/* ============================================================ */}
-      {/* 9. 24/7 EMERGENCY HELP & DIRECT WHATSAPP BANNER             */}
+      {/* 9. 24/7 EMERGENCY HELP & SEVA PARCHMENT PAPER BANNER         */}
       {/* ============================================================ */}
-      <section className="py-16 sm:py-24 bg-gradient-to-br from-[#060b17] via-[#0f1a38] to-[#1e2a5a] text-white text-left relative overflow-hidden">
-        {/* Ambient Radial Glow Meshes */}
-        <div className="absolute -top-24 right-10 w-[500px] h-[500px] rounded-full bg-gold/15 blur-[140px] pointer-events-none" />
-        <div className="absolute -bottom-24 left-10 w-[500px] h-[500px] rounded-full bg-indigo-500/20 blur-[150px] pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[300px] bg-emerald-500/10 blur-[160px] pointer-events-none" />
-
-        {/* Decorative Grid Pattern */}
-        <div 
-          className="absolute inset-0 opacity-[0.03] pointer-events-none"
-          style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "32px 32px" }}
-        />
+      <section className="py-10 sm:py-14 seva-paper-bg text-slate-800 text-left relative overflow-hidden border-t border-b border-[#c9a24c]/25">
         
+        {/* Sacred Seva Lotus / Mandala Decorative SVG Watermark 1 (Top Right) */}
+        <div className="absolute -top-12 -right-12 w-64 h-64 text-[#c9a24c]/10 pointer-events-none transform rotate-12">
+          <svg viewBox="0 0 200 200" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-full h-full">
+            <circle cx="100" cy="100" r="80" strokeDasharray="4 4" />
+            <circle cx="100" cy="100" r="60" />
+            <circle cx="100" cy="100" r="40" />
+            <path d="M100 20 C110 50, 150 60, 180 100 C150 140, 110 150, 100 180 C90 150, 50 140, 20 100 C50 60, 90 50, 100 20 Z" />
+            <path d="M100 40 C108 65, 135 72, 160 100 C135 128, 108 135, 100 160 C92 135, 65 128, 40 100 C65 72, 92 65, 100 40 Z" />
+            <circle cx="100" cy="100" r="15" fill="currentColor" fillOpacity="0.15" />
+          </svg>
+        </div>
+
+        {/* Sacred Seva Lotus / Mandala Decorative SVG Watermark 2 (Bottom Left) */}
+        <div className="absolute -bottom-16 -left-16 w-72 h-72 text-[#c9a24c]/8 pointer-events-none transform -rotate-45">
+          <svg viewBox="0 0 200 200" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-full h-full">
+            <circle cx="100" cy="100" r="85" strokeDasharray="6 3" />
+            <circle cx="100" cy="100" r="65" />
+            <circle cx="100" cy="100" r="35" />
+            <path d="M100 15 C115 50, 150 65, 185 100 C150 135, 115 150, 100 185 C85 150, 50 135, 15 100 C50 65, 85 50, 100 15 Z" />
+            <circle cx="100" cy="100" r="12" fill="currentColor" fillOpacity="0.2" />
+          </svg>
+        </div>
+
+        {/* Ambient Subtle Golden Light Orbs */}
+        <div className="absolute top-10 left-1/3 w-80 h-80 rounded-full bg-amber-400/10 blur-[110px] pointer-events-none" />
+        <div className="absolute bottom-10 right-1/4 w-80 h-80 rounded-full bg-gold/12 blur-[100px] pointer-events-none" />
+
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12 relative z-10">
-          <div className="relative rounded-[2.5rem] bg-gradient-to-r from-white/[0.09] via-white/[0.04] to-white/[0.08] border border-gold/35 shadow-[0_30px_70px_-15px_rgba(0,0,0,0.8),0_0_50px_rgba(201,162,76,0.18)] backdrop-blur-2xl p-8 sm:p-12 lg:p-14 overflow-hidden">
+          
+          {/* Main Seva Parchment Paper Card (Compact & Refined) */}
+          <div className="relative rounded-3xl seva-paper-card border-2 border-[#c9a24c]/45 p-6 sm:p-8 lg:p-9 overflow-hidden ring-1 ring-[#c9a24c]/20">
             
+            {/* Traditional Gold Filigree Corner Accents */}
+            <div className="absolute top-2.5 left-2.5 w-6 h-6 border-t-2 border-l-2 border-[#c9a24c]/70 rounded-tl-lg pointer-events-none" />
+            <div className="absolute top-2.5 right-2.5 w-6 h-6 border-t-2 border-r-2 border-[#c9a24c]/70 rounded-tr-lg pointer-events-none" />
+            <div className="absolute bottom-2.5 left-2.5 w-6 h-6 border-b-2 border-l-2 border-[#c9a24c]/70 rounded-bl-lg pointer-events-none" />
+            <div className="absolute bottom-2.5 right-2.5 w-6 h-6 border-b-2 border-r-2 border-[#c9a24c]/70 rounded-br-lg pointer-events-none" />
+
             {/* Ambient Gold Header Line */}
-            <div className="absolute top-0 left-12 right-12 h-px bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
+            <div className="absolute top-0 left-16 right-16 h-[2px] bg-gradient-to-r from-transparent via-[#c9a24c]/70 to-transparent" />
+
+            {/* Decorative Helping Hands Watermark in Card Background */}
+            <div className="absolute top-1/2 right-1/3 -translate-y-1/2 w-52 h-52 text-[#c9a24c]/8 pointer-events-none">
+              <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="1.2" className="w-full h-full">
+                <path d="M25 65 C20 60, 18 50, 22 42 C25 36, 32 38, 35 44 C38 50, 42 58, 48 64" />
+                <path d="M75 65 C80 60, 82 50, 78 42 C75 36, 68 38, 65 44 C62 50, 58 58, 52 64" />
+                <path d="M50 48 C44 38, 36 42, 42 52 L50 62 L58 52 C64 42, 56 38, 50 48 Z" fill="currentColor" fillOpacity="0.12" />
+                <line x1="50" y1="28" x2="50" y2="34" strokeDasharray="1 1" />
+                <line x1="38" y1="32" x2="42" y2="37" strokeDasharray="1 1" />
+                <line x1="62" y1="32" x2="58" y2="37" strokeDasharray="1 1" />
+              </svg>
+            </div>
             
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
               
               {/* Left Column: Heading, Badges, Value Guarantees */}
-              <div className="lg:col-span-7 space-y-6">
+              <div className="lg:col-span-7 space-y-4">
                 
-                {/* Live Radar Pill */}
-                <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-emerald-500/15 text-emerald-300 text-xs font-extrabold border border-emerald-400/30 shadow-[0_0_20px_rgba(16,185,129,0.25)]">
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400"></span>
-                  </span>
-                  <span>24/7 RAPID CLINICAL DISPATCH HELPLINE</span>
+                {/* Live Radar Pill + Helping Hands Sticker Badge */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1e2a5a] text-white text-[11px] font-extrabold border border-[#c9a24c]/40 shadow-xs">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+                    </span>
+                    <span className="text-[#edd392] tracking-wider uppercase font-bold">
+                      24/7 Clinical Dispatch
+                    </span>
+                  </div>
+
+                  {/* Helping Hands Sticker Seal */}
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-100 to-orange-50 border border-dashed border-[#c9a24c]/70 text-[#8c6b16] text-[10px] font-black uppercase tracking-wide shadow-2xs transform -rotate-1 hover:rotate-0 transition-transform cursor-pointer">
+                    <span>🤲</span>
+                    <span>Seva Helping Hands</span>
+                  </div>
                 </div>
 
                 {/* Headline */}
-                <div className="space-y-3">
-                  <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold font-display leading-[1.15] tracking-tight text-white">
-                    Need Immediate In-Home Care Assistance in Hyderabad?
+                <div className="space-y-1.5">
+                  <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold font-display leading-tight tracking-tight text-[#0b183b]">
+                    Need In-Home Care Assistance in Hyderabad?
                   </h2>
-                  <p className="text-base sm:text-lg font-display text-transparent bg-clip-text bg-gradient-to-r from-[#edd392] via-[#c9a24c] to-[#fcefc7]">
-                    Qualified Nurses, Attendants &amp; ICU Care at Your Doorstep in 60 Minutes.
+                  <p className="text-sm sm:text-base font-display font-bold text-[#966b1a]">
+                    Verified Nurses, Attendants &amp; ICU Care at Your Doorstep in 60 Minutes.
                   </p>
                 </div>
 
-                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-xl font-normal">
-                  Whether it is post-operative recovery, urgent bedside elderly care, or new mother support, our clinical coordinators dispatch background-verified healthcare professionals immediately.
+                <p className="text-xs sm:text-[13px] text-slate-700 leading-relaxed max-w-xl font-medium">
+                  Emergency bedside elderly care, nursing, and recovery support dispatched across Hyderabad with motherly compassion.
                 </p>
 
-                {/* 3 Value Guarantee Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                  <div className="p-3.5 rounded-2xl bg-white/[0.05] border border-white/10 backdrop-blur-md space-y-1 hover:border-gold/40 transition-colors">
-                    <div className="flex items-center gap-2 text-gold">
-                      <Zap className="h-4 w-4" />
-                      <span className="text-xs font-bold text-white">&lt; 60 Min Arrival</span>
+                {/* 3 Value Guarantee Cards (Compact Parchment Seal Tiles) */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                  <div className="p-2.5 sm:p-3 rounded-xl bg-white/90 border border-[#c9a24c]/30 shadow-2xs space-y-0.5 hover:border-[#c9a24c] hover:shadow-xs transition-all group/tile">
+                    <div className="flex items-center gap-1.5 text-[#966b1a]">
+                      <Zap className="h-3.5 w-3.5 text-[#c9a24c] group-hover/tile:scale-110 transition-transform" />
+                      <span className="text-[11px] font-bold text-[#0b183b]">&lt; 60 Min Arrival</span>
                     </div>
-                    <p className="text-[11px] text-slate-300">Fast doorstep deployment across all Hyderabad zones</p>
+                    <p className="text-[10px] text-slate-600 font-medium">Fast doorstep dispatch</p>
                   </div>
 
-                  <div className="p-3.5 rounded-2xl bg-white/[0.05] border border-white/10 backdrop-blur-md space-y-1 hover:border-gold/40 transition-colors">
-                    <div className="flex items-center gap-2 text-emerald-400">
-                      <ShieldCheck className="h-4 w-4" />
-                      <span className="text-xs font-bold text-white">100% Verified</span>
+                  <div className="p-2.5 sm:p-3 rounded-xl bg-white/90 border border-[#c9a24c]/30 shadow-2xs space-y-0.5 hover:border-[#c9a24c] hover:shadow-xs transition-all group/tile">
+                    <div className="flex items-center gap-1.5 text-emerald-700">
+                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 group-hover/tile:scale-110 transition-transform" />
+                      <span className="text-[11px] font-bold text-[#0b183b]">100% Verified</span>
                     </div>
-                    <p className="text-[11px] text-slate-300">Police-cleared &amp; hospital-trained healthcare staff</p>
+                    <p className="text-[10px] text-slate-600 font-medium">Police &amp; medically cleared</p>
                   </div>
 
-                  <div className="p-3.5 rounded-2xl bg-white/[0.05] border border-white/10 backdrop-blur-md space-y-1 hover:border-gold/40 transition-colors">
-                    <div className="flex items-center gap-2 text-indigo-300">
-                      <Headphones className="h-4 w-4" />
-                      <span className="text-xs font-bold text-white">24/7 Live Desk</span>
+                  <div className="p-2.5 sm:p-3 rounded-xl bg-white/90 border border-[#c9a24c]/30 shadow-2xs space-y-0.5 hover:border-[#c9a24c] hover:shadow-xs transition-all group/tile">
+                    <div className="flex items-center gap-1.5 text-indigo-700">
+                      <Headphones className="h-3.5 w-3.5 text-indigo-600 group-hover/tile:scale-110 transition-transform" />
+                      <span className="text-[11px] font-bold text-[#0b183b]">24/7 Live Desk</span>
                     </div>
-                    <p className="text-[11px] text-slate-300">Direct clinical supervision &amp; zero waiting time</p>
+                    <p className="text-[10px] text-slate-600 font-medium">Zero waiting time</p>
                   </div>
                 </div>
 
               </div>
 
-              {/* Right Column: Luxury Action Hub */}
+              {/* Right Column: Compact Action Hub (Royal Navy & Gold Seal Box) */}
               <div className="lg:col-span-5">
-                <div className="rounded-3xl bg-gradient-to-b from-[#091226]/90 to-[#0d1b3d]/90 border border-gold/30 p-6 sm:p-8 backdrop-blur-xl shadow-2xl space-y-5 text-left relative group">
+                <div className="rounded-2xl bg-gradient-to-b from-[#0b183b] via-[#11214a] to-[#1e2a5a] border-2 border-[#c9a24c]/50 p-4 sm:p-6 text-white shadow-xl space-y-3 sm:space-y-3.5 text-left relative group">
                   
-                  {/* Glowing ambient ring */}
-                  <div className="absolute -top-10 -right-10 w-40 h-40 bg-gold/10 rounded-full blur-2xl pointer-events-none" />
+                  {/* Floating Helping Hands Stamp */}
+                  <div className="absolute -top-3 -right-2 sm:-right-3 bg-gradient-to-r from-[#c9a24c] via-[#f7e4b2] to-[#b38938] text-[#081023] text-[8.5px] sm:text-[9px] font-black uppercase tracking-wider px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full shadow-md border border-white/80 flex items-center gap-1 transform rotate-2 group-hover:rotate-0 transition-transform z-20 whitespace-nowrap">
+                    <span>🤝</span>
+                    <span>Helping Hands Care</span>
+                  </div>
 
-                  <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                  {/* Glowing ambient ring */}
+                  <div className="absolute -top-10 -right-10 w-32 h-32 bg-gold/15 rounded-full blur-xl pointer-events-none" />
+
+                  <div className="flex items-center justify-between border-b border-white/15 pb-2.5 sm:pb-3">
                     <div>
-                      <span className="text-[11px] uppercase tracking-wider text-gold font-bold block">Direct Care Hotline</span>
-                      <h3 className="text-lg font-bold text-white font-display">Speak to Coordinator Now</h3>
+                      <span className="text-[10px] uppercase tracking-wider text-[#edd392] font-bold block">
+                        Direct Care Hotline
+                      </span>
+                      <h3 className="text-sm sm:text-base font-bold text-white font-display">Speak to Coordinator</h3>
                     </div>
-                    <div className="h-10 w-10 rounded-2xl bg-gold/15 border border-gold/30 flex items-center justify-center text-gold shadow-xs">
-                      <Phone className="h-5 w-5 animate-bounce" />
+                    <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-xl bg-gold/20 border border-gold/40 flex items-center justify-center text-gold shadow-xs shrink-0">
+                      <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-bounce" />
                     </div>
                   </div>
 
                   {/* Primary CTA: Phone Button */}
                   <a
                     href={`tel:${contact.PHONE_TEL}`}
-                    className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-[#c9a24c] via-[#dfba63] to-[#b38938] hover:from-[#b38938] hover:to-[#966b1a] text-[#081023] font-black text-sm shadow-[0_10px_30px_rgba(201,162,76,0.35)] hover:shadow-[0_15px_35px_rgba(201,162,76,0.5)] hover:scale-102 transition-all flex items-center justify-between group/btn cursor-pointer"
+                    className="w-full py-2.5 sm:py-3 px-3.5 sm:px-4 rounded-xl bg-gradient-to-r from-[#c9a24c] via-[#dfba63] to-[#b38938] hover:from-[#b38938] hover:to-[#966b1a] text-[#081023] font-black text-xs shadow-md hover:shadow-lg hover:scale-101 transition-all flex items-center justify-between group/btn cursor-pointer"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-xl bg-[#081023]/15 flex items-center justify-center">
-                        <Phone className="h-4 w-4 text-[#081023]" />
+                    <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                      <div className="h-7 w-7 rounded-lg bg-[#081023]/15 flex items-center justify-center shrink-0">
+                        <Phone className="h-3.5 w-3.5 text-[#081023]" />
                       </div>
-                      <div className="text-left">
-                        <div className="text-[10px] font-extrabold uppercase tracking-widest text-[#081023]/70">Tap to Call 24/7</div>
-                        <div className="text-sm font-black tracking-wide">+91 94945 16543</div>
+                      <div className="text-left min-w-0">
+                        <div className="text-[9px] font-extrabold uppercase tracking-widest text-[#081023]/70">Tap to Call 24/7</div>
+                        <div className="text-xs font-black tracking-wide whitespace-nowrap">+91 94945 16543</div>
                       </div>
                     </div>
-                    <ChevronRight className="h-5 w-5 text-[#081023] transition-transform group-hover/btn:translate-x-1" />
+                    <ChevronRight className="h-4 w-4 text-[#081023] transition-transform group-hover/btn:translate-x-1 shrink-0" />
                   </a>
 
                   {/* Secondary CTA: WhatsApp Button */}
@@ -1030,27 +1092,27 @@ function Home() {
                     href={`https://wa.me/${contact.WHATSAPP}?text=Hello%20Amma%20Seva%2C%20I%20need%20urgent%20home%20healthcare%20support`}
                     target="_blank"
                     rel="noreferrer"
-                    className="w-full py-3.5 px-6 rounded-2xl bg-emerald-600/90 hover:bg-emerald-500 border border-emerald-400/40 text-white font-bold text-xs shadow-lg shadow-emerald-950/40 hover:scale-102 transition-all flex items-center justify-between group/wa cursor-pointer"
+                    className="w-full py-2.5 px-3.5 sm:px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 border border-emerald-400/40 text-white font-bold text-[11px] shadow-md hover:scale-101 transition-all flex items-center justify-between group/wa cursor-pointer"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-xl bg-white/20 flex items-center justify-center">
-                        <MessageCircle className="h-4 w-4 text-white" />
+                    <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                      <div className="h-6 w-6 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+                        <MessageCircle className="h-3.5 w-3.5 text-white" />
                       </div>
-                      <div className="text-left">
-                        <div className="text-[10px] uppercase tracking-wider text-emerald-200">Instant Consultation</div>
-                        <div className="text-xs font-bold">Chat on WhatsApp Care Desk</div>
+                      <div className="text-left min-w-0">
+                        <div className="text-[9px] uppercase tracking-wider text-emerald-200">Instant Consultation</div>
+                        <div className="text-[11px] font-bold whitespace-nowrap">Chat on WhatsApp</div>
                       </div>
                     </div>
-                    <ArrowRight className="h-4 w-4 text-white transition-transform group-hover/wa:translate-x-1" />
+                    <ArrowRight className="h-3.5 w-3.5 text-white transition-transform group-hover/wa:translate-x-1 shrink-0" />
                   </a>
 
                   {/* Social Proof & Trust Footer */}
-                  <div className="pt-3 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-300">
-                    <div className="flex items-center gap-1 text-gold font-bold">
-                      <Star className="h-3.5 w-3.5 fill-gold" />
-                      <span>4.9 / 5 Trusted Score</span>
+                  <div className="pt-2 border-t border-white/15 flex items-center justify-between text-[10px] text-slate-300">
+                    <div className="flex items-center gap-1 text-[#edd392] font-bold whitespace-nowrap">
+                      <Star className="h-3 w-3 fill-[#edd392] text-[#edd392] shrink-0" />
+                      <span>4.9 / 5 Rating</span>
                     </div>
-                    <span className="text-slate-400 font-medium">5,000+ Verified Shifts</span>
+                    <span className="text-slate-300 font-medium whitespace-nowrap">5,000+ Shifts</span>
                   </div>
 
                 </div>

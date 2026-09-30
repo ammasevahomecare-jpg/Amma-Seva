@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SiteLayout, contact } from "@/components/SiteLayout";
+import { sanitizeIndianPhone, sanitizeName, validateName, validateEmail } from "@/lib/validation";
 import {
   Car,
   Clock,
@@ -93,7 +94,8 @@ function MTPPage() {
   const [experience, setExperience] = useState("Fresher / Ready to Learn");
   const [skillsSummary, setSkillsSummary] = useState("");
   const [aadhaar, setAadhaar] = useState("");
-  const [emergencyContact, setEmergencyContact] = useState("");
+  const [emergencyContactName, setEmergencyContactName] = useState("");
+  const [emergencyContactPhone, setEmergencyContactPhone] = useState("");
 
   // Document Uploads State
   const [aadhaarDoc, setAadhaarDoc] = useState("");
@@ -176,7 +178,8 @@ function MTPPage() {
     setEmail("");
     setAge("");
     setAadhaar("");
-    setEmergencyContact("");
+    setEmergencyContactName("");
+    setEmergencyContactPhone("");
     setSkillsSummary("");
     setAadhaarDoc("");
     setAadhaarDocName("");
@@ -194,19 +197,12 @@ function MTPPage() {
     e.preventDefault();
 
     // 1. Full Name Validation
+    const nameErr = validateName(name, "Full name");
+    if (nameErr) {
+      toast.error(nameErr);
+      return;
+    }
     const cleanName = name.trim();
-    if (!cleanName) {
-      toast.error("Please enter your full name.");
-      return;
-    }
-    if (cleanName.length < 3) {
-      toast.error("Full name must be at least 3 characters long.");
-      return;
-    }
-    if (!/^[a-zA-Z\s.'-]{3,60}$/.test(cleanName)) {
-      toast.error("Please enter a valid full name (letters and spaces only).");
-      return;
-    }
 
     // 2. Mobile Number Validation (Strict Indian 10-digit mobile starting with 6,7,8,9)
     const cleanPhone = phone.replace(/[^0-9]/g, "");
@@ -223,12 +219,12 @@ function MTPPage() {
       return;
     }
 
-    // 3. Email Validation (If provided, must be valid RFC-compliant format)
+    // 3. Email Validation (If provided, must be valid and typo-free)
     const cleanEmail = email.trim();
     if (cleanEmail) {
-      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-      if (!emailRegex.test(cleanEmail)) {
-        toast.error("Please enter a valid email address (e.g. yourname@gmail.com).");
+      const emailErr = validateEmail(cleanEmail, false, "Email address");
+      if (emailErr) {
+        toast.error(emailErr);
         return;
       }
     }
@@ -256,8 +252,27 @@ function MTPPage() {
     }
 
     // 7. Emergency Contact Validation
-    if (!emergencyContact.trim()) {
-      toast.error("Please provide an Emergency Contact (Name & Phone).");
+    const emergencyNameErr = validateName(emergencyContactName, "Emergency Contact Person");
+    if (emergencyNameErr) {
+      toast.error(emergencyNameErr);
+      return;
+    }
+    const cleanEmergencyName = emergencyContactName.trim();
+    const cleanEmergencyPhone = emergencyContactPhone.replace(/[^0-9]/g, "");
+    if (!cleanEmergencyPhone) {
+      toast.error("Please enter the Emergency Contact mobile number.");
+      return;
+    }
+    if (cleanEmergencyPhone.length !== 10) {
+      toast.error("Emergency Contact mobile number must be exactly 10 digits.");
+      return;
+    }
+    if (!/^[6-9]\d{9}$/.test(cleanEmergencyPhone)) {
+      toast.error("Please enter a valid 10-digit Indian Emergency mobile number starting with 6, 7, 8, or 9.");
+      return;
+    }
+    if (cleanEmergencyPhone === cleanPhone) {
+      toast.error("Emergency Contact number cannot be identical to your own mobile number.");
       return;
     }
 
@@ -295,7 +310,7 @@ function MTPPage() {
         experience,
         skillsSummary: skillsSummary.trim(),
         aadhaar: cleanAadhaar,
-        emergencyContact: emergencyContact.trim(),
+        emergencyContact: `${cleanEmergencyName} (${cleanEmergencyPhone})`,
         aadhaarDoc,
         panDoc,
         drivingLicenseDoc,
@@ -578,7 +593,7 @@ function MTPPage() {
                         type="text"
                         required
                         value={name}
-                        onChange={(e) => setName(e.target.value)}
+                        onChange={(e) => setName(sanitizeName(e.target.value))}
                         placeholder="e.g. Ramesh Kumar / Anitha Reddy"
                         className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-gold focus:bg-white focus:ring-2 focus:ring-gold/15 outline-none transition-all font-medium"
                       />
@@ -588,15 +603,22 @@ function MTPPage() {
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                         Mobile / WhatsApp Number <span className="text-rose-500">*</span>
                       </label>
-                      <input
-                        type="tel"
-                        required
-                        maxLength={10}
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ""))}
-                        placeholder="10-digit mobile number"
-                        className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-gold focus:bg-white focus:ring-2 focus:ring-gold/15 outline-none transition-all font-medium"
-                      />
+                      <div className="relative flex items-center">
+                        <div className="absolute left-2.5 flex items-center gap-1 text-[11px] font-bold text-slate-600 border-r border-slate-200 pr-1.5 pointer-events-none">
+                          <span>🇮🇳</span>
+                          <span>+91</span>
+                        </div>
+                        <input
+                          type="tel"
+                          inputMode="numeric"
+                          required
+                          maxLength={10}
+                          value={phone}
+                          onChange={(e) => setPhone(sanitizeIndianPhone(e.target.value))}
+                          placeholder="10-digit mobile"
+                          className="w-full h-11 pl-14 pr-3.5 rounded-xl border border-slate-200 bg-slate-50/60 text-sm text-slate-800 font-mono font-bold placeholder:text-slate-400 placeholder:font-sans placeholder:font-normal focus:border-gold focus:bg-white focus:ring-2 focus:ring-gold/15 outline-none transition-all"
+                        />
+                      </div>
                     </div>
 
                     <div>
@@ -632,11 +654,14 @@ function MTPPage() {
                         Age (Years)
                       </label>
                       <input
-                        type="number"
-                        min={18}
-                        max={70}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={2}
                         value={age}
-                        onChange={(e) => setAge(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, "").slice(0, 2);
+                          setAge(val);
+                        }}
                         placeholder="e.g. 25"
                         className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-gold focus:bg-white focus:ring-2 focus:ring-gold/15 outline-none transition-all font-medium"
                       />
@@ -648,9 +673,13 @@ function MTPPage() {
                       </label>
                       <input
                         type="text"
-                        maxLength={14}
+                        inputMode="numeric"
+                        maxLength={12}
                         value={aadhaar}
-                        onChange={(e) => setAadhaar(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, "").slice(0, 12);
+                          setAadhaar(val);
+                        }}
                         placeholder="12-digit Aadhaar Number"
                         className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-gold focus:bg-white focus:ring-2 focus:ring-gold/15 outline-none transition-all font-medium"
                       />
@@ -688,7 +717,13 @@ function MTPPage() {
                       </label>
                       <select
                         value={vehicle}
-                        onChange={(e) => setVehicle(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setVehicle(val);
+                          if (val === "No Vehicle (Public Transport / Walking)") {
+                            setDrivingLicense("No");
+                          }
+                        }}
                         className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/60 px-3 text-sm text-slate-800 focus:border-gold focus:bg-white focus:ring-2 focus:ring-gold/15 outline-none transition-all font-medium cursor-pointer"
                       >
                         <option value="Two-wheeler (Bike / Scooty)">Two-wheeler (Bike / Scooty)</option>
@@ -699,12 +734,17 @@ function MTPPage() {
 
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                        Driving License Status
+                        Driving License Status {vehicle === "No Vehicle (Public Transport / Walking)" && <span className="text-slate-400 font-normal text-[11px] lowercase">(disabled)</span>}
                       </label>
                       <select
-                        value={drivingLicense}
+                        disabled={vehicle === "No Vehicle (Public Transport / Walking)"}
+                        value={vehicle === "No Vehicle (Public Transport / Walking)" ? "No" : drivingLicense}
                         onChange={(e) => setDrivingLicense(e.target.value)}
-                        className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/60 px-3 text-sm text-slate-800 focus:border-gold focus:bg-white focus:ring-2 focus:ring-gold/15 outline-none transition-all font-medium cursor-pointer"
+                        className={`w-full h-11 rounded-xl border px-3 text-sm transition-all font-medium ${
+                          vehicle === "No Vehicle (Public Transport / Walking)"
+                            ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed select-none"
+                            : "border-slate-200 bg-slate-50/60 text-slate-800 focus:border-gold focus:bg-white focus:ring-2 focus:ring-gold/15 outline-none cursor-pointer"
+                        }`}
                       >
                         <option value="Yes">Yes, Active License</option>
                         <option value="No">No Driving License</option>
@@ -747,15 +787,38 @@ function MTPPage() {
 
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                        Emergency Contact <span className="text-slate-400 font-normal">(Name &amp; Phone)</span>
+                        Emergency Contact Person <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="text"
-                        value={emergencyContact}
-                        onChange={(e) => setEmergencyContact(e.target.value)}
-                        placeholder="e.g. Brother: Suresh (98480xxxxx)"
+                        required
+                        value={emergencyContactName}
+                        onChange={(e) => setEmergencyContactName(sanitizeName(e.target.value))}
+                        placeholder="e.g. Suresh Kumar (Brother)"
                         className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-gold focus:bg-white focus:ring-2 focus:ring-gold/15 outline-none transition-all font-medium"
                       />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                        Emergency Mobile Number <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative flex items-center">
+                        <div className="absolute left-2.5 flex items-center gap-1 text-[11px] font-bold text-slate-600 border-r border-slate-200 pr-1.5 pointer-events-none">
+                          <span>🇮🇳</span>
+                          <span>+91</span>
+                        </div>
+                        <input
+                          type="tel"
+                          inputMode="numeric"
+                          required
+                          maxLength={10}
+                          value={emergencyContactPhone}
+                          onChange={(e) => setEmergencyContactPhone(sanitizeIndianPhone(e.target.value))}
+                          placeholder="10-digit mobile"
+                          className="w-full h-11 pl-14 pr-3.5 rounded-xl border border-slate-200 bg-slate-50/60 text-sm text-slate-800 font-mono font-bold placeholder:text-slate-400 placeholder:font-sans placeholder:font-normal focus:border-gold focus:bg-white focus:ring-2 focus:ring-gold/15 outline-none transition-all"
+                        />
+                      </div>
                     </div>
 
                     {/* Full-width Bio */}

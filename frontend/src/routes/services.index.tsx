@@ -15,6 +15,7 @@ import icu from "@/assets/service-icu-recovery.jpg";
 import attendant from "@/assets/service-bedside-attendant.jpg";
 import doctor from "@/assets/service-doctor.jpg";
 import mtp from "@/assets/service-mtp.jpg";
+import heroCare from "@/assets/hero-care.jpg";
 
 function getServiceDetails(slug: string) {
   const details: Record<string, { category: string; badgeClass: string; image: string; highlights: string[]; shiftType: string }> = {
@@ -195,38 +196,362 @@ function ServicesPage() {
         <div className="absolute top-10 left-0 -z-10 h-96 w-96 rounded-full bg-indigo-500/10 blur-[130px] pointer-events-none" />
 
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
-          <div className="max-w-3xl space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
             
-            {/* Pill Tag */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-gold/40 bg-gold/10 text-xs font-extrabold text-[#966b1a] uppercase tracking-wider shadow-xs backdrop-blur-xs">
-              <Sparkles className="h-3.5 w-3.5 text-gold animate-pulse" />
-              Verified In-Home Healthcare Services
+            {/* Left Column: Heading, Badges */}
+            <div className="lg:col-span-7 space-y-4">
+              
+              {/* Pill Tag */}
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-gold/40 bg-gold/10 text-xs font-extrabold text-[#966b1a] uppercase tracking-wider shadow-xs backdrop-blur-xs">
+                <Sparkles className="h-3.5 w-3.5 text-gold animate-pulse" />
+                Verified In-Home Healthcare Services
+              </div>
+
+              {/* Headline */}
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#1e2a5a] font-display tracking-tight leading-[1.25] sm:leading-[1.2]">
+                <span className="block">Clinical Excellence,</span>
+                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#b3882f] via-[#c9a24c] to-[#966b1a] italic font-semibold mt-1">
+                  With a Mother&apos;s Touch.
+                </span>
+              </h1>
+
+              {/* Description */}
+              <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-medium pt-1">
+                From continuous newborn nurturing and trained nursing procedures to dignified 24/7 elderly companions — explore our full suite of background-verified homecare services across Hyderabad.
+              </p>
+
+              {/* Key Trust Highlights Strip */}
+              <div className="pt-2 flex flex-wrap items-center gap-3 text-xs font-bold text-slate-600">
+                <span className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 shadow-2xs">
+                  <ShieldCheck className="h-4 w-4 text-emerald-600" /> 100% Background Verified
+                </span>
+                <span className="flex items-center gap-1.5 text-[#1e2a5a] bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
+                  <Clock className="h-4 w-4 text-gold" /> 60-Minute Fast Dispatch
+                </span>
+                <span className="flex items-center gap-1.5 text-indigo-800 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-200 shadow-2xs">
+                  <CheckCircle2 className="h-4 w-4 text-indigo-600" /> Zero Advance Required
+                </span>
+              </div>
+
             </div>
 
-            {/* Headline */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#1e2a5a] font-display tracking-tight leading-[1.12]">
-              Clinical Excellence, <br className="hidden sm:inline" />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#b3882f] via-[#c9a24c] to-[#966b1a] relative italic font-semibold">
-                With a Mother&apos;s Touch.
-              </span>
-            </h1>
+            {/* Right Column: Hexagonal / Honeycomb Service Mosaic (Interactive Small Blocks) */}
+            <div className="lg:col-span-5 relative flex flex-col items-center lg:items-end justify-center pt-6 lg:pt-0">
+              <div className="relative w-full max-w-[480px] flex flex-col items-center">
+                
+                {/* Background ambient gold & sapphire glow */}
+                <div className="absolute -inset-4 bg-gradient-to-tr from-gold/20 via-indigo-500/15 to-emerald-500/10 rounded-full blur-3xl -z-10 opacity-70 pointer-events-none" />
 
-            {/* Description */}
-            <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-medium">
-              From continuous newborn nurturing and trained nursing procedures to dignified 24/7 elderly companions — explore our full suite of background-verified homecare services across Hyderabad.
-            </p>
+                {/* Floating Top Trust Badge */}
+                <div className="mb-3 inline-flex items-center gap-2 bg-white/95 backdrop-blur-md px-3.5 py-1.5 rounded-full shadow-md border border-slate-200/80 text-left">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                  </span>
+                  <span className="text-[11px] font-extrabold text-[#1e2a5a]">Verified Specialists & Care Units</span>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                    Hyderabad
+                  </span>
+                </div>
 
-            {/* Key Trust Highlights Strip */}
-            <div className="pt-2 flex flex-wrap items-center gap-4 text-xs font-bold text-slate-600">
-              <span className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">
-                <ShieldCheck className="h-4 w-4 text-emerald-600" /> 100% Background Verified
-              </span>
-              <span className="flex items-center gap-1.5 text-[#1e2a5a] bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
-                <Clock className="h-4 w-4 text-gold" /> 60-Minute Fast Dispatch
-              </span>
-              <span className="flex items-center gap-1.5 text-indigo-800 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-200">
-                <CheckCircle2 className="h-4 w-4 text-indigo-600" /> Zero Advance Required
-              </span>
+                {/* HONEYCOMB / HEXAGONAL MESH (4-5-4-3 STAGGERED GRID) */}
+                <div className="relative flex flex-col items-center py-2 select-none">
+                  
+                  {/* ROW 1: 4 Hexagons */}
+                  <div className="flex justify-center items-center gap-2 sm:gap-2.5 relative z-10">
+                    {/* 1. Mother & Baby */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory("Maternal");
+                        document.getElementById("services-catalog")?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className="group/hex relative w-15 h-17 sm:w-18 sm:h-21 lg:w-20 lg:h-23 bg-[#10b981] p-[2.5px] sm:p-[3px] cursor-pointer transition-all duration-300 hover:scale-115 hover:z-30 hover:shadow-xl"
+                      style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+                      title="Mother & Baby Care"
+                    >
+                      <div className="w-full h-full bg-slate-900 overflow-hidden relative" style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}>
+                        <img src={motherBaby} alt="Mother & Baby Care" className="w-full h-full object-cover group-hover/hex:scale-125 transition-transform duration-500" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-40 group-hover/hex:opacity-0 transition-opacity" />
+                      </div>
+                    </button>
+
+                    {/* 2. Home Nursing */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory("Clinical");
+                        document.getElementById("services-catalog")?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className="group/hex relative w-15 h-17 sm:w-18 sm:h-21 lg:w-20 lg:h-23 bg-[#8b5cf6] p-[2.5px] sm:p-[3px] cursor-pointer transition-all duration-300 hover:scale-115 hover:z-30 hover:shadow-xl"
+                      style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+                      title="Home Nursing"
+                    >
+                      <div className="w-full h-full bg-slate-900 overflow-hidden relative" style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}>
+                        <img src={nursing} alt="Clinical Nursing" className="w-full h-full object-cover group-hover/hex:scale-125 transition-transform duration-500" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-40 group-hover/hex:opacity-0 transition-opacity" />
+                      </div>
+                    </button>
+
+                    {/* 3. Elderly Care */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory("Elderly");
+                        document.getElementById("services-catalog")?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className="group/hex relative w-15 h-17 sm:w-18 sm:h-21 lg:w-20 lg:h-23 bg-[#f97316] p-[2.5px] sm:p-[3px] cursor-pointer transition-all duration-300 hover:scale-115 hover:z-30 hover:shadow-xl"
+                      style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+                      title="Elderly Care"
+                    >
+                      <div className="w-full h-full bg-slate-900 overflow-hidden relative" style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}>
+                        <img src={elderly} alt="Elderly Care" className="w-full h-full object-cover group-hover/hex:scale-125 transition-transform duration-500" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-40 group-hover/hex:opacity-0 transition-opacity" />
+                      </div>
+                    </button>
+
+                    {/* 4. Physiotherapy */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory("Therapy");
+                        document.getElementById("services-catalog")?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className="group/hex relative w-15 h-17 sm:w-18 sm:h-21 lg:w-20 lg:h-23 bg-[#0284c7] p-[2.5px] sm:p-[3px] cursor-pointer transition-all duration-300 hover:scale-115 hover:z-30 hover:shadow-xl"
+                      style={{ clipPath: 'polygon(50% 0%, 100% 25% 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+                      title="Physiotherapy"
+                    >
+                      <div className="w-full h-full bg-slate-900 overflow-hidden relative" style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}>
+                        <img src={physio} alt="Physiotherapy" className="w-full h-full object-cover group-hover/hex:scale-125 transition-transform duration-500" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-40 group-hover/hex:opacity-0 transition-opacity" />
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* ROW 2: 5 Hexagons (Shifted by 1/2 width to nest between Row 1) */}
+                  <div className="flex justify-center items-center gap-2 sm:gap-2.5 -mt-3 sm:-mt-4 lg:-mt-4.5 relative z-20">
+                    {/* 5. ICU Recovery */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory("Clinical");
+                        document.getElementById("services-catalog")?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className="group/hex relative w-15 h-17 sm:w-18 sm:h-21 lg:w-20 lg:h-23 bg-[#db2777] p-[2.5px] sm:p-[3px] cursor-pointer transition-all duration-300 hover:scale-115 hover:z-30 hover:shadow-xl"
+                      style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+                      title="ICU Recovery"
+                    >
+                      <div className="w-full h-full bg-slate-900 overflow-hidden relative" style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}>
+                        <img src={icu} alt="ICU Care" className="w-full h-full object-cover group-hover/hex:scale-125 transition-transform duration-500" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-40 group-hover/hex:opacity-0 transition-opacity" />
+                      </div>
+                    </button>
+
+                    {/* 6. Doctor Consultation */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory("Clinical");
+                        document.getElementById("services-catalog")?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className="group/hex relative w-15 h-17 sm:w-18 sm:h-21 lg:w-20 lg:h-23 bg-[#059669] p-[2.5px] sm:p-[3px] cursor-pointer transition-all duration-300 hover:scale-115 hover:z-30 hover:shadow-xl"
+                      style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+                      title="Doctor Consultation"
+                    >
+                      <div className="w-full h-full bg-slate-900 overflow-hidden relative" style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}>
+                        <img src={doctor} alt="Doctor Consult" className="w-full h-full object-cover group-hover/hex:scale-125 transition-transform duration-500" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-40 group-hover/hex:opacity-0 transition-opacity" />
+                      </div>
+                    </button>
+
+                    {/* 7. Center Clinical Hero */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory("Clinical");
+                        document.getElementById("services-catalog")?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className="group/hex relative w-15 h-17 sm:w-18 sm:h-21 lg:w-20 lg:h-23 bg-[#e11d48] p-[2.5px] sm:p-[3px] cursor-pointer transition-all duration-300 hover:scale-115 hover:z-30 hover:shadow-xl"
+                      style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+                      title="Clinical Homecare & Vitals"
+                    >
+                      <div className="w-full h-full bg-slate-900 overflow-hidden relative" style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}>
+                        <img src={heroCare} alt="Clinical Homecare" className="w-full h-full object-cover group-hover/hex:scale-125 transition-transform duration-500" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-40 group-hover/hex:opacity-0 transition-opacity" />
+                      </div>
+                    </button>
+
+                    {/* 8. MTP Escort */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory("MTP");
+                        document.getElementById("services-catalog")?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className="group/hex relative w-15 h-17 sm:w-18 sm:h-21 lg:w-20 lg:h-23 bg-[#0f766e] p-[2.5px] sm:p-[3px] cursor-pointer transition-all duration-300 hover:scale-115 hover:z-30 hover:shadow-xl"
+                      style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+                      title="MTP Transit Companion"
+                    >
+                      <div className="w-full h-full bg-slate-900 overflow-hidden relative" style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}>
+                        <img src={mtp} alt="MTP Companion" className="w-full h-full object-cover group-hover/hex:scale-125 transition-transform duration-500" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-40 group-hover/hex:opacity-0 transition-opacity" />
+                      </div>
+                    </button>
+
+                    {/* 9. Bedside Attendant */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory("Elderly");
+                        document.getElementById("services-catalog")?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className="group/hex relative w-15 h-17 sm:w-18 sm:h-21 lg:w-20 lg:h-23 bg-[#0d9488] p-[2.5px] sm:p-[3px] cursor-pointer transition-all duration-300 hover:scale-115 hover:z-30 hover:shadow-xl"
+                      style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+                      title="Bedside Patient Attendant"
+                    >
+                      <div className="w-full h-full bg-slate-900 overflow-hidden relative" style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}>
+                        <img src={attendant} alt="Patient Attendant" className="w-full h-full object-cover group-hover/hex:scale-125 transition-transform duration-500" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-40 group-hover/hex:opacity-0 transition-opacity" />
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* ROW 3: 4 Hexagons (Aligned with Row 1) */}
+                  <div className="flex justify-center items-center gap-2 sm:gap-2.5 -mt-3 sm:-mt-4 lg:-mt-4.5 relative z-10">
+                    {/* 10. Newborn Baby Care */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory("Maternal");
+                        document.getElementById("services-catalog")?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className="group/hex relative w-15 h-17 sm:w-18 sm:h-21 lg:w-20 lg:h-23 bg-[#f59e0b] p-[2.5px] sm:p-[3px] cursor-pointer transition-all duration-300 hover:scale-115 hover:z-30 hover:shadow-xl"
+                      style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+                      title="Newborn Infant Nurture"
+                    >
+                      <div className="w-full h-full bg-slate-900 overflow-hidden relative" style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}>
+                        <img src={motherBaby} alt="Newborn Care" className="w-full h-full object-cover group-hover/hex:scale-125 transition-transform duration-500" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-40 group-hover/hex:opacity-0 transition-opacity" />
+                      </div>
+                    </button>
+
+                    {/* 11. Injections & Vitals */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory("Clinical");
+                        document.getElementById("services-catalog")?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className="group/hex relative w-15 h-17 sm:w-18 sm:h-21 lg:w-20 lg:h-23 bg-[#06b6d4] p-[2.5px] sm:p-[3px] cursor-pointer transition-all duration-300 hover:scale-115 hover:z-30 hover:shadow-xl"
+                      style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+                      title="Injection Services & BP"
+                    >
+                      <div className="w-full h-full bg-slate-900 overflow-hidden relative" style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}>
+                        <img src={nursing} alt="Injections" className="w-full h-full object-cover group-hover/hex:scale-125 transition-transform duration-500" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-40 group-hover/hex:opacity-0 transition-opacity" />
+                      </div>
+                    </button>
+
+                    {/* 12. Pregnancy Care */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory("Maternal");
+                        document.getElementById("services-catalog")?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className="group/hex relative w-15 h-17 sm:w-18 sm:h-21 lg:w-20 lg:h-23 bg-[#c026d3] p-[2.5px] sm:p-[3px] cursor-pointer transition-all duration-300 hover:scale-115 hover:z-30 hover:shadow-xl"
+                      style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+                      title="Pregnancy Care"
+                    >
+                      <div className="w-full h-full bg-slate-900 overflow-hidden relative" style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}>
+                        <img src={motherBaby} alt="Pregnancy Care" className="w-full h-full object-cover group-hover/hex:scale-125 transition-transform duration-500" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-40 group-hover/hex:opacity-0 transition-opacity" />
+                      </div>
+                    </button>
+
+                    {/* 13. Bedridden Care */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory("Elderly");
+                        document.getElementById("services-catalog")?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className="group/hex relative w-15 h-17 sm:w-18 sm:h-21 lg:w-20 lg:h-23 bg-[#ef4444] p-[2.5px] sm:p-[3px] cursor-pointer transition-all duration-300 hover:scale-115 hover:z-30 hover:shadow-xl"
+                      style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+                      title="Bedridden Patient Care"
+                    >
+                      <div className="w-full h-full bg-slate-900 overflow-hidden relative" style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}>
+                        <img src={attendant} alt="Bedridden Care" className="w-full h-full object-cover group-hover/hex:scale-125 transition-transform duration-500" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-40 group-hover/hex:opacity-0 transition-opacity" />
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* ROW 4: 3 Hexagons (Bottom Row centered under Row 2) */}
+                  <div className="flex justify-center items-center gap-2 sm:gap-2.5 -mt-3 sm:-mt-4 lg:-mt-4.5 relative z-20">
+                    {/* 14. 24/7 GNM / ANM Staff */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory("Clinical");
+                        document.getElementById("services-catalog")?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className="group/hex relative w-15 h-17 sm:w-18 sm:h-21 lg:w-20 lg:h-23 bg-[#16a34a] p-[2.5px] sm:p-[3px] cursor-pointer transition-all duration-300 hover:scale-115 hover:z-30 hover:shadow-xl"
+                      style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+                      title="24/7 Dedicated Nursing Staff"
+                    >
+                      <div className="w-full h-full bg-slate-900 overflow-hidden relative" style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}>
+                        <img src={heroCare} alt="GNM ANM Nursing" className="w-full h-full object-cover group-hover/hex:scale-125 transition-transform duration-500" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-40 group-hover/hex:opacity-0 transition-opacity" />
+                      </div>
+                    </button>
+
+                    {/* 15. Post Surgery */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory("Clinical");
+                        document.getElementById("services-catalog")?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className="group/hex relative w-15 h-17 sm:w-18 sm:h-21 lg:w-20 lg:h-23 bg-[#f43f5e] p-[2.5px] sm:p-[3px] cursor-pointer transition-all duration-300 hover:scale-115 hover:z-30 hover:shadow-xl"
+                      style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+                      title="Post-Surgery Healing"
+                    >
+                      <div className="w-full h-full bg-slate-900 overflow-hidden relative" style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}>
+                        <img src={icu} alt="Post-Surgery Care" className="w-full h-full object-cover group-hover/hex:scale-125 transition-transform duration-500" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-40 group-hover/hex:opacity-0 transition-opacity" />
+                      </div>
+                    </button>
+
+                    {/* 16. MTP Wheelchair */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory("MTP");
+                        document.getElementById("services-catalog")?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className="group/hex relative w-15 h-17 sm:w-18 sm:h-21 lg:w-20 lg:h-23 bg-[#d97706] p-[2.5px] sm:p-[3px] cursor-pointer transition-all duration-300 hover:scale-115 hover:z-30 hover:shadow-xl"
+                      style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+                      title="Fast Dispatch Healthcare"
+                    >
+                      <div className="w-full h-full bg-slate-900 overflow-hidden relative" style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}>
+                        <img src={mtp} alt="Fast Dispatch" className="w-full h-full object-cover group-hover/hex:scale-125 transition-transform duration-500" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-40 group-hover/hex:opacity-0 transition-opacity" />
+                      </div>
+                    </button>
+                  </div>
+
+                </div>
+
+                {/* Bottom Interactive Prompt Card */}
+                <div className="mt-2 text-center bg-white/95 backdrop-blur-md px-4 py-2 rounded-2xl border border-slate-200/90 shadow-sm flex items-center justify-center gap-2">
+                  <span className="text-xs font-bold text-slate-700">✨ Click any block to filter care services</span>
+                  <span className="text-[10px] font-extrabold text-gold bg-gold/10 px-2 py-0.5 rounded-lg border border-gold/30">
+                    18 Options
+                  </span>
+                </div>
+
+              </div>
             </div>
 
           </div>
@@ -236,7 +561,7 @@ function ServicesPage() {
       {/* ============================================================ */}
       {/* 2. SEARCH & FILTER TOOLBAR                                   */}
       {/* ============================================================ */}
-      <section className="sticky top-[76px] z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 py-4 shadow-xs">
+      <section className="bg-white border-b border-slate-200/80 py-4">
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             
@@ -284,7 +609,7 @@ function ServicesPage() {
       {/* ============================================================ */}
       {/* 3. SERVICES CATALOG GRID                                     */}
       {/* ============================================================ */}
-      <section className="py-12 sm:py-16 bg-slate-50/50">
+      <section id="services-catalog" className="py-12 sm:py-16 bg-slate-50/50 scroll-mt-24">
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
           
           {/* Results Header Counter */}
@@ -461,10 +786,10 @@ function ServicesPage() {
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gold/20 text-[#edd392] text-xs font-bold border border-gold/30">
                 <Car className="h-3.5 w-3.5 text-gold" /> Need Flexible Dropping or Errands?
               </span>
-              <h3 className="text-2xl sm:text-3xl font-extrabold font-display leading-tight">
+              <h3 className="text-2xl sm:text-3xl font-extrabold font-display leading-tight text-white">
                 MTP (Multi-Tasking Professionals) On-Demand Task Force
               </h3>
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-medium">
+              <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-medium">
                 Book hourly hospital escorts, urgent prescription medicine deliveries, senior walking companions, and newborn nursery helpers across Hyderabad.
               </p>
             </div>
@@ -497,10 +822,10 @@ function ServicesPage() {
                 </span>
                 24/7 Care Coordinator Standing By
               </div>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold font-display leading-tight">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold font-display leading-tight text-white">
                 Need Help Choosing the Right Home Caregiver?
               </h2>
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-medium">
+              <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-medium">
                 Our clinical supervisors provide free telephone guidance to help match your patient with the ideal nurse or attendant.
               </p>
             </div>

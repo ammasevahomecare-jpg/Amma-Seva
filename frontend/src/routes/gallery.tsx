@@ -39,15 +39,16 @@ function GalleryPage() {
       {/* Header Banner */}
       <section className="border-b border-border/70 bg-gradient-to-b from-cream/60 via-cream/20 to-background py-10 sm:py-14">
         <div className="mx-auto max-w-[1440px] px-4 text-left sm:px-6 lg:px-8 xl:px-12">
-          <div className="max-w-3xl space-y-3">
+          <div className="max-w-5xl space-y-3">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-gold/15 px-3.5 py-1 text-xs font-bold text-gold border border-gold/30 tracking-wider uppercase">
               <ShieldCheck className="h-3.5 w-3.5" /> Authentic Care In Action
             </span>
             <h1 className="text-4xl font-extrabold text-primary sm:text-5xl font-display leading-tight">
               Moments of <span className="text-gold">Care &amp; Healing</span>
             </h1>
-            <p className="text-base text-slate-600 leading-relaxed max-w-2xl">
-              Real moments from home visits across Hyderabad &amp; Telangana. Our qualified nurses, caregivers, and doctors deliver hospital-grade clinical precision with the warmth of family.
+            <p className="text-base sm:text-lg text-slate-600 leading-relaxed max-w-5xl space-y-1">
+              <span className="block">Real moments from home visits across Hyderabad &amp; Telangana.</span>
+              <span className="block md:whitespace-nowrap">Our qualified nurses, caregivers, and doctors deliver hospital-grade clinical precision with the warmth of family.</span>
             </p>
           </div>
 

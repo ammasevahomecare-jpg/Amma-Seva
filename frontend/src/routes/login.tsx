@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { SiteLayout } from "@/components/SiteLayout";
-import { validateName, validatePhone, validateEmail } from "@/lib/validation";
+import { validateName, validatePhone, validateEmail, sanitizeIndianPhone, sanitizeName } from "@/lib/validation";
 import { fetchServices, type Service } from "../lib/services";
 import { 
   Lock, Mail, User, Phone, ShieldAlert, CheckCircle2, 
@@ -457,32 +457,36 @@ function LoginPage() {
     <SiteLayout>
       {/* ========================================================================= */}
       {/* MODE 1: FULL-WIDTH PREMIUM REGISTRATION (ALIGNED WITH HEADER max-w-7xl)    */}
+      {/* ========================================================================= */}      {/* ========================================================================= */}
+      {/* MODE 1: CAREGIVER FULL-WIDTH MULTI-COLUMN REGISTRATION (WHEN ROLE IS STAFF) */}
       {/* ========================================================================= */}
-      {mode === "register" ? (
+      {mode === "register" && role === "caretaker" ? (
         <div className="w-full min-h-[calc(100vh-80px)] bg-gradient-to-b from-slate-50 via-amber-50/15 to-slate-100/80 relative overflow-hidden py-6 sm:py-10">
           
           {/* Ambient Glowing Background Orbs */}
           <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-[#c9a24c]/10 blur-[130px] pointer-events-none" />
           <div className="absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-indigo-500/10 blur-[140px] pointer-events-none" />
 
-          {/* Main Container - EXACT ALIGNMENT with Navbar max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12 */}
+          {/* Main Container */}
           <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12 relative z-10">
             <div className="w-full rounded-3xl border border-slate-200/90 bg-white/95 backdrop-blur-2xl p-5 sm:p-8 lg:p-10 shadow-2xl shadow-slate-200/60 text-left transition-all duration-300 animate-in fade-in">
               
               {/* Brand Pill */}
               <div className="flex justify-center mb-3">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gold/10 border border-gold/30 text-[11px] font-bold text-[#8c6b16] tracking-wide uppercase">
-                  <Sparkles className="h-3 w-3 text-gold" /> Amma Seva Certified Care Network
+                <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-gold/10 border border-gold/30 text-[11px] font-extrabold text-[#8c6b16] tracking-wide uppercase shadow-xs">
+                  <Sparkles className="h-3.5 w-3.5 text-gold" /> Amma Seva Certified Caregiver Network
                 </span>
               </div>
 
               {/* Top Switcher Tabs: Sign In vs Register Profile */}
-              <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-2xl mb-6 border border-slate-200/70 max-w-md mx-auto">
+              <div className="grid grid-cols-2 p-1.5 bg-slate-100/90 rounded-2xl mb-6 border border-slate-200/80 max-w-md mx-auto shadow-inner">
                 <button
                   type="button"
                   onClick={() => {
                     setMode("login");
                     setAuthStep("email");
+                    setError(null);
+                    setSuccessMsg(null);
                   }}
                   className="py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 text-slate-500 hover:text-slate-900"
                 >
@@ -493,45 +497,41 @@ function LoginPage() {
                   onClick={() => setMode("register")}
                   className="py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 bg-[#1e2a5a] text-white shadow-md shadow-[#1e2a5a]/20"
                 >
-                  <User className="h-3.5 w-3.5" /> Register Profile
+                  <User className="h-3.5 w-3.5 text-gold" /> Register Profile
                 </button>
               </div>
 
               {/* Header */}
               <div className="mb-6 text-center">
                 <h2 className="text-2xl sm:text-3xl font-extrabold text-[#1e2a5a] font-display">
-                  {role === "customer" ? "Create Patient & Family Account" : "Register as Certified Caregiver / Nurse"}
+                  Register as Certified Caregiver / Nurse
                 </h2>
                 <p className="mt-1.5 text-xs sm:text-sm text-slate-500 leading-relaxed font-medium max-w-2xl mx-auto">
-                  {role === "customer" 
-                    ? "Register in seconds to book verified attendants, home nursing, and post-hospitalization care." 
-                    : "Join Hyderabad's most trusted home healthcare network. Direct duty shifts, transparent weekly payouts, and continuous staff support."}
+                  Join Hyderabad's most trusted home healthcare network. Direct duty shifts, transparent weekly payouts, and continuous clinical support.
                 </p>
               </div>
 
               {/* Role Selectors Tabs */}
-              <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-2xl mb-6 border border-slate-200/80 max-w-md mx-auto">
+              <div className="grid grid-cols-2 gap-2.5 p-1.5 bg-slate-100/90 rounded-2xl mb-6 border border-slate-200/80 max-w-md mx-auto">
                 <button
                   type="button"
-                  onClick={() => setRole("customer")}
-                  className={`py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                    role === "customer" 
-                      ? "bg-white text-[#1e2a5a] shadow-sm border border-slate-200 font-extrabold" 
-                      : "text-slate-500 hover:text-slate-800"
-                  }`}
+                  onClick={() => {
+                    setRole("customer");
+                    setError(null);
+                  }}
+                  className="py-2.5 px-3 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 text-slate-500 hover:text-slate-800"
                 >
-                  <Heart className="h-3.5 w-3.5 text-rose-500" /> Customer / Patient
+                  <Heart className="h-4 w-4 text-rose-500" /> Customer / Patient
                 </button>
                 <button
                   type="button"
-                  onClick={() => setRole("caretaker")}
-                  className={`py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                    role === "caretaker" 
-                      ? "bg-white text-[#1e2a5a] shadow-sm border border-slate-200 font-extrabold" 
-                      : "text-slate-500 hover:text-slate-800"
-                  }`}
+                  onClick={() => {
+                    setRole("caretaker");
+                    setError(null);
+                  }}
+                  className="py-2.5 px-3 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 bg-white text-[#1e2a5a] shadow-sm border border-slate-200/90 font-extrabold ring-2 ring-gold/20"
                 >
-                  <Briefcase className="h-3.5 w-3.5 text-[#c9a24c]" /> Caregiver / Staff
+                  <Briefcase className="h-4 w-4 text-gold" /> Caregiver / Staff
                 </button>
               </div>
 
@@ -550,414 +550,376 @@ function LoginPage() {
                 </div>
               )}
 
-              {/* Registration Form */}
+              {/* Caregiver Registration Form */}
               <form onSubmit={handleSubmit} className="space-y-5">
-                
-                {/* --- ROLE A: CUSTOMER REGISTRATION --- */}
-                {role === "customer" && (
-                  <div className="max-w-xl mx-auto space-y-4 bg-slate-50/60 p-5 sm:p-7 rounded-2xl border border-slate-200/80">
+                <div className="space-y-4">
+                  
+                  {/* Referral Code Banner */}
+                  {isReferralLocked ? (
+                    <div className="bg-gradient-to-r from-[#1e2a5a] via-[#24356e] to-[#1e2a5a] border border-[#c9a24c]/40 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md text-white">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-xl bg-gold/20 border border-gold/40 flex items-center justify-center text-gold shrink-0 font-bold">
+                          <Gift className="h-5 w-5 text-gold" />
+                        </div>
+                        <div>
+                          <div className="text-[10px] font-extrabold text-[#edd392] uppercase tracking-wider">
+                            Invited by Care Partner
+                          </div>
+                          <div className="text-sm sm:text-base font-black font-mono tracking-widest text-white">
+                            {referredBy}
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-xs font-bold text-emerald-300 bg-white/10 px-3.5 py-1.5 rounded-full border border-emerald-400/30 flex items-center gap-1.5 backdrop-blur-xs self-start sm:self-auto">
+                        <Check className="h-4 w-4 text-emerald-400" /> Referral Code Applied (Locked)
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="bg-slate-50/90 rounded-2xl p-3.5 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <label className="text-xs font-extrabold uppercase tracking-wider text-[#1e2a5a] flex items-center gap-2 shrink-0">
+                        <Gift className="h-4 w-4 text-[#c9a24c]" /> Have a Partner Referral Code? (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={referredBy}
+                        onChange={(e) => setReferredBy(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+                        placeholder="e.g. PRIYA3210"
+                        className="w-full sm:w-60 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-mono font-bold text-[#1e2a5a] outline-none focus:ring-2 focus:ring-[#c9a24c]/30 focus:border-[#c9a24c] uppercase tracking-wider"
+                      />
+                    </div>
+                  )}
+
+                  {/* Section 1: Basic & Professional Details (3 Columns on Desktop) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-700 mb-1.5">
+                      <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">
                         Full Name <span className="text-rose-500">*</span>
                       </label>
-                      <div className="relative">
-                        <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <input
-                          type="text"
-                          required
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          placeholder="e.g. Rahul Sharma"
-                          className="w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-white outline-none focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 transition-all font-medium text-[#1e2a5a]"
-                        />
-                      </div>
+                      <input
+                        type="text"
+                        required
+                        value={name}
+                        onChange={(e) => setName(sanitizeName(e.target.value))}
+                        placeholder="e.g. Priya Sharma"
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/60 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 text-[#1e2a5a] font-medium"
+                      />
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-700 mb-1.5">
-                        Email Address <span className="text-rose-500">*</span>
-                      </label>
-                      <div className="relative">
-                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <input
-                          type="email"
-                          required
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          placeholder="name@example.com"
-                          className="w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-white outline-none focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 transition-all font-medium text-[#1e2a5a]"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-700 mb-1.5">
+                      <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">
                         Phone Number <span className="text-rose-500">*</span>
                       </label>
-                      <div className="relative">
-                        <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <div className="relative flex items-center">
+                        <div className="absolute left-2.5 flex items-center gap-1 text-[11px] font-bold text-slate-600 border-r border-slate-200 pr-1.5 pointer-events-none">
+                          <span>🇮🇳</span>
+                          <span>+91</span>
+                        </div>
                         <input
                           type="tel"
+                          inputMode="numeric"
                           required
+                          maxLength={10}
                           value={phone}
-                          onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
-                          placeholder="10-digit mobile number"
-                          className="w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-white outline-none focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 transition-all font-medium text-[#1e2a5a] font-mono"
+                          onChange={(e) => setPhone(sanitizeIndianPhone(e.target.value))}
+                          placeholder="10-digit mobile"
+                          className="w-full pl-14 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/60 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 text-[#1e2a5a] font-mono font-bold"
                         />
                       </div>
                     </div>
-                  </div>
-                )}
 
-                {/* --- ROLE B: CAREGIVER / STAFF REGISTRATION (FULL 7XL RESPONSIVE GRID) --- */}
-                {role === "caretaker" && (
-                  <div className="space-y-4">
-                    
-                    {/* Referral Code Banner */}
-                    {isReferralLocked ? (
-                      <div className="bg-gradient-to-r from-[#1e2a5a] via-[#24356e] to-[#1e2a5a] border border-[#c9a24c]/40 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md text-white">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-xl bg-gold/20 border border-gold/40 flex items-center justify-center text-gold shrink-0 font-bold">
-                            <Gift className="h-5 w-5 text-gold" />
-                          </div>
-                          <div>
-                            <div className="text-[10px] font-extrabold text-[#edd392] uppercase tracking-wider">
-                              Invited by Care Partner
-                            </div>
-                            <div className="text-sm sm:text-base font-black font-mono tracking-widest text-white">
-                              {referredBy}
-                            </div>
-                          </div>
-                        </div>
-                        <span className="text-xs font-bold text-emerald-300 bg-white/10 px-3.5 py-1.5 rounded-full border border-emerald-400/30 flex items-center gap-1.5 backdrop-blur-xs self-start sm:self-auto">
-                          <Check className="h-4 w-4 text-emerald-400" /> Referral Code Applied (Locked)
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="bg-slate-50/90 rounded-2xl p-3.5 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <label className="text-xs font-extrabold uppercase tracking-wider text-[#1e2a5a] flex items-center gap-2 shrink-0">
-                          <Gift className="h-4 w-4 text-[#c9a24c]" /> Have a Partner Referral Code? (Optional)
-                        </label>
-                        <input
-                          type="text"
-                          value={referredBy}
-                          onChange={(e) => setReferredBy(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
-                          placeholder="e.g. PRIYA3210"
-                          className="w-full sm:w-60 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-mono font-bold text-[#1e2a5a] outline-none focus:ring-2 focus:ring-[#c9a24c]/30 focus:border-[#c9a24c] uppercase tracking-wider"
-                        />
-                      </div>
-                    )}
-
-                    {/* Section 1: Basic & Professional Details (3 Columns on Desktop) */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">
-                          Full Name <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          placeholder="e.g. Priya Sharma"
-                          className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/60 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 text-[#1e2a5a] font-medium"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">
-                          Phone Number <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          type="tel"
-                          required
-                          value={phone}
-                          onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
-                          placeholder="10-digit mobile"
-                          className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/60 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 text-[#1e2a5a] font-mono"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600">
                           Email Address <span className="text-rose-500">*</span>
                         </label>
-                        <input
-                          type="email"
-                          required
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          placeholder="staff@ammaseva.in"
-                          className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/60 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 text-[#1e2a5a] font-medium"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">
-                          Specialty Domain <span className="text-rose-500">*</span>
-                        </label>
-                        <select
-                          value={specialty}
-                          onChange={(e) => setSpecialty(e.target.value)}
-                          className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/60 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 text-[#1e2a5a] font-medium cursor-pointer"
-                        >
-                          {servicesList.length > 0 ? (
-                            servicesList.map((s) => (
-                              <option key={s.title} value={s.title}>
-                                {s.title}
-                              </option>
-                            ))
-                          ) : (
-                            <>
-                              <option value="Elderly Care">Elderly Care</option>
-                              <option value="Mother & Baby Care">Mother & Baby Care</option>
-                              <option value="Home Nursing Services">Home Nursing Services</option>
-                              <option value="ICU/Home Recovery Support">ICU/Home Recovery Support</option>
-                            </>
-                          )}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">
-                          Total Experience <span className="text-rose-500">*</span>
-                        </label>
-                        <select
-                          value={experience}
-                          onChange={(e) => setExperience(e.target.value)}
-                          className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/60 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 text-[#1e2a5a] font-medium cursor-pointer"
-                        >
-                          <option value="1">1-2 years experience</option>
-                          <option value="3">3-5 years experience</option>
-                          <option value="6">6-9 years experience</option>
-                          <option value="10">10+ years experience</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">
-                          Available Shift Timings <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={availableTimings}
-                          onChange={(e) => setAvailableTimings(e.target.value)}
-                          placeholder="e.g. 12hr Day Shift / 24hr Live-in"
-                          className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/60 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 text-[#1e2a5a]"
-                        />
-                      </div>
-
-                      <div className="sm:col-span-2 lg:col-span-3">
-                        <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">
-                          Preferred Localities / Areas <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={workingLocations}
-                          onChange={(e) => setWorkingLocations(e.target.value)}
-                          placeholder="e.g. Banjara Hills, Jubilee Hills, Gachibowli, Kukatpally, Madhapur"
-                          className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/60 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 text-[#1e2a5a]"
-                        />
-                      </div>
-
-                      <div className="sm:col-span-2 lg:col-span-3">
-                        <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">
-                          Experience &amp; Skills Summary <span className="text-rose-500">*</span>
-                        </label>
-                        <textarea
-                          required
-                          value={experienceDetails}
-                          onChange={(e) => setExperienceDetails(e.target.value)}
-                          placeholder="Brief summary of previous hospital postings, eldercare, injection/IV expertise, patient mobility support..."
-                          rows={2}
-                          className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/60 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 text-[#1e2a5a] resize-none"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Section 2: Location & GPS Geolocation */}
-                    <div className="rounded-2xl border border-slate-200/80 p-4 sm:p-5 bg-slate-50/70 space-y-3">
-                      <div className="text-xs font-bold text-[#1e2a5a] uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-200/60 pb-2">
-                        <MapPin className="h-4 w-4 text-gold" /> Address &amp; GPS Location Pin
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">State <span className="text-rose-500">*</span></label>
-                          <select
-                            required
-                            value={stateName}
-                            onChange={(e) => setStateName(e.target.value)}
-                            className="w-full px-3.5 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 bg-white outline-none focus:border-[#c9a24c] font-medium"
-                          >
-                            <option value="">Select State</option>
-                            {INDIAN_STATES.map((st) => (
-                              <option key={st} value={st}>{st}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">City <span className="text-rose-500">*</span></label>
-                          <input
-                            type="text"
-                            required
-                            value={cityName}
-                            onChange={(e) => setCityName(e.target.value)}
-                            placeholder="e.g. Hyderabad"
-                            className="w-full px-3.5 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 bg-white outline-none focus:border-[#c9a24c] font-medium"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!navigator.geolocation) {
-                              alert("Geolocation is not supported by your browser");
-                              return;
-                            }
-                            setIsFetchingLocation(true);
-                            navigator.geolocation.getCurrentPosition(
-                              (position) => {
-                                const lat = position.coords.latitude;
-                                const lng = position.coords.longitude;
-                                setGoogleMapLocation(`https://www.google.com/maps?q=${lat},${lng}`);
-                                setIsFetchingLocation(false);
-                              },
-                              () => {
-                                alert("Failed to fetch location. Please ensure location permissions are enabled.");
-                                setIsFetchingLocation(false);
-                              }
-                            );
-                          }}
-                          disabled={isFetchingLocation}
-                          className="w-full sm:w-auto px-4 py-2 bg-[#1e2a5a] hover:bg-[#141d3e] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 shrink-0 disabled:opacity-50 cursor-pointer shadow-xs transition-all"
-                        >
-                          <MapPin className="h-3.5 w-3.5 text-gold" />
-                          {isFetchingLocation ? "Detecting GPS..." : "Auto-Detect GPS Location"}
-                        </button>
-                        {googleMapLocation ? (
-                          <span className="text-xs text-emerald-700 font-bold flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
-                            <Check className="h-4 w-4 text-emerald-600" /> Coordinates Saved Successfully
-                          </span>
-                        ) : (
-                          <span className="text-xs text-slate-400 font-medium">
-                            Click to tag your exact duty starting coordinates
-                          </span>
+                        {email && validateEmail(email, false, "Email") && (
+                          <span className="text-[10px] text-rose-500 font-bold">Invalid</span>
                         )}
                       </div>
+                      <input
+                        type="text"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value.toLowerCase().replace(/\s+/g, ''))}
+                        placeholder="staff@ammaseva.in"
+                        className={`w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border outline-none focus:bg-white transition-all text-[#1e2a5a] font-medium ${
+                          email && validateEmail(email, false, "Email")
+                            ? "border-rose-400 bg-rose-50/40 focus:border-rose-500 focus:ring-2 focus:ring-rose-200"
+                            : "border-slate-200 bg-slate-50/60 focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20"
+                        }`}
+                      />
+                      {email && validateEmail(email, false, "Email address") && (
+                        <p className="mt-1 text-[11px] text-rose-600 font-semibold leading-tight">
+                          {validateEmail(email, false, "Email address")}
+                        </p>
+                      )}
                     </div>
 
-                    {/* Section 3: KYC Verification Upload Tiles (4 Columns on Desktop) */}
-                    <div className="rounded-2xl border border-slate-200/80 p-4 sm:p-5 bg-slate-50/70 space-y-3">
-                      <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
-                        <div className="text-xs font-bold text-[#1e2a5a] uppercase tracking-wider flex items-center gap-1.5">
-                          <Award className="h-4 w-4 text-gold" /> Required KYC Verification Documents
-                        </div>
-                        <span className="text-xs text-slate-400 font-medium">PDF / Image</span>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                        {/* 1: Passport Photo */}
-                        <div className={`rounded-xl border p-3 transition-all flex flex-col justify-between gap-2.5 ${
-                          profilePhotoFile ? "bg-emerald-50/60 border-emerald-300 ring-1 ring-emerald-200" : "bg-white border-slate-200 hover:border-slate-300"
-                        }`}>
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            {profilePhotoFile ? (
-                              <img src={profilePhotoFile} alt="Profile" className="h-10 w-10 rounded-lg object-cover border border-emerald-300 shrink-0" />
-                            ) : (
-                              <div className="h-10 w-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-                                <Camera className="h-5 w-5" />
-                              </div>
-                            )}
-                            <div className="min-w-0">
-                              <div className="text-xs font-bold text-slate-800 truncate">Passport Photo <span className="text-rose-500">*</span></div>
-                              <div className="text-[11px] text-slate-400">
-                                {profilePhotoFile ? <span className="text-emerald-700 font-bold">✓ Attached</span> : "Clear portrait"}
-                              </div>
-                            </div>
-                          </div>
-                          <label className="text-xs font-bold text-[#1e2a5a] hover:text-[#c9a24c] bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-center border border-slate-200 w-full mt-1">
-                            <span>{profilePhotoFile ? "Change Photo" : "Upload Photo"}</span>
-                            <input type="file" accept="image/*" required={!profilePhotoFile} onChange={(e) => handleFileChange(e, setProfilePhotoFile)} className="hidden" />
-                          </label>
-                        </div>
-
-                        {/* 2: Aadhaar Card */}
-                        <div className={`rounded-xl border p-3 transition-all flex flex-col justify-between gap-2.5 ${
-                          aadhaarFile ? "bg-emerald-50/60 border-emerald-300 ring-1 ring-emerald-200" : "bg-white border-slate-200 hover:border-slate-300"
-                        }`}>
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${
-                              aadhaarFile ? "bg-emerald-100 text-emerald-700" : "bg-amber-50 text-amber-700"
-                            }`}>
-                              <FileText className="h-5 w-5" />
-                            </div>
-                            <div className="min-w-0">
-                              <div className="text-xs font-bold text-slate-800 truncate">Aadhaar Card <span className="text-rose-500">*</span></div>
-                              <div className="text-[11px] text-slate-400">
-                                {aadhaarFile ? <span className="text-emerald-700 font-bold">✓ Attached</span> : "Front & Back ID"}
-                              </div>
-                            </div>
-                          </div>
-                          <label className="text-xs font-bold text-[#1e2a5a] hover:text-[#c9a24c] bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-center border border-slate-200 w-full mt-1">
-                            <span>{aadhaarFile ? "Change Aadhaar" : "Upload Aadhaar"}</span>
-                            <input type="file" accept="image/*,application/pdf" required={!aadhaarFile} onChange={(e) => handleFileChange(e, setAadhaarFile)} className="hidden" />
-                          </label>
-                        </div>
-
-                        {/* 3: PAN Card */}
-                        <div className={`rounded-xl border p-3 transition-all flex flex-col justify-between gap-2.5 ${
-                          panFile ? "bg-emerald-50/60 border-emerald-300 ring-1 ring-emerald-200" : "bg-white border-slate-200 hover:border-slate-300"
-                        }`}>
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${
-                              panFile ? "bg-emerald-100 text-emerald-700" : "bg-sky-50 text-sky-700"
-                            }`}>
-                              <FileText className="h-5 w-5" />
-                            </div>
-                            <div className="min-w-0">
-                              <div className="text-xs font-bold text-slate-800 truncate">PAN Card <span className="text-rose-500">*</span></div>
-                              <div className="text-[11px] text-slate-400">
-                                {panFile ? <span className="text-emerald-700 font-bold">✓ Attached</span> : "Tax / Payout ID"}
-                              </div>
-                            </div>
-                          </div>
-                          <label className="text-xs font-bold text-[#1e2a5a] hover:text-[#c9a24c] bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-center border border-slate-200 w-full mt-1">
-                            <span>{panFile ? "Change PAN" : "Upload PAN"}</span>
-                            <input type="file" accept="image/*,application/pdf" required={!panFile} onChange={(e) => handleFileChange(e, setPanFile)} className="hidden" />
-                          </label>
-                        </div>
-
-                        {/* 4: Qualification Certificate */}
-                        <div className={`rounded-xl border p-3 transition-all flex flex-col justify-between gap-2.5 ${
-                          certificateFile ? "bg-emerald-50/60 border-emerald-300 ring-1 ring-emerald-200" : "bg-white border-slate-200 hover:border-slate-300"
-                        }`}>
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${
-                              certificateFile ? "bg-emerald-100 text-emerald-700" : "bg-purple-50 text-purple-700"
-                            }`}>
-                              <Award className="h-5 w-5" />
-                            </div>
-                            <div className="min-w-0">
-                              <div className="text-xs font-bold text-slate-800 truncate">Qualification <span className="text-rose-500">*</span></div>
-                              <div className="text-[11px] text-slate-400">
-                                {certificateFile ? <span className="text-emerald-700 font-bold">✓ Attached</span> : "Nursing / Cert"}
-                              </div>
-                            </div>
-                          </div>
-                          <label className="text-xs font-bold text-[#1e2a5a] hover:text-[#c9a24c] bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-center border border-slate-200 w-full mt-1">
-                            <span>{certificateFile ? "Change Cert" : "Upload Cert"}</span>
-                            <input type="file" accept="image/*,application/pdf" required={!certificateFile} onChange={(e) => handleFileChange(e, setCertificateFile)} className="hidden" />
-                          </label>
-                        </div>
-                      </div>
+                    <div>
+                      <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">
+                        Specialty Domain <span className="text-rose-500">*</span>
+                      </label>
+                      <select
+                        value={specialty}
+                        onChange={(e) => setSpecialty(e.target.value)}
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/60 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 text-[#1e2a5a] font-medium cursor-pointer"
+                      >
+                        {servicesList.length > 0 ? (
+                          servicesList.map((s) => (
+                            <option key={s.title} value={s.title}>
+                              {s.title}
+                            </option>
+                          ))
+                        ) : (
+                          <>
+                            <option value="Elderly Care">Elderly Care</option>
+                            <option value="Mother & Baby Care">Mother & Baby Care</option>
+                            <option value="Home Nursing Services">Home Nursing Services</option>
+                            <option value="ICU/Home Recovery Support">ICU/Home Recovery Support</option>
+                          </>
+                        )}
+                      </select>
                     </div>
 
+                    <div>
+                      <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">
+                        Total Experience <span className="text-rose-500">*</span>
+                      </label>
+                      <select
+                        value={experience}
+                        onChange={(e) => setExperience(e.target.value)}
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/60 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 text-[#1e2a5a] font-medium cursor-pointer"
+                      >
+                        <option value="1">1-2 years experience</option>
+                        <option value="3">3-5 years experience</option>
+                        <option value="6">6-9 years experience</option>
+                        <option value="10">10+ years experience</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">
+                        Available Shift Timings <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={availableTimings}
+                        onChange={(e) => setAvailableTimings(e.target.value)}
+                        placeholder="e.g. 12hr Day Shift / 24hr Live-in"
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/60 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 text-[#1e2a5a]"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2 lg:col-span-3">
+                      <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">
+                        Preferred Localities / Areas <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={workingLocations}
+                        onChange={(e) => setWorkingLocations(e.target.value)}
+                        placeholder="e.g. Banjara Hills, Jubilee Hills, Gachibowli, Kukatpally, Madhapur"
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/60 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 text-[#1e2a5a]"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2 lg:col-span-3">
+                      <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">
+                        Experience &amp; Skills Summary <span className="text-rose-500">*</span>
+                      </label>
+                      <textarea
+                        required
+                        value={experienceDetails}
+                        onChange={(e) => setExperienceDetails(e.target.value)}
+                        placeholder="Brief summary of previous hospital postings, eldercare, injection/IV expertise, patient mobility support..."
+                        rows={2}
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/60 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 text-[#1e2a5a] resize-none"
+                      />
+                    </div>
                   </div>
-                )}
+
+                  {/* Section 2: Location & GPS Geolocation */}
+                  <div className="rounded-2xl border border-slate-200/80 p-4 sm:p-5 bg-slate-50/70 space-y-3">
+                    <div className="text-xs font-bold text-[#1e2a5a] uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-200/60 pb-2">
+                      <MapPin className="h-4 w-4 text-gold" /> Address &amp; GPS Location Pin
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">State <span className="text-rose-500">*</span></label>
+                        <select
+                          required
+                          value={stateName}
+                          onChange={(e) => setStateName(e.target.value)}
+                          className="w-full px-3.5 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 bg-white outline-none focus:border-[#c9a24c] font-medium"
+                        >
+                          <option value="">Select State</option>
+                          {INDIAN_STATES.map((st) => (
+                            <option key={st} value={st}>{st}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">City <span className="text-rose-500">*</span></label>
+                        <input
+                          type="text"
+                          required
+                          value={cityName}
+                          onChange={(e) => setCityName(e.target.value)}
+                          placeholder="e.g. Hyderabad"
+                          className="w-full px-3.5 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 bg-white outline-none focus:border-[#c9a24c] font-medium"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!navigator.geolocation) {
+                            alert("Geolocation is not supported by your browser");
+                            return;
+                          }
+                          setIsFetchingLocation(true);
+                          navigator.geolocation.getCurrentPosition(
+                            (position) => {
+                              const lat = position.coords.latitude;
+                              const lng = position.coords.longitude;
+                              setGoogleMapLocation(`https://www.google.com/maps?q=${lat},${lng}`);
+                              setIsFetchingLocation(false);
+                            },
+                            () => {
+                              alert("Failed to fetch location. Please ensure location permissions are enabled.");
+                              setIsFetchingLocation(false);
+                            }
+                          );
+                        }}
+                        disabled={isFetchingLocation}
+                        className="w-full sm:w-auto px-4 py-2 bg-[#1e2a5a] hover:bg-[#141d3e] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 shrink-0 disabled:opacity-50 cursor-pointer shadow-xs transition-all"
+                      >
+                        <MapPin className="h-3.5 w-3.5 text-gold" />
+                        {isFetchingLocation ? "Detecting GPS..." : "Auto-Detect GPS Location"}
+                      </button>
+                      {googleMapLocation ? (
+                        <span className="text-xs text-emerald-700 font-bold flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
+                          <Check className="h-4 w-4 text-emerald-600" /> Coordinates Saved Successfully
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400 font-medium">
+                          Click to tag your exact duty starting coordinates
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Section 3: KYC Verification Upload Tiles (4 Columns on Desktop) */}
+                  <div className="rounded-2xl border border-slate-200/80 p-4 sm:p-5 bg-slate-50/70 space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                      <div className="text-xs font-bold text-[#1e2a5a] uppercase tracking-wider flex items-center gap-1.5">
+                        <Award className="h-4 w-4 text-gold" /> Required KYC Verification Documents
+                      </div>
+                      <span className="text-xs text-slate-400 font-medium">PDF / Image</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                      {/* 1: Passport Photo */}
+                      <div className={`rounded-xl border p-3 transition-all flex flex-col justify-between gap-2.5 ${
+                        profilePhotoFile ? "bg-emerald-50/60 border-emerald-300 ring-1 ring-emerald-200" : "bg-white border-slate-200 hover:border-slate-300"
+                      }`}>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {profilePhotoFile ? (
+                            <img src={profilePhotoFile} alt="Profile" className="h-10 w-10 rounded-lg object-cover border border-emerald-300 shrink-0" />
+                          ) : (
+                            <div className="h-10 w-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                              <Camera className="h-5 w-5" />
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-slate-800 truncate">Passport Photo <span className="text-rose-500">*</span></div>
+                            <div className="text-[11px] text-slate-400">
+                              {profilePhotoFile ? <span className="text-emerald-700 font-bold">✓ Attached</span> : "Clear portrait"}
+                            </div>
+                          </div>
+                        </div>
+                        <label className="text-xs font-bold text-[#1e2a5a] hover:text-[#c9a24c] bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-center border border-slate-200 w-full mt-1">
+                          <span>{profilePhotoFile ? "Change Photo" : "Upload Photo"}</span>
+                          <input type="file" accept="image/*" required={!profilePhotoFile} onChange={(e) => handleFileChange(e, setProfilePhotoFile)} className="hidden" />
+                        </label>
+                      </div>
+
+                      {/* 2: Aadhaar Card */}
+                      <div className={`rounded-xl border p-3 transition-all flex flex-col justify-between gap-2.5 ${
+                        aadhaarFile ? "bg-emerald-50/60 border-emerald-300 ring-1 ring-emerald-200" : "bg-white border-slate-200 hover:border-slate-300"
+                      }`}>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${
+                            aadhaarFile ? "bg-emerald-100 text-emerald-700" : "bg-amber-50 text-amber-700"
+                          }`}>
+                            <FileText className="h-5 w-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-slate-800 truncate">Aadhaar Card <span className="text-rose-500">*</span></div>
+                            <div className="text-[11px] text-slate-400">
+                              {aadhaarFile ? <span className="text-emerald-700 font-bold">✓ Attached</span> : "Front & Back ID"}
+                            </div>
+                          </div>
+                        </div>
+                        <label className="text-xs font-bold text-[#1e2a5a] hover:text-[#c9a24c] bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-center border border-slate-200 w-full mt-1">
+                          <span>{aadhaarFile ? "Change Aadhaar" : "Upload Aadhaar"}</span>
+                          <input type="file" accept="image/*,application/pdf" required={!aadhaarFile} onChange={(e) => handleFileChange(e, setAadhaarFile)} className="hidden" />
+                        </label>
+                      </div>
+
+                      {/* 3: PAN Card */}
+                      <div className={`rounded-xl border p-3 transition-all flex flex-col justify-between gap-2.5 ${
+                        panFile ? "bg-emerald-50/60 border-emerald-300 ring-1 ring-emerald-200" : "bg-white border-slate-200 hover:border-slate-300"
+                      }`}>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${
+                            panFile ? "bg-emerald-100 text-emerald-700" : "bg-sky-50 text-sky-700"
+                          }`}>
+                            <FileText className="h-5 w-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-slate-800 truncate">PAN Card <span className="text-rose-500">*</span></div>
+                            <div className="text-[11px] text-slate-400">
+                              {panFile ? <span className="text-emerald-700 font-bold">✓ Attached</span> : "Tax / Payout ID"}
+                            </div>
+                          </div>
+                        </div>
+                        <label className="text-xs font-bold text-[#1e2a5a] hover:text-[#c9a24c] bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-center border border-slate-200 w-full mt-1">
+                          <span>{panFile ? "Change PAN" : "Upload PAN"}</span>
+                          <input type="file" accept="image/*,application/pdf" required={!panFile} onChange={(e) => handleFileChange(e, setPanFile)} className="hidden" />
+                        </label>
+                      </div>
+
+                      {/* 4: Qualification Certificate */}
+                      <div className={`rounded-xl border p-3 transition-all flex flex-col justify-between gap-2.5 ${
+                        certificateFile ? "bg-emerald-50/60 border-emerald-300 ring-1 ring-emerald-200" : "bg-white border-slate-200 hover:border-slate-300"
+                      }`}>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${
+                            certificateFile ? "bg-emerald-100 text-emerald-700" : "bg-purple-50 text-purple-700"
+                          }`}>
+                            <Award className="h-5 w-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-slate-800 truncate">Qualification <span className="text-rose-500">*</span></div>
+                            <div className="text-[11px] text-slate-400">
+                              {certificateFile ? <span className="text-emerald-700 font-bold">✓ Attached</span> : "Nursing / Cert"}
+                            </div>
+                          </div>
+                        </div>
+                        <label className="text-xs font-bold text-[#1e2a5a] hover:text-[#c9a24c] bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-center border border-slate-200 w-full mt-1">
+                          <span>{certificateFile ? "Change Cert" : "Upload Cert"}</span>
+                          <input type="file" accept="image/*,application/pdf" required={!certificateFile} onChange={(e) => handleFileChange(e, setCertificateFile)} className="hidden" />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
 
                 {/* Terms Checkbox */}
                 <div className="pt-2 flex justify-center">
@@ -1001,7 +963,7 @@ function LoginPage() {
                       </>
                     ) : (
                       <>
-                        <span>{role === "customer" ? "Create Patient & Family Account" : "Submit Caregiver Registration"}</span>
+                        <span>Submit Caregiver Registration</span>
                         <ArrowRight className="h-4 w-4 text-gold" />
                       </>
                     )}
@@ -1010,14 +972,16 @@ function LoginPage() {
               </form>
 
               {/* Bottom Swapper & Trust badges */}
-              <div className="mt-6 pt-5 border-t border-slate-100 space-y-3 text-center text-xs">
-                <p className="text-slate-600 font-medium">
-                  Already have an account?{" "}
+              <div className="mt-6 pt-5 border-t border-slate-100 space-y-3 w-full text-center flex flex-col items-center justify-center text-xs">
+                <p className="w-full text-center text-slate-600 font-medium flex items-center justify-center gap-1.5">
+                  <span>Already have an account?</span>
                   <button
                     type="button"
                     onClick={() => {
                       setMode("login");
                       setAuthStep("email");
+                      setError(null);
+                      setSuccessMsg(null);
                     }}
                     className="text-[#1e2a5a] font-extrabold hover:text-gold hover:underline cursor-pointer"
                   >
@@ -1025,7 +989,7 @@ function LoginPage() {
                   </button>
                 </p>
 
-                <div className="pt-1 flex flex-wrap items-center justify-center gap-3 text-[11px] text-slate-400 font-medium">
+                <div className="pt-1 flex flex-wrap items-center justify-center gap-3 text-[11px] text-slate-400 font-medium w-full">
                   <span className="flex items-center gap-1 text-slate-500">
                     <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> 256-Bit SSL Encrypted
                   </span>
@@ -1045,7 +1009,7 @@ function LoginPage() {
         </div>
       ) : (
         /* ========================================================================= */
-        /* MODE 2: SPLIT SCREEN SIGN IN (OTP)                                        */
+        /* MODE 2: SPLIT SCREEN SIGN IN & PATIENT REGISTRATION (LUXURY HEALTHCARE)   */
         /* ========================================================================= */
         <div className="flex min-h-[90vh] flex-col lg:flex-row bg-slate-50 relative overflow-hidden">
           
@@ -1053,118 +1017,197 @@ function LoginPage() {
           <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-[#c9a24c]/10 blur-[130px] pointer-events-none" />
           <div className="absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-indigo-500/10 blur-[140px] pointer-events-none" />
           
-          {/* Left Side: Graphic / Info Banner */}
-          <div className="hidden lg:flex lg:w-5/12 xl:w-1/2 bg-gradient-to-br from-[#070b14] via-[#0f172a] to-[#1e2a5a] relative flex-col justify-between p-10 xl:p-14 overflow-hidden text-left shadow-2xl animate-in fade-in duration-300">
+          {/* Left Side: Luxury Sapphire & Gold Brand Showcase Panel */}
+          <div className="hidden lg:flex lg:w-5/12 xl:w-5/12 bg-gradient-to-br from-[#060a16] via-[#0e172e] to-[#1a274e] relative flex-col justify-between p-10 xl:p-14 overflow-hidden text-left shadow-2xl animate-in fade-in duration-300">
             {/* Glowing ambient decorative meshes */}
             <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-gold/15 blur-[120px] pointer-events-none" />
             <div className="absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-indigo-500/20 blur-[130px] pointer-events-none" />
             <div className="absolute top-1/2 left-1/3 w-64 h-64 rounded-full bg-gold/10 blur-[100px] pointer-events-none" />
 
-            {/* Top Brand Tag */}
-            <div className="relative z-10">
-              <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-gold/30 bg-gold/10 text-xs text-[#edd392] font-semibold tracking-wider uppercase backdrop-blur-md shadow-xs">
-                <Sparkles className="h-3.5 w-3.5 text-gold" /> Amma Seva Care Network
+            {/* Top Brand Tag with Pulsing Beacon */}
+            <div className="relative z-10 flex items-center gap-2">
+              <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-gold/30 bg-gold/10 text-xs text-[#edd392] font-extrabold tracking-wider uppercase backdrop-blur-md shadow-xs">
+                <Sparkles className="h-3.5 w-3.5 text-gold" /> Hyderabad's Premier Care Network
               </span>
             </div>
 
             {/* Center Main Copy */}
             <div className="relative z-10 space-y-5 my-auto max-w-lg">
-              <h1 className="text-3xl xl:text-4xl font-extrabold font-display leading-[1.18] text-white tracking-tight">
-                Professional Care,{" "}
-                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#edd392] via-[#c9a24c] to-[#f5e6be] drop-shadow-sm">
-                  With a Mother's Touch
-                </span>
+              <h1 className="text-3xl xl:text-4xl font-extrabold font-display leading-[1.2] text-white tracking-tight">
+                {mode === "register" ? (
+                  <>
+                    Compassionate Care,{" "}
+                    <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#edd392] via-[#c9a24c] to-[#f5e6be] drop-shadow-sm">
+                      With a Mother's Touch
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    Welcome Back to{" "}
+                    <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#edd392] via-[#c9a24c] to-[#f5e6be] drop-shadow-sm">
+                      Amma Seva Health
+                    </span>
+                  </>
+                )}
               </h1>
+              
               <p className="text-xs xl:text-sm text-slate-300 leading-relaxed font-sans font-medium">
-                Connect with verified caregivers, certified nurses, and flexible MTP companions across Hyderabad. Experience seamless booking, transparent billing, and 24/7 care coordination.
+                {mode === "register" 
+                  ? "Create your family account in seconds to schedule verified nurses, certified elderly attendants, newborn care, and post-surgery home recovery."
+                  : "Access your personalized health dashboard, track active caregiver shifts, download GST receipts, and manage clinical care plans effortlessly."}
               </p>
 
-              {/* 3 Glassmorphic Feature Highlights */}
-              <div className="space-y-3 pt-1">
-                <div className="p-3 rounded-xl bg-white/[0.06] border border-white/10 backdrop-blur-md flex items-center gap-3 hover:bg-white/[0.09] transition-all">
-                  <div className="h-8 w-8 rounded-lg bg-gold/20 flex items-center justify-center text-gold shrink-0">
-                    <Heart className="h-4 w-4 fill-gold/20" />
+              {/* 3 Luxury Glassmorphic Feature Highlights */}
+              <div className="space-y-3 pt-2">
+                <div className="p-3.5 rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-md flex items-center gap-3.5 hover:bg-white/[0.09] transition-all group">
+                  <div className="h-9 w-9 rounded-xl bg-gold/20 flex items-center justify-center text-gold shrink-0 border border-gold/30 group-hover:scale-105 transition-transform">
+                    <ShieldCheck className="h-5 w-5" />
                   </div>
                   <div className="text-xs">
-                    <span className="block font-bold text-white text-[12px]">For Patients &amp; Families</span>
-                    <span className="text-slate-300 text-[11px]">Book 24/7 verified care attendants &amp; pay securely.</span>
+                    <span className="block font-bold text-white text-[13px]">100% Police &amp; Aadhaar Verified</span>
+                    <span className="text-slate-300 text-[11px]">Rigorous 3-tier background checks for every nursing professional.</span>
                   </div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-white/[0.06] border border-white/10 backdrop-blur-md flex items-center gap-3 hover:bg-white/[0.09] transition-all">
-                  <div className="h-8 w-8 rounded-lg bg-indigo-500/20 flex items-center justify-center text-indigo-300 shrink-0">
-                    <ShieldCheck className="h-4 w-4" />
+                <div className="p-3.5 rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-md flex items-center gap-3.5 hover:bg-white/[0.09] transition-all group">
+                  <div className="h-9 w-9 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-300 shrink-0 border border-indigo-500/30 group-hover:scale-105 transition-transform">
+                    <Clock className="h-5 w-5 text-indigo-300" />
                   </div>
                   <div className="text-xs">
-                    <span className="block font-bold text-white text-[12px]">For Certified Caregivers</span>
-                    <span className="text-slate-300 text-[11px]">Direct duty shifts, patient vitals logging &amp; payouts.</span>
+                    <span className="block font-bold text-white text-[13px]">60-Min Emergency Response</span>
+                    <span className="text-slate-300 text-[11px]">Rapid deployment across Banjara Hills, Gachibowli, Jubilee Hills &amp; all Hyderabad.</span>
                   </div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-white/[0.06] border border-white/10 backdrop-blur-md flex items-center gap-3 hover:bg-white/[0.09] transition-all">
-                  <div className="h-8 w-8 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-300 shrink-0">
-                    <Gift className="h-4 w-4 text-amber-400" />
+                <div className="p-3.5 rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-md flex items-center gap-3.5 hover:bg-white/[0.09] transition-all group">
+                  <div className="h-9 w-9 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-300 shrink-0 border border-amber-500/30 group-hover:scale-105 transition-transform">
+                    <Heart className="h-5 w-5 text-amber-300 fill-amber-300/20" />
                   </div>
                   <div className="text-xs">
-                    <span className="block font-bold text-white text-[12px]">Direct Staff Referral Program</span>
-                    <span className="text-slate-300 text-[11px]">Share your caregiver referral link &amp; track partners.</span>
+                    <span className="block font-bold text-white text-[13px]">Dedicated Care Manager</span>
+                    <span className="text-slate-300 text-[11px]">Direct WhatsApp coordinator for patient vitals tracking &amp; instant standby staff.</span>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Bottom Live Activity Pill */}
-            <div className="relative z-10 pt-4 border-t border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-300">
+            <div className="relative z-10 pt-5 border-t border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-300">
               <div className="flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
+                <span className="relative flex h-2.5 w-2.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                 </span>
-                <span className="font-semibold text-white text-xs">Live Care Desk Active</span>
+                <span className="font-bold text-white text-xs">Live Care Desk Active</span>
               </div>
-              <div className="flex items-center gap-1.5 text-gold font-bold text-xs">
+              <div className="flex items-center gap-1.5 text-gold font-bold text-xs bg-white/5 py-1 px-3 rounded-full border border-white/10 backdrop-blur-xs">
                 <Star className="h-3.5 w-3.5 fill-gold text-gold" />
                 <span>4.9 / 5</span>
-                <span className="text-slate-400 font-normal">(1,200+ Families)</span>
+                <span className="text-slate-400 font-normal">(5,000+ Families)</span>
               </div>
             </div>
           </div>
 
           {/* Right Side: Auth Card Container */}
-          <div className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-10 bg-gradient-to-b from-slate-50 via-amber-50/10 to-slate-100/80 overflow-y-auto">
-            <div className="w-full max-w-md rounded-3xl border border-slate-200/90 bg-white/95 backdrop-blur-2xl p-6 sm:p-9 shadow-2xl shadow-slate-200/60 text-left transition-all duration-300 animate-in fade-in">
+          <div className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-10 xl:p-12 bg-gradient-to-b from-slate-50 via-amber-50/10 to-slate-100/80 overflow-y-auto">
+            <div className="w-full max-w-md sm:max-w-xl lg:max-w-xl rounded-3xl border border-slate-200/90 bg-white/95 backdrop-blur-2xl p-6 sm:p-9 shadow-2xl shadow-slate-200/70 text-left transition-all duration-300 animate-in fade-in">
               
               {/* Top Switcher Tabs: Sign In vs Register Profile */}
-              <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-2xl mb-6 border border-slate-200/70">
+              <div className="grid grid-cols-2 p-1 bg-slate-100/90 rounded-xl mb-5 border border-slate-200/80 shadow-inner">
                 <button
                   type="button"
                   onClick={() => {
                     setMode("login");
                     setAuthStep("email");
+                    setError(null);
+                    setSuccessMsg(null);
                   }}
-                  className="py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 bg-[#1e2a5a] text-white shadow-md shadow-[#1e2a5a]/20"
+                  className={`py-1.5 sm:py-2 px-2 text-[11px] sm:text-xs font-bold rounded-lg transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
+                    mode === "login"
+                      ? "bg-[#1e2a5a] text-white shadow-sm scale-[1.01]"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
                 >
-                  <Lock className="h-3.5 w-3.5" /> Sign In (OTP)
+                  <Lock className={`h-3 w-3 sm:h-3.5 sm:w-3.5 ${mode === "login" ? "text-gold" : "text-slate-400"}`} />
+                  <span>Sign In (OTP)</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => setMode("register")}
-                  className="py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 text-slate-500 hover:text-slate-900"
+                  onClick={() => {
+                    setMode("register");
+                    setError(null);
+                    setSuccessMsg(null);
+                  }}
+                  className={`py-1.5 sm:py-2 px-2 text-[11px] sm:text-xs font-bold rounded-lg transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
+                    mode === "register"
+                      ? "bg-[#1e2a5a] text-white shadow-sm scale-[1.01]"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
                 >
-                  <User className="h-3.5 w-3.5" /> Register Profile
+                  <User className={`h-3 w-3 sm:h-3.5 sm:w-3.5 ${mode === "register" ? "text-gold" : "text-slate-400"}`} />
+                  <span>Register Profile</span>
                 </button>
               </div>
 
-              {/* Header */}
-              <div className="mb-5">
-                <h2 className="text-xl sm:text-2xl font-bold text-[#1e2a5a] font-display">
-                  {authStep === "email" ? "Welcome Back to Amma Seva" : "Enter Verification Code"}
-                </h2>
-                <p className="mt-1 text-xs text-slate-500 leading-relaxed font-medium">
-                  {authStep === "email" 
-                    ? "Enter your registered mobile number or email address to receive an instant secure OTP code." 
-                    : `We sent a 6-digit verification code to ${email}`}
-                </p>
+              {/* In Register Mode: Role Switcher Tabs */}
+              {mode === "register" && (
+                <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100/90 rounded-xl mb-5 border border-slate-200/80">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRole("customer");
+                      setError(null);
+                    }}
+                    className={`py-1.5 sm:py-2 px-2 text-[11px] sm:text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
+                      role === "customer"
+                        ? "bg-white text-[#1e2a5a] shadow-sm border border-slate-200/90 font-extrabold ring-2 ring-gold/20"
+                        : "text-slate-500 hover:text-slate-800 hover:bg-white/50"
+                    }`}
+                  >
+                    <Heart className={`h-3.5 w-3.5 ${role === "customer" ? "text-rose-500 fill-rose-500/20" : "text-slate-400"}`} />
+                    <span>Customer / Patient</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRole("caretaker");
+                      setError(null);
+                    }}
+                    className={`py-1.5 sm:py-2 px-2 text-[11px] sm:text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
+                      role === "caretaker"
+                        ? "bg-white text-[#1e2a5a] shadow-sm border border-slate-200/90 font-extrabold ring-2 ring-gold/20"
+                        : "text-slate-500 hover:text-slate-800 hover:bg-white/50"
+                    }`}
+                  >
+                    <Briefcase className={`h-3.5 w-3.5 ${role === "caretaker" ? "text-gold" : "text-slate-400"}`} />
+                    <span>Caregiver / Staff</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Form Headers */}
+              <div className="mb-5 text-center">
+                {mode === "register" ? (
+                  <>
+                    <h2 className="text-xl sm:text-2xl font-extrabold text-[#1e2a5a] font-display">
+                      Create Patient &amp; Family Account
+                    </h2>
+                    <p className="mt-1 text-xs sm:text-[13px] text-slate-500 font-medium sm:whitespace-nowrap">
+                      Register in seconds to book verified attendants, home nursing, and recovery care.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h2 className="text-xl sm:text-2xl font-extrabold text-[#1e2a5a] font-display">
+                      {authStep === "email" ? "Welcome Back to Amma Seva" : "Enter Verification Code"}
+                    </h2>
+                    <p className="mt-1 text-xs sm:text-[13px] text-slate-500 font-medium sm:whitespace-nowrap">
+                      {authStep === "email" 
+                        ? "Enter your registered mobile number or email to receive an instant secure OTP." 
+                        : `We sent a 6-digit verification code to ${email}`}
+                    </p>
+                  </>
+                )}
               </div>
 
               {/* Success and Error alerts */}
@@ -1182,199 +1225,362 @@ function LoginPage() {
                 </div>
               )}
 
-              {/* Method Switcher Tabs: Mobile SMS OTP vs Email OTP */}
-              {authStep === "email" && (
-                <div className="grid grid-cols-2 p-1 bg-slate-100/90 rounded-xl mb-4 border border-slate-200/80">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLoginMethod("phone");
-                      setEmail("");
-                      setError(null);
-                      setSuccessMsg(null);
-                    }}
-                    className={`py-2 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                      loginMethod === "phone"
-                        ? "bg-[#1e2a5a] text-white shadow-sm"
-                        : "text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    <Phone className="h-3.5 w-3.5 text-emerald-400" /> Mobile SMS OTP
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLoginMethod("email");
-                      setEmail("");
-                      setError(null);
-                      setSuccessMsg(null);
-                    }}
-                    className={`py-2 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                      loginMethod === "email"
-                        ? "bg-[#1e2a5a] text-white shadow-sm"
-                        : "text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    <Mail className="h-3.5 w-3.5 text-indigo-300" /> Email OTP
-                  </button>
-                </div>
-              )}
+              {/* --- REGISTER FORM (CUSTOMER) --- */}
+              {mode === "register" ? (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-700 mb-1.5">
+                      Full Name <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="relative group">
+                      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 group-focus-within:bg-gold/15 group-focus-within:text-[#8c6b16] transition-colors">
+                        <User className="h-3.5 w-3.5" />
+                      </div>
+                      <input
+                        type="text"
+                        required
+                        value={name}
+                        onChange={(e) => setName(sanitizeName(e.target.value))}
+                        placeholder="e.g. Rahul Sharma"
+                        className="w-full pl-11 pr-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/60 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-4 focus:ring-[#c9a24c]/15 transition-all font-semibold text-[#1e2a5a] placeholder:text-slate-400 placeholder:font-normal"
+                      />
+                    </div>
+                  </div>
 
-              {/* Login Form */}
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {authStep === "email" ? (
-                  loginMethod === "phone" ? (
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
-                          10-Digit Mobile Number <span className="text-rose-500">*</span>
-                        </label>
-                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                          ⚡ MSG91 Instant SMS
-                        </span>
-                      </div>
-                      <div className="relative flex items-center">
-                        <div className="absolute left-3 flex items-center gap-1 text-xs font-bold text-slate-600 border-r border-slate-200 pr-2 pointer-events-none">
-                          <span>🇮🇳</span>
-                          <span>+91</span>
-                        </div>
-                        <input
-                          type="tel"
-                          required
-                          maxLength={10}
-                          value={email.replace(/\D/g, "")}
-                          onChange={(e) => setEmail(e.target.value.replace(/\D/g, ""))}
-                          placeholder="e.g. 98765 43210"
-                          className="w-full pl-16 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 transition-all font-bold tracking-wider text-[#1e2a5a]"
-                        />
-                      </div>
-                      <p className="mt-1.5 text-[11px] text-slate-500">
-                        Enter your registered 10-digit mobile number to receive instant SMS OTP.
-                      </p>
-                    </div>
-                  ) : (
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
-                          Email Address <span className="text-rose-500">*</span>
-                        </label>
-                        <span className="text-[10px] font-bold text-indigo-800 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
-                          ✉️ Email OTP
-                        </span>
-                      </div>
-                      <div className="relative">
-                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <input
-                          type="email"
-                          required
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          placeholder="name@example.com"
-                          className="w-full pl-10 pr-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 transition-all font-medium text-[#1e2a5a]"
-                        />
-                      </div>
-                      <p className="mt-1.5 text-[11px] text-slate-500">
-                        Enter your registered email address to receive a secure login OTP code.
-                      </p>
-                    </div>
-                  )
-                ) : (
-                  <div className="space-y-3 pt-1">
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2 text-center">
-                        Enter 6-Digit Verification Code (OTP)
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
+                        Email Address <span className="text-rose-500">*</span>
                       </label>
-                      <div className="relative max-w-xs mx-auto">
-                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gold" />
-                        <input
-                          type="text"
-                          required
-                          maxLength={6}
-                          value={otp}
-                          onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                          placeholder="• • • • • •"
-                          className="w-full pl-10 pr-3.5 py-3 text-center text-lg font-extrabold tracking-[0.35em] rounded-xl border-2 border-gold/40 bg-white outline-none focus:border-gold focus:ring-2 focus:ring-gold/15 text-[#1e2a5a] shadow-inner"
-                        />
-                      </div>
+                      {email && validateEmail(email, false, "Email") && (
+                        <span className="text-[10px] text-rose-500 font-bold">Invalid</span>
+                      )}
                     </div>
+                    <div className="relative group">
+                      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 group-focus-within:bg-gold/15 group-focus-within:text-[#8c6b16] transition-colors">
+                        <Mail className="h-3.5 w-3.5" />
+                      </div>
+                      <input
+                        type="text"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value.toLowerCase().replace(/\s+/g, ''))}
+                        placeholder="name@example.com"
+                        className={`w-full pl-11 pr-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-xl border outline-none focus:bg-white transition-all font-semibold text-[#1e2a5a] placeholder:text-slate-400 placeholder:font-normal ${
+                          email && validateEmail(email, false, "Email")
+                            ? "border-rose-400 bg-rose-50/40 focus:border-rose-500 focus:ring-4 focus:ring-rose-100"
+                            : "border-slate-200 bg-slate-50/60 focus:border-[#c9a24c] focus:ring-4 focus:ring-[#c9a24c]/15"
+                        }`}
+                      />
+                    </div>
+                    {email && validateEmail(email, false, "Email address") && (
+                      <p className="mt-1 text-[11px] text-rose-600 font-semibold leading-tight">
+                        {validateEmail(email, false, "Email address")}
+                      </p>
+                    )}
+                  </div>
 
-                    <div className="flex items-center justify-between text-xs pt-1 px-1">
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
+                        Phone Number <span className="text-rose-500">*</span>
+                      </label>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/80">
+                        ⚡ SMS Verified
+                      </span>
+                    </div>
+                    <div className="relative group flex items-center">
+                      <div className="absolute left-3 flex items-center gap-1.5 text-xs font-extrabold text-slate-700 bg-slate-100/90 py-1 px-2 rounded-lg border border-slate-200 pointer-events-none group-focus-within:border-gold/50 group-focus-within:bg-gold/10 transition-colors">
+                        <span>🇮🇳</span>
+                        <span className="font-mono text-[11px]">+91</span>
+                      </div>
+                      <input
+                        type="tel"
+                        inputMode="numeric"
+                        required
+                        maxLength={10}
+                        value={phone}
+                        onChange={(e) => setPhone(sanitizeIndianPhone(e.target.value))}
+                        placeholder="10-digit mobile number"
+                        className="w-full pl-20 pr-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/60 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-4 focus:ring-[#c9a24c]/15 transition-all font-mono font-bold text-[#1e2a5a] placeholder:text-slate-400 placeholder:font-sans placeholder:font-normal"
+                      />
+                    </div>
+                    <p className="mt-1.5 text-[11px] text-slate-400 font-medium">
+                      Starts with 6, 7, 8, or 9 • Instant SMS OTP verification.
+                    </p>
+                  </div>
+
+                  {/* Terms Checkbox */}
+                  <div className="pt-2">
+                    <label className="flex items-start gap-2.5 cursor-pointer p-3 rounded-xl bg-slate-50/80 border border-slate-200/70 hover:border-slate-300 transition-all select-none">
+                      <input
+                        type="checkbox"
+                        required
+                        checked={agreeTerms}
+                        onChange={(e) => setAgreeTerms(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#1e2a5a] focus:ring-[#c9a24c] cursor-pointer shrink-0"
+                      />
+                      <span className="text-xs text-slate-600 font-medium leading-relaxed">
+                        I agree to Amma Seva's{" "}
+                        <button
+                          type="button"
+                          onClick={() => setShowTermsModal(true)}
+                          className="text-gold font-bold hover:underline cursor-pointer inline focus:outline-none"
+                        >
+                          Terms of Service &amp; Care Policies
+                        </button>
+                        .
+                      </span>
+                    </label>
+                  </div>
+
+                  {/* Submit CTA Button */}
+                  <button
+                    type="submit"
+                    disabled={isLoading || !agreeTerms}
+                    className={`w-full py-2.5 sm:py-3 px-5 rounded-xl font-bold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-md mt-4 ${
+                      isLoading || !agreeTerms
+                        ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none border border-slate-200"
+                        : "bg-gradient-to-r from-[#1e2a5a] via-[#283870] to-[#1e2a5a] hover:from-[#141d3e] hover:to-[#202d5a] text-white shadow-[#1e2a5a]/25 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 border border-indigo-900/30"
+                    }`}
+                  >
+                    {isLoading ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin text-gold" />
+                        <span>Creating account...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Create Patient &amp; Family Account</span>
+                        <ArrowRight className="h-4 w-4 text-gold" />
+                      </>
+                    )}
+                  </button>
+                </form>
+              ) : (
+                /* --- LOGIN FORM (SIGN IN) --- */
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Method Switcher Tabs: Mobile SMS OTP vs Email OTP */}
+                  {authStep === "email" && (
+                    <div className="grid grid-cols-2 p-1 bg-slate-100/90 rounded-xl mb-4 border border-slate-200/80">
                       <button
                         type="button"
                         onClick={() => {
-                          setAuthStep("email");
-                          setOtp("");
+                          setLoginMethod("phone");
+                          setEmail("");
                           setError(null);
                           setSuccessMsg(null);
                         }}
-                        className="text-gold font-bold hover:underline cursor-pointer text-[11px]"
+                        className={`py-1.5 px-2 text-[11px] sm:text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                          loginMethod === "phone"
+                            ? "bg-[#1e2a5a] text-white shadow-sm"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
                       >
-                        ← Change Mobile / Email
+                        <Phone className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-400 shrink-0" />
+                        <span>Mobile OTP</span>
                       </button>
                       <button
                         type="button"
-                        disabled={countdown > 0 || isLoading}
-                        onClick={handleResendOtp}
-                        className={`font-bold hover:underline flex items-center gap-1 cursor-pointer text-[11px] ${
-                          countdown > 0 ? "text-slate-400 cursor-not-allowed" : "text-[#1e2a5a]"
+                        onClick={() => {
+                          setLoginMethod("email");
+                          setEmail("");
+                          setError(null);
+                          setSuccessMsg(null);
+                        }}
+                        className={`py-1.5 px-2 text-[11px] sm:text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                          loginMethod === "email"
+                            ? "bg-[#1e2a5a] text-white shadow-sm"
+                            : "text-slate-600 hover:text-slate-900"
                         }`}
                       >
-                        {isLoading && <RefreshCw className="h-3 w-3 animate-spin" />}
-                        {countdown > 0 ? `Resend Code (${countdown}s)` : "Resend OTP"}
+                        <Mail className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-indigo-300 shrink-0" />
+                        <span>Email OTP</span>
                       </button>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Submit CTA Button */}
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className={`w-full py-3.5 px-6 rounded-xl font-bold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-md mt-4 ${
-                    isLoading
-                      ? "bg-slate-300 text-slate-500 cursor-not-allowed shadow-none"
-                      : "bg-gradient-to-r from-[#1e2a5a] via-[#2a3a78] to-[#1e2a5a] hover:from-[#141d3e] hover:to-[#223068] text-white shadow-[#1e2a5a]/20 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
-                  }`}
-                >
-                  {isLoading ? (
+                  {authStep === "email" ? (
+                    loginMethod === "phone" ? (
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
+                            10-Digit Mobile Number <span className="text-rose-500">*</span>
+                          </label>
+                          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                            ⚡ MSG91 Instant SMS
+                          </span>
+                        </div>
+                        <div className="relative group flex items-center">
+                          <div className="absolute left-3 flex items-center gap-1.5 text-xs font-extrabold text-slate-700 bg-slate-100/90 py-1 px-2 rounded-lg border border-slate-200 pointer-events-none group-focus-within:border-gold/50 group-focus-within:bg-gold/10 transition-colors">
+                            <span>🇮🇳</span>
+                            <span className="font-mono text-[11px]">+91</span>
+                          </div>
+                          <input
+                            type="tel"
+                            inputMode="numeric"
+                            required
+                            maxLength={10}
+                            value={email}
+                            onChange={(e) => setEmail(sanitizeIndianPhone(e.target.value))}
+                            placeholder="e.g. 98765 43210"
+                            className="w-full pl-20 pr-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/60 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-4 focus:ring-[#c9a24c]/15 transition-all font-mono font-bold text-[#1e2a5a]"
+                          />
+                        </div>
+                        <p className="mt-1.5 text-[11px] text-slate-500">
+                          Enter your registered 10-digit mobile number to receive instant SMS OTP.
+                        </p>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
+                            Email Address <span className="text-rose-500">*</span>
+                          </label>
+                          <span className="text-[10px] font-bold text-indigo-800 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                            ✉️ Email OTP
+                          </span>
+                        </div>
+                        <div className="relative group">
+                          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 group-focus-within:bg-gold/15 group-focus-within:text-[#8c6b16] transition-colors">
+                            <Mail className="h-3.5 w-3.5" />
+                          </div>
+                          <input
+                            type="email"
+                            required
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="name@example.com"
+                            className="w-full pl-11 pr-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/60 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-4 focus:ring-[#c9a24c]/15 transition-all font-medium text-[#1e2a5a]"
+                          />
+                        </div>
+                        <p className="mt-1.5 text-[11px] text-slate-500">
+                          Enter your registered email address to receive a secure login OTP code.
+                        </p>
+                      </div>
+                    )
+                  ) : (
+                    <div className="space-y-3 pt-1">
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2 text-center">
+                          Enter 6-Digit Verification Code (OTP)
+                        </label>
+                        <div className="relative max-w-xs mx-auto">
+                          <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gold" />
+                          <input
+                            type="text"
+                            required
+                            maxLength={6}
+                            value={otp}
+                            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                            placeholder="• • • • • •"
+                            className="w-full pl-10 pr-3.5 py-3 text-center text-lg font-extrabold tracking-[0.35em] rounded-xl border-2 border-gold/40 bg-white outline-none focus:border-gold focus:ring-2 focus:ring-gold/15 text-[#1e2a5a] shadow-inner"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs pt-1 px-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAuthStep("email");
+                            setOtp("");
+                            setError(null);
+                            setSuccessMsg(null);
+                          }}
+                          className="text-gold font-bold hover:underline cursor-pointer text-[11px]"
+                        >
+                          ← Change Mobile / Email
+                        </button>
+                        <button
+                          type="button"
+                          disabled={countdown > 0 || isLoading}
+                          onClick={handleResendOtp}
+                          className={`font-bold hover:underline flex items-center gap-1 cursor-pointer text-[11px] ${
+                            countdown > 0 ? "text-slate-400 cursor-not-allowed" : "text-[#1e2a5a]"
+                          }`}
+                        >
+                          {isLoading && <RefreshCw className="h-3 w-3 animate-spin" />}
+                          {countdown > 0 ? `Resend Code (${countdown}s)` : "Resend OTP"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Submit CTA Button */}
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className={`w-full py-2.5 sm:py-3 px-5 rounded-xl font-bold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-md mt-4 ${
+                      isLoading
+                        ? "bg-slate-300 text-slate-500 cursor-not-allowed shadow-none"
+                        : "bg-gradient-to-r from-[#1e2a5a] via-[#283870] to-[#1e2a5a] hover:from-[#141d3e] hover:to-[#202d5a] text-white shadow-[#1e2a5a]/25 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0"
+                    }`}
+                  >
+                    {isLoading ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin text-gold" />
+                        <span>Processing securely...</span>
+                      </>
+                    ) : authStep === "email" ? (
+                      <>
+                        <span>Send Verification Code</span>
+                        <ArrowRight className="h-4 w-4 text-gold" />
+                      </>
+                    ) : (
+                      <>
+                        <span>Verify &amp; Access Dashboard</span>
+                        <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                      </>
+                    )}
+                  </button>
+                </form>
+              )}
+
+              {/* Bottom Swapper & Trust badges */}
+              <div className="mt-5 pt-4 border-t border-slate-100 space-y-2.5 w-full text-center flex flex-col items-center justify-center text-xs">
+                <p className="w-full text-center text-slate-600 font-medium flex items-center justify-center gap-1.5">
+                  {mode === "register" ? (
                     <>
-                      <RefreshCw className="h-4 w-4 animate-spin text-gold" />
-                      <span>Processing securely...</span>
-                    </>
-                  ) : authStep === "email" ? (
-                    <>
-                      <span>Send Verification Code</span>
-                      <ArrowRight className="h-4 w-4 text-gold" />
+                      <span>Already have an account?</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMode("login");
+                          setAuthStep("email");
+                          setError(null);
+                          setSuccessMsg(null);
+                        }}
+                        className="text-[#1e2a5a] font-extrabold hover:text-gold hover:underline cursor-pointer"
+                      >
+                        Sign in here
+                      </button>
                     </>
                   ) : (
                     <>
-                      <span>Verify &amp; Access Dashboard</span>
-                      <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                      <span>Don't have an account?</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMode("register");
+                          setError(null);
+                          setSuccessMsg(null);
+                        }}
+                        className="text-[#1e2a5a] font-extrabold hover:text-gold hover:underline cursor-pointer"
+                      >
+                        Register here
+                      </button>
                     </>
                   )}
-                </button>
-              </form>
-
-              {/* Bottom Swapper & Trust badges */}
-              <div className="mt-5 pt-4 border-t border-slate-100 space-y-2.5 text-center text-xs">
-                <p className="text-slate-600 font-medium">
-                  Don't have an account?{" "}
-                  <button
-                    type="button"
-                    onClick={() => setMode("register")}
-                    className="text-[#1e2a5a] font-extrabold hover:text-gold hover:underline cursor-pointer"
-                  >
-                    Register here
-                  </button>
                 </p>
 
-                <div className="pt-1 flex flex-wrap items-center justify-center gap-3 text-[11px] text-slate-400 font-medium">
+                <div className="pt-1 flex flex-wrap items-center justify-center gap-3 text-[11px] text-slate-400 font-medium w-full">
                   <span className="flex items-center gap-1 text-slate-500">
                     <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> 256-Bit SSL Encrypted
                   </span>
                   <span>•</span>
                   <span className="flex items-center gap-1 text-slate-500">
-                    <Lock className="h-3.5 w-3.5 text-gold" /> Passwordless OTP
+                    <Lock className="h-3.5 w-3.5 text-gold" /> Instant Verification
                   </span>
                   <span>•</span>
                   <Link to="/mtp" className="text-gold font-bold hover:underline flex items-center gap-1">

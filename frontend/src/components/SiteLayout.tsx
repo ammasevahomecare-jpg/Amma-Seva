@@ -8,10 +8,13 @@ import {
 import logoAsset from "@/assets/amma-seva-logo.png";
 import { fetchServices, type Service } from "@/lib/services";
 import { InaugurationSection } from "./InaugurationSection";
+import { ScrollRevealObserver } from "./ScrollRevealObserver";
 
 const PHONE = "+91 94945 16543";
 const PHONE_TEL = "+919494516543";
 const WHATSAPP = "919494516543";
+const WHATSAPP_DEFAULT_TEXT = "Hello Amma Seva, I need home healthcare support.";
+const WHATSAPP_URL = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(WHATSAPP_DEFAULT_TEXT)}`;
 const EMAIL = "info@ammaseva.in";
 const INSTAGRAM = "https://www.instagram.com/amma.seva?stkn=NWo0NTdxZnRxOHpx&utm_source=qr";
 
@@ -344,40 +347,43 @@ function Footer() {
             <span>Inaugurated by Thiru Sandeep Nanduri, IAS</span>
           </div>
 
-          {/* Social Links */}
+          {/* Social Links (Original Brand Colors) */}
           <div className="flex items-center gap-3 pt-2">
+            {/* Facebook */}
             <a 
               href="https://facebook.com" 
               target="_blank"
               rel="noreferrer"
               aria-label="Facebook" 
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-[#1877F2] text-white transition-all duration-200 hover:scale-110"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1877F2] text-white shadow-md shadow-[#1877F2]/30 hover:scale-110 hover:shadow-lg hover:shadow-[#1877F2]/50 transition-all duration-200"
             >
-              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-white" xmlns="http://www.w3.org/2000/svg">
+              <svg viewBox="0 0 24 24" className="h-4.5 w-4.5 fill-white" xmlns="http://www.w3.org/2000/svg">
                 <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
               </svg>
             </a>
 
+            {/* Instagram */}
             <a 
               href={INSTAGRAM} 
               target="_blank"
               rel="noreferrer"
               aria-label="Instagram" 
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-gradient-to-tr hover:from-[#f9ce34] hover:via-[#ee2a7b] hover:to-[#6228d7] text-white transition-all duration-200 hover:scale-110"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white shadow-md shadow-[#dc2743]/30 hover:scale-110 hover:shadow-lg hover:shadow-[#dc2743]/50 transition-all duration-200"
             >
-              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-white" xmlns="http://www.w3.org/2000/svg">
+              <svg viewBox="0 0 24 24" className="h-4.5 w-4.5 fill-white" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
               </svg>
             </a>
 
+            {/* WhatsApp */}
             <a 
-              href={`https://wa.me/${WHATSAPP}`} 
+              href={WHATSAPP_URL} 
               target="_blank"
               rel="noreferrer"
               aria-label="WhatsApp" 
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-[#25D366] text-white transition-all duration-200 hover:scale-110"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#25D366] text-white shadow-md shadow-[#25D366]/30 hover:scale-110 hover:shadow-lg hover:shadow-[#25D366]/50 transition-all duration-200"
             >
-              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-white" xmlns="http://www.w3.org/2000/svg">
+              <svg viewBox="0 0 24 24" className="h-4.5 w-4.5 fill-white" xmlns="http://www.w3.org/2000/svg">
                 <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.42 9.864-9.864.002-2.637-1.03-5.114-2.905-6.99C16.546 1.875 14.072 1.84 11.43 1.84 6.002 1.84 1.578 6.262 1.574 11.693c-.001 1.705.452 3.369 1.31 4.8l-.94 3.433 3.506-.921zm12.338-7.531c-.34-.17-2.01-.993-2.321-1.106-.312-.113-.538-.17-.765.17-.227.34-.879 1.106-1.078 1.328-.199.222-.399.249-.739.08-.34-.17-1.436-.53-2.735-1.69-1.01-.9-1.694-2.01-1.892-2.35-.198-.34-.021-.524.149-.693.153-.152.34-.399.51-.599.17-.2.227-.34.34-.566.113-.227.056-.425-.028-.595-.085-.17-.765-1.842-1.049-2.528-.276-.662-.555-.572-.765-.583-.198-.011-.425-.013-.652-.013-.227 0-.595.085-.907.425-.312.34-1.191 1.164-1.191 2.837 0 1.673 1.218 3.293 1.388 3.52.17.227 2.399 3.662 5.811 5.137.812.35 1.446.56 1.94.717.816.26 1.56.223 2.148.135.656-.098 2.01-.822 2.294-1.583.283-.762.283-1.417.198-1.583-.085-.17-.312-.27-.652-.44z"/>
               </svg>
             </a>
@@ -452,7 +458,7 @@ function Footer() {
 
             <li>
               <a 
-                href={`https://wa.me/${WHATSAPP}`} 
+                href={WHATSAPP_URL} 
                 target="_blank" 
                 rel="noreferrer" 
                 className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-slate-200 transition-colors font-semibold"
@@ -549,7 +555,7 @@ function FloatingActions() {
 
       {/* WhatsApp Floating Action */}
       <a
-        href={`https://wa.me/${WHATSAPP}`}
+        href={WHATSAPP_URL}
         target="_blank"
         rel="noreferrer"
         aria-label="Chat on WhatsApp"
@@ -579,6 +585,7 @@ export function SiteLayout({
 }) {
   return (
     <div className="flex min-h-screen flex-col bg-background text-slate-850">
+      <ScrollRevealObserver />
       <Header />
       <main className="flex-1">{children}</main>
       {showInauguration && <InaugurationSection />}
@@ -588,4 +595,4 @@ export function SiteLayout({
   );
 }
 
-export const contact = { PHONE, PHONE_TEL, WHATSAPP, EMAIL, INSTAGRAM };
+export const contact = { PHONE, PHONE_TEL, WHATSAPP, WHATSAPP_URL, EMAIL, INSTAGRAM };
