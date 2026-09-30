@@ -373,11 +373,7 @@ function ServicePage() {
               </div>
               <div className="shrink-0 w-full sm:w-auto">
                 <a
-                  href={
-                    typeof window !== "undefined" && localStorage.getItem("ammaseva_user_token")
-                      ? `/dashboard?service=${service.slug}`
-                      : `/login?redirect=${encodeURIComponent(`/dashboard?service=${service.slug}`)}`
-                  }
+                  href={`/dashboard?service=${service.slug}`}
                   className={`w-full py-2.5 px-5 flex items-center justify-center gap-1.5 font-bold text-xs rounded-xl shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap text-white text-center transition-all ${
                     service.isMtp
                       ? "bg-gradient-to-r from-amber-700 via-amber-800 to-amber-900 hover:from-amber-800 hover:to-amber-950"
@@ -464,11 +460,7 @@ function ServicePage() {
                   </div>
 
                   <a
-                    href={
-                      typeof window !== "undefined" && localStorage.getItem("ammaseva_user_token")
-                        ? `/dashboard?service=${service.slug}`
-                        : `/login?redirect=${encodeURIComponent(`/dashboard?service=${service.slug}`)}`
-                    }
+                    href={`/dashboard?service=${service.slug}`}
                     className={`w-full py-3 flex items-center justify-center gap-2 font-bold text-sm rounded-xl shadow-sm hover:shadow-md cursor-pointer text-center text-white transition-all ${
                       service.isMtp
                         ? "bg-gradient-to-r from-amber-700 via-amber-800 to-amber-900 hover:from-amber-800 hover:to-amber-950"

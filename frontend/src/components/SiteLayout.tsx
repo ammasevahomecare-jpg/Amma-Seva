@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { useState, useEffect, type ReactNode } from "react";
 import { 
   Menu, X, Phone, MessageCircle, Mail, MapPin, Building2, 
@@ -539,14 +539,19 @@ function Footer() {
 }
 
 function getBookingUrl(serviceSlug?: string) {
-  const dest = serviceSlug ? `/dashboard?service=${serviceSlug}` : "/dashboard";
-  if (typeof window !== "undefined" && localStorage.getItem("ammaseva_user_token")) {
-    return dest;
-  }
-  return `/login?redirect=${encodeURIComponent(dest)}`;
+  return serviceSlug ? `/dashboard?service=${serviceSlug}` : "/dashboard";
 }
 
 function FloatingActions() {
+  const routerState = useRouterState();
+  const currentPath = routerState?.location?.pathname || (typeof window !== "undefined" ? window.location.pathname : "");
+
+  // Do not show floating overlays on dashboard, admin, or login pages where forms are active
+  const isAppPage = currentPath.startsWith("/dashboard") || currentPath.startsWith("/admin") || currentPath.startsWith("/login");
+  if (isAppPage) {
+    return null;
+  }
+
   return (
     <>
       {/* ============================================================ */}
@@ -555,10 +560,17 @@ function FloatingActions() {
       <div className="fixed bottom-5 left-3 sm:left-5 z-50 flex flex-col gap-2.5 sm:gap-3 items-start pointer-events-auto">
         
         {/* 1. Book Care Service Sticky Button */}
-        <a
-          href={getBookingUrl()}
+        <Link
+          to="/services"
+          hash="services-form"
+          onClick={() => {
+            const el = document.getElementById("services-form");
+            if (el) {
+              el.scrollIntoView({ behavior: "smooth" });
+            }
+          }}
           aria-label="Book Verified Healthcare Service"
-          className="group flex items-center gap-2.5 sm:gap-3 rounded-2xl bg-gradient-to-r from-[#0b183b] via-[#14234f] to-[#1e2a5a] text-white p-2 sm:px-4 sm:py-2.5 shadow-2xl border border-gold/40 hover:border-gold hover:scale-[1.04] active:scale-[0.98] transition-all duration-300 cursor-pointer"
+          className="group flex items-center gap-2.5 sm:gap-3 rounded-2xl bg-gradient-to-r from-[#0b183b] via-[#14234f] to-[#1e2a5a] text-white p-2.5 sm:px-4 sm:py-2.5 shadow-2xl border border-gold/40 hover:border-gold hover:scale-[1.04] active:scale-[0.98] transition-all duration-300 cursor-pointer"
         >
           <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-gold/20 border border-gold/40 flex items-center justify-center text-gold shadow-xs shrink-0 group-hover:bg-gold group-hover:text-[#0b183b] transition-all">
             <Calendar className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
@@ -573,13 +585,20 @@ function FloatingActions() {
               Nurses &amp; Attendants
             </div>
           </div>
-        </a>
+        </Link>
 
         {/* 2. Book MTP Task Sticky Button */}
-        <a
-          href={getBookingUrl("mtp")}
+        <Link
+          to="/mtp"
+          hash="mtp-tasks"
+          onClick={() => {
+            const el = document.getElementById("mtp-tasks");
+            if (el) {
+              el.scrollIntoView({ behavior: "smooth" });
+            }
+          }}
           aria-label="Book MTP Care Task"
-          className="group flex items-center gap-2.5 sm:gap-3 rounded-2xl bg-gradient-to-r from-[#c9a24c] via-[#dfba63] to-[#b38938] hover:from-[#b38938] hover:to-[#966b1a] text-[#081023] p-2 sm:px-4 sm:py-2.5 shadow-2xl border-2 border-white/80 hover:scale-[1.04] active:scale-[0.98] transition-all duration-300 cursor-pointer"
+          className="group flex items-center gap-2.5 sm:gap-3 rounded-2xl bg-gradient-to-r from-[#c9a24c] via-[#dfba63] to-[#b38938] hover:from-[#b38938] hover:to-[#966b1a] text-[#081023] p-2.5 sm:px-4 sm:py-2.5 shadow-2xl border-2 border-white/80 hover:scale-[1.04] active:scale-[0.98] transition-all duration-300 cursor-pointer"
         >
           <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-[#081023]/15 flex items-center justify-center text-[#081023] shadow-xs shrink-0 group-hover:scale-105 transition-all">
             <Car className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
@@ -598,7 +617,7 @@ function FloatingActions() {
               Escort • Errands • Stroll
             </div>
           </div>
-        </a>
+        </Link>
 
       </div>
 

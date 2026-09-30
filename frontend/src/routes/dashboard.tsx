@@ -532,6 +532,9 @@ function CustomerDashboard() {
   const [patientName, setPatientName] = useState("");
   const [patientAge, setPatientAge] = useState("");
   const [patientNeeds, setPatientNeeds] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"pay_later" | "razorpay">("razorpay");
   
   const [prescriptionFile, setPrescriptionFile] = useState("");
@@ -640,7 +643,10 @@ function CustomerDashboard() {
       setUser(JSON.parse(userDetails));
       fetchAnnouncements('user');
     } else {
-      navigate({ to: "/login" });
+      // Guest direct booking mode: keep user null and open booking wizard directly
+      setIsCaretaker(false);
+      setUser(null);
+      setActiveView("new-booking");
     }
   }, [navigate]);
 
@@ -700,17 +706,49 @@ function CustomerDashboard() {
         
         // Pre-select service from URL query params if present
         const urlParams = new URLSearchParams(window.location.search);
-        const preSelectedService = urlParams.get("service");
-        const matchingService = formatted.find(s => s.id === preSelectedService || (preSelectedService && s.id.startsWith(preSelectedService)));
-        if (matchingService) {
-          setSelectedServiceId(matchingService.id);
-          setActiveView("new-booking");
+        const preSelectedService = (urlParams.get("service") || "").toLowerCase().trim();
+        if (preSelectedService) {
+          const matchingService = formatted.find(s => 
+            s.id === preSelectedService || 
+            s.id.startsWith(preSelectedService) || 
+            preSelectedService.startsWith(s.id) ||
+            (preSelectedService === "mtp" && s.isMtp) ||
+            s.id.includes(preSelectedService) ||
+            preSelectedService.includes(s.id)
+          );
+          if (matchingService) {
+            setSelectedServiceId(matchingService.id);
+            setActiveView("new-booking");
+          } else {
+            setSelectedServiceId(formatted[0].id);
+          }
         } else {
           setSelectedServiceId(formatted[0].id);
         }
       }
     });
   }, []);
+
+  // Listen to search params reactively
+  useEffect(() => {
+    if (servicesList.length === 0) return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const preSelectedService = (urlParams.get("service") || "").toLowerCase().trim();
+    if (preSelectedService) {
+      const matchingService = servicesList.find(s => 
+        s.id === preSelectedService || 
+        s.id.startsWith(preSelectedService) || 
+        preSelectedService.startsWith(s.id) ||
+        (preSelectedService === "mtp" && s.isMtp) ||
+        s.id.includes(preSelectedService) ||
+        preSelectedService.includes(s.id)
+      );
+      if (matchingService) {
+        setSelectedServiceId(matchingService.id);
+        setActiveView("new-booking");
+      }
+    }
+  }, [servicesList]);
 
   // Load Razorpay checkout script
   useEffect(() => {
@@ -864,6 +902,26 @@ function CustomerDashboard() {
   };
 
   const validateStep2 = () => {
+    if (!user) {
+      const contactNameErr = validateName(contactName, "Your name / Contact person");
+      if (contactNameErr) {
+        alert(contactNameErr);
+        return false;
+      }
+      const contactPhoneErr = validatePhone(contactPhone, "Your mobile number");
+      if (contactPhoneErr) {
+        alert(contactPhoneErr);
+        return false;
+      }
+      if (contactEmail && contactEmail.trim()) {
+        const emailErr = validateEmail(contactEmail, false, "Email address");
+        if (emailErr) {
+          alert(emailErr);
+          return false;
+        }
+      }
+    }
+
     const nameErr = validateName(patientName, "Patient name");
     if (nameErr) {
       alert(nameErr);
@@ -879,7 +937,10 @@ function CustomerDashboard() {
  
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+
+    if (!validateStep1() || !validateStep2()) {
+      return;
+    }
 
     const addrErr = validateAddress(bookingAddress, "Care address");
     if (addrErr) {
@@ -887,9 +948,18 @@ function CustomerDashboard() {
       return;
     }
 
+    if (!agreeTermsBooking) {
+      alert("Please check the box to agree to the Amma Seva Patient Booking Terms & Conditions.");
+      return;
+    }
+
+    const bookerName = (user?.name || contactName || patientName || "Customer").trim();
+    const bookerPhone = sanitizeIndianPhone(user?.phone || contactPhone || "9490587575");
+    const bookerEmail = (user?.email || contactEmail || "").trim();
+
     setIsSubmitting(true);
  
-    const submitBooking = async (payStatus: string) => {
+    const submitBooking = async (payStatus: string, razorpayPaymentDetails?: any) => {
       try {
         const token = localStorage.getItem("ammaseva_user_token");
         const isMtpBooking = !!currentService?.isMtp || (selectedServiceId && selectedServiceId.startsWith("mtp"));
@@ -910,31 +980,32 @@ function CustomerDashboard() {
           method: "POST",
           headers: { 
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
+            ...(token ? { "Authorization": `Bearer ${token}` } : {})
           },
           body: JSON.stringify({
-            name: user?.name || patientName || "Customer",
-            phone: user?.phone || "9490587575",
-            email: user?.email || "",
+            name: bookerName,
+            phone: bookerPhone,
+            email: bookerEmail,
             service: currentService?.title || "Home Care Healthcare",
             date: bookingDate || new Date().toISOString().split("T")[0],
             time: bookingTime || "09:00 AM",
             duration: formattedDuration || "1 Day",
             address: bookingAddress || "Hyderabad, Telangana",
             amount: totalCost,
-            patientName: patientName || user?.name || "Customer",
+            patientName: patientName || bookerName,
             patientAge,
             patientNeeds,
-            paymentMethod: isMtpBooking ? "pay_on_service" : paymentMethod,
+            paymentMethod: isMtpBooking ? "pay_on_service" : (paymentMethod || "pay_later"),
             paymentStatus: isMtpBooking ? "Pay on Service" : payStatus,
-            userId: user?.id,
+            userId: user?.id || undefined,
             prescription: prescriptionFile,
             googleMapLocation: bookingGoogleMapLocation,
             advancePaid: advPaid,
-            balanceAmount: balDue
+            balanceAmount: balDue,
+            ...(razorpayPaymentDetails || {})
           })
         });
-        if (res.status === 401) {
+        if (res.status === 401 && user) {
           handleLogout();
           return;
         }
@@ -942,6 +1013,22 @@ function CustomerDashboard() {
         if (!res.ok) {
           throw new Error(data.error || "Booking submission error.");
         }
+
+        // If guest user, persist login user details so they can access their booking dashboard
+        if (!user && (bookerPhone || bookerEmail)) {
+          const guestUser = {
+            id: data.data?.userId || Date.now(),
+            name: bookerName,
+            phone: bookerPhone,
+            email: bookerEmail
+          };
+          setUser(guestUser);
+          localStorage.setItem("ammaseva_user_details", JSON.stringify(guestUser));
+          if (!localStorage.getItem("ammaseva_user_token")) {
+            localStorage.setItem("ammaseva_user_token", `mock-jwt-user-token-${guestUser.id}`);
+          }
+        }
+
         setSuccessBooking(data.data);
         // Reset form
         setBookingDate("");
@@ -953,10 +1040,15 @@ function CustomerDashboard() {
         setBookingGoogleMapLocation("");
         setAgreeTermsBooking(false);
         setDurationCount(1);
+        setBookingStep(1);
+        if (user) {
+          fetchBookings();
+        }
       } catch (err: any) {
         alert("Booking failed: " + err.message);
       } finally {
         setIsSubmitting(false);
+        setIsPaymentProcessing(false);
       }
     };
 
@@ -966,8 +1058,9 @@ function CustomerDashboard() {
       return;
     }
 
-    if (paymentMethod === "razorpay") {
+    if (paymentMethod === "razorpay" && calculateAdvance() > 0) {
       try {
+        setIsPaymentProcessing(true);
         const orderRes = await fetch("/api/payment/order", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -981,76 +1074,9 @@ function CustomerDashboard() {
           throw new Error("Razorpay Key ID not configured on the server.");
         }
 
-        const handleSuccessBooking = async (response: any) => {
-          setIsSubmitting(true);
-          try {
-            const token = localStorage.getItem("ammaseva_user_token");
-            const formattedDuration = `${durationCount} ${
-              bookingDuration === "Hourly" ? (durationCount === 1 ? "Hour" : "Hours") :
-              bookingDuration === "Daily" ? (durationCount === 1 ? "Day" : "Days") :
-              bookingDuration === "Weekly" ? (durationCount === 1 ? "Week" : "Weeks") :
-              (durationCount === 1 ? "Month" : "Months")
-            }`;
-
-            const res = await fetch("/api/booking", {
-              method: "POST",
-              headers: { 
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`
-              },
-              body: JSON.stringify({
-                name: user?.name || patientName || "Customer",
-                phone: user?.phone || "9490587575",
-                email: user?.email || "",
-                service: currentService?.title || "Home Care Healthcare",
-                date: bookingDate || new Date().toISOString().split("T")[0],
-                time: bookingTime || "09:00 AM",
-                duration: formattedDuration || "1 Day",
-                address: bookingAddress || "Hyderabad, Telangana",
-                amount: calculateTotal(),
-                patientName: patientName || user?.name || "Customer",
-                patientAge,
-                patientNeeds,
-                paymentMethod: "razorpay",
-                userId: user?.id,
-                prescription: prescriptionFile,
-                googleMapLocation: bookingGoogleMapLocation,
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                advancePaid: calculateAdvance(),
-                balanceAmount: calculateTotal() - calculateAdvance()
-              })
-            });
-            if (res.status === 401) {
-              handleLogout();
-              return;
-            }
-            const data = await res.json();
-            if (!res.ok) {
-              throw new Error(data.error || "Booking submission error.");
-            }
-            setSuccessBooking(data.data);
-            // Reset form
-            setBookingDate("");
-            setBookingAddress("");
-            setPatientName("");
-            setPatientAge("");
-            setPatientNeeds("");
-            setPrescriptionFile("");
-            setBookingGoogleMapLocation("");
-            setAgreeTermsBooking(false);
-            setDurationCount(1);
-          } catch (err: any) {
-            alert("Booking failed: " + err.message);
-          } finally {
-            setIsSubmitting(false);
-          }
-        };
-
         // If server provided simulation fallback order or SDK is not present, complete directly
         if (orderData.isSimulation || !(window as any).Razorpay) {
-          await handleSuccessBooking({
+          await submitBooking("Advance Paid", {
             razorpay_order_id: orderData.orderId,
             razorpay_payment_id: `pay_sim_${Date.now()}`,
             razorpay_signature: `sig_sim_${Date.now()}`
@@ -1063,13 +1089,19 @@ function CustomerDashboard() {
           amount: orderData.amount,
           currency: orderData.currency || "INR",
           name: "Amma Seva",
-          description: `Care Booking - ${currentService.title}`,
+          description: `Care Booking - ${currentService?.title || "Service"}`,
           order_id: orderData.orderId,
-          handler: handleSuccessBooking,
+          handler: async (response: any) => {
+            await submitBooking("Advance Paid", {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature
+            });
+          },
           prefill: {
-            name: user?.name || patientName || "",
-            email: user?.email || "",
-            contact: user?.phone || ""
+            name: bookerName,
+            email: bookerEmail,
+            contact: bookerPhone
           },
           theme: {
             color: "#0e2254"
@@ -1077,6 +1109,7 @@ function CustomerDashboard() {
           modal: {
             ondismiss: function() {
               setIsSubmitting(false);
+              setIsPaymentProcessing(false);
             }
           }
         };
@@ -1086,7 +1119,7 @@ function CustomerDashboard() {
           rzp.open();
         } catch (rzpErr) {
           console.warn("[Razorpay SDK warning] Falling back to direct confirmation:", rzpErr);
-          await handleSuccessBooking({
+          await submitBooking("Advance Paid", {
             razorpay_order_id: orderData.orderId,
             razorpay_payment_id: `pay_sim_${Date.now()}`,
             razorpay_signature: `sig_sim_${Date.now()}`
@@ -1095,6 +1128,7 @@ function CustomerDashboard() {
       } catch (err: any) {
         alert("Payment initialization notice: " + err.message);
         setIsSubmitting(false);
+        setIsPaymentProcessing(false);
       }
     } else {
       await submitBooking("Unpaid");
@@ -2876,52 +2910,70 @@ function CustomerDashboard() {
             <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-indigo-600/10 rounded-full blur-2xl pointer-events-none" />
             
             <div className="flex items-center gap-5 relative z-10">
-              {/* Dual-ring gold avatar */}
+              {/* Dual-ring gold avatar / icon */}
               <div className="p-0.5 rounded-2xl bg-gradient-to-tr from-[#c9a24c] via-[#ecd599] to-[#c9a24c] shadow-lg shadow-black/30 shrink-0">
                 <div className="h-16 w-16 rounded-[14px] bg-[#091129] flex items-center justify-center font-display font-black text-2xl text-[#c9a24c] uppercase tracking-wider select-none">
-                  {(user?.name || "P").substring(0, 2)}
+                  {user ? (user?.name || "P").substring(0, 2) : "✨"}
                 </div>
               </div>
 
               <div>
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-[10px] font-bold uppercase tracking-widest text-[#e4c277] mb-1.5 shadow-xs">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Verified Customer Portal</span>
+                  <span>{user ? "Verified Customer Portal" : "Direct Instant Booking"}</span>
                 </div>
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold font-display leading-tight text-white">
-                  Welcome back, <span className="bg-gradient-to-r from-[#edd69c] via-[#f7e8c2] to-[#c9a24c] bg-clip-text text-transparent">{user?.name || "Patient"}</span>
+                  {user ? (
+                    <>Welcome back, <span className="bg-gradient-to-r from-[#edd69c] via-[#f7e8c2] to-[#c9a24c] bg-clip-text text-transparent">{user?.name || "Patient"}</span></>
+                  ) : (
+                    <>Book <span className="bg-gradient-to-r from-[#edd69c] via-[#f7e8c2] to-[#c9a24c] bg-clip-text text-transparent">Home Care &amp; MTP Tasks</span></>
+                  )}
                 </h1>
                 <p className="text-xs sm:text-sm text-slate-300/90 mt-1 max-w-xl leading-relaxed">
-                  Manage your homecare bookings, track assigned verified caregivers, and schedule new care shifts.
+                  {user 
+                    ? "Manage your homecare bookings, track assigned verified caregivers, and schedule new care shifts."
+                    : "Fast, background-verified caretaker allocation and companion tasks with 100% escrow protection across Hyderabad."}
                 </p>
               </div>
             </div>
             
             <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto shrink-0 relative z-10">
-              <button
-                onClick={() => setActiveView(activeView === "bookings" ? "new-booking" : "bookings")}
-                className="px-6 py-3.5 bg-gradient-to-r from-[#d8b456] via-[#c9a24c] to-[#b88d30] hover:from-[#e0be67] hover:to-[#c4983b] text-[#091129] text-xs font-extrabold uppercase tracking-wider rounded-2xl flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-[#c9a24c]/20 hover:shadow-xl hover:shadow-[#c9a24c]/30 hover:-translate-y-0.5 active:translate-y-0 transition-all font-sans w-full sm:w-auto"
-              >
-                {activeView === "bookings" ? (
-                  <>
-                    <Calendar className="h-4 w-4" /> Book New Service
-                  </>
-                ) : (
-                  <>
-                    <FileText className="h-4 w-4" /> View My Bookings
-                  </>
-                )}
-              </button>
-              <button
-                onClick={handleLogout}
-                className="px-5 py-3.5 rounded-2xl border border-white/15 bg-white/5 hover:bg-rose-500/15 hover:border-rose-500/40 text-slate-200 hover:text-rose-300 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all hover:-translate-y-0.5 active:translate-y-0 backdrop-blur-md font-sans w-full sm:w-auto"
-              >
-                Sign Out
-              </button>
+              {user ? (
+                <>
+                  <button
+                    onClick={() => setActiveView(activeView === "bookings" ? "new-booking" : "bookings")}
+                    className="px-6 py-3.5 bg-gradient-to-r from-[#d8b456] via-[#c9a24c] to-[#b88d30] hover:from-[#e0be67] hover:to-[#c4983b] text-[#091129] text-xs font-extrabold uppercase tracking-wider rounded-2xl flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-[#c9a24c]/20 hover:shadow-xl hover:shadow-[#c9a24c]/30 hover:-translate-y-0.5 active:translate-y-0 transition-all font-sans w-full sm:w-auto"
+                  >
+                    {activeView === "bookings" ? (
+                      <>
+                        <Calendar className="h-4 w-4" /> Book New Service
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="h-4 w-4" /> View My Bookings
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="px-5 py-3.5 rounded-2xl border border-white/15 bg-white/5 hover:bg-rose-500/15 hover:border-rose-500/40 text-slate-200 hover:text-rose-300 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all hover:-translate-y-0.5 active:translate-y-0 backdrop-blur-md font-sans w-full sm:w-auto"
+                  >
+                    Sign Out
+                  </button>
+                </>
+              ) : (
+                <Link
+                  to="/login"
+                  className="px-6 py-3.5 rounded-2xl border border-white/20 bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all hover:-translate-y-0.5 active:translate-y-0 backdrop-blur-md font-sans w-full sm:w-auto shadow-md"
+                >
+                  <User className="h-4 w-4 text-gold" /> Existing Customer Sign In
+                </Link>
+              )}
             </div>
           </div>
  
-          {/* Quick Metrics Statistics Grid */}
+          {/* Quick Metrics Statistics Grid (Rendered for logged in customers) */}
+          {user && (
           <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-8">
             {/* 1. Total Bookings */}
             <div className="rounded-3xl border border-slate-200/80 bg-white/90 backdrop-blur-md p-6 text-left shadow-sm hover:border-[#c9a24c]/50 hover:shadow-xl hover:shadow-[#c9a24c]/10 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
@@ -2989,6 +3041,7 @@ function CustomerDashboard() {
               </div>
             </div>
           </div>
+          )}
  
           {/* Main Workspace View */}
           {/* Announcement Banners for Customer */}
@@ -3922,14 +3975,89 @@ function CustomerDashboard() {
                   </div>
                 )}
 
-                {/* STEP 2: PATIENT PROFILE DETAILS */}
+                {/* STEP 2: PATIENT & BOOKER PROFILE DETAILS */}
                 {bookingStep === 2 && (
                   <div className="space-y-6 animate-fade-in">
+                    
+                    {/* Guest Booker Information Section */}
+                    {!user ? (
+                      <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-slate-50 via-indigo-50/20 to-amber-50/20 border border-slate-200/90 shadow-xs space-y-4">
+                        <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-200/70">
+                          <div className="flex items-center gap-2">
+                            <span className="h-6 w-6 rounded-lg bg-[#1e2a5a] text-white flex items-center justify-center text-xs font-bold">
+                              👤
+                            </span>
+                            <span className="text-xs font-extrabold uppercase tracking-wider text-[#1e2a5a] font-display">
+                              Your Contact Information
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-emerald-800 bg-emerald-100/70 border border-emerald-300/80 px-2.5 py-0.5 rounded-full font-bold">
+                            Direct Booking
+                          </span>
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div>
+                            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                              Your Full Name <span className="text-rose-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              value={contactName}
+                              onChange={(e) => setContactName(sanitizeName(e.target.value))}
+                              placeholder="e.g. Suresh Kumar"
+                              className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-semibold"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                              Mobile Number (For Care Coordinator) <span className="text-rose-500">*</span>
+                            </label>
+                            <input
+                              type="tel"
+                              required
+                              maxLength={10}
+                              value={contactPhone}
+                              onChange={(e) => setContactPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                              placeholder="10-digit mobile number"
+                              className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-semibold font-mono"
+                            />
+                          </div>
+
+                          <div className="sm:col-span-2">
+                            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex justify-between">
+                              <span>Email Address (For Invoices &amp; Reports)</span>
+                              <span className="text-[10px] text-slate-400 font-medium">Optional</span>
+                            </label>
+                            <input
+                              type="email"
+                              value={contactEmail}
+                              onChange={(e) => setContactEmail(e.target.value)}
+                              placeholder="e.g. suresh.kumar@gmail.com"
+                              className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-medium"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="text-primary font-bold">Booking Account:</span>
+                          <span className="font-semibold text-slate-700">{user.name} ({user.phone || user.email})</span>
+                        </div>
+                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          ✓ Verified Customer
+                        </span>
+                      </div>
+                    )}
+
                     <div className="grid gap-6 md:grid-cols-2">
                       {/* Patient Name */}
                       <div>
                         <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-                          Patient Full Name
+                          Patient Full Name <span className="text-rose-500">*</span>
                         </label>
                         <input
                           type="text"

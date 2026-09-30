@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { SiteLayout, contact } from "@/components/SiteLayout";
 import { fetchServices, type Service } from "@/lib/services";
+import { validateName, validatePhone, sanitizeIndianPhone, sanitizeName } from "@/lib/validation";
 import motherBaby from "@/assets/service-mother-baby.jpg";
 import nursing from "@/assets/service-nursing.jpg";
 import elderly from "@/assets/service-elderly.jpg";
@@ -143,6 +144,81 @@ function ServicesPage() {
   const { services } = Route.useLoaderData();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
+
+  // Direct Care Booking Form State (Services Page)
+  const [formService, setFormService] = useState("Elderly Care");
+  const [formPatientName, setFormPatientName] = useState("");
+  const [formPatientAge, setFormPatientAge] = useState("");
+  const [formBookerName, setFormBookerName] = useState("");
+  const [formPhone, setFormPhone] = useState("");
+  const [formEmail, setFormEmail] = useState("");
+  const [formDate, setFormDate] = useState("");
+  const [formShift, setFormShift] = useState("12h Day Shift");
+  const [formCity, setFormCity] = useState("Hyderabad");
+  const [formAddress, setFormAddress] = useState("");
+  const [formNeeds, setFormNeeds] = useState("");
+  const [isSubmittingForm, setIsSubmittingForm] = useState(false);
+  const [formSuccessData, setFormSuccessData] = useState<any | null>(null);
+
+  const handleDirectServiceSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const bookerErr = validateName(formBookerName, "Your name / Contact person");
+    if (bookerErr) {
+      alert(bookerErr);
+      return;
+    }
+
+    const phoneErr = validatePhone(formPhone, "Mobile number");
+    if (phoneErr) {
+      alert(phoneErr);
+      return;
+    }
+
+    const cleanPhone = sanitizeIndianPhone(formPhone);
+
+    setIsSubmittingForm(true);
+    try {
+      const res = await fetch("/api/enquiry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formBookerName.trim(),
+          phone: cleanPhone,
+          email: formEmail.trim(),
+          service: `${formService} (${formShift})`,
+          date: formDate || new Date().toISOString().split("T")[0],
+          city: formCity || "Hyderabad",
+          message: `Patient: ${formPatientName || 'Self / Family'} (Age: ${formPatientAge || 'N/A'}) | Address: ${formAddress || 'Hyderabad'} | Specific Care Requirements: ${formNeeds || 'Standard Home Healthcare'}`
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setFormSuccessData({
+          name: formBookerName,
+          phone: cleanPhone,
+          service: formService,
+          shift: formShift,
+          date: formDate || "Immediate / Flexible",
+          id: data.data?.id || Math.floor(1000 + Math.random() * 9000)
+        });
+        setFormPatientName("");
+        setFormPatientAge("");
+        setFormBookerName("");
+        setFormPhone("");
+        setFormEmail("");
+        setFormAddress("");
+        setFormNeeds("");
+      } else {
+        alert(data.error || "Failed to submit booking request. Please call our 24/7 care helpline.");
+      }
+    } catch (err: any) {
+      alert("Network error: " + (err.message || "Please check your connection and try again."));
+    } finally {
+      setIsSubmittingForm(false);
+    }
+  };
 
   const categories = [
     { label: "✨ All Services", value: "All" },
@@ -748,11 +824,7 @@ function ServicesPage() {
                           View Details
                         </Link>
                         <a
-                          href={
-                            typeof window !== "undefined" && localStorage.getItem("ammaseva_user_token")
-                              ? `/dashboard?service=${s.slug}`
-                              : `/login?redirect=${encodeURIComponent(`/dashboard?service=${s.slug}`)}`
-                          }
+                          href={`/dashboard?service=${s.slug}`}
                           className={`flex-1 py-2 px-3 rounded-xl text-white text-xs font-bold transition-all text-center shadow-md flex items-center justify-center gap-1 cursor-pointer group/btn ${
                             s.isMtp 
                               ? "bg-gradient-to-r from-amber-700 via-amber-800 to-amber-900 hover:from-amber-800 hover:to-amber-950 shadow-amber-900/20"
@@ -773,6 +845,346 @@ function ServicesPage() {
 
         </div>
       </section>
+
+      {/* ============================================================ */}
+      {/* 3. DIRECT CARE SERVICE BOOKING & CONSULTATION FORM           */}
+      {/* ============================================================ */}
+      <section id="services-form" className="py-12 sm:py-16 bg-gradient-to-b from-slate-50 via-white to-slate-50/70 border-y border-slate-200/80 text-left relative overflow-hidden scroll-mt-20">
+        {/* Ambient background blur circles */}
+        <div className="absolute top-0 right-1/4 -z-10 h-96 w-96 rounded-full bg-gold/15 blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-0 left-10 -z-10 h-80 w-80 rounded-full bg-[#1e2a5a]/10 blur-[100px] pointer-events-none" />
+
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
+          
+          <div className="rounded-3xl border border-gold/35 bg-white p-6 sm:p-10 lg:p-12 shadow-2xl relative overflow-hidden">
+            {/* Top gold accent line */}
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#0b183b] via-[#c9a24c] to-[#0b183b]" />
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+              
+              {/* Left Column: Form Header & Guarantees */}
+              <div className="lg:col-span-5 space-y-5">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-gold/40 bg-gold/10 text-xs font-extrabold text-[#966b1a] uppercase tracking-wider">
+                  <Sparkles className="h-3.5 w-3.5 text-gold animate-pulse" />
+                  Instant Care Request
+                </div>
+
+                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#1e2a5a] font-display tracking-tight leading-tight">
+                  Book Care Service or Request Free Consultation
+                </h2>
+
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-medium">
+                  Fill in your patient requirements below. Our Hyderabad clinical coordinator will match a verified nurse or attendant and call you within <strong>15 minutes</strong> with transparent pricing and shift schedules.
+                </p>
+
+                {/* 4 Pillars of Trust */}
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-start gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-200/70 text-xs">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 font-bold">
+                      ✓
+                    </span>
+                    <div>
+                      <strong className="text-slate-800 block font-semibold">100% Police &amp; ID Verified Staff</strong>
+                      <span className="text-slate-500 text-[11px]">Strict background verification, Aadhaar KYC &amp; medical nursing credentials.</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-200/70 text-xs">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-gold/20 text-[#966b1a] font-bold">
+                      ⚡
+                    </span>
+                    <div>
+                      <strong className="text-slate-800 block font-semibold">Zero Advance Required to Inquire</strong>
+                      <span className="text-slate-500 text-[11px]">Discuss schedules and options freely before committing.</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-200/70 text-xs">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 font-bold">
+                      🛡️
+                    </span>
+                    <div>
+                      <strong className="text-slate-800 block font-semibold">Continuous Doctor &amp; Supervisor Oversight</strong>
+                      <span className="text-slate-500 text-[11px]">Daily digital vitals log and emergency escalation support.</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Direct Phone / WhatsApp quick links */}
+                <div className="pt-2 flex flex-col sm:flex-row gap-3">
+                  <a
+                    href={`tel:${contact.PHONE_TEL}`}
+                    className="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#1e2a5a] text-xs font-bold flex items-center justify-center gap-2 border border-slate-200 transition-colors"
+                  >
+                    <Phone className="h-3.5 w-3.5 text-primary" />
+                    <span>Call Helpline</span>
+                  </a>
+                  <a
+                    href={`https://wa.me/${contact.WHATSAPP}?text=Hello%20Amma%20Seva%2C%20I%20want%20to%20book%20a%20care%20service`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 py-2.5 px-4 rounded-xl bg-[#25D366]/15 hover:bg-[#25D366]/25 text-emerald-800 text-xs font-bold flex items-center justify-center gap-2 border border-emerald-200 transition-colors"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
+                    <span>WhatsApp Desk</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* Right Column: Direct Booking Form */}
+              <div className="lg:col-span-7 bg-slate-50/60 rounded-2xl border border-slate-200/90 p-5 sm:p-8 text-left space-y-6">
+                
+                <form onSubmit={handleDirectServiceSubmit} className="space-y-5">
+                  
+                  {/* Select Service */}
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                      Select Required Healthcare Service <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      value={formService}
+                      onChange={(e) => setFormService(e.target.value)}
+                      className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-semibold cursor-pointer"
+                    >
+                      <option value="Elderly Care">👴 Elderly &amp; Senior Healthcare (₹1,200/day)</option>
+                      <option value="Home Nursing Services">🩺 Professional Home Nursing &amp; Injections (₹1,500/day)</option>
+                      <option value="Patient Bedside Attendant">🛏️ Patient Bedside Attendant (₹1,100/day)</option>
+                      <option value="Mother & Newborn Baby Care">🍼 Mother &amp; Newborn Baby Care (₹1,400/day)</option>
+                      <option value="Bedridden Patient Care">♿ Bedridden &amp; Post-Op Recovery Care (₹1,300/day)</option>
+                      <option value="ICU Home Recovery">🏥 Critical ICU Home Setup (₹2,200/day)</option>
+                      <option value="Physiotherapy & Mobility">🧘 In-Home Physiotherapy (₹900/session)</option>
+                      <option value="General Health Consultation">✨ Doctor &amp; Clinical Health Consultation</option>
+                    </select>
+                  </div>
+
+                  {/* Shift Duration & Start Date */}
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        Shift Type / Duration
+                      </label>
+                      <select
+                        value={formShift}
+                        onChange={(e) => setFormShift(e.target.value)}
+                        className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-medium cursor-pointer"
+                      >
+                        <option value="12h Day Shift">12 Hours Day Shift</option>
+                        <option value="12h Night Shift">12 Hours Night Shift</option>
+                        <option value="24/7 Full Time Live-in">24/7 Full Time Live-in Care</option>
+                        <option value="Per Visit / Procedure">Per Visit On-Demand Procedure</option>
+                        <option value="Custom Flexible Schedule">Custom Flexible Schedule</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        Preferred Start Date
+                      </label>
+                      <input
+                        type="date"
+                        value={formDate}
+                        min={new Date().toISOString().split("T")[0]}
+                        onChange={(e) => setFormDate(e.target.value)}
+                        className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-medium cursor-pointer"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Patient Details */}
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        Patient Full Name
+                      </label>
+                      <input
+                        type="text"
+                        value={formPatientName}
+                        onChange={(e) => setFormPatientName(sanitizeName(e.target.value))}
+                        placeholder="e.g. Ramesh Chandra"
+                        className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-medium"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        Patient Age
+                      </label>
+                      <input
+                        type="text"
+                        maxLength={2}
+                        value={formPatientAge}
+                        onChange={(e) => setFormPatientAge(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                        placeholder="e.g. 74"
+                        className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-medium"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Booker Contact Info */}
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        Your Full Name <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formBookerName}
+                        onChange={(e) => setFormBookerName(sanitizeName(e.target.value))}
+                        placeholder="e.g. Suresh Kumar"
+                        className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-semibold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        10-Digit Mobile Number <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        maxLength={10}
+                        value={formPhone}
+                        onChange={(e) => setFormPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                        placeholder="e.g. 9876543210"
+                        className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-semibold font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Address & Locality in Hyderabad */}
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        Locality / Area in Hyderabad
+                      </label>
+                      <input
+                        type="text"
+                        value={formAddress}
+                        onChange={(e) => setFormAddress(e.target.value)}
+                        placeholder="e.g. Banjara Hills, Gachibowli, Kukatpally..."
+                        className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-medium"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        City
+                      </label>
+                      <input
+                        type="text"
+                        value={formCity}
+                        onChange={(e) => setFormCity(e.target.value)}
+                        className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-slate-100 text-slate-700 outline-none font-medium"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Medical Conditions & Special Care Notes */}
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                      Special Medical Needs / Care Instructions
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={formNeeds}
+                      onChange={(e) => setFormNeeds(e.target.value)}
+                      placeholder="e.g. Post-knee surgery mobility assistance, diabetic insulin tracking, stroke recovery, dementia companion..."
+                      className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-medium"
+                    />
+                  </div>
+
+                  {/* Submit Button */}
+                  <button
+                    type="submit"
+                    disabled={isSubmittingForm}
+                    className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-[#0b183b] via-[#14234f] to-[#1e2a5a] hover:from-[#14234f] hover:to-[#0b183b] text-white font-extrabold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-xl shadow-primary/20 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50"
+                  >
+                    {isSubmittingForm ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Submitting Care Booking...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 text-gold" />
+                        <span>Submit Direct Care Booking Request</span>
+                        <ArrowRight className="h-4 w-4 text-gold" />
+                      </>
+                    )}
+                  </button>
+
+                  <p className="text-[11px] text-center text-slate-500 font-medium">
+                    🔒 Zero upfront payment required. Our care manager will call you immediately to confirm attendant match.
+                  </p>
+                </form>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      {/* Success Modal Overlay */}
+      {formSuccessData && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+          <div className="w-full max-w-md rounded-3xl bg-white border border-slate-200/80 shadow-2xl text-center space-y-6 animate-in zoom-in duration-300 relative overflow-hidden p-8">
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 via-gold to-emerald-500" />
+            
+            <div className="h-20 w-20 rounded-3xl bg-gradient-to-br from-emerald-100 to-emerald-50 text-emerald-600 border border-emerald-200/80 flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/10">
+              <Check className="h-10 w-10 text-emerald-600" />
+            </div>
+
+            <div className="space-y-2">
+              <span className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-emerald-100 text-emerald-800">
+                ✓ Booking Request Received
+              </span>
+              <h3 className="text-2xl font-black text-slate-900 font-display">
+                Thank You, {formSuccessData.name}!
+              </h3>
+              <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                Your request for <strong>{formSuccessData.service} ({formSuccessData.shift})</strong> has been logged under Request #{formSuccessData.id}.
+              </p>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-xs text-left space-y-2 text-slate-600">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Mobile Number:</span>
+                <span className="font-bold text-slate-800 font-mono">{formSuccessData.phone}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Service:</span>
+                <span className="font-bold text-[#1e2a5a]">{formSuccessData.service}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Coordinator Call:</span>
+                <span className="font-bold text-emerald-700">Within 15 Minutes</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2.5">
+              <a
+                href={`https://wa.me/${contact.WHATSAPP}?text=Hello%20Amma%20Seva%2C%20I%20just%20submitted%20care%20request%20%23${formSuccessData.id}%20for%20${encodeURIComponent(formSuccessData.service)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+              >
+                <MessageCircle className="h-4 w-4" /> Chat on WhatsApp Now
+              </a>
+              <button
+                type="button"
+                onClick={() => setFormSuccessData(null)}
+                className="w-full py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+              >
+                Close &amp; Browse Services
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ============================================================ */}
       {/* 4. MTP ON-DEMAND CARE BANNER                                */}
