@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { 
-  Phone, Calendar, ShieldCheck, HeartHandshake, Clock, BadgeCheck, 
-  Star, ChevronRight, Sparkles, Car, CheckCircle2, 
-  UserCheck, MessageCircle, Activity, ArrowRight, 
+import {
+  Phone, Calendar, ShieldCheck, HeartHandshake, Clock, BadgeCheck,
+  Star, ChevronRight, Sparkles, Car, CheckCircle2,
+  UserCheck, MessageCircle, Activity, ArrowRight,
   Zap, Stethoscope, Check, HelpCircle, Users, Headphones,
   Shield, Heart
 } from "lucide-react";
@@ -134,82 +134,82 @@ function getServiceDetails(slug: string) {
 }
 
 const WHY = [
-  { 
-    icon: BadgeCheck, 
-    title: "100% Background Cleared", 
-    desc: "Every caregiver undergoes rigorous 3-tier police verification, Aadhaar authentication, and medical screening." 
+  {
+    icon: BadgeCheck,
+    title: "100% Background Cleared",
+    desc: "Every caregiver undergoes rigorous 3-tier police verification, Aadhaar authentication, and medical screening."
   },
-  { 
-    icon: Stethoscope, 
-    title: "Certified Clinical Protocols", 
-    desc: "Trained ANM/GNM nurses and skilled attendants working strictly as per treating doctor guidelines." 
+  {
+    icon: Stethoscope,
+    title: "Certified Clinical Protocols",
+    desc: "Trained ANM/GNM nurses and skilled attendants working strictly as per treating doctor guidelines."
   },
-  { 
-    icon: Clock, 
-    title: "Punctual 60-Min Response", 
-    desc: "Rapid emergency dispatch across Hyderabad with guaranteed staff punctuality and instant standby replacements." 
+  {
+    icon: Clock,
+    title: "Punctual 60-Min Response",
+    desc: "Rapid emergency dispatch across Hyderabad with guaranteed staff punctuality and instant standby replacements."
   },
-  { 
-    icon: HeartHandshake, 
-    title: "Warmth of a Mother's Touch", 
-    desc: "Empathetic, dignifying, and loving care that respects your family's personal routines and traditions." 
+  {
+    icon: HeartHandshake,
+    title: "Warmth of a Mother's Touch",
+    desc: "Empathetic, dignifying, and loving care that respects your family's personal routines and traditions."
   },
-  { 
-    icon: ShieldCheck, 
-    title: "Transparent & Zero Hidden Costs", 
-    desc: "Fixed affordable shift rates, clear GST invoices, and secure digital transaction protection." 
+  {
+    icon: ShieldCheck,
+    title: "Transparent & Zero Hidden Costs",
+    desc: "Fixed affordable shift rates, clear GST invoices, and secure digital transaction protection."
   },
-  { 
-    icon: UserCheck, 
-    title: "Dedicated Care Manager", 
-    desc: "A personal coordinator on WhatsApp & phone ensuring seamless daily supervision and patient vitals tracking." 
+  {
+    icon: UserCheck,
+    title: "Dedicated Care Manager",
+    desc: "A personal coordinator on WhatsApp & phone ensuring seamless daily supervision and patient vitals tracking."
   },
 ];
 
 const STEPS = [
-  { 
-    n: "01", 
-    t: "Tell Us Your Requirement", 
-    d: "Select the service, shift timings (12h/24h), and your location in Hyderabad via website or call." 
+  {
+    n: "01",
+    t: "Tell Us Your Requirement",
+    d: "Select the service, shift timings (12h/24h), and your location in Hyderabad via website or call."
   },
-  { 
-    n: "02", 
-    t: "Instant Matching & Confirmation", 
-    d: "We assign a verified, skilled caregiver or nurse tailored specifically to the patient's medical needs." 
+  {
+    n: "02",
+    t: "Instant Matching & Confirmation",
+    d: "We assign a verified, skilled caregiver or nurse tailored specifically to the patient's medical needs."
   },
-  { 
-    n: "03", 
-    t: "Doorstep Care Commences", 
-    d: "Our certified professional arrives punctually at your home with hygiene gear and begins dedicated care." 
+  {
+    n: "03",
+    t: "Doorstep Care Commences",
+    d: "Our certified professional arrives punctually at your home with hygiene gear and begins dedicated care."
   },
-  { 
-    n: "04", 
-    t: "Continuous Quality Supervision", 
-    d: "Enjoy daily health tracking, easy shift rescheduling, and 24/7 assistance from our care helpline." 
+  {
+    n: "04",
+    t: "Continuous Quality Supervision",
+    d: "Enjoy daily health tracking, easy shift rescheduling, and 24/7 assistance from our care helpline."
   },
 ];
 
 const TESTIMONIALS = [
-  { 
-    name: "Priya R.", 
+  {
+    name: "Priya R.",
     location: "Banjara Hills, Hyderabad",
-    role: "Daughter of Elderly Patient", 
+    role: "Daughter of Elderly Patient",
     quote: "The caregiver treated my mother with the utmost patience and affection. Punctual, gentle, and highly skilled — Amma Seva gave our entire family true peace of mind.",
     tag: "Elderly Care",
     rating: 5
   },
-  { 
-    name: "Rahul M.", 
+  {
+    name: "Rahul M.",
     location: "Gachibowli, Hyderabad",
-    role: "New Father", 
+    role: "New Father",
     quote: "Our newborn caregiver was an absolute blessing. Calm, certified, and incredibly supportive during the postpartum recovery period for my wife and baby.",
     tag: "Mother & Baby Care",
     rating: 5
   },
-  { 
-    name: "Dr. Anitha K.", 
+  {
+    name: "Dr. Anitha K.",
     location: "Jubilee Hills, Hyderabad",
-    role: "Consultant Physician", 
+    role: "Consultant Physician",
     quote: "I regularly recommend Amma Seva for post-surgical care. Their nurses follow sterile clinical protocols and maintain thorough vitals logs with total professionalism.",
     tag: "Post-Surgery Nursing",
     rating: 5
@@ -244,17 +244,16 @@ function Home() {
       {/* 1. HERO SECTION (NOBLE CENTERED HEALTHCARE WITH BG CAROUSEL) */}
       {/* ============================================================ */}
       <section className="relative overflow-hidden bg-[#faf8f5] pt-3 sm:pt-4 pb-0 border-b border-slate-100">
-        
+
         {/* Background Image Carousel Layer with Light Opacity & Cross-Fade */}
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none">
           {HERO_IMAGES.map((imgSrc, idx) => (
-            <img 
+            <img
               key={imgSrc}
-              src={imgSrc} 
-              alt="Amma Seva Healthcare Services" 
-              className={`absolute inset-0 w-full h-full object-cover object-center transition-all duration-1000 ease-in-out ${
-                idx === currentBgIndex ? "opacity-35 scale-100" : "opacity-0 scale-105"
-              }`}
+              src={imgSrc}
+              alt="Amma Seva Healthcare Services"
+              className={`absolute inset-0 w-full h-full object-cover object-center transition-all duration-1000 ease-in-out ${idx === currentBgIndex ? "opacity-35 scale-100" : "opacity-0 scale-105"
+                }`}
             />
           ))}
           {/* Subtle light gradient wash to ensure crystal-clear text readability */}
@@ -268,7 +267,7 @@ function Home() {
         <div className="absolute top-10 right-8 z-0 h-64 w-64 rounded-full bg-gold/15 blur-[100px] pointer-events-none" />
 
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 pt-1 sm:pt-2 pb-6 sm:pb-8 text-center flex flex-col items-center relative z-10">
-          
+
           {/* Premium Pill Badge (Centered) */}
           <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/80 bg-gradient-to-r from-amber-50 via-amber-100/60 to-amber-50 px-4 sm:px-5 py-1.5 text-[11px] sm:text-xs font-extrabold text-[#8f6414] tracking-wider uppercase shadow-xs mb-3.5 sm:mb-4 hover:scale-102 transition-transform">
             <Sparkles className="h-3.5 w-3.5 text-[#b8860b] animate-pulse" />
@@ -300,16 +299,16 @@ function Home() {
 
           {/* Dual Action Buttons (Centered) */}
           <div className="flex flex-wrap items-center justify-center gap-3.5 sm:gap-4 pt-5">
-            <a 
-              href={getBookingUrl()} 
+            <a
+              href={getBookingUrl()}
               className="px-7 sm:px-8 py-3 sm:py-3.5 rounded-2xl bg-gradient-to-r from-[#0b183b] via-[#14234f] to-[#1e2a5a] hover:from-[#07112b] hover:to-[#121c3d] text-white font-bold text-xs sm:text-sm shadow-xl shadow-[#0b183b]/25 hover:scale-[1.03] active:scale-[0.98] transition-all flex items-center gap-2.5 cursor-pointer"
             >
               <Calendar className="h-4 w-4 text-gold" />
               <span>Book a Verified Caregiver</span>
             </a>
 
-            <a 
-              href={`tel:${contact.PHONE_TEL}`} 
+            <a
+              href={`tel:${contact.PHONE_TEL}`}
               className="px-7 sm:px-8 py-3 sm:py-3.5 rounded-2xl bg-gradient-to-r from-[#c9a24c] via-[#dfba63] to-[#b38938] hover:from-[#b38938] hover:to-[#966b1a] text-white font-bold text-xs sm:text-sm shadow-lg shadow-gold/25 hover:scale-[1.03] active:scale-[0.98] transition-all flex items-center gap-2.5 cursor-pointer"
             >
               <Phone className="h-4 w-4" />
@@ -337,7 +336,7 @@ function Home() {
       {/* ============================================================ */}
       <div className="relative z-20 max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 mt-4 sm:mt-6">
         <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xl shadow-slate-900/5 p-6 sm:p-7 grid grid-cols-2 lg:grid-cols-4 gap-6 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 text-left">
-          
+
           {/* Stat 1 */}
           <div className="flex items-center gap-4 pt-4 sm:pt-0 sm:pl-3">
             <div className="h-13 w-13 rounded-2xl bg-gradient-to-br from-[#0b183b] to-[#1e2a5a] flex items-center justify-center text-gold shrink-0 shadow-md">
@@ -399,7 +398,7 @@ function Home() {
       <section className="py-12 sm:py-16 bg-white text-left">
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            
+
             {/* Feature 1 */}
             <div className="group rounded-2xl border border-slate-100 bg-slate-50/50 p-5 space-y-3 hover:border-gold/50 hover:bg-white hover:shadow-lg transition-all duration-300">
               <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100/80 border border-indigo-200/60 flex items-center justify-center text-indigo-700 shadow-2xs group-hover:scale-105 transition-transform">
@@ -461,7 +460,7 @@ function Home() {
       {/* ============================================================ */}
       <section className="py-14 sm:py-20 bg-slate-50/60 border-t border-slate-200/80">
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
-          
+
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 text-left">
             <div className="max-w-xl lg:max-w-2xl space-y-2">
               <div className="inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-widest text-[#966b1a]">
@@ -476,13 +475,13 @@ function Home() {
             </div>
 
             <div className="flex items-center gap-4 sm:gap-6 self-start md:self-center">
-              <img 
-                src={cartoonHealthcareCare} 
-                alt="Amma Seva Compassionate Doctors & Nurses" 
+              <img
+                src={cartoonHealthcareCare}
+                alt="Amma Seva Compassionate Doctors & Nurses"
                 className="h-20 sm:h-24 md:h-28 lg:h-32 w-auto object-contain select-none drop-shadow-sm hover:scale-105 transition-transform duration-300"
               />
-              <Link 
-                to="/services" 
+              <Link
+                to="/services"
                 className="px-5 py-2.5 rounded-xl border border-[#0b183b] text-[#0b183b] hover:bg-[#0b183b] hover:text-white font-bold text-xs transition-all duration-200 flex items-center gap-1.5 shrink-0 max-w-fit shadow-sm"
               >
                 <span>Explore All 12+ Services</span>
@@ -502,11 +501,10 @@ function Home() {
               <button
                 key={tag.value}
                 onClick={() => setSelectedTag(tag.value)}
-                className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all duration-200 cursor-pointer ${
-                  selectedTag === tag.value
+                className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all duration-200 cursor-pointer ${selectedTag === tag.value
                     ? "bg-[#0b183b] text-white border-[#0b183b] shadow-md shadow-[#0b183b]/20 scale-[1.02]"
                     : "bg-white text-slate-600 border-slate-200 hover:border-gold hover:text-gold"
-                }`}
+                  }`}
               >
                 {tag.label}
               </button>
@@ -541,16 +539,16 @@ function Home() {
                   >
                     {/* Card Image */}
                     <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100">
-                      <img 
-                        src={cardImage} 
-                        alt={s.title} 
-                        width={1200} 
-                        height={900} 
-                        loading="lazy" 
-                        className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-108" 
+                      <img
+                        src={cardImage}
+                        alt={s.title}
+                        width={1200}
+                        height={900}
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-108"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      
+
                       {/* Price Pill */}
                       <div className="absolute top-3.5 right-3.5 bg-[#0b183b]/90 backdrop-blur-xs text-white px-3 py-1 rounded-xl text-xs font-bold shadow-md border border-white/20 group-hover:border-gold/50 transition-colors">
                         {cardPrice}
@@ -561,7 +559,7 @@ function Home() {
                         <CheckCircle2 className="h-3 w-3 text-emerald-600" /> 100% Verified
                       </div>
                     </div>
-                    
+
                     {/* Card Content */}
                     <div className="flex flex-1 flex-col p-5 justify-between space-y-4">
                       <div className="space-y-2">
@@ -645,15 +643,15 @@ function Home() {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <a 
-                href={getBookingUrl("mtp")} 
+              <a
+                href={getBookingUrl("mtp")}
                 className="px-6 py-3 rounded-2xl bg-gradient-to-r from-[#c9a24c] to-[#b38938] hover:from-[#b38938] hover:to-[#966b1a] text-[#081023] font-extrabold text-xs shadow-lg shadow-gold/20 hover:scale-[1.02] transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <span>Book MTP Care Task</span>
                 <ArrowRight className="h-4 w-4" />
               </a>
-              <Link 
-                to="/mtp" 
+              <Link
+                to="/mtp"
                 className="px-6 py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs backdrop-blur-md transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <span>Join as MTP Partner</span>
@@ -735,7 +733,7 @@ function Home() {
       {/* ============================================================ */}
       <section className="py-14 sm:py-20 bg-gradient-to-b from-white via-amber-50/10 to-slate-50/60 border-t border-slate-100 text-left overflow-hidden relative">
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12 mb-10">
-          
+
           <div className="text-center max-w-3xl mx-auto space-y-3">
             <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border border-gold/30 bg-gold/10 text-xs font-bold text-[#966b1a] uppercase tracking-wider shadow-2xs">
               <ShieldCheck className="h-3.5 w-3.5 text-gold" /> The Amma Seva Assurance
@@ -762,8 +760,8 @@ function Home() {
             {[...WHY, ...WHY].map((w, index) => {
               const originalIndex = index % WHY.length;
               return (
-                <div 
-                  key={`${w.title}-${index}`} 
+                <div
+                  key={`${w.title}-${index}`}
                   className="w-[300px] sm:w-[380px] lg:w-[410px] shrink-0 rounded-3xl border border-slate-200/90 bg-white/95 p-6 sm:p-7 shadow-md shadow-slate-900/4 hover:shadow-[0_20px_40px_-10px_rgba(201,162,76,0.28)] hover:border-gold hover:bg-white transition-all duration-300 hover:-translate-y-2 relative flex flex-col justify-between group/card cursor-pointer"
                 >
                   <div>
@@ -807,7 +805,7 @@ function Home() {
       {/* ============================================================ */}
       <section className="py-14 sm:py-20 bg-gradient-to-b from-slate-50 to-amber-50/20 border-t border-slate-200/80 text-left">
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
-          
+
           <div className="text-center max-w-2xl mx-auto mb-12 space-y-3">
             <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border border-slate-200 bg-white text-xs font-bold text-[#0b183b] uppercase tracking-wider">
               <Clock className="h-3.5 w-3.5 text-gold" /> Effortless Process
@@ -822,8 +820,8 @@ function Home() {
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 relative">
             {STEPS.map((s, idx) => (
-              <div 
-                key={s.n} 
+              <div
+                key={s.n}
                 className="relative rounded-3xl border border-slate-200/90 bg-white p-6 shadow-sm hover:shadow-[0_20px_40px_-10px_rgba(201,162,76,0.2)] hover:border-gold/60 transition-all duration-500 hover:-translate-y-2 flex flex-col justify-between group"
               >
                 <div className="space-y-3">
@@ -858,7 +856,7 @@ function Home() {
       {/* ============================================================ */}
       <section className="py-14 sm:py-20 bg-white border-t border-slate-100 text-left">
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
-          
+
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
             <div className="max-w-2xl space-y-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-gold/30 bg-gold/10 text-xs font-bold text-[#966b1a] uppercase tracking-wider">
@@ -884,8 +882,8 @@ function Home() {
 
           <div className="grid gap-6 lg:grid-cols-3">
             {TESTIMONIALS.map((t) => (
-              <figure 
-                key={t.name} 
+              <figure
+                key={t.name}
                 className="relative rounded-3xl border border-slate-200/90 bg-slate-50/50 p-6 shadow-sm hover:shadow-[0_20px_40px_-10px_rgba(201,162,76,0.2)] hover:bg-white hover:border-gold/60 transition-all duration-500 hover:-translate-y-2 flex flex-col justify-between group"
               >
                 <div>
@@ -924,7 +922,7 @@ function Home() {
       {/* 9. 24/7 EMERGENCY HELP & SEVA PARCHMENT PAPER BANNER         */}
       {/* ============================================================ */}
       <section className="py-10 sm:py-14 seva-paper-bg text-slate-800 text-left relative overflow-hidden border-t border-b border-[#c9a24c]/25">
-        
+
         {/* Sacred Seva Lotus / Mandala Decorative SVG Watermark 1 (Top Right) */}
         <div className="absolute -top-12 -right-12 w-64 h-64 text-[#c9a24c]/10 pointer-events-none transform rotate-12">
           <svg viewBox="0 0 200 200" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-full h-full">
@@ -953,10 +951,10 @@ function Home() {
         <div className="absolute bottom-10 right-1/4 w-80 h-80 rounded-full bg-gold/12 blur-[100px] pointer-events-none" />
 
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12 relative z-10">
-          
+
           {/* Main Seva Parchment Paper Card (Compact & Refined) */}
           <div className="relative rounded-3xl seva-paper-card border-2 border-[#c9a24c]/45 p-6 sm:p-8 lg:p-9 overflow-hidden ring-1 ring-[#c9a24c]/20">
-            
+
             {/* Traditional Gold Filigree Corner Accents */}
             <div className="absolute top-2.5 left-2.5 w-6 h-6 border-t-2 border-l-2 border-[#c9a24c]/70 rounded-tl-lg pointer-events-none" />
             <div className="absolute top-2.5 right-2.5 w-6 h-6 border-t-2 border-r-2 border-[#c9a24c]/70 rounded-tr-lg pointer-events-none" />
@@ -977,12 +975,12 @@ function Home() {
                 <line x1="62" y1="32" x2="58" y2="37" strokeDasharray="1 1" />
               </svg>
             </div>
-            
+
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
-              
+
               {/* Left Column: Heading, Badges, Value Guarantees */}
               <div className="lg:col-span-7 space-y-4">
-                
+
                 {/* Live Radar Pill + Helping Hands Sticker Badge */}
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1e2a5a] text-white text-[11px] font-extrabold border border-[#c9a24c]/40 shadow-xs">
@@ -1048,7 +1046,7 @@ function Home() {
               {/* Right Column: Compact Action Hub (Royal Navy & Gold Seal Box) */}
               <div className="lg:col-span-5">
                 <div className="rounded-2xl bg-gradient-to-b from-[#0b183b] via-[#11214a] to-[#1e2a5a] border-2 border-[#c9a24c]/50 p-4 sm:p-6 text-white shadow-xl space-y-3 sm:space-y-3.5 text-left relative group">
-                  
+
                   {/* Floating Helping Hands Stamp */}
                   <div className="absolute -top-3 -right-2 sm:-right-3 bg-gradient-to-r from-[#c9a24c] via-[#f7e4b2] to-[#b38938] text-[#081023] text-[8.5px] sm:text-[9px] font-black uppercase tracking-wider px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full shadow-md border border-white/80 flex items-center gap-1 transform rotate-2 group-hover:rotate-0 transition-transform z-20 whitespace-nowrap">
                     <span>🤝</span>
@@ -1129,7 +1127,7 @@ function Home() {
       {/* ============================================================ */}
       <section className="py-14 sm:py-20 bg-slate-50/70 border-t border-slate-200/80 text-left">
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
-          
+
           <div className="text-center max-w-2xl mx-auto mb-12 space-y-3">
             <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border border-slate-200 bg-white text-xs font-bold text-[#0b183b] uppercase tracking-wider">
               <HelpCircle className="h-3.5 w-3.5 text-gold" /> Got Questions?
@@ -1144,8 +1142,8 @@ function Home() {
 
           <div className="grid gap-4 md:grid-cols-2 items-start">
             {faqs.map((f: any) => (
-              <details 
-                key={f.id} 
+              <details
+                key={f.id}
                 className="group rounded-2xl border border-slate-200/90 bg-white p-5 hover:border-gold/70 transition-all duration-300 open:border-gold/80 open:shadow-[0_10px_25px_-5px_rgba(201,162,76,0.15)] hover:shadow-md hover:-translate-y-0.5 cursor-pointer"
               >
                 <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-bold text-[#0b183b] transition-colors group-open:text-gold select-none outline-none">
