@@ -635,26 +635,33 @@ function CustomerDashboard() {
  
     if (caretakerToken && caretakerDetails) {
       setIsCaretaker(true);
-      const parsedCaretaker = JSON.parse(caretakerDetails);
-      setCaretaker(parsedCaretaker);
+      try {
+        const parsedCaretaker = JSON.parse(caretakerDetails);
+        setCaretaker(parsedCaretaker);
+        if (parsedCaretaker.status !== "Verified") {
+          setActiveCaregiverTab("profile");
+        } else {
+          setActiveCaregiverTab("shifts");
+        }
+      } catch (e) {}
       fetchCaretakerProfile();
       fetchCaretakerBookings();
       fetchCaretakerReferrals();
       fetchAnnouncements('caretaker');
-      if (parsedCaretaker.status !== "Verified") {
-        setActiveCaregiverTab("profile");
-      } else {
-        setActiveCaregiverTab("shifts");
-      }
     } else if (userToken && userDetails) {
       setIsCaretaker(false);
-      setUser(JSON.parse(userDetails));
+      try {
+        const parsedUser = JSON.parse(userDetails);
+        setUser(parsedUser);
+        setContactName(parsedUser.name || "");
+        setContactPhone(parsedUser.phone || "");
+        setContactEmail(parsedUser.email || "");
+      } catch (e) {}
       fetchAnnouncements('user');
     } else {
-      // Guest direct booking mode: keep user null and open booking wizard directly
-      setIsCaretaker(false);
-      setUser(null);
-      setActiveView("new-booking");
+      // Mandatory authentication: Redirect unauthenticated visitors to login/register first
+      const currentUrl = typeof window !== "undefined" ? (window.location.pathname + window.location.search) : "/dashboard";
+      window.location.href = `/login?redirect=${encodeURIComponent(currentUrl)}`;
     }
   }, [navigate]);
 
@@ -962,6 +969,14 @@ function CustomerDashboard() {
  
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const userToken = localStorage.getItem("ammaseva_user_token");
+    if (!user && !userToken) {
+      alert("Please sign in or register with your mobile number to complete your booking.");
+      const currentUrl = typeof window !== "undefined" ? (window.location.pathname + window.location.search) : "/dashboard";
+      window.location.href = `/login?redirect=${encodeURIComponent(currentUrl)}`;
+      return;
+    }
 
     const isMtpBooking = Boolean(currentService?.isMtp || (selectedServiceId && (selectedServiceId.startsWith("mtp") || selectedServiceId.includes("mtp"))));
 

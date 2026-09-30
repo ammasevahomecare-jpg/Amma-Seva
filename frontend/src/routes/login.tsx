@@ -316,6 +316,14 @@ function LoginPage() {
         })
         .then((data) => {
           if (data.success) {
+            if (role === "customer" && data.token && data.user) {
+              localStorage.setItem("ammaseva_user_token", data.token);
+              localStorage.setItem("ammaseva_user_details", JSON.stringify(data.user));
+              const urlParams = new URLSearchParams(window.location.search);
+              const redirect = urlParams.get("redirect") || "/dashboard";
+              window.location.href = redirect;
+              return;
+            }
             setRegistrationSuccessData({
               name: name.trim(),
               email: email.toLowerCase().trim(),
