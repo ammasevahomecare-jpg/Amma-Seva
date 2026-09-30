@@ -1,9 +1,9 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useState, useEffect, type ReactNode } from "react";
 import { 
   Menu, X, Phone, MessageCircle, Mail, MapPin, Building2, 
   Award, ShieldCheck, Heart, Sparkles, Clock, ChevronRight, 
-  User, ArrowUpRight, Calendar, Car
+  User, ArrowUpRight
 } from "lucide-react";
 import logoAsset from "@/assets/amma-seva-logo.png";
 import { fetchServices, type Service } from "@/lib/services";
@@ -538,112 +538,41 @@ function Footer() {
   );
 }
 
-function getBookingUrl(serviceSlug?: string) {
-  return serviceSlug ? `/dashboard?service=${serviceSlug}` : "/dashboard";
-}
-
 function FloatingActions() {
-  const routerState = useRouterState();
-  const currentPath = routerState?.location?.pathname || (typeof window !== "undefined" ? window.location.pathname : "");
-
-  // Do not show floating overlays on dashboard, admin, or login pages where forms are active
-  const isAppPage = currentPath.startsWith("/dashboard") || currentPath.startsWith("/admin") || currentPath.startsWith("/login");
-  if (isAppPage) {
-    return null;
-  }
-
   return (
-    <>
-      {/* ============================================================ */}
-      {/* LEFT SIDE STICKY BOOKING BUTTONS (BOOK SERVICE & BOOK MTP)   */}
-      {/* ============================================================ */}
-      <div className="fixed bottom-5 left-3 sm:left-5 z-50 flex flex-col gap-2.5 sm:gap-3 items-start pointer-events-auto">
-        
-        {/* 1. Book Care Service Sticky Button */}
-        <a
-          href={getBookingUrl("elderly-care")}
-          aria-label="Book Verified Healthcare Service"
-          className="group flex items-center gap-2.5 sm:gap-3 rounded-2xl bg-gradient-to-r from-[#0b183b] via-[#14234f] to-[#1e2a5a] text-white p-2.5 sm:px-4 sm:py-2.5 shadow-2xl border border-gold/40 hover:border-gold hover:scale-[1.04] active:scale-[0.98] transition-all duration-300 cursor-pointer"
-        >
-          <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-gold/20 border border-gold/40 flex items-center justify-center text-gold shadow-xs shrink-0 group-hover:bg-gold group-hover:text-[#0b183b] transition-all">
-            <Calendar className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
-          </div>
-          <div className="text-left pr-1 sm:pr-2">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs sm:text-[13px] font-extrabold tracking-tight text-white group-hover:text-gold transition-colors whitespace-nowrap">
-                Book Care Service
-              </span>
-            </div>
-            <div className="text-[9.5px] sm:text-[10.5px] text-slate-300 font-medium whitespace-nowrap hidden xs:block">
-              Nurses &amp; Attendants
-            </div>
-          </div>
-        </a>
+    <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-3">
+      {/* Call Floating Action */}
+      <a
+        href={`tel:${PHONE_TEL}`}
+        aria-label="Call Amma Seva"
+        className="flex h-13 w-13 items-center justify-center rounded-full bg-slate-900 text-white shadow-2xl border border-white/20 transition-all hover:bg-slate-800 hover:scale-110 active:scale-95 group relative"
+      >
+        <Phone className="h-5 w-5 text-white group-hover:animate-pulse" />
+        <span className="absolute right-15 bg-slate-900 text-white text-[10px] font-bold py-1 px-2.5 rounded-lg shadow-md border border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap hidden sm:block">
+          Call 24/7 Care Helpline
+        </span>
+      </a>
 
-        {/* 2. Book MTP Task Sticky Button */}
-        <a
-          href={getBookingUrl("mtp")}
-          aria-label="Book MTP Care Task"
-          className="group flex items-center gap-2.5 sm:gap-3 rounded-2xl bg-gradient-to-r from-[#c9a24c] via-[#dfba63] to-[#b38938] hover:from-[#b38938] hover:to-[#966b1a] text-[#081023] p-2.5 sm:px-4 sm:py-2.5 shadow-2xl border-2 border-white/80 hover:scale-[1.04] active:scale-[0.98] transition-all duration-300 cursor-pointer"
+      {/* WhatsApp Floating Action */}
+      <a
+        href={WHATSAPP_URL}
+        target="_blank"
+        rel="noreferrer"
+        aria-label="Chat on WhatsApp"
+        className="flex h-13 w-13 items-center justify-center rounded-full bg-[#25D366] text-white shadow-xl transition-all hover:scale-110 active:scale-95 group relative"
+      >
+        <svg 
+          viewBox="0 0 24 24" 
+          className="h-7 w-7 fill-current text-white" 
+          xmlns="http://www.w3.org/2000/svg"
         >
-          <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-[#081023]/15 flex items-center justify-center text-[#081023] shadow-xs shrink-0 group-hover:scale-105 transition-all">
-            <Car className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
-          </div>
-          <div className="text-left pr-1 sm:pr-2">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs sm:text-[13px] font-black tracking-tight text-[#081023] whitespace-nowrap">
-                Book MTP Task
-              </span>
-              <span className="flex h-2 w-2 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-600 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
-              </span>
-            </div>
-            <div className="text-[9.5px] sm:text-[10.5px] text-[#081023]/80 font-bold whitespace-nowrap hidden xs:block">
-              Escort • Errands • Stroll
-            </div>
-          </div>
-        </a>
-
-      </div>
-
-      {/* ============================================================ */}
-      {/* RIGHT SIDE STICKY CONTACT ACTIONS (PHONE & WHATSAPP)        */}
-      {/* ============================================================ */}
-      <div className="fixed bottom-5 right-3 sm:right-5 z-50 flex flex-col gap-2.5 sm:gap-3 pointer-events-auto">
-        {/* Call Floating Action */}
-        <a
-          href={`tel:${PHONE_TEL}`}
-          aria-label="Call Amma Seva"
-          className="flex h-12 w-12 sm:h-13 sm:w-13 items-center justify-center rounded-full bg-slate-900 text-white shadow-2xl border border-white/20 transition-all hover:bg-slate-800 hover:scale-110 active:scale-95 group relative"
-        >
-          <Phone className="h-5 w-5 text-white group-hover:animate-pulse" />
-          <span className="absolute right-15 bg-slate-900 text-white text-[10px] font-bold py-1 px-2.5 rounded-lg shadow-md border border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap hidden sm:block">
-            Call 24/7 Care Helpline
-          </span>
-        </a>
-
-        {/* WhatsApp Floating Action */}
-        <a
-          href={WHATSAPP_URL}
-          target="_blank"
-          rel="noreferrer"
-          aria-label="Chat on WhatsApp"
-          className="flex h-12 w-12 sm:h-13 sm:w-13 items-center justify-center rounded-full bg-[#25D366] text-white shadow-xl transition-all hover:scale-110 active:scale-95 group relative"
-        >
-          <svg 
-            viewBox="0 0 24 24" 
-            className="h-6 w-6 sm:h-7 sm:w-7 fill-current text-white" 
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.42 9.864-9.864.002-2.637-1.03-5.114-2.905-6.99C16.546 1.875 14.072 1.84 11.43 1.84 6.002 1.84 1.578 6.262 1.574 11.693c-.001 1.705.452 3.369 1.31 4.8l-.94 3.433 3.506-.921zm12.338-7.531c-.34-.17-2.01-.993-2.321-1.106-.312-.113-.538-.17-.765.17-.227.34-.879 1.106-1.078 1.328-.199.222-.399.249-.739.08-.34-.17-1.436-.53-2.735-1.69-1.01-.9-1.694-2.01-1.892-2.35-.198-.34-.021-.524.149-.693.153-.152.34-.399.51-.599.17-.2.227-.34.34-.566.113-.227.056-.425-.028-.595-.085-.17-.765-1.842-1.049-2.528-.276-.662-.555-.572-.765-.583-.198-.011-.425-.013-.652-.013-.227 0-.595.085-.907.425-.312.34-1.191 1.164-1.191 2.837 0 1.673 1.218 3.293 1.388 3.52.17.227 2.399 3.662 5.811 5.137.812.35 1.446.56 1.94.717.816.26 1.56.223 2.148.135.656-.098 2.01-.822 2.294-1.583.283-.762.283-1.417.198-1.583-.085-.17-.312-.27-.652-.44z"/>
-          </svg>
-          <span className="absolute right-15 bg-[#25D366] text-white text-[10px] font-bold py-1 px-2.5 rounded-lg shadow-md border border-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap hidden sm:block">
-            WhatsApp Care Desk
-          </span>
-        </a>
-      </div>
-    </>
+          <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.42 9.864-9.864.002-2.637-1.03-5.114-2.905-6.99C16.546 1.875 14.072 1.84 11.43 1.84 6.002 1.84 1.578 6.262 1.574 11.693c-.001 1.705.452 3.369 1.31 4.8l-.94 3.433 3.506-.921zm12.338-7.531c-.34-.17-2.01-.993-2.321-1.106-.312-.113-.538-.17-.765.17-.227.34-.879 1.106-1.078 1.328-.199.222-.399.249-.739.08-.34-.17-1.436-.53-2.735-1.69-1.01-.9-1.694-2.01-1.892-2.35-.198-.34-.021-.524.149-.693.153-.152.34-.399.51-.599.17-.2.227-.34.34-.566.113-.227.056-.425-.028-.595-.085-.17-.765-1.842-1.049-2.528-.276-.662-.555-.572-.765-.583-.198-.011-.425-.013-.652-.013-.227 0-.595.085-.907.425-.312.34-1.191 1.164-1.191 2.837 0 1.673 1.218 3.293 1.388 3.52.17.227 2.399 3.662 5.811 5.137.812.35 1.446.56 1.94.717.816.26 1.56.223 2.148.135.656-.098 2.01-.822 2.294-1.583.283-.762.283-1.417.198-1.583-.085-.17-.312-.27-.652-.44z"/>
+        </svg>
+        <span className="absolute right-15 bg-[#25D366] text-white text-[10px] font-bold py-1 px-2.5 rounded-lg shadow-md border border-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap hidden sm:block">
+          WhatsApp Care Desk
+        </span>
+      </a>
+    </div>
   );
 }
 
