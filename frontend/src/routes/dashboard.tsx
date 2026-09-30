@@ -539,6 +539,16 @@ function CustomerDashboard() {
   const [isFetchingLocationBooking, setIsFetchingLocationBooking] = useState(false);
   const [agreeTermsBooking, setAgreeTermsBooking] = useState(false);
 
+  // Helper for today's ISO date (YYYY-MM-DD)
+  const getTodayISO = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+  const todayStr = getTodayISO();
+
   // Document Viewer Modal State
   const [docViewerState, setDocViewerState] = useState<{
     isOpen: boolean;
@@ -3843,13 +3853,16 @@ function CustomerDashboard() {
 
                       {/* Date selection */}
                       <div>
-                        <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-                          Preferred Start Date
-                        </label>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                            Preferred Start Date
+                          </label>
+                          <span className="text-[10px] text-slate-400 font-medium">Today or future date</span>
+                        </div>
                         <input
                           type="date"
                           required
-                          min={new Date().toLocaleDateString("en-CA")}
+                          min={todayStr}
                           max="2099-12-31"
                           value={bookingDate}
                           onChange={(e) => {
@@ -3860,11 +3873,24 @@ function CustomerDashboard() {
                                 parts[0] = parts[0].slice(0, 4);
                                 val = parts.join("-");
                               }
+                              if (val.length === 10 && val < todayStr) {
+                                alert("Booking date cannot be in the past. Please select today or a future date.");
+                                val = todayStr;
+                              }
                             }
                             setBookingDate(val);
                           }}
-                          className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-slate-50/60 text-slate-900 outline-none transition-all focus:bg-white focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-semibold cursor-pointer"
+                          className={`w-full px-4 py-3 text-sm rounded-2xl border bg-slate-50/60 text-slate-900 outline-none transition-all focus:bg-white focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-semibold cursor-pointer ${
+                            bookingDate && bookingDate.length === 10 && bookingDate < todayStr
+                              ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/20"
+                              : "border-slate-200"
+                          }`}
                         />
+                        {bookingDate && bookingDate.length === 10 && bookingDate < todayStr && (
+                          <p className="text-[11px] text-rose-500 mt-1 font-semibold flex items-center gap-1">
+                            ⚠️ Booking date cannot be in the past. Please select today or a future date.
+                          </p>
+                        )}
                       </div>
 
                       {/* Time selection */}
@@ -4371,13 +4397,16 @@ function CustomerDashboard() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-                  New Care Date
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                    New Care Date
+                  </label>
+                  <span className="text-[10px] text-slate-400 font-medium">Today or future date</span>
+                </div>
                 <input
                   type="date"
                   required
-                  min={new Date().toLocaleDateString("en-CA")}
+                  min={todayStr}
                   max="2099-12-31"
                   value={rescheduleDate}
                   onChange={(e) => {
@@ -4388,11 +4417,24 @@ function CustomerDashboard() {
                         parts[0] = parts[0].slice(0, 4);
                         val = parts.join("-");
                       }
+                      if (val.length === 10 && val < todayStr) {
+                        alert("Reschedule date cannot be in the past. Please select today or a future date.");
+                        val = todayStr;
+                      }
                     }
                     setRescheduleDate(val);
                   }}
-                  className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-slate-50/60 text-slate-900 outline-none focus:bg-white focus:border-gold focus:ring-4 focus:ring-gold/15 cursor-pointer font-semibold"
+                  className={`w-full px-4 py-3 text-sm rounded-2xl border bg-slate-50/60 text-slate-900 outline-none focus:bg-white focus:border-gold focus:ring-4 focus:ring-gold/15 cursor-pointer font-semibold ${
+                    rescheduleDate && rescheduleDate.length === 10 && rescheduleDate < todayStr
+                      ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/20"
+                      : "border-slate-200"
+                  }`}
                 />
+                {rescheduleDate && rescheduleDate.length === 10 && rescheduleDate < todayStr && (
+                  <p className="text-[11px] text-rose-500 mt-1 font-semibold flex items-center gap-1">
+                    ⚠️ Reschedule date cannot be in the past.
+                  </p>
+                )}
               </div>
 
               <div>

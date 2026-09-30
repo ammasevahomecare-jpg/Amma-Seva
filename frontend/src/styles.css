@@ -53,8 +53,8 @@
   --color-gold: var(--gold);
   --color-gold-foreground: var(--gold-foreground);
   --color-cream: var(--cream);
-  --font-display: "Cormorant Garamond", ui-serif, Georgia, serif;
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 :root {
@@ -133,6 +133,7 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   p {
@@ -140,13 +141,13 @@
   }
 
   h1 {
-    font-family: var(--font-display);
+    font-family: var(--font-sans);
     font-weight: 800;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.025em;
   }
 
   h2 {
-    font-family: var(--font-display);
+    font-family: var(--font-sans);
     font-size: 1.75rem; /* ~28px */
     font-weight: 800;
     line-height: 1.3;
@@ -154,14 +155,15 @@
   }
 
   h3 {
-    font-family: var(--font-display);
+    font-family: var(--font-sans);
     font-weight: 700;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
   }
 
   h4 {
     font-family: var(--font-sans);
     font-weight: 600;
+    letter-spacing: -0.01em;
   }
 
   h5 {
@@ -170,7 +172,7 @@
     font-weight: 700;
     color: var(--gold);
     text-transform: uppercase;
-    letter-spacing: 0.15em;
+    letter-spacing: 0.12em;
     margin-bottom: 0.5rem;
     display: inline-block;
   }

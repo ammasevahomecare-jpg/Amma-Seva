@@ -336,6 +336,15 @@ function AdminPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
   // Form states - Booking
+  const getTodayISO = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+  const todayStr = getTodayISO();
+
   const [bookingName, setBookingName] = useState("");
   const [bookingPhone, setBookingPhone] = useState("");
   const [bookingService, setBookingService] = useState("");
@@ -5082,7 +5091,7 @@ function AdminPage() {
                           <input 
                             type="date" 
                             required 
-                            min={new Date().toLocaleDateString("en-CA")}
+                            min={todayStr}
                             max="2099-12-31"
                             value={bookingDate} 
                             onChange={e => {

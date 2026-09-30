@@ -1618,7 +1618,7 @@ function LoginPage() {
             
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-              <h3 className="font-serif text-base font-bold text-slate-800">
+              <h3 className="font-sans text-base font-bold text-slate-800">
                 {role === "caretaker" 
                   ? "Amma Seva – Nurse & Caregiver Terms & Conditions" 
                   : "Amma Seva – Terms & Conditions"}
