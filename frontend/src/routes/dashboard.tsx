@@ -714,15 +714,22 @@ function CustomerDashboard() {
         
         // Pre-select service from URL query params if present
         const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
-        const preSelectedService = ((search?.service || urlParams.get("service") || "") as string).toLowerCase().trim();
-        if (preSelectedService) {
+        const preSelected = ((search?.service || search?.book || urlParams.get("service") || urlParams.get("book") || "") as string).toLowerCase().trim();
+        if (preSelected === "mtp" || preSelected.startsWith("mtp")) {
+          const mtpItem = formatted.find(s => s.isMtp || s.id.startsWith("mtp")) || { id: "mtp-hospital-escort" };
+          setSelectedServiceId(mtpItem.id);
+          setActiveView("new-booking");
+        } else if (preSelected === "care" || preSelected === "clinical") {
+          const careItem = formatted.find(s => !s.isMtp) || formatted[0];
+          if (careItem) setSelectedServiceId(careItem.id);
+          setActiveView("new-booking");
+        } else if (preSelected) {
           const matchingService = formatted.find(s => 
-            s.id === preSelectedService || 
-            s.id.startsWith(preSelectedService) || 
-            preSelectedService.startsWith(s.id) ||
-            (preSelectedService === "mtp" && s.isMtp) ||
-            s.id.includes(preSelectedService) ||
-            preSelectedService.includes(s.id)
+            s.id === preSelected || 
+            s.id.startsWith(preSelected) || 
+            preSelected.startsWith(s.id) ||
+            s.id.includes(preSelected) ||
+            preSelected.includes(s.id)
           );
           if (matchingService) {
             setSelectedServiceId(matchingService.id);
@@ -735,28 +742,35 @@ function CustomerDashboard() {
         }
       }
     });
-  }, [search?.service]);
+  }, [search?.service, search?.book]);
 
   // Listen to search params reactively
   useEffect(() => {
     if (servicesList.length === 0) return;
     const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
-    const preSelectedService = ((search?.service || urlParams.get("service") || "") as string).toLowerCase().trim();
-    if (preSelectedService) {
+    const preSelected = ((search?.service || search?.book || urlParams.get("service") || urlParams.get("book") || "") as string).toLowerCase().trim();
+    if (preSelected === "mtp" || preSelected.startsWith("mtp")) {
+      const mtpItem = servicesList.find(s => s.isMtp || s.id.startsWith("mtp")) || { id: "mtp-hospital-escort" };
+      setSelectedServiceId(mtpItem.id);
+      setActiveView("new-booking");
+    } else if (preSelected === "care" || preSelected === "clinical") {
+      const careItem = servicesList.find(s => !s.isMtp) || servicesList[0];
+      if (careItem) setSelectedServiceId(careItem.id);
+      setActiveView("new-booking");
+    } else if (preSelected) {
       const matchingService = servicesList.find(s => 
-        s.id === preSelectedService || 
-        s.id.startsWith(preSelectedService) || 
-        preSelectedService.startsWith(s.id) ||
-        (preSelectedService === "mtp" && s.isMtp) ||
-        s.id.includes(preSelectedService) ||
-        preSelectedService.includes(s.id)
+        s.id === preSelected || 
+        s.id.startsWith(preSelected) || 
+        preSelected.startsWith(s.id) ||
+        s.id.includes(preSelected) ||
+        preSelected.includes(s.id)
       );
       if (matchingService) {
         setSelectedServiceId(matchingService.id);
         setActiveView("new-booking");
       }
     }
-  }, [servicesList, search?.service]);
+  }, [servicesList, search?.service, search?.book]);
 
   // Load Razorpay checkout script
   useEffect(() => {

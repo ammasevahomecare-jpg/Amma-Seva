@@ -544,7 +544,7 @@ function FloatingActions() {
       {/* Bottom-Left Quick Action Pills */}
       <div className="fixed bottom-5 left-5 z-40 hidden sm:flex flex-col gap-2.5">
         <a
-          href="/dashboard"
+          href="/dashboard?service=elderly-care"
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[#0b183b] text-white text-xs font-bold shadow-xl border border-white/20 hover:scale-105 hover:bg-[#14234f] transition-all cursor-pointer"
         >
           <Calendar className="h-4 w-4 text-gold" />
