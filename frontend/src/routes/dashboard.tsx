@@ -714,7 +714,7 @@ function CustomerDashboard() {
           rate: isMtpService ? 0 : rate,
           unit: isMtpService ? "task" : unit,
           desc: s.short || s.description,
-          advance: isMtpService ? 0 : (s.advance !== undefined ? Number(s.advance) : Math.round(rate * 0.2)),
+          advance: isMtpService ? 0 : (s.advance !== undefined && s.advance !== null ? Number(s.advance) : 0),
           isMtp: isMtpService,
           category: s.category || (isMtpService ? "MTP & Companion Tasks" : "Standard Care"),
           pricing: s.pricing || (isMtpService ? "Pay on Service / Custom Quote" : undefined)
@@ -927,8 +927,13 @@ function CustomerDashboard() {
     if (isMtpBooking) {
       return 0; // ₹0 upfront advance for MTP tasks
     }
-    // 20% advance on total amount (inclusive of 18% GST)
-    return Math.round(calculateTotal() * 0.2);
+    const service = currentService || servicesList.find(s => s.id === selectedServiceId) || SERVICES_CATALOG.find(s => s.id === selectedServiceId);
+    if (service && service.advance !== undefined && service.advance !== null && service.advance !== '') {
+      const configuredAdvance = Number(service.advance);
+      // Admin configured fixed advance (e.g. ₹1 or ₹300) capped at total shift value
+      return Math.min(calculateTotal(), Math.max(0, configuredAdvance));
+    }
+    return 0;
   };
 
   const validateStep1 = () => {
@@ -4808,7 +4813,7 @@ function CustomerDashboard() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-center pt-1">
                         <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-300 shadow-2xs text-left">
                           <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-800 block">
-                            20% Advance (Pay Now)
+                            Advance Booking (Pay Now)
                           </span>
                           <div className="flex items-baseline justify-between mt-1">
                             <span className="text-xl font-black text-emerald-900 font-display">
@@ -4820,7 +4825,7 @@ function CustomerDashboard() {
 
                         <div className="bg-amber-50 p-3 rounded-xl border border-amber-300 shadow-2xs text-left">
                           <span className="text-[10px] uppercase font-bold tracking-wider text-amber-900 block">
-                            80% Post-Shift Balance
+                            Post-Shift Balance Due
                           </span>
                           <div className="flex items-baseline justify-between mt-1">
                             <span className="text-xl font-black text-amber-950 font-display">
@@ -4835,7 +4840,15 @@ function CustomerDashboard() {
                       <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs leading-relaxed flex items-center gap-2.5">
                         <span className="text-lg shrink-0">🛡️</span>
                         <span>
-                          <strong>Amma Seva Escrow:</strong> Pay only 20% advance (<strong>₹{calculateAdvance().toLocaleString()}</strong>) now to lock verified caregiver. Remaining 80% (<strong>₹{(calculateTotal() - calculateAdvance()).toLocaleString()}</strong>) is payable after shift completion.
+                          {calculateAdvance() > 0 ? (
+                            <>
+                              <strong>Amma Seva Escrow:</strong> Pay advance (<strong>₹{calculateAdvance().toLocaleString()}</strong>) now to lock verified caregiver. Remaining balance (<strong>₹{(calculateTotal() - calculateAdvance()).toLocaleString()}</strong>) is payable after shift completion.
+                            </>
+                          ) : (
+                            <>
+                              <strong>Amma Seva Verified Care:</strong> No upfront advance required. Complete shift amount (<strong>₹{calculateTotal().toLocaleString()}</strong>) is payable directly upon caregiver arrival / service completion.
+                            </>
+                          )}
                         </span>
                       </div>
                     </div>
@@ -4875,7 +4888,9 @@ function CustomerDashboard() {
                             ? "Opening Gateway..." 
                             : isSubmitting 
                               ? "Securing Shift Allocation..." 
-                              : `Pay ₹${calculateAdvance().toLocaleString()} Advance & Confirm`}
+                              : calculateAdvance() > 0
+                                ? `Pay ₹${calculateAdvance().toLocaleString()} Advance & Confirm`
+                                : "Confirm Booking & Dispatch"}
                         </button>
                       </div>
                     </div>
