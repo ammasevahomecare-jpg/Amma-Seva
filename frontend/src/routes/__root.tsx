@@ -120,7 +120,8 @@ function RootComponent() {
     }
 
     return () => {
-      cancelAnimationFrame(rafId);
+      cancelAnimationFrame(rafId1);
+      cancelAnimationFrame(rafId2);
       clearTimeout(timer1);
       clearTimeout(timer2);
       clearTimeout(timer3);

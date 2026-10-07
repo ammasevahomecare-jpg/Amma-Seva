@@ -640,6 +640,40 @@ function CustomerDashboard() {
   } | null>(null);
   const [isLoadingReferrals, setIsLoadingReferrals] = useState(false);
  
+  // Scroll to top on initial dashboard mount
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+    const main = document.querySelector("main");
+    if (main) main.scrollTop = 0;
+
+    const t1 = setTimeout(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      if (document.documentElement) document.documentElement.scrollTop = 0;
+      if (document.body) document.body.scrollTop = 0;
+    }, 40);
+    const t2 = setTimeout(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      if (document.documentElement) document.documentElement.scrollTop = 0;
+      if (document.body) document.body.scrollTop = 0;
+    }, 150);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, []);
+
+  // Scroll to top on tab or view switch
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+    const main = document.querySelector("main");
+    if (main) main.scrollTop = 0;
+  }, [activeCaregiverTab, activeView]);
+
   // Check login on mount
   useEffect(() => {
     const userToken = localStorage.getItem("ammaseva_user_token");
@@ -652,7 +686,8 @@ function CustomerDashboard() {
       try {
         const parsedCaretaker = JSON.parse(caretakerDetails);
         setCaretaker(parsedCaretaker);
-        if (parsedCaretaker.status !== "Verified") {
+        const isApproved = parsedCaretaker.status === "Verified" || parsedCaretaker.status === "Approved" || parsedCaretaker.status === "Active";
+        if (!isApproved) {
           setActiveCaregiverTab("profile");
         } else {
           setActiveCaregiverTab("shifts");

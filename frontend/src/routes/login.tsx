@@ -198,55 +198,202 @@ function LoginPage() {
     setError(null);
     setSuccessMsg(null);
 
-    const inputVal = email.trim();
-
     if (mode === "register") {
-      const nameErr = validateName(name, "Full name");
-      if (nameErr) {
-        setError(nameErr);
-        return;
-      }
+      if (authStep === "email") {
+        // Step 1: Validate Registration Inputs & Dispatch OTP
+        const nameErr = validateName(name, "Full name");
+        if (nameErr) {
+          setError(nameErr);
+          return;
+        }
 
-      const emailErr = validateEmail(email.toLowerCase().trim(), true, "Email address");
-      if (emailErr) {
-        setError(emailErr);
-        return;
-      }
+        const emailErr = validateEmail(email.toLowerCase().trim(), true, "Email address");
+        if (emailErr) {
+          setError(emailErr);
+          return;
+        }
 
-      const phoneErr = validatePhone(phone, "Phone number");
-      if (phoneErr) {
-        setError(phoneErr);
-        return;
-      }
+        const cleanPhoneDigits = phone.replace(/\D/g, "").slice(-10);
+        const phoneErr = validatePhone(cleanPhoneDigits, "Phone number");
+        if (phoneErr) {
+          setError(phoneErr);
+          return;
+        }
 
-      if (role === "caretaker") {
-        if (!experienceDetails.trim() || experienceDetails.trim().length < 5) {
-          setError("Please provide a brief description of your caregiving/nursing experience (at least 5 characters).");
+        if (role === "caretaker") {
+          if (!experienceDetails.trim() || experienceDetails.trim().length < 5) {
+            setError("Please provide a brief description of your caregiving/nursing experience (at least 5 characters).");
+            return;
+          }
+          if (!workingLocations.trim() || workingLocations.trim().length < 3) {
+            setError("Please enter preferred working locations/localities.");
+            return;
+          }
+          if (!availableTimings.trim()) {
+            setError("Please enter your available timings (e.g. 12hr Day Shift / 24hr Live-in).");
+            return;
+          }
+          if (!stateName.trim()) {
+            setError("Please select your State.");
+            return;
+          }
+          if (!cityName.trim() || cityName.trim().length < 2) {
+            setError("Please enter your City (e.g. Hyderabad).");
+            return;
+          }
+          if (!agreeTerms) {
+            setError("You must agree to the Terms of Service & Care Policies.");
+            return;
+          }
+        } else {
+          if (!agreeTerms) {
+            setError("You must agree to the Terms of Service & Care Policies.");
+            return;
+          }
+        }
+
+        setIsLoading(true);
+        fetch("/api/auth/send-registration-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: name.trim(),
+            email: email.toLowerCase().trim(),
+            phone: cleanPhoneDigits,
+            role: role === "customer" ? "customer" : "caretaker"
+          })
+        })
+          .then(async (res) => {
+            const data = await res.json();
+            if (!res.ok) {
+              if (res.status === 409) {
+                throw new Error(data.error || "An account with this mobile/email already exists. Please Sign In with OTP.");
+              }
+              throw new Error(data.error || "Failed to dispatch verification code.");
+            }
+            return data;
+          })
+          .then((data) => {
+            if (data.success) {
+              setAuthStep("otp");
+              setCountdown(30);
+              setSuccessMsg(data.message || `Verification code sent to +91 ${cleanPhoneDigits} and ${email.toLowerCase().trim()}.`);
+            }
+          })
+          .catch((err) => {
+            setError(err.message || "Failed to send verification code.");
+          })
+          .finally(() => {
+            setIsLoading(false);
+          });
+      } else {
+        // Step 2: Verify OTP & Finalize Account Creation
+        const cleanOtp = otp.trim();
+        if (!cleanOtp || cleanOtp.length < 6) {
+          setError("Please enter the complete 6-digit verification code.");
           return;
         }
-        if (!workingLocations.trim() || workingLocations.trim().length < 3) {
-          setError("Please enter preferred working locations/localities.");
-          return;
-        }
-        if (!availableTimings.trim()) {
-          setError("Please enter your available timings (e.g. 12hr Day Shift / 24hr Live-in).");
-          return;
-        }
-        if (!stateName.trim()) {
-          setError("Please select your State.");
-          return;
-        }
-        if (!cityName.trim() || cityName.trim().length < 2) {
-          setError("Please enter your City (e.g. Hyderabad).");
-          return;
-        }
-        if (!agreeTerms) {
-          setError("You must agree to the Terms of Service & Care Policies.");
-          return;
+
+        const cleanPhoneDigits = phone.replace(/\D/g, "").slice(-10);
+        setIsLoading(true);
+
+        if (role === "customer") {
+          fetch("/api/user/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: name.trim(),
+              email: email.toLowerCase().trim(),
+              phone: cleanPhoneDigits,
+              otp: cleanOtp
+            })
+          })
+            .then(async (res) => {
+              const data = await res.json();
+              if (!res.ok) {
+                throw new Error(data.error || "Registration verification failed.");
+              }
+              return data;
+            })
+            .then((data) => {
+              if (data.success && data.token && data.user) {
+                localStorage.setItem("ammaseva_user_token", data.token);
+                localStorage.setItem("ammaseva_user_details", JSON.stringify(data.user));
+                setSuccessMsg("Account successfully verified and created! Loading your dashboard...");
+                const urlParams = new URLSearchParams(window.location.search);
+                const redirect = urlParams.get("redirect") || "/dashboard";
+                setTimeout(() => {
+                  window.location.href = redirect;
+                }, 400);
+              }
+            })
+            .catch((err) => {
+              setError(err.message || "Invalid or expired verification code.");
+            })
+            .finally(() => {
+              setIsLoading(false);
+            });
+        } else {
+          // Caregiver registration
+          const bodyData: any = {
+            name: name.trim(),
+            email: email.toLowerCase().trim(),
+            phone: cleanPhoneDigits,
+            specialty,
+            experience: Number(experience),
+            aadhaar: aadhaarFile,
+            pan: panFile,
+            certificates: certificateFile,
+            profilePhoto: profilePhotoFile,
+            experienceDetails,
+            workingLocations,
+            availableTimings,
+            state: stateName,
+            city: cityName,
+            googleMapLocation,
+            experienceCertificate: experienceCertificateFile,
+            policeVerification: policeVerificationFile,
+            additionalCertificates: additionalCertificatesFile,
+            referredBy: referredBy.trim().toUpperCase(),
+            otp: cleanOtp
+          };
+
+          fetch("/api/caretaker/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(bodyData)
+          })
+            .then(async (res) => {
+              const data = await res.json();
+              if (!res.ok) {
+                throw new Error(data.error || "Caregiver registration failed.");
+              }
+              return data;
+            })
+            .then((data) => {
+              if (data.success) {
+                setRegistrationSuccessData({
+                  name: name.trim(),
+                  email: email.toLowerCase().trim(),
+                  role: "caretaker",
+                  specialty,
+                  code: data.caretaker?.referCode || data.caretaker?.uniqueId || undefined
+                });
+                setError(null);
+                setSuccessMsg(null);
+              }
+            })
+            .catch((err) => {
+              setError(err.message || "Invalid or expired verification code.");
+            })
+            .finally(() => {
+              setIsLoading(false);
+            });
         }
       }
     } else {
       // Login mode validation: Accepts either valid Email OR valid 10-digit Indian Mobile Number
+      const inputVal = email.trim();
       if (!inputVal) {
         setError("Please enter your registered mobile number or email address.");
         return;
@@ -271,78 +418,9 @@ function LoginPage() {
           return;
         }
       }
-    }
 
-    setIsLoading(true);
+      setIsLoading(true);
 
-    if (mode === "register") {
-      const apiRole = role === "customer" ? "user" : role;
-      const endpoint = `/api/${apiRole}/register`;
-      const bodyData: any = { 
-        email: email.toLowerCase().trim(),
-        name,
-        phone
-      };
-      if (role === "caretaker") {
-        bodyData.specialty = specialty;
-        bodyData.experience = Number(experience);
-        bodyData.aadhaar = aadhaarFile;
-        bodyData.pan = panFile;
-        bodyData.certificates = certificateFile;
-        bodyData.profilePhoto = profilePhotoFile;
-        bodyData.experienceDetails = experienceDetails;
-        bodyData.workingLocations = workingLocations;
-        bodyData.availableTimings = availableTimings;
-        bodyData.state = stateName;
-        bodyData.city = cityName;
-        bodyData.googleMapLocation = googleMapLocation;
-        bodyData.experienceCertificate = experienceCertificateFile;
-        bodyData.policeVerification = policeVerificationFile;
-        bodyData.additionalCertificates = additionalCertificatesFile;
-        bodyData.referredBy = referredBy.trim().toUpperCase();
-      }
-
-      fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bodyData)
-      })
-        .then(async (res) => {
-          const data = await res.json();
-          if (!res.ok) {
-            throw new Error(data.error || "Registration failed.");
-          }
-          return data;
-        })
-        .then((data) => {
-          if (data.success) {
-            if (role === "customer" && data.token && data.user) {
-              localStorage.setItem("ammaseva_user_token", data.token);
-              localStorage.setItem("ammaseva_user_details", JSON.stringify(data.user));
-              const urlParams = new URLSearchParams(window.location.search);
-              const redirect = urlParams.get("redirect") || "/dashboard";
-              window.location.href = redirect;
-              return;
-            }
-            setRegistrationSuccessData({
-              name: name.trim(),
-              email: email.toLowerCase().trim(),
-              role,
-              specialty: role === "caretaker" ? specialty : undefined,
-              code: data.caretaker?.referCode || data.caretaker?.uniqueId || undefined
-            });
-            setError(null);
-            setSuccessMsg(null);
-          }
-        })
-        .catch((err) => {
-          setError(err.message || "Unable to complete registration.");
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
-
-    } else {
       // Login mode - Step 1: Send OTP
       if (authStep === "email") {
         fetch("/api/auth/send-otp", {
@@ -366,7 +444,8 @@ function LoginPage() {
                 }
                 setMode("register");
                 setRole("customer");
-                throw new Error("This mobile number is not registered yet. Please complete your 1-minute registration below to proceed.");
+                setAuthStep("email");
+                throw new Error("This mobile number is not registered yet. Please complete your registration below to proceed.");
               }
               throw new Error(data.error || "Failed to dispatch verification code.");
             }
@@ -441,36 +520,68 @@ function LoginPage() {
     setSuccessMsg(null);
     setIsLoading(true);
 
-    const inputVal = email.trim();
-
-    fetch("/api/auth/send-otp", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        identifier: inputVal,
-        email: inputVal.includes("@") ? inputVal.toLowerCase() : undefined,
-        phone: !inputVal.includes("@") ? inputVal.replace(/\D/g, "").slice(-10) : undefined
+    if (mode === "register") {
+      const cleanPhoneDigits = phone.replace(/\D/g, "").slice(-10);
+      fetch("/api/auth/send-registration-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          name: name.trim(),
+          email: email.toLowerCase().trim(),
+          phone: cleanPhoneDigits,
+          role: role === "customer" ? "customer" : "caretaker"
+        })
       })
-    })
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.error || "Failed to resend code.");
-        }
-        return data;
+        .then(async (res) => {
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error || "Failed to resend code.");
+          }
+          return data;
+        })
+        .then((data) => {
+          if (data.success) {
+            setSuccessMsg(data.message || "A new verification code has been dispatched.");
+            setCountdown(30);
+          }
+        })
+        .catch((err) => {
+          setError(err.message || "Failed to resend verification code.");
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    } else {
+      const inputVal = email.trim();
+      fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          identifier: inputVal,
+          email: inputVal.includes("@") ? inputVal.toLowerCase() : undefined,
+          phone: !inputVal.includes("@") ? inputVal.replace(/\D/g, "").slice(-10) : undefined
+        })
       })
-      .then((data) => {
-        if (data.success) {
-          setSuccessMsg(data.message || "A new verification code has been dispatched.");
-          setCountdown(30);
-        }
-      })
-      .catch((err) => {
-        setError(err.message || "Failed to resend verification code.");
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
+        .then(async (res) => {
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error || "Failed to resend code.");
+          }
+          return data;
+        })
+        .then((data) => {
+          if (data.success) {
+            setSuccessMsg(data.message || "A new verification code has been dispatched.");
+            setCountdown(30);
+          }
+        })
+        .catch((err) => {
+          setError(err.message || "Failed to resend verification code.");
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    }
   };
   return (
     <SiteLayout>
@@ -569,7 +680,92 @@ function LoginPage() {
                 </div>
               )}
 
-              {/* Caregiver Registration Form */}
+              {/* Caregiver Registration Form / OTP Step */}
+              {authStep === "otp" ? (
+                <div className="max-w-md mx-auto py-6 sm:py-8 text-center animate-in fade-in">
+                  <div className="h-14 w-14 rounded-2xl bg-amber-500/10 border border-[#c9a24c]/30 flex items-center justify-center text-[#c9a24c] mx-auto mb-3.5 shadow-sm">
+                    <ShieldCheck className="h-7 w-7 text-[#c9a24c]" />
+                  </div>
+                  <h3 className="text-xl font-black text-[#1e2a5a] font-display">
+                    Verify Mobile &amp; Submit Application
+                  </h3>
+                  <p className="mt-1 text-xs text-slate-500 font-medium">
+                    We sent a 6-digit verification code to <span className="font-mono font-bold text-[#1e2a5a]">+91 {phone}</span>
+                    {email ? <> and <span className="font-semibold text-[#1e2a5a]">{email}</span></> : null}.
+                  </p>
+
+                  <form onSubmit={handleSubmit} className="mt-5 space-y-3.5 text-left">
+                    <div>
+                      <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-700 mb-1.5 text-center">
+                        Enter 6-Digit Verification Code (OTP)
+                      </label>
+                      <div className="relative max-w-xs mx-auto">
+                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gold" />
+                        <input
+                          type="text"
+                          autoFocus
+                          required
+                          maxLength={6}
+                          value={otp}
+                          onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                          placeholder="• • • • • •"
+                          className="w-full pl-10 pr-4 py-2.5 text-center text-lg font-mono font-extrabold tracking-[0.35em] rounded-xl border-2 border-gold/40 bg-white outline-none focus:border-gold focus:ring-2 focus:ring-gold/20 text-[#1e2a5a] shadow-inner"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-0.5 px-2 max-w-xs mx-auto">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAuthStep("email");
+                          setOtp("");
+                          setError(null);
+                          setSuccessMsg(null);
+                        }}
+                        className="text-gold font-bold hover:underline cursor-pointer text-xs"
+                      >
+                        ← Edit Details
+                      </button>
+                      <button
+                        type="button"
+                        disabled={countdown > 0 || isLoading}
+                        onClick={handleResendOtp}
+                        className={`font-bold hover:underline flex items-center gap-1 cursor-pointer text-xs ${
+                          countdown > 0 ? "text-slate-400 cursor-not-allowed" : "text-[#1e2a5a]"
+                        }`}
+                      >
+                        {isLoading && <RefreshCw className="h-3 w-3 animate-spin" />}
+                        {countdown > 0 ? `Resend Code (${countdown}s)` : "Resend OTP"}
+                      </button>
+                    </div>
+
+                    <div className="max-w-xs mx-auto pt-1">
+                      <button
+                        type="submit"
+                        disabled={isLoading || otp.trim().length < 6}
+                        className={`w-full py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-md ${
+                          isLoading || otp.trim().length < 6
+                            ? "bg-slate-300 text-slate-500 cursor-not-allowed shadow-none"
+                            : "bg-gradient-to-r from-[#1e2a5a] via-[#2a3a78] to-[#1e2a5a] hover:from-[#141d3e] hover:to-[#223068] text-white shadow-[#1e2a5a]/20 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
+                        }`}
+                      >
+                        {isLoading ? (
+                          <>
+                            <RefreshCw className="h-3.5 w-3.5 animate-spin text-gold" />
+                            <span>Verifying OTP &amp; Submitting...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>Verify OTP &amp; Submit Application</span>
+                            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              ) : (
               <form onSubmit={handleSubmit} className="space-y-3.5">
                 <div className="space-y-3">
                   
@@ -973,17 +1169,18 @@ function LoginPage() {
                     {isLoading ? (
                       <>
                         <RefreshCw className="h-3.5 w-3.5 animate-spin text-gold" />
-                        <span>Processing registration...</span>
+                        <span>Sending Verification Code...</span>
                       </>
                     ) : (
                       <>
-                        <span>Submit Caregiver Registration</span>
+                        <span>Proceed to Verification Code</span>
                         <ArrowRight className="h-3.5 w-3.5 text-gold" />
                       </>
                     )}
                   </button>
                 </div>
               </form>
+              )}
 
               {/* Bottom Swapper & Trust badges */}
               <div className="mt-4 pt-3 border-t border-slate-100 space-y-1.5 w-full text-center flex flex-col items-center justify-center text-xs">
@@ -1203,14 +1400,25 @@ function LoginPage() {
               {/* Form Headers */}
               <div className="mb-3 text-center">
                 {mode === "register" ? (
-                  <>
-                    <h2 className="text-lg sm:text-xl font-extrabold text-[#1e2a5a] font-display">
-                      Create Patient &amp; Family Account
-                    </h2>
-                    <p className="mt-0.5 text-xs text-slate-500 font-medium">
-                      Register in seconds to book verified attendants, home nursing, and recovery care.
-                    </p>
-                  </>
+                  authStep === "email" ? (
+                    <>
+                      <h2 className="text-lg sm:text-xl font-extrabold text-[#1e2a5a] font-display">
+                        Create Patient &amp; Family Account
+                      </h2>
+                      <p className="mt-0.5 text-xs text-slate-500 font-medium">
+                        Register in seconds to book verified attendants, home nursing, and recovery care.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <h2 className="text-lg sm:text-xl font-extrabold text-[#1e2a5a] font-display">
+                        Verify Your Mobile &amp; Email
+                      </h2>
+                      <p className="mt-0.5 text-xs text-slate-500 font-medium">
+                        We sent a 6-digit verification code to <span className="font-mono font-bold text-[#1e2a5a]">+91 {phone}</span> and <span className="font-semibold text-[#1e2a5a]">{email}</span>
+                      </p>
+                    </>
+                  )
                 ) : (
                   <>
                     <h2 className="text-lg sm:text-xl font-extrabold text-[#1e2a5a] font-display">
@@ -1242,136 +1450,207 @@ function LoginPage() {
 
               {/* --- REGISTER FORM (CUSTOMER) --- */}
               {mode === "register" ? (
-                <form onSubmit={handleSubmit} className="space-y-2.5 sm:space-y-3">
-                  <div>
-                    <label className="block text-[10.5px] font-extrabold uppercase tracking-wider text-slate-700 mb-1">
-                      Full Name <span className="text-rose-500">*</span>
-                    </label>
-                    <div className="relative group">
-                      <div className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 rounded-md bg-slate-100 flex items-center justify-center text-slate-400 group-focus-within:bg-gold/15 group-focus-within:text-[#8c6b16] transition-colors">
-                        <User className="h-3 w-3" />
-                      </div>
-                      <input
-                        type="text"
-                        required
-                        value={name}
-                        onChange={(e) => setName(sanitizeName(e.target.value))}
-                        placeholder="e.g. Rahul Sharma"
-                        className="w-full pl-9 pr-3.5 py-2 sm:py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/60 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/15 transition-all font-semibold text-[#1e2a5a] placeholder:text-slate-400 placeholder:font-normal"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-[10.5px] font-extrabold uppercase tracking-wider text-slate-700">
-                        Email Address <span className="text-rose-500">*</span>
+                authStep === "email" ? (
+                  <form onSubmit={handleSubmit} className="space-y-2.5 sm:space-y-3">
+                    <div>
+                      <label className="block text-[10.5px] font-extrabold uppercase tracking-wider text-slate-700 mb-1">
+                        Full Name <span className="text-rose-500">*</span>
                       </label>
-                      {email && validateEmail(email, false, "Email") && (
-                        <span className="text-[9.5px] text-rose-500 font-bold">Invalid</span>
+                      <div className="relative group">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 rounded-md bg-slate-100 flex items-center justify-center text-slate-400 group-focus-within:bg-gold/15 group-focus-within:text-[#8c6b16] transition-colors">
+                          <User className="h-3 w-3" />
+                        </div>
+                        <input
+                          type="text"
+                          required
+                          value={name}
+                          onChange={(e) => setName(sanitizeName(e.target.value))}
+                          placeholder="e.g. Rahul Sharma"
+                          className="w-full pl-9 pr-3.5 py-2 sm:py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/60 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/15 transition-all font-semibold text-[#1e2a5a] placeholder:text-slate-400 placeholder:font-normal"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[10.5px] font-extrabold uppercase tracking-wider text-slate-700">
+                          Email Address <span className="text-rose-500">*</span>
+                        </label>
+                        {email && validateEmail(email, false, "Email") && (
+                          <span className="text-[9.5px] text-rose-500 font-bold">Invalid</span>
+                        )}
+                      </div>
+                      <div className="relative group">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 rounded-md bg-slate-100 flex items-center justify-center text-slate-400 group-focus-within:bg-gold/15 group-focus-within:text-[#8c6b16] transition-colors">
+                          <Mail className="h-3 w-3" />
+                        </div>
+                        <input
+                          type="text"
+                          required
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value.toLowerCase().replace(/\s+/g, ''))}
+                          placeholder="name@example.com"
+                          className={`w-full pl-9 pr-3.5 py-2 sm:py-2.5 text-xs sm:text-sm rounded-xl border outline-none focus:bg-white transition-all font-semibold text-[#1e2a5a] placeholder:text-slate-400 placeholder:font-normal ${
+                            email && validateEmail(email, false, "Email")
+                              ? "border-rose-400 bg-rose-50/40 focus:border-rose-500 focus:ring-2 focus:ring-rose-100"
+                              : "border-slate-200 bg-slate-50/60 focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/15"
+                          }`}
+                        />
+                      </div>
+                      {email && validateEmail(email, false, "Email address") && (
+                        <p className="mt-0.5 text-[10.5px] text-rose-600 font-semibold leading-tight">
+                          {validateEmail(email, false, "Email address")}
+                        </p>
                       )}
                     </div>
-                    <div className="relative group">
-                      <div className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 rounded-md bg-slate-100 flex items-center justify-center text-slate-400 group-focus-within:bg-gold/15 group-focus-within:text-[#8c6b16] transition-colors">
-                        <Mail className="h-3 w-3" />
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[10.5px] font-extrabold uppercase tracking-wider text-slate-700">
+                          Phone Number <span className="text-rose-500">*</span>
+                        </label>
+                        <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-200/80">
+                          ⚡ Instant OTP Verification
+                        </span>
                       </div>
-                      <input
-                        type="text"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value.toLowerCase().replace(/\s+/g, ''))}
-                        placeholder="name@example.com"
-                        className={`w-full pl-9 pr-3.5 py-2 sm:py-2.5 text-xs sm:text-sm rounded-xl border outline-none focus:bg-white transition-all font-semibold text-[#1e2a5a] placeholder:text-slate-400 placeholder:font-normal ${
-                          email && validateEmail(email, false, "Email")
-                            ? "border-rose-400 bg-rose-50/40 focus:border-rose-500 focus:ring-2 focus:ring-rose-100"
-                            : "border-slate-200 bg-slate-50/60 focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/15"
-                        }`}
-                      />
-                    </div>
-                    {email && validateEmail(email, false, "Email address") && (
-                      <p className="mt-0.5 text-[10.5px] text-rose-600 font-semibold leading-tight">
-                        {validateEmail(email, false, "Email address")}
+                      <div className="relative group flex items-center">
+                        <div className="absolute left-2.5 flex items-center gap-1 text-[11px] font-extrabold text-slate-700 bg-slate-100/90 py-0.5 px-1.5 rounded-lg border border-slate-200 pointer-events-none group-focus-within:border-gold/50 group-focus-within:bg-gold/10 transition-colors">
+                          <span>🇮🇳</span>
+                          <span className="font-mono text-[10.5px]">+91</span>
+                        </div>
+                        <input
+                          type="tel"
+                          inputMode="numeric"
+                          required
+                          maxLength={10}
+                          value={phone}
+                          onChange={(e) => setPhone(sanitizeIndianPhone(e.target.value))}
+                          placeholder="10-digit mobile number"
+                          className="w-full pl-16 pr-3.5 py-2 sm:py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/60 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/15 transition-all font-mono font-bold text-[#1e2a5a] placeholder:text-slate-400 placeholder:font-sans placeholder:font-normal"
+                        />
+                      </div>
+                      <p className="mt-0.5 text-[10.5px] text-slate-400 font-medium">
+                        Starts with 6, 7, 8, or 9 • Instant SMS OTP verification.
                       </p>
-                    )}
-                  </div>
+                    </div>
 
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-[10.5px] font-extrabold uppercase tracking-wider text-slate-700">
-                        Phone Number <span className="text-rose-500">*</span>
+                    {/* Terms Checkbox */}
+                    <div className="pt-1">
+                      <label className="flex items-center gap-2 cursor-pointer p-2 rounded-xl bg-slate-50/80 border border-slate-200/70 hover:border-slate-300 transition-all select-none">
+                        <input
+                          type="checkbox"
+                          required
+                          checked={agreeTerms}
+                          onChange={(e) => setAgreeTerms(e.target.checked)}
+                          className="h-3.5 w-3.5 rounded border-slate-300 text-[#1e2a5a] focus:ring-[#c9a24c] cursor-pointer shrink-0"
+                        />
+                        <span className="text-[11px] text-slate-600 font-medium leading-tight">
+                          I agree to Amma Seva's{" "}
+                          <button
+                            type="button"
+                            onClick={() => setShowTermsModal(true)}
+                            className="text-gold font-bold hover:underline cursor-pointer inline focus:outline-none"
+                          >
+                            Terms of Service &amp; Care Policies
+                          </button>
+                          .
+                        </span>
                       </label>
-                      <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-200/80">
-                        ⚡ SMS Verified
-                      </span>
                     </div>
-                    <div className="relative group flex items-center">
-                      <div className="absolute left-2.5 flex items-center gap-1 text-[11px] font-extrabold text-slate-700 bg-slate-100/90 py-0.5 px-1.5 rounded-lg border border-slate-200 pointer-events-none group-focus-within:border-gold/50 group-focus-within:bg-gold/10 transition-colors">
-                        <span>🇮🇳</span>
-                        <span className="font-mono text-[10.5px]">+91</span>
+
+                    {/* Submit CTA Button */}
+                    <button
+                      type="submit"
+                      disabled={isLoading || !agreeTerms}
+                      className={`w-full py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-md mt-2 ${
+                        isLoading || !agreeTerms
+                          ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none border border-slate-200"
+                          : "bg-gradient-to-r from-[#1e2a5a] via-[#283870] to-[#1e2a5a] hover:from-[#141d3e] hover:to-[#202d5a] text-white shadow-[#1e2a5a]/25 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 border border-indigo-900/30"
+                      }`}
+                    >
+                      {isLoading ? (
+                        <>
+                          <RefreshCw className="h-3.5 w-3.5 animate-spin text-gold" />
+                          <span>Sending Verification Code...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Create Patient &amp; Family Account</span>
+                          <ArrowRight className="h-3.5 w-3.5 text-gold" />
+                        </>
+                      )}
+                    </button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleSubmit} className="space-y-3 pt-1">
+                    <div>
+                      <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-700 mb-1.5 text-center">
+                        Enter 6-Digit Verification Code (OTP)
+                      </label>
+                      <div className="relative max-w-xs mx-auto">
+                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gold" />
+                        <input
+                          type="text"
+                          autoFocus
+                          required
+                          maxLength={6}
+                          value={otp}
+                          onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                          placeholder="• • • • • •"
+                          className="w-full pl-10 pr-4 py-2 text-center text-lg font-mono font-extrabold tracking-[0.35em] rounded-xl border-2 border-gold/40 bg-white outline-none focus:border-gold focus:ring-2 focus:ring-gold/20 text-[#1e2a5a] shadow-inner"
+                        />
                       </div>
-                      <input
-                        type="tel"
-                        inputMode="numeric"
-                        required
-                        maxLength={10}
-                        value={phone}
-                        onChange={(e) => setPhone(sanitizeIndianPhone(e.target.value))}
-                        placeholder="10-digit mobile number"
-                        className="w-full pl-16 pr-3.5 py-2 sm:py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/60 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/15 transition-all font-mono font-bold text-[#1e2a5a] placeholder:text-slate-400 placeholder:font-sans placeholder:font-normal"
-                      />
                     </div>
-                    <p className="mt-0.5 text-[10.5px] text-slate-400 font-medium">
-                      Starts with 6, 7, 8, or 9 • Instant SMS OTP verification.
-                    </p>
-                  </div>
 
-                  {/* Terms Checkbox */}
-                  <div className="pt-1">
-                    <label className="flex items-center gap-2 cursor-pointer p-2 rounded-xl bg-slate-50/80 border border-slate-200/70 hover:border-slate-300 transition-all select-none">
-                      <input
-                        type="checkbox"
-                        required
-                        checked={agreeTerms}
-                        onChange={(e) => setAgreeTerms(e.target.checked)}
-                        className="h-3.5 w-3.5 rounded border-slate-300 text-[#1e2a5a] focus:ring-[#c9a24c] cursor-pointer shrink-0"
-                      />
-                      <span className="text-[11px] text-slate-600 font-medium leading-tight">
-                        I agree to Amma Seva's{" "}
-                        <button
-                          type="button"
-                          onClick={() => setShowTermsModal(true)}
-                          className="text-gold font-bold hover:underline cursor-pointer inline focus:outline-none"
-                        >
-                          Terms of Service &amp; Care Policies
-                        </button>
-                        .
-                      </span>
-                    </label>
-                  </div>
+                    <div className="flex items-center justify-between text-xs pt-0.5 px-2 max-w-xs mx-auto">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAuthStep("email");
+                          setOtp("");
+                          setError(null);
+                          setSuccessMsg(null);
+                        }}
+                        className="text-gold font-bold hover:underline cursor-pointer text-[10.5px]"
+                      >
+                        ← Edit Details
+                      </button>
+                      <button
+                        type="button"
+                        disabled={countdown > 0 || isLoading}
+                        onClick={handleResendOtp}
+                        className={`font-bold hover:underline flex items-center gap-1 cursor-pointer text-[10.5px] ${
+                          countdown > 0 ? "text-slate-400 cursor-not-allowed" : "text-[#1e2a5a]"
+                        }`}
+                      >
+                        {isLoading && <RefreshCw className="h-3 w-3 animate-spin" />}
+                        {countdown > 0 ? `Resend Code (${countdown}s)` : "Resend OTP"}
+                      </button>
+                    </div>
 
-                  {/* Submit CTA Button */}
-                  <button
-                    type="submit"
-                    disabled={isLoading || !agreeTerms}
-                    className={`w-full py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-md mt-2 ${
-                      isLoading || !agreeTerms
-                        ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none border border-slate-200"
-                        : "bg-gradient-to-r from-[#1e2a5a] via-[#283870] to-[#1e2a5a] hover:from-[#141d3e] hover:to-[#202d5a] text-white shadow-[#1e2a5a]/25 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 border border-indigo-900/30"
-                    }`}
-                  >
-                    {isLoading ? (
-                      <>
-                        <RefreshCw className="h-3.5 w-3.5 animate-spin text-gold" />
-                        <span>Creating account...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>Create Patient &amp; Family Account</span>
-                        <ArrowRight className="h-3.5 w-3.5 text-gold" />
-                      </>
-                    )}
-                  </button>
-                </form>
+                    <button
+                      type="submit"
+                      disabled={isLoading || otp.trim().length < 6}
+                      className={`w-full py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-md mt-2 ${
+                        isLoading || otp.trim().length < 6
+                          ? "bg-slate-300 text-slate-500 cursor-not-allowed shadow-none"
+                          : "bg-gradient-to-r from-[#1e2a5a] via-[#283870] to-[#1e2a5a] hover:from-[#141d3e] hover:to-[#202d5a] text-white shadow-[#1e2a5a]/25 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
+                      }`}
+                    >
+                      {isLoading ? (
+                        <>
+                          <RefreshCw className="h-3.5 w-3.5 animate-spin text-gold" />
+                          <span>Verifying &amp; Creating Account...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Verify &amp; Access Dashboard</span>
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                        </>
+                      )}
+                    </button>
+                  </form>
+                )
               ) : (
                 /* --- LOGIN FORM (SIGN IN) --- */
                 <form onSubmit={handleSubmit} className="space-y-2.5 sm:space-y-3">

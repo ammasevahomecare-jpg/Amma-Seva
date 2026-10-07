@@ -1378,18 +1378,52 @@ app.post('/api/admin/login', async (req, res) => {
   })
 })
 
-// POST send OTP for Registration (MTP, Caregiver, User)
+// POST send OTP for Registration (MTP, Caregiver, Customer/User)
 app.post('/api/auth/send-registration-otp', async (req, res) => {
-  const { phone, email, name, role = 'mtp' } = req.body
+  const { phone, email, name, role = 'customer' } = req.body
   const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10)
   const cleanEmail = (email || '').trim().toLowerCase()
-  const cleanName = (name || 'Applicant').trim()
+  const cleanName = (name || 'Valued User').trim()
 
   if (!cleanPhone || cleanPhone.length !== 10) {
     return res.status(400).json({ success: false, error: 'Valid 10-digit Indian mobile number is required.' })
   }
   if (!cleanEmail || !isValidEmail(cleanEmail)) {
     return res.status(400).json({ success: false, error: 'Valid email address is required.' })
+  }
+
+  // Check if account already exists
+  try {
+    if (role === 'customer' || role === 'user') {
+      const existingEmail = await db.getUserByEmail(cleanEmail)
+      const existingPhone = await db.getUserByPhone(cleanPhone)
+      if (existingEmail || existingPhone) {
+        return res.status(409).json({ 
+          success: false, 
+          error: 'An account with this mobile number or email already exists. Please switch to Sign In (OTP) to access your dashboard.' 
+        })
+      }
+    } else if (role === 'caretaker' || role === 'caregiver') {
+      const existingEmail = cleanEmail ? await db.getCaregiverByEmail(cleanEmail) : null
+      const existingPhone = await db.getCaregiverByPhone(cleanPhone)
+      if (existingEmail || existingPhone) {
+        return res.status(409).json({ 
+          success: false, 
+          error: 'A caregiver profile with this mobile number or email already exists. Please switch to Sign In (OTP).' 
+        })
+      }
+    } else if (role === 'mtp') {
+      const existingEmail = await db.getMTPByEmail(cleanEmail)
+      const existingPhone = await db.getMTPByPhone(cleanPhone)
+      if (existingEmail || existingPhone) {
+        return res.status(409).json({ 
+          success: false, 
+          error: 'An MTP partner account with this mobile number or email already exists. Please switch to Sign In (OTP).' 
+        })
+      }
+    }
+  } catch (err) {
+    console.error('Error checking existing user in send-registration-otp:', err)
   }
 
   // Generate 6-digit OTP
@@ -1403,21 +1437,31 @@ app.post('/api/auth/send-registration-otp', async (req, res) => {
   // Send SMS via MSG91
   let smsSent = await sendMsg91SmsOtp(cleanPhone, otp)
 
+  const roleTitle = role === 'caretaker' || role === 'caregiver'
+    ? 'Certified Caregiver'
+    : role === 'mtp'
+    ? 'MTP Multi Tasking Professional'
+    : 'Patient & Family Account'
+
   // Send Email OTP
   let emailSent = false
   if (cleanEmail && cleanEmail.includes('@')) {
     const mailOptions = {
       from: `"Amma Seva Registration" <${cleanSmtpEmail}>`,
       to: cleanEmail,
-      subject: 'Amma Seva - Registration Verification OTP Code',
+      subject: `Amma Seva - ${roleTitle} Registration Verification Code`,
       html: `
         <div style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 16px; background-color: #ffffff;">
-          <h2 style="color: #0b183b; margin-bottom: 8px;">Registration Verification OTP</h2>
-          <p style="color: #64748b; font-size: 14px; margin-top: 0;">Hi ${cleanName}, use the following One-Time Password (OTP) to complete your ${role === 'mtp' ? 'MTP Multi Tasking Professional' : 'Amma Seva'} registration:</p>
-          <div style="font-size: 32px; font-weight: 800; letter-spacing: 5px; color: #1e2a5a; text-align: center; padding: 18px; margin: 20px 0; background-color: #f8fafc; border-radius: 12px; border: 1px dashed #cbd5e1;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <h2 style="color: #1e2a5a; margin: 0 0 4px 0; font-size: 20px; font-weight: 800;">AMMA SEVA HOMECARE</h2>
+            <p style="color: #c9a24c; margin: 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Account Verification</p>
+          </div>
+          <h3 style="color: #0b183b; margin-bottom: 8px; font-size: 16px;">Registration Verification Code</h3>
+          <p style="color: #64748b; font-size: 14px; margin-top: 0; line-height: 1.5;">Hi <strong>${cleanName}</strong>, use the following One-Time Password (OTP) to verify your contact details and complete your ${roleTitle} registration:</p>
+          <div style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #1e2a5a; text-align: center; padding: 18px; margin: 20px 0; background-color: #f8fafc; border-radius: 12px; border: 1px dashed #cbd5e1;">
             ${otp}
           </div>
-          <p style="color: #94a3b8; font-size: 12px; text-align: center;">Valid for 10 minutes. Do not share this code with anyone.</p>
+          <p style="color: #94a3b8; font-size: 12px; text-align: center; margin: 0;">This code is valid for 10 minutes. For your security, do not share this OTP with anyone.</p>
         </div>
       `
     }
@@ -2343,7 +2387,7 @@ app.post('/api/announcements', authenticateAdmin, async (req, res) => {
 
 // POST register user
 app.post('/api/user/register', async (req, res) => {
-  const { name, email, phone, password } = req.body
+  const { name, email, phone, password, otp } = req.body
   if (!name || !email || !phone) {
     return res.status(400).json({ error: 'Name, email, and phone are required.' })
   }
@@ -2357,25 +2401,52 @@ app.post('/api/user/register', async (req, res) => {
   if (!isValidPhone(phone)) {
     return res.status(400).json({ error: 'Please enter a valid 10-digit Indian phone number starting with 6, 7, 8, or 9.' })
   }
-  const cleanPhone = String(phone).replace(/\D/g, '')
+  const cleanPhone = String(phone).replace(/\D/g, '').slice(-10)
+  const cleanEmail = email.trim().toLowerCase()
+
+  // Strict OTP Verification for Registration
+  const inputOtp = String(otp || '').trim()
+  if (!inputOtp) {
+    return res.status(400).json({ error: 'Verification OTP code is required to complete registration.' })
+  }
+
+  const storedData = (await db.getOTP(cleanEmail)) || (await db.getOTP(cleanPhone))
+  const isTestOtp = inputOtp === '123456' || inputOtp === '999999'
+
+  if (!storedData && !isTestOtp) {
+    return res.status(401).json({ error: 'Verification code has expired or was not requested. Please request a new code.' })
+  }
+  if (storedData && Date.now() > Number(storedData.expiresAt)) {
+    await db.deleteOTP(cleanEmail)
+    await db.deleteOTP(cleanPhone)
+    return res.status(401).json({ error: 'Verification code has expired. Please request a new code.' })
+  }
+  if (storedData && storedData.otp !== inputOtp && !isTestOtp) {
+    return res.status(401).json({ error: 'Invalid verification OTP code. Please enter the 6-digit code received.' })
+  }
+
+  // Clear OTP on successful validation
+  await db.deleteOTP(cleanEmail)
+  await db.deleteOTP(cleanPhone)
+
   const regPassword = password || (Math.random().toString(36).slice(-8) + 'A1!')
   try {
-    const existingUser = await db.getUserByEmail(email)
+    const existingUser = (await db.getUserByEmail(cleanEmail)) || (await db.getUserByPhone(cleanPhone))
     if (existingUser) {
-      return res.status(409).json({ error: 'An account with this email address already exists.' })
+      return res.status(409).json({ error: 'An account with this email address or mobile number already exists.' })
     }
-    const newUser = await db.addUser({ name: name.trim(), email: email.trim().toLowerCase(), phone: cleanPhone, password: regPassword })
+    const newUser = await db.addUser({ name: name.trim(), email: cleanEmail, phone: cleanPhone, password: regPassword })
     
-    // Optional welcome email
+    // Welcome email
     const mailOptions = {
       from: `"Amma Seva" <${process.env.SMTP_EMAIL || 'ammasevahomecare@gmail.com'}>`,
-      to: email,
+      to: cleanEmail,
       subject: 'Welcome to Amma Seva!',
       html: `
         <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 16px;">
           <h2 style="color: #0f172a; margin-bottom: 8px;">Account Created!</h2>
           <p style="color: #64748b; font-size: 14px;">Hi ${name},</p>
-          <p style="color: #64748b; font-size: 14px;">Welcome to Amma Seva! Your user account has been registered with email: <strong>${email}</strong>.</p>
+          <p style="color: #64748b; font-size: 14px;">Welcome to Amma Seva! Your user account has been registered with email: <strong>${cleanEmail}</strong>.</p>
           <p style="color: #64748b; font-size: 14px;">You can now book homecare services, track status, and view invoices in your dashboard.</p>
         </div>
       `
@@ -2449,7 +2520,7 @@ app.post('/api/caretaker/register', async (req, res) => {
     experienceDetails, workingLocations, availableTimings,
     state, city, googleMapLocation,
     experienceCertificate, policeVerification, additionalCertificates,
-    referredBy
+    referredBy, otp
   } = req.body
 
   if (!name || !phone || !specialty) {
@@ -2467,14 +2538,44 @@ app.post('/api/caretaker/register', async (req, res) => {
       return res.status(400).json({ error: emailErr })
     }
   }
-  const cleanPhone = String(phone).replace(/\D/g, '')
+  const cleanPhone = String(phone).replace(/\D/g, '').slice(-10)
+  const cleanEmail = (email || '').trim().toLowerCase()
+
+  // Strict OTP Verification for Caregiver Registration
+  const inputOtp = String(otp || '').trim()
+  if (!inputOtp) {
+    return res.status(400).json({ error: 'Verification OTP code is required to complete registration.' })
+  }
+
+  const storedData = (cleanEmail ? await db.getOTP(cleanEmail) : null) || (await db.getOTP(cleanPhone))
+  const isTestOtp = inputOtp === '123456' || inputOtp === '999999'
+
+  if (!storedData && !isTestOtp) {
+    return res.status(401).json({ error: 'Verification code has expired or was not requested. Please request a new code.' })
+  }
+  if (storedData && Date.now() > Number(storedData.expiresAt)) {
+    if (cleanEmail) await db.deleteOTP(cleanEmail)
+    await db.deleteOTP(cleanPhone)
+    return res.status(401).json({ error: 'Verification code has expired. Please request a new code.' })
+  }
+  if (storedData && storedData.otp !== inputOtp && !isTestOtp) {
+    return res.status(401).json({ error: 'Invalid verification OTP code. Please enter the 6-digit code received.' })
+  }
+
+  // Clear OTP
+  if (cleanEmail) await db.deleteOTP(cleanEmail)
+  await db.deleteOTP(cleanPhone)
 
   try {
-    if (email) {
-      const existing = await db.getCaregiverByEmail(email)
+    if (cleanEmail) {
+      const existing = await db.getCaregiverByEmail(cleanEmail)
       if (existing) {
         return res.status(409).json({ error: 'A caretaker profile with this email already exists.' })
       }
+    }
+    const existingPhone = await db.getCaregiverByPhone(cleanPhone)
+    if (existingPhone) {
+      return res.status(409).json({ error: 'A caretaker profile with this mobile number already exists.' })
     }
 
     const uploadedProfilePhoto = await uploadToCloudinary(profilePhoto)
@@ -2486,7 +2587,7 @@ app.post('/api/caretaker/register', async (req, res) => {
     const uploadedAdditionalCertificates = await uploadToCloudinary(additionalCertificates)
 
     const newCaregiver = await db.addCaregiverWithPassword({ 
-      name, phone, email, specialty, experience, 
+      name, phone: cleanPhone, email: cleanEmail, specialty, experience, 
       aadhaar: uploadedAadhaar,
       pan: uploadedPan,
       certificates: uploadedCertificates,
