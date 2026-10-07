@@ -2219,12 +2219,62 @@ export const db = {
 
   deleteUser: async (id) => {
     if (useMySQL) {
-      const [result] = await pool.query('DELETE FROM users WHERE id = ?', [id])
-      return result.affectedRows > 0
+      try {
+        const [userRows] = await pool.query('SELECT * FROM users WHERE id = ?', [id])
+        const user = userRows[0] || null
+
+        if (user) {
+          // Delete all bookings associated with user id, phone, or email
+          await pool.query('DELETE FROM bookings WHERE userId = ? OR phone = ? OR email = ?', [id, user.phone, user.email])
+          // Delete user notifications
+          await pool.query('DELETE FROM notifications WHERE recipient = ? OR recipient = ?', [user.email, user.phone])
+          // Delete user OTPs
+          if (user.email) await pool.query('DELETE FROM otp_verifications WHERE email = ?', [user.email])
+          if (user.phone) await pool.query('DELETE FROM otp_verifications WHERE email = ?', [user.phone])
+        } else {
+          await pool.query('DELETE FROM bookings WHERE userId = ?', [id])
+        }
+
+        const [result] = await pool.query('DELETE FROM users WHERE id = ?', [id])
+        return result.affectedRows > 0
+      } catch (err) {
+        console.error('[MySQL deleteUser Error]:', err)
+        return false
+      }
     } else {
       const data = await readJSONDb()
+      if (!data.users) data.users = []
       const initialLength = data.users.length
+      const user = data.users.find(u => u.id === Number(id))
       data.users = data.users.filter(u => u.id !== Number(id))
+
+      if (user) {
+        // Remove all user's bookings completely
+        if (data.bookings) {
+          data.bookings = data.bookings.filter(b => 
+            b.userId !== Number(id) && 
+            b.phone !== user.phone && 
+            (b.email ? b.email.toLowerCase() !== user.email.toLowerCase() : true)
+          )
+        }
+        // Remove user's notifications
+        if (data.notifications) {
+          data.notifications = data.notifications.filter(n => 
+            n.recipient !== user.email && 
+            n.recipient !== user.phone
+          )
+        }
+        // Remove user's OTPs completely
+        if (data.otps) {
+          data.otps = data.otps.filter(o => 
+            o.email !== user.email && 
+            o.email !== user.phone
+          )
+        }
+      } else if (data.bookings) {
+        data.bookings = data.bookings.filter(b => b.userId !== Number(id))
+      }
+
       await writeJSONDb(data)
       return data.users.length < initialLength
     }
@@ -2385,12 +2435,32 @@ export const db = {
 
   deleteCaregiver: async (id) => {
     if (useMySQL) {
-      const [result] = await pool.query('DELETE FROM caregivers WHERE id = ?', [id])
-      return result.affectedRows > 0
+      try {
+        const [cgRows] = await pool.query('SELECT * FROM caregivers WHERE id = ?', [id])
+        const cg = cgRows[0] || null
+        if (cg) {
+          await pool.query('DELETE FROM referrals WHERE candidate_id = ? OR referrer_id = ?', [id, id])
+          if (cg.email) await pool.query('DELETE FROM otp_verifications WHERE email = ?', [cg.email])
+          if (cg.phone) await pool.query('DELETE FROM otp_verifications WHERE email = ?', [cg.phone])
+        }
+        const [result] = await pool.query('DELETE FROM caregivers WHERE id = ?', [id])
+        return result.affectedRows > 0
+      } catch (err) {
+        console.error('[MySQL deleteCaregiver Error]:', err)
+        return false
+      }
     } else {
       const data = await readJSONDb()
+      if (!data.caregivers) data.caregivers = []
       const initialLength = data.caregivers.length
+      const cg = data.caregivers.find(c => c.id === Number(id))
       data.caregivers = data.caregivers.filter(c => c.id !== Number(id))
+      if (data.referrals) {
+        data.referrals = data.referrals.filter(r => r.candidateId !== Number(id) && r.referrerId !== Number(id))
+      }
+      if (cg && data.otps) {
+        data.otps = data.otps.filter(o => o.email !== cg.email && o.email !== cg.phone)
+      }
       await writeJSONDb(data)
       return data.caregivers.length < initialLength
     }
@@ -3109,12 +3179,27 @@ export const db = {
 
   deleteMTP: async (id) => {
     if (useMySQL) {
-      await pool.query('DELETE FROM mtps WHERE id = ?', [Number(id)])
-      return true
+      try {
+        const [mtpRows] = await pool.query('SELECT * FROM mtps WHERE id = ?', [Number(id)])
+        const mtp = mtpRows[0] || null
+        if (mtp) {
+          if (mtp.email) await pool.query('DELETE FROM otp_verifications WHERE email = ?', [mtp.email])
+          if (mtp.phone) await pool.query('DELETE FROM otp_verifications WHERE email = ?', [mtp.phone])
+        }
+        await pool.query('DELETE FROM mtps WHERE id = ?', [Number(id)])
+        return true
+      } catch (err) {
+        console.error('[MySQL deleteMTP Error]:', err)
+        return false
+      }
     } else {
       const data = await readJSONDb()
       if (!data.mtps) data.mtps = []
+      const mtp = data.mtps.find(m => m.id === Number(id))
       data.mtps = data.mtps.filter(m => m.id !== Number(id))
+      if (mtp && data.otps) {
+        data.otps = data.otps.filter(o => o.email !== mtp.email && o.email !== mtp.phone)
+      }
       await writeJSONDb(data)
       return true
     }

@@ -3737,17 +3737,30 @@ app.get('/api/admin/users', authenticateAdmin, async (req, res) => {
   }
 })
 
-// DELETE user (Admin Panel)
+// DELETE user account completely from database (Admin Panel)
 app.delete('/api/admin/user/:id', authenticateAdmin, async (req, res) => {
+  const role = String(req.query.role || req.body?.role || 'user').toLowerCase()
+  const id = req.params.id
+
   try {
-    const deleted = await db.deleteUser(req.params.id)
-    if (deleted) {
-      res.json({ success: true, message: 'User account successfully deleted.' })
+    let deleted = false
+    if (role === 'caregiver' || role === 'caretaker' || role === 'staff') {
+      deleted = await db.deleteCaregiver(id)
+    } else if (role === 'mtp' || role === 'partner') {
+      deleted = await db.deleteMTP(id)
     } else {
-      res.status(404).json({ error: 'User account not found.' })
+      deleted = await db.deleteUser(id)
+    }
+
+    if (deleted) {
+      console.log(`[Admin Account Deletion] ID ${id} (${role}) and all related records completely purged from database.`)
+      res.json({ success: true, message: `Account (Role: ${role}) and all associated records permanently purged from database.` })
+    } else {
+      res.status(404).json({ success: false, error: 'User account not found in database.' })
     }
   } catch (err) {
-    res.status(500).json({ error: 'Failed to delete user account.' })
+    console.error('Failed to delete user account:', err)
+    res.status(500).json({ success: false, error: 'Failed to delete user account from database.' })
   }
 })
 

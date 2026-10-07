@@ -463,6 +463,19 @@ function AdminPage() {
   const [patientSearch, setPatientSearch] = useState("");
   const [patientStartDate, setPatientStartDate] = useState("");
   const [patientEndDate, setPatientEndDate] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState<"all" | "customer" | "caregiver" | "mtp">("all");
+  const [userStatusFilter, setUserStatusFilter] = useState<string>("All");
+  const [userDeleteConfirmModal, setUserDeleteConfirmModal] = useState<{
+    isOpen: boolean;
+    account: any | null;
+    isDeleting: boolean;
+    error: string | null;
+  }>({
+    isOpen: false,
+    account: null,
+    isDeleting: false,
+    error: null,
+  });
 
   const [paymentSearch, setPaymentSearch] = useState("");
   const [paymentStartDate, setPaymentStartDate] = useState("");
@@ -669,9 +682,9 @@ function AdminPage() {
   };
 
   const handleDeleteUser = (id: number) => {
-    if (window.confirm("Are you sure you want to permanently delete this user customer account?")) {
+    if (window.confirm("Are you sure you want to permanently delete this user customer account? All associated bookings and data will be wiped from the database.")) {
       const token = localStorage.getItem("ammaseva_admin_token");
-      fetch(`/api/admin/user/${id}`, { 
+      fetch(`/api/admin/user/${id}?role=customer`, { 
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       })
@@ -679,9 +692,47 @@ function AdminPage() {
         .then(data => {
           if (data.success) {
             setUsers(prev => prev.filter(u => u.id !== id));
+            fetchDashboardData();
+          } else {
+            alert(data.error || "Failed to delete user account.");
           }
         })
         .catch(err => console.error(err));
+    }
+  };
+
+  const handleDeleteAccountPermanently = async (account: any) => {
+    if (!account || !account.id) return;
+    const token = localStorage.getItem("ammaseva_admin_token");
+    setUserDeleteConfirmModal(prev => ({ ...prev, isDeleting: true, error: null }));
+    try {
+      const roleQuery = account.role || "customer";
+      const res = await fetch(`/api/admin/user/${account.id}?role=${roleQuery}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (account.role === "customer" || account.role === "user") {
+          setUsers(prev => prev.filter(u => u.id !== account.id));
+        } else if (account.role === "caregiver") {
+          setCaregivers(prev => prev.filter(c => c.id !== account.id));
+        } else if (account.role === "mtp") {
+          setMTPs(prev => prev.filter(m => m.id !== account.id));
+        }
+        setUserDeleteConfirmModal({ isOpen: false, account: null, isDeleting: false, error: null });
+        if (selectedUserForDetails && selectedUserForDetails.id === account.id) {
+          setSelectedUserForDetails(null);
+        }
+        fetchDashboardData();
+      } else {
+        setUserDeleteConfirmModal(prev => ({ ...prev, isDeleting: false, error: data.error || "Failed to delete account from database." }));
+      }
+    } catch (err: any) {
+      console.error("Delete account error:", err);
+      setUserDeleteConfirmModal(prev => ({ ...prev, isDeleting: false, error: "Network error while purging account from database." }));
     }
   };
 
@@ -1519,7 +1570,7 @@ function AdminPage() {
               { id: "caregivers", label: "Employees & Staff", icon: UserCheck },
               { id: "referrals", label: "Referral Network", icon: Gift, badge: referralsData?.summary?.totalPending || 0 },
               { id: "mtps", label: "MTP Registrations", icon: Briefcase, badge: mtps.filter(m => m.status === "Pending").length },
-              { id: "users", label: "Patients", icon: Users },
+              { id: "users", label: "All Users", icon: Users },
               { id: "services", label: "Services", icon: Sliders },
               { id: "payments", label: "Payment Status", icon: DollarSign },
               { id: "salaries", label: "Staff Salaries", icon: Coins },
@@ -1684,19 +1735,19 @@ function AdminPage() {
                     {renderCircularProgress(72, "#1e2a5a", `${bookings.length}`)}
                   </div>
 
-                  {/* Patients Card */}
+                  {/* All Users Card */}
                   <div 
                     onClick={() => setActiveTab("users")}
                     className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm premium-card flex justify-between items-center relative overflow-hidden border-l-4 border-l-cyan-500 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
                   >
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Patients Registered</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">All Registered Users</span>
                       <span className="text-2xl font-black font-display text-slate-950 mt-1 block">
-                        {users.length}
+                        {users.length + caregivers.length + mtps.length}
                       </span>
-                      <span className="text-[9px] text-slate-400 font-bold block mt-0.5">● Unique health profiles</span>
+                      <span className="text-[9px] text-cyan-700 font-bold block mt-0.5">● {users.length} Patients • {caregivers.length} Staff • {mtps.length} MTP</span>
                     </div>
-                    {renderCircularProgress(90, "#06b6d4", `${users.length}`)}
+                    {renderCircularProgress(90, "#06b6d4", `${users.length + caregivers.length + mtps.length}`)}
                   </div>
 
                   {/* Caretakers Card */}
@@ -2415,290 +2466,750 @@ function AdminPage() {
             </div>
           )}
 
-          {activeTab === "users" && (
-            <div className="space-y-6 animate-in fade-in duration-200">
-              <div className="flex justify-between items-center bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/40 premium-card">
-                <div>
-                  <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display">Patients</h3>
-                  <p className="text-xs text-slate-400 mt-0.5 font-medium">Total: {filteredUsers.length} registered patients</p>
-                </div>
-              </div>
-
-              {/* Local Filter Bar */}
-              <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm premium-card grid gap-4 grid-cols-1 sm:grid-cols-4 items-center">
-                <div className="relative col-span-1 sm:col-span-2">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Search by Patient name, phone, or email..."
-                    value={patientSearch}
-                    onChange={(e) => setPatientSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-semibold text-slate-800"
-                  />
-                </div>
-                <div>
-                  <input
-                    type="date"
-                    value={patientStartDate}
-                    onChange={(e) => setPatientStartDate(e.target.value)}
-                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-bold text-slate-500"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="date"
-                    value={patientEndDate}
-                    onChange={(e) => setPatientEndDate(e.target.value)}
-                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-bold text-slate-500"
-                  />
-                  {(patientSearch || patientStartDate || patientEndDate) && (
-                    <button
-                      onClick={() => {
-                        setPatientSearch("");
-                        setPatientStartDate("");
-                        setPatientEndDate("");
-                      }}
-                      className="px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-black transition-all cursor-pointer"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-md shadow-slate-100/30 premium-card">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm text-slate-700">
-                    <thead>
-                      <tr className="border-b border-slate-200/80 bg-[#1e2a5a]/5 text-xs text-[#1e2a5a] uppercase font-bold tracking-wider">
-                        <th className="py-4 px-6">Patient Name</th>
-                        <th className="py-4 px-6">Email Address</th>
-                        <th className="py-4 px-6">Phone Number</th>
-                        <th className="py-4 px-6">Registration Date</th>
-                        <th className="py-4 px-6 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {(() => {
-                        const filtered = users.filter((u) => {
-                          // Search query filter
-                          const q = patientSearch.toLowerCase();
-                          const matchesSearch = !patientSearch || 
-                            u.name.toLowerCase().includes(q) ||
-                            u.email.toLowerCase().includes(q) ||
-                            u.phone.includes(q);
-
-                          // Registration Date filter
-                          let matchesDate = true;
-                          if (patientStartDate || patientEndDate) {
-                            const regDate = new Date(u.createdAt);
-                            if (patientStartDate) {
-                              const start = new Date(patientStartDate);
-                              if (regDate < start) matchesDate = false;
-                            }
-                            if (patientEndDate) {
-                              const end = new Date(patientEndDate);
-                              if (regDate > end) matchesDate = false;
-                            }
-                          }
-
-                          return matchesSearch && matchesDate;
-                        });
-
-                        if (filtered.length === 0) {
-                          return (
-                            <tr>
-                              <td colSpan={5} className="py-8 text-center text-slate-400 text-sm font-semibold">
-                                No registered patients matched your search and date filters.
-                              </td>
-                            </tr>
-                          );
-                        }
-
-                        return filtered.map((u) => (
-                          <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="py-4 px-6 font-bold text-[#1e2a5a] font-display text-base">
-                              {u.name}
-                            </td>
-                            <td className="py-4 px-6 text-slate-650 font-medium">
-                              {u.email}
-                            </td>
-                            <td className="py-4 px-6 text-slate-650 font-semibold">
-                              {u.phone}
-                            </td>
-                            <td className="py-4 px-6 text-xs text-slate-400 font-bold">
-                              {new Date(u.createdAt).toLocaleDateString()}
-                            </td>
-                            <td className="py-4 px-6 text-right">
-                              <div className="flex gap-2 justify-end">
-                                <button
-                                  onClick={() => setSelectedUserForDetails(u)}
-                                  className="px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-[#c9a24c]/15 text-[#c9a24c] border border-slate-200 hover:border-[#c9a24c]/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-sm"
-                                >
-                                  👁️ View Details
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteUser(u.id)}
-                                  className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-500 hover:text-white border border-rose-100 hover:border-rose-500 text-rose-500 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" /> Remove Account
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ));
-                      })()}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Patient Details Overlay Modal */}
-              {selectedUserForDetails && (() => {
-                const u = selectedUserForDetails;
-                // Filter all bookings of this patient by phone or name
-                const userBookings = bookings.filter(b => 
-                  b.phone === u.phone || 
-                  b.name.toLowerCase() === u.name.toLowerCase()
+          {activeTab === "users" && (() => {
+            // Aggregate all accounts from users, caregivers, and mtps
+            const allUnifiedAccounts = [
+              ...users.map((u) => {
+                const userBookings = bookings.filter(
+                  (b) => b.phone === u.phone || (u.email && b.email && b.email.toLowerCase() === u.email.toLowerCase()) || b.userId === u.id || b.name.toLowerCase() === u.name.toLowerCase()
                 );
-                
-                const totalSpent = userBookings
-                  .filter(b => b.paymentStatus === "Paid")
-                  .reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
+                return {
+                  id: u.id,
+                  name: u.name,
+                  email: u.email,
+                  phone: u.phone,
+                  role: "customer" as const,
+                  roleLabel: "Customer / Patient",
+                  status: "Active",
+                  createdAt: u.createdAt,
+                  uniqueId: `USER${String(u.phone || "").slice(-4)}`,
+                  city: "Hyderabad",
+                  state: "Telangana",
+                  activityCount: userBookings.length,
+                  activityLabel: "Bookings",
+                  bookings: userBookings,
+                  rawData: u
+                };
+              }),
+              ...caregivers.map((c) => {
+                const assignedShifts = bookings.filter(
+                  (b) => b.assignedStaff && b.assignedStaff.trim().toLowerCase() === c.name.trim().toLowerCase()
+                );
+                return {
+                  id: c.id,
+                  name: c.name,
+                  email: c.email || "N/A",
+                  phone: c.phone,
+                  role: "caregiver" as const,
+                  roleLabel: `Caregiver (${c.specialty || "Staff"})`,
+                  status: c.status || "Pending",
+                  createdAt: c.joinedAt,
+                  uniqueId: getCaregiverReferralCode(c),
+                  city: c.city || "Hyderabad",
+                  state: c.state || "Telangana",
+                  activityCount: assignedShifts.length,
+                  activityLabel: "Shifts",
+                  bookings: assignedShifts,
+                  rawData: c
+                };
+              }),
+              ...mtps.map((m) => {
+                const assignedShifts = bookings.filter(
+                  (b) => b.assignedStaff && b.assignedStaff.trim().toLowerCase() === m.name.trim().toLowerCase()
+                );
+                const roleList = Array.isArray(m.roles) ? m.roles : (m.roles ? [m.roles] : []);
+                return {
+                  id: m.id,
+                  name: m.name,
+                  email: m.email || "N/A",
+                  phone: m.phone,
+                  role: "mtp" as const,
+                  roleLabel: `MTP Partner (${roleList.length} Tasks)`,
+                  status: m.status || "Pending",
+                  createdAt: m.createdAt,
+                  uniqueId: `MTP${String(m.phone || "").slice(-4)}`,
+                  city: m.locality || m.city || "Hyderabad",
+                  state: m.state || "Telangana",
+                  activityCount: assignedShifts.length,
+                  activityLabel: "Tasks",
+                  bookings: assignedShifts,
+                  rawData: m
+                };
+              })
+            ].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
-                return (
-                  <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[80vh] overflow-hidden animate-in zoom-in-95 duration-200 text-left border border-slate-200">
-                      
-                      {/* Modal Header */}
-                      <div className="bg-gradient-to-r from-[#1e2a5a] to-[#121936] p-6 flex justify-between items-center border-b border-[#c9a24c]/20">
-                        <div className="flex items-center gap-4">
-                          <div className="h-14 w-14 rounded-2xl bg-gradient-to-tr from-[#c9a24c] to-[#e5c06b] flex items-center justify-center font-black text-2xl text-[#1e2a5a] shadow-md border border-white/20 shrink-0">
-                            {u.name.charAt(0)}
-                          </div>
-                          <div>
-                            <h4 className="font-extrabold text-xl tracking-tight text-white font-display">{u.name}</h4>
-                            <p className="text-xs text-slate-300 mt-1.5 font-semibold">{u.email} • {u.phone}</p>
-                          </div>
-                        </div>
-                        <button 
-                          onClick={() => setSelectedUserForDetails(null)}
-                          className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold cursor-pointer transition-all border border-white/5"
-                        >
-                          ✕
-                        </button>
+            // Counts for filter tabs
+            const customerCount = users.length;
+            const caregiverCount = caregivers.length;
+            const mtpCount = mtps.length;
+            const totalAccountsCount = allUnifiedAccounts.length;
+
+            // Apply Filters
+            const filteredAccounts = allUnifiedAccounts.filter((acc) => {
+              // Role Filter
+              if (userRoleFilter !== "all" && acc.role !== userRoleFilter) {
+                return false;
+              }
+
+              // Status Filter
+              if (userStatusFilter !== "All") {
+                if (acc.status.toLowerCase() !== userStatusFilter.toLowerCase()) {
+                  return false;
+                }
+              }
+
+              // Search Filter
+              if (patientSearch.trim()) {
+                const q = patientSearch.toLowerCase();
+                const matches =
+                  acc.name.toLowerCase().includes(q) ||
+                  acc.email.toLowerCase().includes(q) ||
+                  acc.phone.includes(q) ||
+                  acc.uniqueId.toLowerCase().includes(q) ||
+                  acc.city.toLowerCase().includes(q) ||
+                  acc.roleLabel.toLowerCase().includes(q);
+                if (!matches) return false;
+              }
+
+              // Date Range Filter
+              if (patientStartDate || patientEndDate) {
+                const regDate = new Date(acc.createdAt);
+                if (patientStartDate) {
+                  const start = new Date(patientStartDate);
+                  if (regDate < start) return false;
+                }
+                if (patientEndDate) {
+                  const end = new Date(patientEndDate);
+                  end.setHours(23, 59, 59, 999);
+                  if (regDate > end) return false;
+                }
+              }
+
+              return true;
+            });
+
+            return (
+              <div className="space-y-6 animate-in fade-in duration-200">
+                {/* Header Banner */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/40 premium-card">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-9 w-9 rounded-xl bg-[#1e2a5a]/10 flex items-center justify-center text-[#1e2a5a]">
+                        <Users className="h-5 w-5" />
                       </div>
+                      <h3 className="text-xl font-extrabold text-[#1e2a5a] font-display tracking-tight">
+                        All Registered Users & Accounts
+                      </h3>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1 font-medium">
+                      Master control center to manage, inspect, and permanently delete accounts across Customers, Caregiver Staff, and MTP Partners from the database.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={fetchDashboardData}
+                      className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
+                      Refresh Data
+                    </button>
+                  </div>
+                </div>
 
-                      {/* Modal Body */}
-                      <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-slate-50/50">
-                        {/* Quick Stats Grid */}
-                        <div className="grid grid-cols-3 gap-4">
-                          <div className="bg-white border border-slate-200/80 border-l-4 border-l-[#1e2a5a] rounded-xl p-4 shadow-sm text-center">
-                            <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block">Total Bookings</span>
-                            <span className="text-xl font-black text-[#1e2a5a] mt-1 block">{userBookings.length}</span>
-                          </div>
-                          <div className="bg-white border border-slate-200/80 border-l-4 border-l-emerald-500 rounded-xl p-4 shadow-sm text-center">
-                            <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block">Completed Shifts</span>
-                            <span className="text-xl font-black text-emerald-600 mt-1 block">
-                              {userBookings.filter(b => b.status === "Completed").length}
-                            </span>
-                          </div>
-                          <div className="bg-white border border-slate-200/80 border-l-4 border-l-[#c9a24c] rounded-xl p-4 shadow-sm text-center">
-                            <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block">Total Paid Value</span>
-                            <span className="text-xl font-black text-[#c9a24c] mt-1 block">₹{totalSpent.toLocaleString()}</span>
-                          </div>
-                        </div>
+                {/* 4 Summary Stats Cards */}
+                <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+                  <div 
+                    onClick={() => setUserRoleFilter("all")}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                      userRoleFilter === "all"
+                        ? "bg-gradient-to-br from-[#1e2a5a] to-[#121936] text-white border-[#1e2a5a] shadow-md shadow-[#1e2a5a]/20"
+                        : "bg-white border-slate-200/80 hover:border-slate-300 text-slate-800 hover:shadow-xs"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className={`text-[10px] font-extrabold uppercase tracking-wider ${userRoleFilter === "all" ? "text-slate-300" : "text-slate-400"}`}>
+                        All Accounts
+                      </span>
+                      <Users className={`h-4 w-4 ${userRoleFilter === "all" ? "text-[#c9a24c]" : "text-slate-400"}`} />
+                    </div>
+                    <span className="text-2xl font-black font-display mt-2 block tracking-tight">
+                      {totalAccountsCount}
+                    </span>
+                    <span className={`text-[10px] font-semibold block mt-0.5 ${userRoleFilter === "all" ? "text-slate-300" : "text-slate-500"}`}>
+                      Total in Database
+                    </span>
+                  </div>
 
-                        {/* Booking Logs History list */}
-                        <div className="space-y-3">
-                          <div className="border-b border-slate-100 pb-2 mb-3">
-                            <h5 className="text-xs font-bold text-[#1e2a5a] uppercase tracking-wider">Historical Booking Logs</h5>
-                            <span className="text-[10px] text-slate-400 font-medium block mt-0.5">Audit records of patient medical shift allocations.</span>
-                          </div>
-                          
-                          <div className="space-y-3">
-                            {userBookings.map((b) => (
-                              <div key={b.id} className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm space-y-3 hover:border-[#c9a24c]/30 transition-colors">
-                                <div className="flex justify-between items-start">
-                                  <div>
-                                    <div className="font-extrabold text-[#1e2a5a] text-sm">{b.service}</div>
-                                    <div className="text-[10px] text-slate-400 mt-0.5 font-bold">📅 {b.date} • {b.time} ({b.duration})</div>
-                                  </div>
-                                  <div className="flex gap-2">
-                                    <span className={`text-[9px] uppercase font-black px-2 py-0.5 rounded-full border ${
-                                      b.status === "Confirmed" ? "bg-emerald-50 text-emerald-700 border-emerald-200/50" :
-                                      b.status === "Completed" ? "bg-blue-50 text-blue-700 border-blue-200/50" :
-                                      b.status === "Cancelled" ? "bg-rose-50 text-rose-700 border-rose-200/50" :
-                                      "bg-amber-50 text-amber-700 border-amber-200/50"
-                                    }`}>
-                                      {b.status}
-                                    </span>
-                                    <span className={`text-[9px] uppercase font-black px-2 py-0.5 rounded border ${
-                                      b.paymentStatus === "Paid" ? "bg-emerald-50 text-emerald-700 border-emerald-200/50" : "bg-amber-50 text-amber-700 border-amber-200/50"
-                                    }`}>
-                                      ₹{b.amount} ({b.paymentStatus})
-                                    </span>
-                                  </div>
-                                </div>
+                  <div 
+                    onClick={() => setUserRoleFilter("customer")}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                      userRoleFilter === "customer"
+                        ? "bg-gradient-to-br from-blue-700 to-blue-900 text-white border-blue-700 shadow-md shadow-blue-700/20"
+                        : "bg-white border-slate-200/80 hover:border-blue-300 text-slate-800 hover:shadow-xs"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className={`text-[10px] font-extrabold uppercase tracking-wider ${userRoleFilter === "customer" ? "text-blue-100" : "text-blue-600"}`}>
+                        Patients / Users
+                      </span>
+                      <Heart className={`h-4 w-4 ${userRoleFilter === "customer" ? "text-blue-200" : "text-blue-500"}`} />
+                    </div>
+                    <span className="text-2xl font-black font-display mt-2 block tracking-tight">
+                      {customerCount}
+                    </span>
+                    <span className={`text-[10px] font-semibold block mt-0.5 ${userRoleFilter === "customer" ? "text-blue-100" : "text-slate-500"}`}>
+                      Customer Bookings
+                    </span>
+                  </div>
 
-                                {b.assignedStaff && (
-                                  <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold border-t border-slate-50 pt-2">
-                                    <span>Assigned Nurse:</span>
-                                    <span className="font-bold text-[#1e2a5a]">{b.assignedStaff}</span>
-                                  </div>
-                                )}
+                  <div 
+                    onClick={() => setUserRoleFilter("caregiver")}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                      userRoleFilter === "caregiver"
+                        ? "bg-gradient-to-br from-emerald-700 to-emerald-900 text-white border-emerald-700 shadow-md shadow-emerald-700/20"
+                        : "bg-white border-slate-200/80 hover:border-emerald-300 text-slate-800 hover:shadow-xs"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className={`text-[10px] font-extrabold uppercase tracking-wider ${userRoleFilter === "caregiver" ? "text-emerald-100" : "text-emerald-600"}`}>
+                        Caregiver Staff
+                      </span>
+                      <ShieldCheck className={`h-4 w-4 ${userRoleFilter === "caregiver" ? "text-emerald-200" : "text-emerald-500"}`} />
+                    </div>
+                    <span className="text-2xl font-black font-display mt-2 block tracking-tight">
+                      {caregiverCount}
+                    </span>
+                    <span className={`text-[10px] font-semibold block mt-0.5 ${userRoleFilter === "caregiver" ? "text-emerald-100" : "text-slate-500"}`}>
+                      Nurses & Attendants
+                    </span>
+                  </div>
 
-                                {b.patientNeeds && (
-                                  <div className="text-[10px] text-slate-650 bg-slate-50 p-2.5 rounded-lg border border-slate-100 leading-relaxed">
-                                    <span className="font-bold text-slate-700">Patient Needs:</span> {b.patientNeeds}
-                                  </div>
-                                )}
+                  <div 
+                    onClick={() => setUserRoleFilter("mtp")}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                      userRoleFilter === "mtp"
+                        ? "bg-gradient-to-br from-amber-600 to-amber-800 text-white border-amber-600 shadow-md shadow-amber-600/20"
+                        : "bg-white border-slate-200/80 hover:border-amber-300 text-slate-800 hover:shadow-xs"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className={`text-[10px] font-extrabold uppercase tracking-wider ${userRoleFilter === "mtp" ? "text-amber-100" : "text-amber-600"}`}>
+                        MTP Partners
+                      </span>
+                      <Briefcase className={`h-4 w-4 ${userRoleFilter === "mtp" ? "text-amber-200" : "text-amber-500"}`} />
+                    </div>
+                    <span className="text-2xl font-black font-display mt-2 block tracking-tight">
+                      {mtpCount}
+                    </span>
+                    <span className={`text-[10px] font-semibold block mt-0.5 ${userRoleFilter === "mtp" ? "text-amber-100" : "text-slate-500"}`}>
+                      On-Demand Partners
+                    </span>
+                  </div>
+                </div>
 
-                                <div className="flex gap-3 text-[10px] border-t border-slate-50 pt-2">
-                                  {b.googleMapLocation && (
-                                    <a href={b.googleMapLocation} target="_blank" rel="noopener noreferrer" className="text-[#c9a24c] font-bold hover:underline">
-                                      🗺️ Map Location
-                                    </a>
-                                  )}
-                                  {b.prescription && (
-                                    <button
-                                      type="button"
-                                      onClick={() => openDocViewer(b.prescription, "Doctor Prescription / Case File", `${b.patientName || b.name} (Booking #${b.id})`, "Patient Medical Record")}
-                                      className="text-teal-600 font-bold hover:underline flex items-center gap-1 cursor-pointer"
-                                    >
-                                      <Eye className="h-3 w-3" />
-                                      <span>📄 Case File / Prescription</span>
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
+                {/* Filter and Search Bar */}
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm premium-card space-y-4">
+                  {/* Role Switcher Pills */}
+                  <div className="flex flex-wrap gap-2 items-center border-b border-slate-100 pb-4">
+                    <span className="text-xs font-bold text-slate-500 mr-1">Filter by Role:</span>
+                    {[
+                      { id: "all", label: "All Accounts", count: totalAccountsCount },
+                      { id: "customer", label: "Patients / Customers", count: customerCount },
+                      { id: "caregiver", label: "Caregivers & Staff", count: caregiverCount },
+                      { id: "mtp", label: "MTP Partners", count: mtpCount },
+                    ].map((pill) => (
+                      <button
+                        key={pill.id}
+                        type="button"
+                        onClick={() => setUserRoleFilter(pill.id as any)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                          userRoleFilter === pill.id
+                            ? "bg-[#1e2a5a] text-white shadow-xs"
+                            : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+                        }`}
+                      >
+                        {pill.label}
+                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                          userRoleFilter === pill.id ? "bg-white/20 text-white" : "bg-white text-slate-600 border border-slate-200"
+                        }`}>
+                          {pill.count}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
 
-                            {userBookings.length === 0 && (
-                              <p className="text-center text-xs text-slate-400 italic py-6 bg-white border border-slate-200/80 rounded-2xl">No historical shift logs found for this patient.</p>
-                            )}
-                          </div>
-                        </div>
+                  {/* Search, Date, and Status Controls */}
+                  <div className="grid gap-3 grid-cols-1 sm:grid-cols-12 items-center">
+                    <div className="relative sm:col-span-5">
+                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="Search by Name, Phone, Email, Unique ID, or City..."
+                        value={patientSearch}
+                        onChange={(e) => setPatientSearch(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-semibold text-slate-800"
+                      />
+                    </div>
+                    
+                    <div className="sm:col-span-2">
+                      <select
+                        value={userStatusFilter}
+                        onChange={(e) => setUserStatusFilter(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-bold text-slate-700 cursor-pointer"
+                      >
+                        <option value="All">All Statuses</option>
+                        <option value="Active">Active / Verified</option>
+                        <option value="Pending">Pending Review</option>
+                        <option value="Rejected">Rejected</option>
+                      </select>
+                    </div>
 
-                      </div>
+                    <div className="sm:col-span-2">
+                      <input
+                        type="date"
+                        value={patientStartDate}
+                        onChange={(e) => setPatientStartDate(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-bold text-slate-500"
+                        title="Start Date"
+                      />
+                    </div>
 
-                      {/* Modal Footer */}
-                      <div className="border-t border-slate-100 p-4 bg-slate-50 flex justify-end">
+                    <div className="sm:col-span-2">
+                      <input
+                        type="date"
+                        value={patientEndDate}
+                        onChange={(e) => setPatientEndDate(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-bold text-slate-500"
+                        title="End Date"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-1 flex justify-end">
+                      {(patientSearch || patientStartDate || patientEndDate || userRoleFilter !== "all" || userStatusFilter !== "All") && (
                         <button
-                          onClick={() => setSelectedUserForDetails(null)}
-                          className="px-5 py-2 rounded-xl bg-[#1e2a5a] hover:bg-[#121936] text-white text-xs font-bold transition-all cursor-pointer shadow-sm"
+                          type="button"
+                          onClick={() => {
+                            setPatientSearch("");
+                            setPatientStartDate("");
+                            setPatientEndDate("");
+                            setUserRoleFilter("all");
+                            setUserStatusFilter("All");
+                          }}
+                          className="w-full py-2 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-black transition-all cursor-pointer text-center"
+                          title="Reset all filters"
                         >
-                          Close Details
+                          Reset
                         </button>
-                      </div>
-
+                      )}
                     </div>
                   </div>
-                );
-              })()}
+                </div>
 
-            </div>
-          )}
+                {/* Unified Accounts Table */}
+                <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-md shadow-slate-100/30 premium-card">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm text-slate-700">
+                      <thead>
+                        <tr className="border-b border-slate-200/80 bg-[#1e2a5a]/5 text-xs text-[#1e2a5a] uppercase font-bold tracking-wider">
+                          <th className="py-4 px-6">User & Profile</th>
+                          <th className="py-4 px-6">Contact Details</th>
+                          <th className="py-4 px-6">Account Role</th>
+                          <th className="py-4 px-6">Status</th>
+                          <th className="py-4 px-6">Registered On</th>
+                          <th className="py-4 px-6 text-center">Activity</th>
+                          <th className="py-4 px-6 text-right">Database Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredAccounts.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="py-12 text-center text-slate-400 text-sm font-semibold">
+                              <Users className="h-8 w-8 mx-auto text-slate-300 mb-2" />
+                              No registered accounts matched your search and filter criteria.
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredAccounts.map((acc) => {
+                            const isCustomer = acc.role === "customer";
+                            const isCaregiver = acc.role === "caregiver";
+                            const isMtp = acc.role === "mtp";
+
+                            return (
+                              <tr key={`${acc.role}-${acc.id}`} className="hover:bg-slate-50/60 transition-colors">
+                                <td className="py-4 px-6">
+                                  <div className="flex items-center gap-3">
+                                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center font-black text-sm text-white shadow-xs shrink-0 ${
+                                      isCustomer ? "bg-gradient-to-tr from-blue-600 to-cyan-600" :
+                                      isCaregiver ? "bg-gradient-to-tr from-emerald-600 to-teal-600" :
+                                      "bg-gradient-to-tr from-amber-600 to-yellow-600"
+                                    }`}>
+                                      {acc.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div>
+                                      <div className="font-bold text-[#1e2a5a] font-display text-sm leading-snug">
+                                        {acc.name}
+                                      </div>
+                                      <div className="flex items-center gap-1.5 mt-0.5">
+                                        <span className="text-[10px] font-mono font-bold text-[#c9a24c] bg-[#c9a24c]/10 px-1.5 py-0.2 rounded border border-[#c9a24c]/20">
+                                          {acc.uniqueId}
+                                        </span>
+                                        <span className="text-[10px] text-slate-400 font-medium">
+                                          📍 {acc.city}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+
+                                <td className="py-4 px-6">
+                                  <div className="space-y-1">
+                                    <div className="flex items-center gap-1.5 text-xs text-slate-700 font-bold">
+                                      <Phone className="h-3 w-3 text-slate-400" />
+                                      <a href={`tel:${acc.phone}`} className="hover:text-[#c9a24c] hover:underline">
+                                        +91 {acc.phone}
+                                      </a>
+                                      {acc.phone && (
+                                        <a
+                                          href={`https://wa.me/91${String(acc.phone).replace(/\D/g, "").slice(-10)}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-emerald-600 hover:text-emerald-700"
+                                          title="Chat on WhatsApp"
+                                        >
+                                          <MessageCircle className="h-3.5 w-3.5" />
+                                        </a>
+                                      )}
+                                    </div>
+                                    {acc.email && acc.email !== "N/A" && (
+                                      <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-medium truncate max-w-[200px]">
+                                        <Mail className="h-3 w-3 text-slate-400 shrink-0" />
+                                        <a href={`mailto:${acc.email}`} className="hover:text-[#c9a24c] hover:underline truncate">
+                                          {acc.email}
+                                        </a>
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+
+                                <td className="py-4 px-6">
+                                  <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border ${
+                                    isCustomer ? "bg-blue-50 text-blue-700 border-blue-200/70" :
+                                    isCaregiver ? "bg-emerald-50 text-emerald-700 border-emerald-200/70" :
+                                    "bg-amber-50 text-amber-700 border-amber-200/70"
+                                  }`}>
+                                    {isCustomer && "💙 Patient"}
+                                    {isCaregiver && "🩺 Caregiver"}
+                                    {isMtp && "🚗 MTP Partner"}
+                                  </span>
+                                </td>
+
+                                <td className="py-4 px-6">
+                                  <span className={`text-[10px] uppercase font-black tracking-wider px-2.5 py-1 rounded-full border ${
+                                    acc.status === "Verified" || acc.status === "Active" ? "bg-emerald-50 text-emerald-700 border-emerald-200/60" :
+                                    acc.status === "Rejected" ? "bg-rose-50 text-rose-700 border-rose-200/60" :
+                                    "bg-amber-50 text-amber-700 border-amber-200/60"
+                                  }`}>
+                                    {acc.status}
+                                  </span>
+                                </td>
+
+                                <td className="py-4 px-6 text-xs text-slate-500 font-bold">
+                                  {acc.createdAt ? new Date(acc.createdAt).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" }) : "N/A"}
+                                </td>
+
+                                <td className="py-4 px-6 text-center">
+                                  <span className="text-xs font-black text-[#1e2a5a] bg-slate-100 px-2 py-1 rounded-lg border border-slate-200">
+                                    {acc.activityCount} {acc.activityLabel}
+                                  </span>
+                                </td>
+
+                                <td className="py-4 px-6 text-right">
+                                  <div className="flex gap-2 justify-end items-center">
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedUserForDetails(acc)}
+                                      className="px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-[#c9a24c]/15 text-[#c9a24c] border border-slate-200 hover:border-[#c9a24c]/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+                                      title="View Detailed Profile & History"
+                                    >
+                                      <Eye className="h-3.5 w-3.5" />
+                                      View
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => setUserDeleteConfirmModal({
+                                        isOpen: true,
+                                        account: acc,
+                                        isDeleting: false,
+                                        error: null
+                                      })}
+                                      className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-600 hover:text-white border border-rose-200 hover:border-rose-600 text-rose-600 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                                      title="Permanently Delete Account from Database"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                      Delete
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Permanent Delete Safety Confirmation Modal */}
+                {userDeleteConfirmModal.isOpen && userDeleteConfirmModal.account && (
+                  <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-200 text-left">
+                      {/* Modal Top Warning Header */}
+                      <div className="bg-gradient-to-r from-rose-600 to-rose-700 p-6 text-white text-left relative">
+                        <div className="flex items-center gap-3">
+                          <div className="h-12 w-12 rounded-2xl bg-white/15 flex items-center justify-center text-white border border-white/20 shrink-0">
+                            <ShieldAlert className="h-7 w-7 text-white" />
+                          </div>
+                          <div>
+                            <h4 className="font-extrabold text-lg tracking-tight font-display text-white">
+                              Permanently Delete User?
+                            </h4>
+                            <p className="text-xs text-rose-100 mt-0.5 font-medium">
+                              This action will wipe all data directly from the database.
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setUserDeleteConfirmModal({ isOpen: false, account: null, isDeleting: false, error: null })}
+                          className="absolute top-5 right-5 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold cursor-pointer transition-all"
+                        >
+                          <X className="h-5 w-5" />
+                        </button>
+                      </div>
+
+                      {/* Modal Content */}
+                      <div className="p-6 space-y-4 bg-slate-50/50">
+                        <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-2 shadow-xs">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-slate-400 font-bold uppercase">Account Name:</span>
+                            <span className="font-black text-[#1e2a5a] text-sm">{userDeleteConfirmModal.account.name}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-slate-400 font-bold uppercase">Mobile Number:</span>
+                            <span className="font-bold text-slate-700">+91 {userDeleteConfirmModal.account.phone}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-slate-400 font-bold uppercase">Account Role:</span>
+                            <span className="font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 uppercase text-[10px]">
+                              {userDeleteConfirmModal.account.roleLabel}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 space-y-1.5 leading-relaxed font-medium">
+                          <div className="flex items-center gap-1.5 font-bold text-rose-900">
+                            <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0" />
+                            <span>Database Wipe Warning</span>
+                          </div>
+                          <p>
+                            Deleting this user will permanently purge their profile, authentication credentials, linked booking orders, medical records, and OTP verification entries from the database.
+                          </p>
+                        </div>
+
+                        {userDeleteConfirmModal.error && (
+                          <div className="p-3 bg-rose-100 text-rose-800 text-xs font-bold rounded-xl border border-rose-300">
+                            {userDeleteConfirmModal.error}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Modal Footer Buttons */}
+                      <div className="border-t border-slate-100 p-4 bg-white flex justify-end gap-3">
+                        <button
+                          type="button"
+                          disabled={userDeleteConfirmModal.isDeleting}
+                          onClick={() => setUserDeleteConfirmModal({ isOpen: false, account: null, isDeleting: false, error: null })}
+                          className="px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-bold transition-all cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={userDeleteConfirmModal.isDeleting}
+                          onClick={() => handleDeleteAccountPermanently(userDeleteConfirmModal.account)}
+                          className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black transition-all cursor-pointer shadow-md shadow-rose-600/20 flex items-center gap-2"
+                        >
+                          {userDeleteConfirmModal.isDeleting ? (
+                            <>
+                              <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              <span>Purging from DB...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Trash2 className="h-4 w-4" />
+                              <span>Yes, Delete from Database</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Unified User Details Modal */}
+                {selectedUserForDetails && (() => {
+                  const acc = selectedUserForDetails;
+                  const accBookings = acc.bookings || [];
+                  const totalSpent = accBookings
+                    .filter((b: any) => b.paymentStatus === "Paid")
+                    .reduce((sum: number, b: any) => sum + (Number(b.amount) || 0), 0);
+
+                  return (
+                    <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                      <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-200 text-left border border-slate-200">
+                        {/* Modal Header */}
+                        <div className="bg-gradient-to-r from-[#1e2a5a] to-[#121936] p-6 flex justify-between items-center border-b border-[#c9a24c]/20">
+                          <div className="flex items-center gap-4">
+                            <div className="h-14 w-14 rounded-2xl bg-gradient-to-tr from-[#c9a24c] to-[#e5c06b] flex items-center justify-center font-black text-2xl text-[#1e2a5a] shadow-md border border-white/20 shrink-0">
+                              {acc.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-extrabold text-xl tracking-tight text-white font-display">{acc.name}</h4>
+                                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#c9a24c] text-[#1e2a5a]">
+                                  {acc.roleLabel}
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-300 mt-1 font-semibold">
+                                {acc.email} • +91 {acc.phone} • {acc.uniqueId}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedUserForDetails(null)}
+                            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold cursor-pointer transition-all border border-white/5"
+                          >
+                            ✕
+                          </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-slate-50/50">
+                          {/* Quick Stats Grid */}
+                          <div className="grid grid-cols-3 gap-4">
+                            <div className="bg-white border border-slate-200/80 border-l-4 border-l-[#1e2a5a] rounded-xl p-4 shadow-sm text-center">
+                              <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block">Total Activity</span>
+                              <span className="text-xl font-black text-[#1e2a5a] mt-1 block">{accBookings.length} {acc.activityLabel}</span>
+                            </div>
+                            <div className="bg-white border border-slate-200/80 border-l-4 border-l-emerald-500 rounded-xl p-4 shadow-sm text-center">
+                              <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block">Account Status</span>
+                              <span className="text-base font-black text-emerald-600 mt-1 block">{acc.status}</span>
+                            </div>
+                            <div className="bg-white border border-slate-200/80 border-l-4 border-l-[#c9a24c] rounded-xl p-4 shadow-sm text-center">
+                              <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block">
+                                {acc.role === "customer" ? "Total Paid Value" : "Location Zone"}
+                              </span>
+                              <span className="text-base font-black text-[#c9a24c] mt-1 block">
+                                {acc.role === "customer" ? `₹${totalSpent.toLocaleString()}` : (acc.city || "Hyderabad")}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Historical Bookings / Shifts */}
+                          <div className="space-y-3">
+                            <div className="border-b border-slate-200 pb-2 flex justify-between items-center">
+                              <div>
+                                <h5 className="text-xs font-bold text-[#1e2a5a] uppercase tracking-wider">
+                                  {acc.role === "customer" ? "Patient Shift & Booking History" : "Assigned Duty Allocations"}
+                                </h5>
+                                <span className="text-[10px] text-slate-400 font-medium block mt-0.5">
+                                  Audit logs associated with this user.
+                                </span>
+                              </div>
+                              <span className="text-xs font-bold text-slate-500 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
+                                {accBookings.length} Records
+                              </span>
+                            </div>
+
+                            <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                              {accBookings.map((b: any) => (
+                                <div key={b.id} className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm space-y-2 hover:border-[#c9a24c]/30 transition-colors">
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <div className="font-extrabold text-[#1e2a5a] text-sm">{b.service}</div>
+                                      <div className="text-[10px] text-slate-400 mt-0.5 font-bold">📅 {b.date} • {b.time} ({b.duration})</div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <span className={`text-[9px] uppercase font-black px-2 py-0.5 rounded-full border ${
+                                        b.status === "Confirmed" ? "bg-emerald-50 text-emerald-700 border-emerald-200/50" :
+                                        b.status === "Completed" ? "bg-blue-50 text-blue-700 border-blue-200/50" :
+                                        b.status === "Cancelled" ? "bg-rose-50 text-rose-700 border-rose-200/50" :
+                                        "bg-amber-50 text-amber-700 border-amber-200/50"
+                                      }`}>
+                                        {b.status}
+                                      </span>
+                                      <span className={`text-[9px] uppercase font-black px-2 py-0.5 rounded border ${
+                                        b.paymentStatus === "Paid" ? "bg-emerald-50 text-emerald-700 border-emerald-200/50" : "bg-amber-50 text-amber-700 border-amber-200/50"
+                                      }`}>
+                                        ₹{b.amount} ({b.paymentStatus})
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {b.assignedStaff && (
+                                    <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold border-t border-slate-50 pt-2">
+                                      <span>Assigned Staff:</span>
+                                      <span className="font-bold text-[#1e2a5a]">{b.assignedStaff}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+
+                              {accBookings.length === 0 && (
+                                <p className="text-center text-xs text-slate-400 italic py-6 bg-white border border-slate-200/80 rounded-2xl">
+                                  No service booking records attached to this profile.
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="border-t border-slate-100 p-4 bg-white flex justify-between items-center">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUserDeleteConfirmModal({
+                                isOpen: true,
+                                account: acc,
+                                isDeleting: false,
+                                error: null
+                              });
+                            }}
+                            className="px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border border-rose-200"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete Account from Database
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setSelectedUserForDetails(null)}
+                            className="px-5 py-2 rounded-xl bg-[#1e2a5a] hover:bg-[#121936] text-white text-xs font-bold transition-all cursor-pointer shadow-sm"
+                          >
+                            Close Details
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+              </div>
+            );
+          })()}
 
           {/* Payments & Transaction tracking panel */}
           {activeTab === "payments" && (
