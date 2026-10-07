@@ -1747,7 +1747,7 @@ function CustomerDashboard() {
                 ))}
 
                 {/* Application Status Banner */}
-                {caretaker?.status === "Verified" ? (
+                {(caretaker?.status === "Verified" || caretaker?.status === "Approved" || caretaker?.status === "Active") ? (
                   <div className="rounded-3xl border border-emerald-200 bg-emerald-50/50 p-6 flex gap-4 items-start shadow-sm">
                     <div className="h-12 w-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
                       <CheckCircle2 className="h-6 w-6" />
@@ -1866,7 +1866,7 @@ function CustomerDashboard() {
             {/* Shifts Content View */}
             {activeCaregiverTab === "shifts" && (
               <>
-                {caretaker?.status === "Verified" ? (
+                {(caretaker?.status === "Verified" || caretaker?.status === "Approved" || caretaker?.status === "Active") ? (
                   <div className="bg-white p-8 sm:p-10 rounded-3xl border border-slate-200/60 shadow-sm space-y-6">
                     <div>
                       <h2 className="text-xl font-bold text-primary font-display flex items-center gap-2">
@@ -3672,51 +3672,106 @@ function CustomerDashboard() {
                           </div>
                         )}
 
-                        {booking.caregiverDetails && (
-                          <div className="mt-4 border border-indigo-100 bg-indigo-50/20 p-5 rounded-2xl space-y-4">
-                            <div className="flex justify-between items-center pb-2 border-b border-indigo-100/50">
+                        {/* Assigned Staff or Allocation Notice */}
+                        {booking.assignedStaff && booking.assignedStaff.trim() && booking.assignedStaff.trim().toLowerCase() !== 'unassigned' ? (
+                          <div className="mt-4 border border-indigo-100 bg-gradient-to-br from-indigo-50/30 via-white to-indigo-50/15 p-5 rounded-3xl shadow-xs space-y-4">
+                            <div className="flex justify-between items-center pb-2 border-b border-indigo-100/60">
                               <span className="text-xs font-bold uppercase tracking-wider text-indigo-700 flex items-center gap-1.5 font-display">
-                                <User className="h-4 w-4" /> Assigned Caregiver Profile
+                                <User className="h-4 w-4 text-[#c9a24c]" /> 
+                                {booking.caregiverDetails?.type === 'mtp' ? "Assigned MTP Companion Profile" : "Assigned Caregiver Profile"}
                               </span>
-                              <span className="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 font-semibold">Verified Professional</span>
+                              <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 font-bold flex items-center gap-1">
+                                <ShieldCheck className="h-3 w-3 text-emerald-600" /> Verified Professional
+                              </span>
                             </div>
 
                             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
-                              {booking.caregiverDetails.profilePhoto ? (
+                              {booking.caregiverDetails?.profilePhoto ? (
                                 <img 
                                   src={booking.caregiverDetails.profilePhoto} 
-                                  className="h-16 w-16 rounded-full object-cover border border-slate-200 shadow-sm shrink-0" 
+                                  className="h-16 w-16 rounded-2xl object-cover border-2 border-indigo-100 shadow-sm shrink-0" 
                                   alt={booking.caregiverDetails.name} 
                                 />
                               ) : (
-                                <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 shrink-0 border border-slate-200 shadow-sm">
-                                  <User className="h-8 w-8" />
+                                <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-[#1e2a5a] to-[#0f1530] flex items-center justify-center text-white text-xl font-black shrink-0 shadow-sm">
+                                  {(booking.caregiverDetails?.name || booking.assignedStaff).charAt(0).toUpperCase()}
                                 </div>
                               )}
                               
                               <div className="flex-1 space-y-1 text-center sm:text-left min-w-0">
-                                <h4 className="text-base font-bold text-slate-800">{booking.caregiverDetails.name}</h4>
-                                <div className="flex flex-wrap justify-center sm:justify-start gap-x-3 gap-y-1 text-xs text-slate-500">
-                                  <span>Role: <strong className="text-slate-700 font-semibold">{booking.caregiverDetails.specialty}</strong></span>
-                                  <span>•</span>
-                                  <span>Experience: <strong className="text-slate-700 font-semibold">{booking.caregiverDetails.experience}+ years</strong></span>
+                                <h4 className="text-base font-extrabold text-slate-850">
+                                  {booking.caregiverDetails?.name || booking.assignedStaff}
+                                </h4>
+                                <div className="flex flex-wrap justify-center sm:justify-start items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                                  <span className="text-[#1e2a5a] font-bold bg-[#1e2a5a]/5 px-2 py-0.5 rounded-md">
+                                    {booking.caregiverDetails?.specialty || (booking.caregiverDetails?.type === 'mtp' ? "MTP Companion & Tasks" : "Senior Care Specialist")}
+                                  </span>
+                                  {booking.caregiverDetails?.experience && (
+                                    <>
+                                      <span>•</span>
+                                      <span className="text-slate-600 font-semibold">{booking.caregiverDetails.experience}+ yrs exp</span>
+                                    </>
+                                  )}
                                 </div>
-                                {booking.caregiverDetails.experienceDetails && (
-                                  <p className="text-xs text-slate-400 mt-2 line-clamp-2 leading-relaxed italic">
+                                {booking.caregiverDetails?.experienceDetails && (
+                                  <p className="text-xs text-slate-500 mt-2 line-clamp-2 leading-relaxed italic">
                                     &ldquo;{booking.caregiverDetails.experienceDetails}&rdquo;
                                   </p>
                                 )}
                               </div>
 
-                              <div className="shrink-0 pt-1">
-                                <a 
-                                  href={`tel:${booking.caregiverDetails.phone}`} 
-                                  className="btn-primary inline-flex items-center gap-1.5 text-xs py-2 px-4 shadow-sm"
-                                >
-                                  <Phone className="h-3.5 w-3.5" /> Call Caregiver
-                                </a>
+                              <div className="flex flex-wrap sm:flex-col gap-2 shrink-0 pt-1">
+                                {booking.caregiverDetails?.phone && booking.caregiverDetails.phone !== 'Contact Admin' ? (
+                                  <>
+                                    <a 
+                                      href={`tel:${booking.caregiverDetails.phone}`} 
+                                      className="btn-primary inline-flex items-center justify-center gap-1.5 text-xs py-2 px-3.5 shadow-xs"
+                                    >
+                                      <Phone className="h-3.5 w-3.5" /> Call Staff
+                                    </a>
+                                    <a 
+                                      href={`https://wa.me/91${booking.caregiverDetails.phone.replace(/\D/g, '').slice(-10)}?text=Hi%20${encodeURIComponent(booking.caregiverDetails.name)},%20this%20is%20regarding%20my%20Amma%20Seva%20booking%20%23${booking.id}.`} 
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center justify-center gap-1.5 text-xs py-2 px-3.5 rounded-xl bg-[#25D366] hover:bg-emerald-600 text-white font-bold shadow-xs transition-colors"
+                                    >
+                                      <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                                    </a>
+                                  </>
+                                ) : (
+                                  <a 
+                                    href="tel:+919494516543" 
+                                    className="btn-primary inline-flex items-center justify-center gap-1.5 text-xs py-2 px-3.5 shadow-xs"
+                                  >
+                                    <Phone className="h-3.5 w-3.5" /> Support Desk
+                                  </a>
+                                )}
                               </div>
                             </div>
+                          </div>
+                        ) : (
+                          <div className="mt-4 border border-amber-200/80 bg-gradient-to-br from-amber-50/50 via-white to-amber-50/20 p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left">
+                            <div className="flex items-center gap-3">
+                              <div className="h-10 w-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                                <Clock className="h-5 w-5 animate-pulse" />
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-bold text-amber-950 uppercase tracking-wider">Staff Allocation in Progress</h4>
+                                <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                                  Our care coordinators are assigning the best background-verified caregiver/companion for your shift.
+                                </p>
+                              </div>
+                            </div>
+                            <a
+                              href="https://wa.me/919494516543?text=Hi%20Amma%20Seva%20Team,%20please%20update%20me%20on%20staff%20allocation%20for%20my%20shift%20%23"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold shrink-0 transition-colors shadow-2xs flex items-center gap-1.5"
+                            >
+                              <MessageCircle className="h-3.5 w-3.5 text-[#25D366]" /> Need Quick Update?
+                            </a>
+                          </div>
+                        )}
                            {/* Digital Shift Care Log & Vitals Tracker */}
                         {booking.assignedStaff && (booking.status === "Confirmed" || booking.status === "Active" || booking.status === "Completed") && (() => {
                           let vitalsObj = null;
@@ -3797,8 +3852,6 @@ function CustomerDashboard() {
                             </div>
                           );
                         })()}
-                      </div>
-                    )}
 
                         {/* Caregiver Performance Rating & Review widget */}
                         {booking.status === "Completed" && booking.assignedStaff && !booking.isReviewed && (

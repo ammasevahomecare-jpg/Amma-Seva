@@ -5180,18 +5180,47 @@ function AdminPage() {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Assign Staff</label>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Assign Staff / MTP</label>
                           <select 
                             value={bookingAssignedStaff} onChange={e => setBookingAssignedStaff(e.target.value)}
                             disabled={isRecordCaretakerPaymentMode}
                             className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none bg-white text-xs font-semibold text-slate-800 cursor-pointer disabled:opacity-70"
                           >
-                            <option value="">-- Unassigned --</option>
-                            {caregivers
-                              .filter(c => c.status === "Verified")
-                              .map(c => (
-                                <option key={c.id} value={c.name}>{c.name} — [{getCaregiverReferralCode(c)}] ({c.specialty})</option>
-                              ))}
+                            <option value="">-- Unassigned (Pending Allocation) --</option>
+                            {bookingAssignedStaff && 
+                              !caregivers.some(c => c.name === bookingAssignedStaff) && 
+                              !mtps.some(m => m.name === bookingAssignedStaff) && (
+                                <option value={bookingAssignedStaff}>Current: {bookingAssignedStaff}</option>
+                              )}
+                            {caregivers.filter(c => c.status === "Verified" || c.status === "Active").length > 0 && (
+                              <optgroup label="🩺 Verified Caregivers & Nurses">
+                                {caregivers
+                                  .filter(c => c.status === "Verified" || c.status === "Active")
+                                  .map(c => (
+                                    <option key={`cg-${c.id}`} value={c.name}>
+                                      🩺 {c.name} — [{getCaregiverReferralCode(c)}] ({c.specialty || "Caregiver"})
+                                    </option>
+                                  ))}
+                              </optgroup>
+                            )}
+                            {mtps.filter(m => m.status === "Approved" || m.status === "Active" || m.status === "Verified").length > 0 && (
+                              <optgroup label="🚗 Approved MTP Companions">
+                                {mtps
+                                  .filter(m => m.status === "Approved" || m.status === "Active" || m.status === "Verified")
+                                  .map(m => {
+                                    const cleanPhone = (m.phone || "").replace(/[^0-9]/g, "");
+                                    const last4 = cleanPhone.length >= 4 ? cleanPhone.slice(-4) : (cleanPhone.padEnd(4, "0") || "0000");
+                                    const firstName = (m.name.split(/\s+/)[0] || "MTP").replace(/[^a-zA-Z]/g, "").toUpperCase();
+                                    const code = `${firstName}${last4}`;
+                                    const taskSummary = Array.isArray(m.roles) ? m.roles.join(", ") : (m.roles || m.locality || "MTP Companion");
+                                    return (
+                                      <option key={`mtp-${m.id}`} value={m.name}>
+                                        🚗 {m.name} — [{code}] ({taskSummary})
+                                      </option>
+                                    );
+                                  })}
+                              </optgroup>
+                            )}
                           </select>
                         </div>
                         <div>

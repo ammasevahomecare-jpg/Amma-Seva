@@ -290,39 +290,45 @@ const handleBookingEmailNotification = async (bookingId, oldBooking, newStatus, 
       return
     }
 
-    // 1. Caretaker assigned scenario
+    // 1. Caretaker / MTP assigned scenario
     const oldStaff = oldBooking ? oldBooking.assignedStaff : null
     if (newAssignedStaff && newAssignedStaff !== oldStaff) {
-      const caregiver = await db.getCaregiverByName(newAssignedStaff)
-      const phoneStr = caregiver ? caregiver.phone : 'N/A'
-      const specialtyStr = caregiver ? caregiver.specialty : 'Caregiver'
+      let staffPerson = await db.getCaregiverByName(newAssignedStaff)
+      let isMtp = false
+      if (!staffPerson) {
+        staffPerson = await db.getMTPByName(newAssignedStaff)
+        if (staffPerson) isMtp = true
+      }
+      const phoneStr = staffPerson ? staffPerson.phone : 'N/A'
+      const specialtyStr = staffPerson ? (staffPerson.specialty || staffPerson.roles || (isMtp ? 'MTP Companion' : 'Caregiver')) : 'Caregiver / Companion'
+      const staffTypeTitle = isMtp ? 'MTP Companion' : 'Caregiver'
 
       const mailOptions = {
         from: `"Amma Seva Bookings" <${process.env.SMTP_EMAIL || 'ammasevahomecare@gmail.com'}>`,
         to: email,
-        subject: `Caregiver Assigned - Booking ID #${bookingId} - Amma Seva`,
+        subject: `${staffTypeTitle} Assigned - Booking ID #${bookingId} - Amma Seva`,
         html: `
           <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 16px;">
-            <h2 style="color: #4f46e5; margin-bottom: 8px;">Caregiver Assigned!</h2>
+            <h2 style="color: #4f46e5; margin-bottom: 8px;">${staffTypeTitle} Assigned!</h2>
             <p style="color: #64748b; font-size: 14px;">Hi ${booking.name},</p>
-            <p style="color: #64748b; font-size: 14px;">We have successfully matched and assigned a background-verified caregiver to your home healthcare request:</p>
+            <p style="color: #64748b; font-size: 14px;">We have successfully matched and assigned a verified ${staffTypeTitle.toLowerCase()} to your request:</p>
             
             <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 16px; border-radius: 12px; margin: 16px 0;">
-              <h3 style="color: #0f172a; margin-top: 0; margin-bottom: 8px;">Caregiver Details</h3>
+              <h3 style="color: #0f172a; margin-top: 0; margin-bottom: 8px;">Assigned Staff Details</h3>
               <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #334155;">
                 <tr><td style="padding: 4px 0; font-weight: bold;">Name:</td><td style="padding: 4px 0; text-align: right;">${newAssignedStaff}</td></tr>
-                <tr><td style="padding: 4px 0; font-weight: bold;">Specialty:</td><td style="padding: 4px 0; text-align: right;">${specialtyStr}</td></tr>
+                <tr><td style="padding: 4px 0; font-weight: bold;">Role / Specialty:</td><td style="padding: 4px 0; text-align: right;">${specialtyStr}</td></tr>
                 <tr><td style="padding: 4px 0; font-weight: bold;">Phone:</td><td style="padding: 4px 0; text-align: right;"><a href="tel:${phoneStr}">${phoneStr}</a></td></tr>
               </table>
             </div>
 
-            <p style="color: #64748b; font-size: 14px;">The caregiver will arrive on <strong>${booking.date}</strong> at <strong>${booking.time}</strong> as scheduled. You can view the live progress and vitals logs directly inside your customer dashboard.</p>
+            <p style="color: #64748b; font-size: 14px;">Your assigned professional will arrive on <strong>${booking.date}</strong> at <strong>${booking.time}</strong> as scheduled. You can view the live progress and vitals logs directly inside your customer dashboard.</p>
             <p style="color: #94a3b8; font-size: 12px; margin-top: 24px; text-align: center;">Thank you for choosing Amma Seva.</p>
           </div>
         `
       }
       await transporter.sendMail(mailOptions)
-      console.log(`[Email Notification] Caregiver assigned email sent to ${email} for booking ID: ${bookingId}`)
+      console.log(`[Email Notification] Staff assigned email sent to ${email} for booking ID: ${bookingId}`)
     }
 
     // 2. Booking completed scenario (Deal Closed / Review request)
@@ -1921,17 +1927,28 @@ app.put('/api/caretaker/profile', authenticateUser, async (req, res) => {
   }
 })
 
-// GET all bookings assigned to current caretaker
+// GET all bookings assigned to current caretaker or MTP
 app.get('/api/caretaker/bookings', authenticateUser, async (req, res) => {
-  if (req.role !== 'caretaker') {
-    return res.status(403).json({ error: 'Access forbidden. Caretaker only.' })
+  if (req.role !== 'caretaker' && req.role !== 'mtp') {
+    return res.status(403).json({ error: 'Access forbidden. Caretaker or MTP only.' })
   }
   try {
-    const caretaker = await db.getCaregiverById(req.userId)
-    if (!caretaker) {
-      return res.status(404).json({ error: 'Caretaker profile not found.' })
+    let person = null
+    if (req.role === 'mtp' || req.isMtp) {
+      person = await db.getMTPById(req.userId)
+      if (!person && req.userEmail) {
+        person = await db.getMTPByEmail(req.userEmail)
+      }
+    } else {
+      person = await db.getCaregiverById(req.userId)
+      if (!person) {
+        person = await db.getMTPById(req.userId)
+      }
     }
-    const list = await db.getBookingsByAssignedStaff(caretaker.name)
+    if (!person) {
+      return res.status(404).json({ error: 'Staff or MTP profile not found.' })
+    }
+    const list = await db.getBookingsByAssignedStaff(person.name)
     res.json(list)
   } catch (err) {
     console.error('Failed to retrieve caretaker bookings:', err)
@@ -2225,10 +2242,10 @@ app.put('/api/booking/:id/status', authenticateUser, async (req, res) => {
   }
 })
 
-// PUT update vitals and progress logs (Caretaker only, for assigned shifts)
+// PUT update vitals and progress logs (Caretaker or MTP, for assigned shifts)
 app.put('/api/booking/:id/vitals-log', authenticateUser, async (req, res) => {
-  if (req.role !== 'caretaker') {
-    return res.status(403).json({ error: 'Access forbidden. Caretaker profile only.' })
+  if (req.role !== 'caretaker' && req.role !== 'mtp') {
+    return res.status(403).json({ error: 'Access forbidden. Caretaker or MTP profile only.' })
   }
   const { vitals, careLogs } = req.body
   try {
@@ -2237,8 +2254,23 @@ app.put('/api/booking/:id/vitals-log', authenticateUser, async (req, res) => {
       return res.status(404).json({ error: 'Booking shift record not found.' })
     }
     
-    const caregiver = await db.getCaregiverById(req.userId)
-    if (!caregiver || booking.assignedStaff !== caregiver.name) {
+    let staffPerson = null
+    if (req.role === 'mtp' || req.isMtp) {
+      staffPerson = await db.getMTPById(req.userId)
+      if (!staffPerson && req.userEmail) {
+        staffPerson = await db.getMTPByEmail(req.userEmail)
+      }
+    } else {
+      staffPerson = await db.getCaregiverById(req.userId)
+      if (!staffPerson) {
+        staffPerson = await db.getMTPById(req.userId)
+      }
+    }
+    
+    const assignedStaffName = (booking.assignedStaff || '').trim().toLowerCase()
+    const currentStaffName = (staffPerson ? staffPerson.name : '').trim().toLowerCase()
+    
+    if (!staffPerson || !assignedStaffName || assignedStaffName !== currentStaffName) {
       return res.status(403).json({ error: 'Access forbidden. You are not assigned to this care shift.' })
     }
     const updated = await db.updateBookingVitalsAndLogs(req.params.id, vitals, careLogs)
@@ -2556,17 +2588,43 @@ app.get('/api/user/bookings', authenticateUser, async (req, res) => {
         isReviewed: !!review,
         review: review || null
       }
-      if (booking.assignedStaff) {
+      if (booking.assignedStaff && booking.assignedStaff.trim() && booking.assignedStaff.trim().toLowerCase() !== 'unassigned') {
         const caregiver = await db.getCaregiverByName(booking.assignedStaff)
         if (caregiver) {
           extendedBooking.caregiverDetails = {
             name: caregiver.name,
             phone: caregiver.phone,
             email: caregiver.email,
-            specialty: caregiver.specialty,
-            experience: caregiver.experience,
-            profilePhoto: caregiver.profilePhoto,
-            experienceDetails: caregiver.experienceDetails
+            specialty: caregiver.specialty || 'Care Specialist',
+            experience: caregiver.experience || 3,
+            profilePhoto: caregiver.profilePhoto || '',
+            experienceDetails: caregiver.experienceDetails || '',
+            type: 'caregiver',
+            uniqueId: caregiver.uniqueId || caregiver.referCode || ''
+          }
+        } else {
+          const mtp = await db.getMTPByName(booking.assignedStaff)
+          if (mtp) {
+            extendedBooking.caregiverDetails = {
+              name: mtp.name,
+              phone: mtp.phone,
+              email: mtp.email,
+              specialty: mtp.roles || 'MTP Companion & Tasks',
+              experience: mtp.experience || 1,
+              profilePhoto: mtp.profilePhoto || '',
+              experienceDetails: mtp.skillsSummary || mtp.roles || '',
+              type: 'mtp',
+              uniqueId: mtp.uniqueId || mtp.referCode || ''
+            }
+          } else {
+            extendedBooking.caregiverDetails = {
+              name: booking.assignedStaff,
+              phone: 'Contact Admin',
+              specialty: 'Assigned Healthcare Partner',
+              experience: 3,
+              profilePhoto: '',
+              type: 'caregiver'
+            }
           }
         }
       }

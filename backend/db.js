@@ -2160,12 +2160,15 @@ export const db = {
   },
 
   getBookingsByAssignedStaff: async (staffName) => {
+    if (!staffName) return []
+    const trimmed = staffName.trim().toLowerCase()
     if (useMySQL) {
-      const [rows] = await pool.query('SELECT * FROM bookings WHERE assignedStaff = ? ORDER BY id DESC', [staffName])
+      const [rows] = await pool.query('SELECT * FROM bookings WHERE LOWER(TRIM(assignedStaff)) = ? ORDER BY id DESC', [trimmed])
       return rows
     } else {
       const data = await readJSONDb()
-      return data.bookings.filter(b => b.assignedStaff === staffName).reverse()
+      if (!data.bookings) return []
+      return data.bookings.filter(b => b.assignedStaff && b.assignedStaff.trim().toLowerCase() === trimmed).reverse()
     }
   },
 
@@ -2964,6 +2967,32 @@ export const db = {
       const data = await readJSONDb()
       if (!data.mtps) data.mtps = []
       return data.mtps.find(m => (m.email || '').trim().toLowerCase() === cleanEmail) || null
+    }
+  },
+
+  getMTPByName: async (name) => {
+    if (!name) return null
+    const trimmed = name.trim().toLowerCase()
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM mtps WHERE LOWER(TRIM(name)) = ?', [trimmed])
+      if (!rows[0]) return null
+      const rawName = (rows[0].name || 'MTP').trim()
+      const firstName = (rawName.split(/\s+/)[0] || 'MTP').replace(/[^a-zA-Z]/g, '').toUpperCase() || 'MTP'
+      const cleanPhone = (rows[0].phone || '').replace(/[^0-9]/g, '')
+      const last4 = cleanPhone.length >= 4 ? cleanPhone.slice(-4) : (cleanPhone.padEnd(4, '0') || '0000')
+      const code = `${firstName}${last4}`
+      return { ...rows[0], referCode: code, referralCode: code, uniqueId: code }
+    } else {
+      const data = await readJSONDb()
+      if (!data.mtps) data.mtps = []
+      const m = data.mtps.find(m => m.name && m.name.trim().toLowerCase() === trimmed) || null
+      if (!m) return null
+      const rawName = (m.name || 'MTP').trim()
+      const firstName = (rawName.split(/\s+/)[0] || 'MTP').replace(/[^a-zA-Z]/g, '').toUpperCase() || 'MTP'
+      const cleanPhone = (m.phone || '').replace(/[^0-9]/g, '')
+      const last4 = cleanPhone.length >= 4 ? cleanPhone.slice(-4) : (cleanPhone.padEnd(4, '0') || '0000')
+      const code = `${firstName}${last4}`
+      return { ...m, referCode: code, referralCode: code, uniqueId: code }
     }
   },
 
