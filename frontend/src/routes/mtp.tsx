@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { SiteLayout, contact } from "@/components/SiteLayout";
 import { sanitizeIndianPhone, sanitizeName, validateName, validateEmail } from "@/lib/validation";
 import {
@@ -55,18 +55,75 @@ export const Route = createFileRoute("/mtp")({
   component: MTPPage,
 });
 
-const HYDERABAD_ZONES = [
-  "Banjara Hills & Jubilee Hills",
-  "Gachibowli & Hitec City",
-  "Madhapur & Kondapur",
-  "Kukatpally & Miyapur",
-  "Secunderabad & Begumpet",
-  "Ameerpet & SR Nagar",
-  "Mehdipatnam & Tolichowki",
-  "LB Nagar & Dilsukhnagar",
-  "Uppal & Habsiguda",
-  "Other Localities across Hyderabad"
-];
+export const REGIONAL_CONFIG: Record<
+  string,
+  { state: string; defaultCity: string; label: string; zones: string[] }
+> = {
+  "Telangana": {
+    state: "Telangana",
+    defaultCity: "Hyderabad",
+    label: "Telangana (Hyderabad Region)",
+    zones: [
+      "Banjara Hills & Jubilee Hills",
+      "Gachibowli & Hitec City",
+      "Madhapur & Kondapur",
+      "Kukatpally & Miyapur",
+      "Secunderabad & Begumpet",
+      "Ameerpet & SR Nagar",
+      "Mehdipatnam & Tolichowki",
+      "LB Nagar & Dilsukhnagar",
+      "Uppal & Habsiguda",
+      "Manikonda, Narsingi & Kokapet",
+      "Attapur & Rajendranagar",
+      "Other Locality in Telangana / Hyderabad"
+    ],
+  },
+  "Andhra Pradesh": {
+    state: "Andhra Pradesh",
+    defaultCity: "Amaravathi",
+    label: "Andhra Pradesh (Amaravathi / Vijayawada / Vizag)",
+    zones: [
+      "Amaravathi Capital Region & Secretariat",
+      "Vijayawada Central & Benz Circle",
+      "Vijayawada - One Town & Governorpet",
+      "Vijayawada - Auto Nagar & Kanuru",
+      "Guntur City - Brodipet & Arundelpet",
+      "Guntur - Lakshmipuram & Pattabhipuram",
+      "Mangalagiri & Tadepalli",
+      "Tenali & Surroundings",
+      "Visakhapatnam (Vizag) - MVP Colony & Siripuram",
+      "Visakhapatnam (Vizag) - Gajuwaka & Madhurawada",
+      "Tirupati & Chittoor Region",
+      "Other Locality in Andhra Pradesh / Amaravathi"
+    ],
+  },
+  "Tamil Nadu": {
+    state: "Tamil Nadu",
+    defaultCity: "Chennai",
+    label: "Tamil Nadu (Chennai Region)",
+    zones: [
+      "Chennai Central & T. Nagar",
+      "Anna Nagar & Kilpauk",
+      "Adyar & Besant Nagar",
+      "Velachery & Guindy",
+      "OMR & Sholinganallur (IT Corridor)",
+      "Tambaram, Chromepet & Pallavaram",
+      "Porur, Vadapalani & Koyambedu",
+      "Mylapore & Alwarpet",
+      "Nungambakkam & Egmore",
+      "Perambur & Kolathur",
+      "Other Locality in Tamil Nadu / Chennai"
+    ],
+  },
+  "Other": {
+    state: "Other State",
+    defaultCity: "Other City",
+    label: "Other State / Custom Region",
+    zones: [
+      "Specify Custom Address / Locality Below"
+    ],
+  },
+};
 
 export interface MTPTaskItem {
   id: number;
@@ -79,6 +136,7 @@ export interface MTPTaskItem {
 }
 
 function MTPPage() {
+  const navigate = useNavigate();
   // Dynamic Tasks strictly fetched from Database
   const [mtpTasks, setMtpTasks] = useState<MTPTaskItem[]>([]);
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
@@ -89,7 +147,11 @@ function MTPPage() {
   const [email, setEmail] = useState("");
   const [gender, setGender] = useState("Male");
   const [age, setAge] = useState("");
-  const [locality, setLocality] = useState(HYDERABAD_ZONES[0]);
+  const [selectedState, setSelectedState] = useState("Telangana");
+  const [locality, setLocality] = useState(REGIONAL_CONFIG["Telangana"].zones[0]);
+  const [customAddress, setCustomAddress] = useState("");
+  const [customStateName, setCustomStateName] = useState("");
+  const [customCityName, setCustomCityName] = useState("");
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [availability, setAvailability] = useState("Part-time (Flexible)");
   const [vehicle, setVehicle] = useState("Two-wheeler (Bike / Scooty)");
@@ -191,6 +253,20 @@ function MTPPage() {
     }
   };
 
+  const handleStateSelect = (stateKey: string) => {
+    setSelectedState(stateKey);
+    const cfg = REGIONAL_CONFIG[stateKey] || REGIONAL_CONFIG["Telangana"];
+    setLocality(cfg.zones[0]);
+    if (stateKey !== "Other" && !cfg.zones[0].toLowerCase().includes("other")) {
+      setCustomAddress("");
+    }
+  };
+
+  const isOtherLocality =
+    locality.toLowerCase().includes("other") ||
+    locality.toLowerCase().includes("specify") ||
+    selectedState === "Other";
+
   const handleCloseModal = () => {
     setShowSuccessModal(false);
     setSubmittedData(null);
@@ -198,6 +274,11 @@ function MTPPage() {
     setPhone("");
     setEmail("");
     setAge("");
+    setSelectedState("Telangana");
+    setLocality(REGIONAL_CONFIG["Telangana"].zones[0]);
+    setCustomAddress("");
+    setCustomStateName("");
+    setCustomCityName("");
     setAadhaar("");
     setEmergencyContactName("");
     setEmergencyContactPhone("");
@@ -303,7 +384,34 @@ function MTPPage() {
       return;
     }
 
-    // 8. Required KYC Documents Validation
+    // 8. Locality & Custom Address Validation
+    let finalState = selectedState === "Other" ? (customStateName.trim() || "Other State") : (REGIONAL_CONFIG[selectedState]?.state || selectedState);
+    let finalCity = selectedState === "Other" ? (customCityName.trim() || "Other City") : (REGIONAL_CONFIG[selectedState]?.defaultCity || "Hyderabad");
+    let finalLocality = locality;
+
+    if (selectedState === "Other") {
+      if (!customStateName.trim()) {
+        toast.error("Please specify your State name.");
+        return;
+      }
+      if (!customCityName.trim()) {
+        toast.error("Please specify your City name.");
+        return;
+      }
+      if (!customAddress.trim()) {
+        toast.error("Please enter your exact locality or full address.");
+        return;
+      }
+      finalLocality = customAddress.trim();
+    } else if (isOtherLocality) {
+      if (!customAddress.trim()) {
+        toast.error("Please enter your exact area / colony or full address.");
+        return;
+      }
+      finalLocality = customAddress.trim();
+    }
+
+    // 9. Required KYC Documents Validation
     if (!aadhaarDoc) {
       toast.error("Please upload your Aadhaar Card document for identity verification.");
       return;
@@ -325,8 +433,9 @@ function MTPPage() {
       email: cleanEmail,
       gender,
       age: age.trim(),
-      city: "Hyderabad",
-      locality,
+      state: finalState,
+      city: finalCity,
+      locality: finalLocality,
       roles: selectedRoles,
       availability,
       vehicle,
@@ -435,6 +544,11 @@ function MTPPage() {
 
       if (res.ok && data.success) {
         const finalData = data.data || pendingPayload;
+        // Save session tokens for instant dashboard access
+        if (data.token) {
+          localStorage.setItem("ammaseva_caretaker_token", data.token);
+          localStorage.setItem("ammaseva_caretaker_details", JSON.stringify(data.caretaker || finalData));
+        }
         setSubmittedData(finalData);
         setShowOtpModal(false);
         setShowSuccessModal(true);
@@ -797,26 +911,108 @@ function MTPPage() {
                 {/* 2. Locality, Transport & Work Preferences (3 in a Row) */}
                 <div className="space-y-4 pt-6 border-t border-slate-100">
                   <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-primary flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full bg-gold" /> 2. Hyderabad Locality &amp; Transport
+                    <span className="h-2.5 w-2.5 rounded-full bg-gold" /> 2. Operating State, Locality &amp; Transport
                   </h3>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                    {/* Operating State / Region */}
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                        Preferred Zone / Locality
+                        Operating State / Region <span className="text-rose-500">*</span>
+                      </label>
+                      <select
+                        value={selectedState}
+                        onChange={(e) => handleStateSelect(e.target.value)}
+                        className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/60 px-3 text-sm text-slate-800 font-bold focus:border-gold focus:bg-white focus:ring-2 focus:ring-gold/15 outline-none transition-all cursor-pointer"
+                      >
+                        {Object.entries(REGIONAL_CONFIG).map(([key, config]) => (
+                          <option key={key} value={key}>
+                            {config.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Preferred Zone / Area (Dynamic based on selected state) */}
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                        Preferred Zone / Locality <span className="text-rose-500">*</span>
                       </label>
                       <select
                         value={locality}
                         onChange={(e) => setLocality(e.target.value)}
                         className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/60 px-3 text-sm text-slate-800 focus:border-gold focus:bg-white focus:ring-2 focus:ring-gold/15 outline-none transition-all font-medium cursor-pointer"
                       >
-                        {HYDERABAD_ZONES.map((zone) => (
+                        {(REGIONAL_CONFIG[selectedState]?.zones || []).map((zone) => (
                           <option key={zone} value={zone}>
                             {zone}
                           </option>
                         ))}
                       </select>
                     </div>
+
+                    {/* If Selected State is Other, show Custom State & City inputs */}
+                    {selectedState === "Other" && (
+                      <>
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                            State Name <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={customStateName}
+                            onChange={(e) => setCustomStateName(e.target.value)}
+                            placeholder="e.g. Karnataka / Maharashtra"
+                            className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 text-sm text-slate-800 focus:border-gold focus:bg-white focus:ring-2 focus:ring-gold/15 outline-none transition-all font-medium"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                            City / District <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={customCityName}
+                            onChange={(e) => setCustomCityName(e.target.value)}
+                            placeholder="e.g. Bengaluru / Pune"
+                            className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 text-sm text-slate-800 focus:border-gold focus:bg-white focus:ring-2 focus:ring-gold/15 outline-none transition-all font-medium"
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {/* Conditional Custom Address / Other Locality Field */}
+                    {isOtherLocality && (
+                      <div className="col-span-1 sm:col-span-2 lg:col-span-3">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 flex items-center justify-between">
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3.5 w-3.5 text-gold" /> Specify Your Exact Area / Full Address <span className="text-rose-500">*</span>
+                          </span>
+                          <span className="text-[11px] text-emerald-600 font-semibold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                            Saved directly to Database
+                          </span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={customAddress}
+                          onChange={(e) => setCustomAddress(e.target.value)}
+                          placeholder={
+                            selectedState === "Tamil Nadu"
+                              ? "e.g. Flat 4B, Ruby Enclave, Gandhi Road, Tambaram / T. Nagar, Chennai - 600045"
+                              : selectedState === "Andhra Pradesh"
+                              ? "e.g. Door No. 12-4-8, Benz Circle / Brodipet / Amaravathi Rd, Vijayawada - 520010"
+                              : selectedState === "Telangana"
+                              ? "e.g. Plot 104, Green Meadows, Narsingi / Manikonda / Miyapur, Hyderabad - 500075"
+                              : "e.g. Door / Flat No, Street, Landmark, Colony, City & Pincode"
+                          }
+                          className="w-full h-11 rounded-xl border-2 border-gold/50 bg-amber-50/20 px-3.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-gold focus:bg-white focus:ring-2 focus:ring-gold/20 outline-none transition-all font-medium shadow-sm"
+                        />
+                      </div>
+                    )}
 
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
@@ -1463,8 +1659,16 @@ function MTPPage() {
                 </div>
               )}
               <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
-                <span className="text-slate-500">Preferred Zone:</span>
-                <span className="font-bold text-primary">{submittedData.locality}</span>
+                <span className="text-slate-500">State &amp; City:</span>
+                <span className="font-bold text-primary">
+                  {submittedData.city ? `${submittedData.city}, ` : ""}{submittedData.state || "Telangana"}
+                </span>
+              </div>
+              <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
+                <span className="text-slate-500">Preferred Zone / Area:</span>
+                <span className="font-bold text-primary max-w-[240px] text-right truncate" title={submittedData.locality}>
+                  {submittedData.locality}
+                </span>
               </div>
               <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
                 <span className="text-slate-500">Assigned Tasks:</span>
@@ -1494,13 +1698,15 @@ function MTPPage() {
 
             {/* Action Buttons */}
             <div className="flex flex-col gap-2.5 pt-1">
-              <Link
-                to="/login"
-                search={{ role: "caretaker" }}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#091438] hover:bg-[#1e2a5a] px-5 py-3 text-xs sm:text-sm font-bold text-gold shadow-md transition-all cursor-pointer border border-gold/40"
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.href = "/dashboard";
+                }}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-gold via-[#d8b458] to-gold text-[#091438] hover:brightness-105 px-5 py-3.5 text-sm font-extrabold shadow-lg hover:shadow-xl transition-all cursor-pointer border border-gold/40"
               >
-                <Lock className="h-4 w-4" /> Go to Login / Partner Portal →
-              </Link>
+                <Sparkles className="h-4 w-4" /> Open MTP Dashboard →
+              </button>
               <div className="flex flex-col sm:flex-row gap-2.5">
                 <a
                   href={`https://wa.me/${contact.WHATSAPP}?text=Hi%20Amma%20Seva%20Team,%20I%20registered%20as%20an%20MTP%20(${encodeURIComponent(submittedData.name)}%20-%20${encodeURIComponent(submittedData.phone)}).%20My%20MTP%20Reference%20ID%20is%20%23${submittedData.id || "PENDING"}.%20Please%20verify%20my%20profile.`}
@@ -1512,7 +1718,10 @@ function MTPPage() {
                 </a>
                 <button
                   type="button"
-                  onClick={handleCloseModal}
+                  onClick={() => {
+                    handleCloseModal();
+                    window.location.href = "/dashboard";
+                  }}
                   className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-xs sm:text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer"
                 >
                   Done &amp; Close

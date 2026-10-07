@@ -4059,7 +4059,9 @@ function AdminPage() {
                           <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/70 space-y-1">
                             <span className="text-slate-400 font-bold block uppercase tracking-wider text-[10px]">Location &amp; Zone</span>
                             <div className="font-bold text-primary text-xs">{selectedMTPDetail.locality || "Hyderabad"}</div>
-                            <div className="text-slate-500">{selectedMTPDetail.city || "Hyderabad"}</div>
+                            <div className="text-slate-500">
+                              {selectedMTPDetail.city || "Hyderabad"}{selectedMTPDetail.state ? `, ${selectedMTPDetail.state}` : ""}
+                            </div>
                           </div>
 
                           <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/70 space-y-1">

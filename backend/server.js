@@ -61,8 +61,8 @@ const uploadToCloudinary = async (base64Str) => {
     })
     return uploadResponse.secure_url
   } catch (error) {
-    console.error('Cloudinary upload error:', error)
-    throw new Error('Failed to upload document to cloud storage.')
+    console.warn('Cloudinary upload warning (using base64 fallback):', error.message)
+    return base64Str
   }
 }
 
@@ -1608,9 +1608,12 @@ app.post('/api/auth/login', async (req, res) => {
 
   if (isAdminIdentifier(rawInput) || role === 'admin') {
     role = 'admin'
-  } else if (!role) {
+  } else if (!role || role === 'mtp' || role === 'caretaker') {
     if (await db.getCaregiverByIdentifier(rawInput)) role = 'caretaker'
+    else if (await db.getMTPByIdentifier(rawInput)) role = 'caretaker'
+    else if (cleanDigits && (await db.getMTPByPhone(cleanDigits))) role = 'caretaker'
     else if (await db.getUserByIdentifier(rawInput)) role = 'customer'
+    else role = 'caretaker'
   }
 
   // Clear OTP on success
@@ -1628,7 +1631,7 @@ app.post('/api/auth/login', async (req, res) => {
       role: 'admin',
       token
     })
-  } else if (role === 'caretaker') {
+  } else if (role === 'caretaker' || role === 'mtp') {
     let caretaker = (await db.getCaregiverByIdentifier(rawInput)) || (cleanDigits ? await db.getCaregiverByPhone(cleanDigits) : null)
     let isMtp = false
     let mtp = null
@@ -2811,6 +2814,7 @@ app.post('/api/mtp/register', async (req, res) => {
     otp = '',
     gender = '',
     age = '',
+    state = 'Telangana',
     city = 'Hyderabad',
     locality = '',
     roles = [],
@@ -2848,15 +2852,13 @@ app.post('/api/mtp/register', async (req, res) => {
   if (otp) {
     const inputOtp = String(otp).trim()
     const storedData = (await db.getOTP(cleanEmail)) || (await db.getOTP(cleanPhone))
-    if (!storedData && inputOtp !== '123456' && inputOtp !== '999999') {
+    const isTestOtp = inputOtp === '123456' || inputOtp === '999999'
+    if (!storedData && !isTestOtp) {
       return res.status(401).json({ success: false, error: 'OTP expired or not requested. Please click Send Verification Code.' })
     }
-    if (storedData && storedData.otp !== inputOtp && inputOtp !== '123456' && inputOtp !== '999999') {
+    if (storedData && storedData.otp !== inputOtp && !isTestOtp) {
       return res.status(401).json({ success: false, error: 'Invalid verification OTP code. Please enter the 6-digit code received.' })
     }
-    // Clear OTP
-    await db.deleteOTP(cleanEmail)
-    await db.deleteOTP(cleanPhone)
   }
 
   // Check if phone or email already registered
@@ -2888,6 +2890,7 @@ app.post('/api/mtp/register', async (req, res) => {
       email: cleanEmail,
       gender,
       age,
+      state,
       city,
       locality,
       roles,
@@ -2906,6 +2909,10 @@ app.post('/api/mtp/register', async (req, res) => {
       status: 'Pending'
     })
 
+    // Safely clear OTPs after successful insertion
+    await db.deleteOTP(cleanEmail)
+    await db.deleteOTP(cleanPhone)
+
     console.log(`[MTP Registration] New applicant registered: ${name} (${cleanPhone}) for roles: ${Array.isArray(roles) ? roles.join(', ') : roles}`)
 
     // Send confirmation email asynchronously
@@ -2913,9 +2920,39 @@ app.post('/api/mtp/register', async (req, res) => {
       sendMTPRegistrationEmail(newMTP).catch(err => console.error('[MTP Email Async Error]:', err.message))
     }
 
+    const token = jwt.sign({ id: newMTP.id, role: 'caretaker', isMtp: true, email: newMTP.email, phone: newMTP.phone }, JWT_SECRET, { expiresIn: '7d' })
+
+    const caretakerData = {
+      id: newMTP.id,
+      name: newMTP.name,
+      email: newMTP.email,
+      phone: newMTP.phone,
+      status: newMTP.status || 'Pending',
+      isMtp: true,
+      specialty: 'MTP Companion & Tasks',
+      experience: newMTP.experience || 'Fresher',
+      experienceDetails: newMTP.skillsSummary || (Array.isArray(newMTP.roles) ? newMTP.roles.join(', ') : newMTP.roles) || '',
+      workingLocations: newMTP.locality || 'Hyderabad',
+      state: newMTP.state || 'Telangana',
+      city: newMTP.city || 'Hyderabad',
+      roles: newMTP.roles,
+      vehicle: newMTP.vehicle,
+      drivingLicense: newMTP.drivingLicense,
+      aadhaar: newMTP.aadhaar,
+      aadhaarDoc: newMTP.aadhaarDoc,
+      panDoc: newMTP.panDoc,
+      drivingLicenseDoc: newMTP.drivingLicenseDoc,
+      tenthCertificateDoc: newMTP.tenthCertificateDoc,
+      policeVerificationDoc: newMTP.policeVerificationDoc,
+      referCode: `MTP${String(newMTP.phone || '').slice(-4)}`,
+      uniqueId: `MTP${String(newMTP.phone || '').slice(-4)}`
+    }
+
     res.status(201).json({
       success: true,
       message: 'MTP registration submitted successfully! Your application is under admin verification.',
+      token,
+      caretaker: caretakerData,
       data: newMTP
     })
   } catch (err) {
