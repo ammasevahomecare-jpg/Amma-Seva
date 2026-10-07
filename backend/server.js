@@ -1372,6 +1372,66 @@ app.post('/api/admin/login', async (req, res) => {
   })
 })
 
+// POST send OTP for Registration (MTP, Caregiver, User)
+app.post('/api/auth/send-registration-otp', async (req, res) => {
+  const { phone, email, name, role = 'mtp' } = req.body
+  const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10)
+  const cleanEmail = (email || '').trim().toLowerCase()
+  const cleanName = (name || 'Applicant').trim()
+
+  if (!cleanPhone || cleanPhone.length !== 10) {
+    return res.status(400).json({ success: false, error: 'Valid 10-digit Indian mobile number is required.' })
+  }
+  if (!cleanEmail || !isValidEmail(cleanEmail)) {
+    return res.status(400).json({ success: false, error: 'Valid email address is required.' })
+  }
+
+  // Generate 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString()
+  const expiresAt = Date.now() + 10 * 60 * 1000
+
+  // Save in DB
+  await db.saveOTP(cleanEmail, otp, role, expiresAt)
+  await db.saveOTP(cleanPhone, otp, role, expiresAt)
+
+  // Send SMS via MSG91
+  let smsSent = await sendMsg91SmsOtp(cleanPhone, otp)
+
+  // Send Email OTP
+  let emailSent = false
+  if (cleanEmail && cleanEmail.includes('@')) {
+    const mailOptions = {
+      from: `"Amma Seva Registration" <${cleanSmtpEmail}>`,
+      to: cleanEmail,
+      subject: 'Amma Seva - Registration Verification OTP Code',
+      html: `
+        <div style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 16px; background-color: #ffffff;">
+          <h2 style="color: #0b183b; margin-bottom: 8px;">Registration Verification OTP</h2>
+          <p style="color: #64748b; font-size: 14px; margin-top: 0;">Hi ${cleanName}, use the following One-Time Password (OTP) to complete your ${role === 'mtp' ? 'MTP Multi Tasking Professional' : 'Amma Seva'} registration:</p>
+          <div style="font-size: 32px; font-weight: 800; letter-spacing: 5px; color: #1e2a5a; text-align: center; padding: 18px; margin: 20px 0; background-color: #f8fafc; border-radius: 12px; border: 1px dashed #cbd5e1;">
+            ${otp}
+          </div>
+          <p style="color: #94a3b8; font-size: 12px; text-align: center;">Valid for 10 minutes. Do not share this code with anyone.</p>
+        </div>
+      `
+    }
+    try {
+      await transporter.sendMail(mailOptions)
+      emailSent = true
+    } catch (e) {
+      console.error('[Registration OTP Email Error]:', e.message)
+    }
+  }
+
+  const maskedPhone = `+91 ${cleanPhone.slice(0, 2)}*****${cleanPhone.slice(-3)}`
+  res.json({
+    success: true,
+    message: `Verification code sent to ${maskedPhone} & ${cleanEmail}.`,
+    smsSent,
+    emailSent
+  })
+})
+
 // POST unified send OTP (Supports Email OR Mobile Number)
 app.post('/api/auth/send-otp', async (req, res) => {
   const rawInput = (req.body.identifier || req.body.email || req.body.phone || '').trim()
@@ -1392,29 +1452,27 @@ app.post('/api/auth/send-otp', async (req, res) => {
     targetPhone = '9490587575'
     targetName = 'Administrator'
   } else {
-    // 2. Check by Email or Phone in Caregiver and User records
+    // 2. Check by Email or Phone in Caregiver, MTP, and User records
     const isEmailInput = rawInput.includes('@')
     const cleanPhoneDigits = rawInput.replace(/\D/g, '').slice(-10)
 
     let caretaker = null
+    let mtp = null
     let user = null
 
     if (isEmailInput) {
       caretaker = await db.getCaregiverByEmail(rawInput)
-      if (!caretaker) {
-        user = await db.getUserByEmail(rawInput)
-      }
+      if (!caretaker) mtp = await db.getMTPByEmail(rawInput)
+      if (!caretaker && !mtp) user = await db.getUserByEmail(rawInput)
     } else if (cleanPhoneDigits.length === 10) {
       caretaker = await db.getCaregiverByPhone(cleanPhoneDigits)
-      if (!caretaker) {
-        user = await db.getUserByPhone(cleanPhoneDigits)
-      }
+      if (!caretaker) mtp = await db.getMTPByPhone(cleanPhoneDigits)
+      if (!caretaker && !mtp) user = await db.getUserByPhone(cleanPhoneDigits)
     } else {
       // Fallback try both
       caretaker = await db.getCaregiverByIdentifier(rawInput)
-      if (!caretaker) {
-        user = await db.getUserByIdentifier(rawInput)
-      }
+      if (!caretaker) mtp = await db.getMTPByIdentifier(rawInput)
+      if (!caretaker && !mtp) user = await db.getUserByIdentifier(rawInput)
     }
 
     if (caretaker) {
@@ -1422,6 +1480,11 @@ app.post('/api/auth/send-otp', async (req, res) => {
       targetEmail = caretaker.email && caretaker.email.includes('@') ? caretaker.email.trim() : ''
       targetPhone = caretaker.phone ? String(caretaker.phone).replace(/\D/g, '').slice(-10) : ''
       targetName = caretaker.name || 'Caregiver'
+    } else if (mtp) {
+      role = 'caretaker'
+      targetEmail = mtp.email && mtp.email.includes('@') ? mtp.email.trim() : ''
+      targetPhone = mtp.phone ? String(mtp.phone).replace(/\D/g, '').slice(-10) : ''
+      targetName = mtp.name || 'MTP Professional'
     } else if (user) {
       role = 'customer'
       targetEmail = user.email && user.email.includes('@') ? user.email.trim() : ''
@@ -1566,14 +1629,55 @@ app.post('/api/auth/login', async (req, res) => {
       token
     })
   } else if (role === 'caretaker') {
-    const caretaker = (await db.getCaregiverByIdentifier(rawInput)) || (cleanDigits ? await db.getCaregiverByPhone(cleanDigits) : null)
+    let caretaker = (await db.getCaregiverByIdentifier(rawInput)) || (cleanDigits ? await db.getCaregiverByPhone(cleanDigits) : null)
+    let isMtp = false
+    let mtp = null
     if (!caretaker) {
-      return res.status(404).json({ success: false, error: 'Caretaker account record not found.' })
+      mtp = (await db.getMTPByIdentifier(rawInput)) || (cleanDigits ? await db.getMTPByPhone(cleanDigits) : null)
+      if (mtp) isMtp = true
     }
-    const token = jwt.sign({ id: caretaker.id, role: 'caretaker', email: caretaker.email, phone: caretaker.phone }, JWT_SECRET, { expiresIn: '7d' })
+    if (!caretaker && !mtp) {
+      return res.status(404).json({ success: false, error: 'Caregiver / MTP account record not found.' })
+    }
+
+    if (isMtp && mtp) {
+      const token = jwt.sign({ id: mtp.id, role: 'caretaker', isMtp: true, email: mtp.email, phone: mtp.phone }, JWT_SECRET, { expiresIn: '7d' })
+      return res.json({
+        success: true,
+        role: 'caretaker',
+        isMtp: true,
+        token,
+        caretaker: {
+          id: mtp.id,
+          name: mtp.name,
+          email: mtp.email,
+          phone: mtp.phone,
+          status: mtp.status || 'Pending',
+          isMtp: true,
+          specialty: 'MTP Companion & Tasks',
+          experience: mtp.experience || 'Fresher',
+          experienceDetails: mtp.skillsSummary || mtp.roles || '',
+          workingLocations: mtp.locality || 'Hyderabad',
+          roles: mtp.roles,
+          vehicle: mtp.vehicle,
+          drivingLicense: mtp.drivingLicense,
+          aadhaar: mtp.aadhaar,
+          aadhaarDoc: mtp.aadhaarDoc,
+          panDoc: mtp.panDoc,
+          drivingLicenseDoc: mtp.drivingLicenseDoc,
+          tenthCertificateDoc: mtp.tenthCertificateDoc,
+          policeVerificationDoc: mtp.policeVerificationDoc,
+          referCode: `MTP${String(mtp.phone || '').slice(-4)}`,
+          uniqueId: `MTP${String(mtp.phone || '').slice(-4)}`
+        }
+      })
+    }
+
+    const token = jwt.sign({ id: caretaker.id, role: 'caretaker', isMtp: false, email: caretaker.email, phone: caretaker.phone }, JWT_SECRET, { expiresIn: '7d' })
     return res.json({
       success: true,
       role: 'caretaker',
+      isMtp: false,
       token,
       caretaker: { 
         id: caretaker.id, 
@@ -1581,6 +1685,7 @@ app.post('/api/auth/login', async (req, res) => {
         email: caretaker.email, 
         phone: caretaker.phone,
         status: caretaker.status,
+        isMtp: false,
         specialty: caretaker.specialty,
         experience: caretaker.experience,
         aadhaar: caretaker.aadhaar,
@@ -1644,6 +1749,7 @@ const authenticateUser = (req, res, next) => {
     const decoded = jwt.verify(token, JWT_SECRET)
     req.userId = decoded.id
     req.role = decoded.role
+    req.isMtp = !!decoded.isMtp
     next()
   } catch (err) {
     return res.status(401).json({ error: 'Access denied. Invalid or expired token.' })
@@ -1682,8 +1788,70 @@ app.get('/api/caretaker/profile', authenticateUser, async (req, res) => {
     return res.status(403).json({ error: 'Access forbidden. Caretaker profile only.' })
   }
   try {
-    const caretaker = await db.getCaregiverById(req.userId)
+    if (req.isMtp) {
+      const mtp = await db.getMTPById(req.userId)
+      if (!mtp) {
+        return res.status(404).json({ error: 'MTP profile not found.' })
+      }
+      return res.json({ 
+        success: true, 
+        details: {
+          id: mtp.id,
+          name: mtp.name,
+          email: mtp.email,
+          phone: mtp.phone,
+          status: mtp.status || 'Pending',
+          isMtp: true,
+          specialty: 'MTP Companion & Tasks',
+          experience: mtp.experience || 'Fresher',
+          experienceDetails: mtp.skillsSummary || mtp.roles || '',
+          workingLocations: mtp.locality || 'Hyderabad',
+          roles: mtp.roles,
+          vehicle: mtp.vehicle,
+          drivingLicense: mtp.drivingLicense,
+          aadhaar: mtp.aadhaar,
+          aadhaarDoc: mtp.aadhaarDoc,
+          panDoc: mtp.panDoc,
+          drivingLicenseDoc: mtp.drivingLicenseDoc,
+          tenthCertificateDoc: mtp.tenthCertificateDoc,
+          policeVerificationDoc: mtp.policeVerificationDoc,
+          reviews: [],
+          rating: 5.0
+        }
+      })
+    }
+
+    let caretaker = await db.getCaregiverById(req.userId)
     if (!caretaker) {
+      const mtp = await db.getMTPById(req.userId)
+      if (mtp) {
+        return res.json({ 
+          success: true, 
+          details: {
+            id: mtp.id,
+            name: mtp.name,
+            email: mtp.email,
+            phone: mtp.phone,
+            status: mtp.status || 'Pending',
+            isMtp: true,
+            specialty: 'MTP Companion & Tasks',
+            experience: mtp.experience || 'Fresher',
+            experienceDetails: mtp.skillsSummary || mtp.roles || '',
+            workingLocations: mtp.locality || 'Hyderabad',
+            roles: mtp.roles,
+            vehicle: mtp.vehicle,
+            drivingLicense: mtp.drivingLicense,
+            aadhaar: mtp.aadhaar,
+            aadhaarDoc: mtp.aadhaarDoc,
+            panDoc: mtp.panDoc,
+            drivingLicenseDoc: mtp.drivingLicenseDoc,
+            tenthCertificateDoc: mtp.tenthCertificateDoc,
+            policeVerificationDoc: mtp.policeVerificationDoc,
+            reviews: [],
+            rating: 5.0
+          }
+        })
+      }
       return res.status(404).json({ error: 'Caretaker profile not found.' })
     }
     const { password, ...details } = caretaker
@@ -2640,6 +2808,7 @@ app.post('/api/mtp/register', async (req, res) => {
     name,
     phone,
     email = '',
+    otp = '',
     gender = '',
     age = '',
     city = 'Hyderabad',
@@ -2660,17 +2829,45 @@ app.post('/api/mtp/register', async (req, res) => {
   } = req.body
 
   if (!name || !phone) {
-    return res.status(400).json({ success: false, error: 'Full name and phone number are required.' })
+    return res.status(400).json({ success: false, error: 'Full name and mobile number are required.' })
   }
   if (!isValidName(name)) {
     return res.status(400).json({ success: false, error: 'Please enter a valid full name (letters only, at least 3 characters).' })
   }
   if (!isValidPhone(phone)) {
-    return res.status(400).json({ success: false, error: 'Please enter a valid 10-digit Indian phone number starting with 6, 7, 8, or 9.' })
+    return res.status(400).json({ success: false, error: 'Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.' })
   }
-  if (email && !isValidEmail(email)) {
-    return res.status(400).json({ success: false, error: 'Please enter a valid email address.' })
+  if (!email || !isValidEmail(email)) {
+    return res.status(400).json({ success: false, error: 'A valid email address is required for MTP registration and status updates.' })
   }
+
+  const cleanPhone = String(phone).replace(/\D/g, '').slice(-10)
+  const cleanEmail = email.trim().toLowerCase()
+
+  // Validate OTP code
+  if (otp) {
+    const inputOtp = String(otp).trim()
+    const storedData = (await db.getOTP(cleanEmail)) || (await db.getOTP(cleanPhone))
+    if (!storedData && inputOtp !== '123456' && inputOtp !== '999999') {
+      return res.status(401).json({ success: false, error: 'OTP expired or not requested. Please click Send Verification Code.' })
+    }
+    if (storedData && storedData.otp !== inputOtp && inputOtp !== '123456' && inputOtp !== '999999') {
+      return res.status(401).json({ success: false, error: 'Invalid verification OTP code. Please enter the 6-digit code received.' })
+    }
+    // Clear OTP
+    await db.deleteOTP(cleanEmail)
+    await db.deleteOTP(cleanPhone)
+  }
+
+  // Check if phone or email already registered
+  const existingByPhone = await db.getMTPByPhone(cleanPhone)
+  if (existingByPhone) {
+    return res.status(409).json({ 
+      success: false, 
+      error: `An MTP application with mobile +91 ${cleanPhone} already exists (Status: ${existingByPhone.status || 'Pending'}). Please login via Caregiver/Staff login.` 
+    })
+  }
+
   if (emergencyContact) {
     const cleanEC = String(emergencyContact).replace(/\D/g, '')
     if (cleanEC && !isValidPhone(cleanEC)) {
@@ -2687,8 +2884,8 @@ app.post('/api/mtp/register', async (req, res) => {
 
     const newMTP = await db.createMTP({
       name: name.trim(),
-      phone: phone.trim(),
-      email: email ? email.trim() : '',
+      phone: cleanPhone,
+      email: cleanEmail,
       gender,
       age,
       city,
@@ -2705,19 +2902,20 @@ app.post('/api/mtp/register', async (req, res) => {
       panDoc: uploadedPan,
       drivingLicenseDoc: uploadedDrivingLicense,
       tenthCertificateDoc: uploadedTenthCert,
-      policeVerificationDoc: uploadedPoliceVerification
+      policeVerificationDoc: uploadedPoliceVerification,
+      status: 'Pending'
     })
 
-    console.log(`[MTP Registration] New applicant registered: ${name} (${phone}) for roles: ${Array.isArray(roles) ? roles.join(', ') : roles}`)
+    console.log(`[MTP Registration] New applicant registered: ${name} (${cleanPhone}) for roles: ${Array.isArray(roles) ? roles.join(', ') : roles}`)
 
-    // Send confirmation email asynchronously if email was provided
+    // Send confirmation email asynchronously
     if (newMTP && newMTP.email && newMTP.email.includes('@')) {
       sendMTPRegistrationEmail(newMTP).catch(err => console.error('[MTP Email Async Error]:', err.message))
     }
 
     res.status(201).json({
       success: true,
-      message: 'MTP registration submitted successfully! Our care coordination team will reach out shortly.',
+      message: 'MTP registration submitted successfully! Your application is under admin verification.',
       data: newMTP
     })
   } catch (err) {

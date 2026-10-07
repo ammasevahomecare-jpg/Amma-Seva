@@ -2940,6 +2940,48 @@ export const db = {
     }
   },
 
+  getMTPByPhone: async (phone) => {
+    const cleanPhone = String(phone).replace(/\D/g, '').slice(-10)
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM mtps WHERE phone = ? OR phone LIKE ?', [phone, `%${cleanPhone}%`])
+      return rows[0] || null
+    } else {
+      const data = await readJSONDb()
+      if (!data.mtps) data.mtps = []
+      return data.mtps.find(m => {
+        const p = String(m.phone || '').replace(/\D/g, '').slice(-10)
+        return p === cleanPhone || m.phone === phone
+      }) || null
+    }
+  },
+
+  getMTPByEmail: async (email) => {
+    const cleanEmail = (email || '').trim().toLowerCase()
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM mtps WHERE LOWER(email) = ?', [cleanEmail])
+      return rows[0] || null
+    } else {
+      const data = await readJSONDb()
+      if (!data.mtps) data.mtps = []
+      return data.mtps.find(m => (m.email || '').trim().toLowerCase() === cleanEmail) || null
+    }
+  },
+
+  getMTPByIdentifier: async (identifier) => {
+    if (!identifier) return null
+    const raw = String(identifier).trim()
+    if (raw.includes('@')) {
+      const byEmail = await db.getMTPByEmail(raw)
+      if (byEmail) return byEmail
+    }
+    const cleanDigits = raw.replace(/\D/g, '').slice(-10)
+    if (cleanDigits.length === 10) {
+      const byPhone = await db.getMTPByPhone(cleanDigits)
+      if (byPhone) return byPhone
+    }
+    return (await db.getMTPByEmail(raw)) || (await db.getMTPByPhone(raw))
+  },
+
   createMTP: async (mtpData) => {
     const createdAt = new Date().toISOString()
     const {

@@ -26,6 +26,9 @@ import {
   CreditCard,
   GraduationCap,
   ShieldAlert,
+  Lock,
+  RefreshCw,
+  ArrowRight,
   X
 } from "lucide-react";
 import { toast } from "sonner";
@@ -117,6 +120,24 @@ function MTPPage() {
   const [submittedData, setSubmittedData] = useState<any | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
+  // OTP Verification Flow States
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [registrationOtp, setRegistrationOtp] = useState("");
+  const [otpCountdown, setOtpCountdown] = useState(0);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [pendingPayload, setPendingPayload] = useState<any | null>(null);
+
+  useEffect(() => {
+    let timer: any;
+    if (otpCountdown > 0) {
+      timer = setInterval(() => {
+        setOtpCountdown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [otpCountdown]);
+
   const handleFileUpload = (
     e: React.ChangeEvent<HTMLInputElement>,
     setDoc: (val: string) => void,
@@ -191,8 +212,12 @@ function MTPPage() {
     setTenthCertificateDocName("");
     setPoliceVerificationDoc("");
     setPoliceVerificationDocName("");
+    setRegistrationOtp("");
+    setShowOtpModal(false);
+    setPendingPayload(null);
   };
 
+  // Step 1: Validate inputs and trigger Registration OTP to Mobile & Email
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -219,14 +244,16 @@ function MTPPage() {
       return;
     }
 
-    // 3. Email Validation (If provided, must be valid and typo-free)
-    const cleanEmail = email.trim();
-    if (cleanEmail) {
-      const emailErr = validateEmail(cleanEmail, false, "Email address");
-      if (emailErr) {
-        toast.error(emailErr);
-        return;
-      }
+    // 3. Email Validation (Mandatory for MTP Registration & Updates)
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail) {
+      toast.error("Please enter your email address for account alerts.");
+      return;
+    }
+    const emailErr = validateEmail(cleanEmail, true, "Email address");
+    if (emailErr) {
+      toast.error(emailErr);
+      return;
     }
 
     // 4. Age Validation
@@ -292,62 +319,141 @@ function MTPPage() {
       return;
     }
 
-    setIsSubmitting(true);
+    const payload = {
+      name: cleanName,
+      phone: cleanPhone,
+      email: cleanEmail,
+      gender,
+      age: age.trim(),
+      city: "Hyderabad",
+      locality,
+      roles: selectedRoles,
+      availability,
+      vehicle,
+      drivingLicense,
+      experience,
+      skillsSummary: skillsSummary.trim(),
+      aadhaar: cleanAadhaar,
+      emergencyContact: `${cleanEmergencyName} (${cleanEmergencyPhone})`,
+      aadhaarDoc,
+      panDoc,
+      drivingLicenseDoc,
+      tenthCertificateDoc,
+      policeVerificationDoc,
+    };
+
+    setPendingPayload(payload);
+    setIsSendingOtp(true);
 
     try {
-      const payload = {
-        name: cleanName,
-        phone: cleanPhone,
-        email: cleanEmail,
-        gender,
-        age: age.trim(),
-        city: "Hyderabad",
-        locality,
-        roles: selectedRoles,
-        availability,
-        vehicle,
-        drivingLicense,
-        experience,
-        skillsSummary: skillsSummary.trim(),
-        aadhaar: cleanAadhaar,
-        emergencyContact: `${cleanEmergencyName} (${cleanEmergencyPhone})`,
-        aadhaarDoc,
-        panDoc,
-        drivingLicenseDoc,
-        tenthCertificateDoc,
-        policeVerificationDoc,
-      };
-
-      const res = await fetch("/api/mtp/register", {
+      const res = await fetch("/api/auth/send-registration-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          phone: cleanPhone,
+          email: cleanEmail,
+          name: cleanName,
+          role: "mtp",
+        }),
       });
 
       const data = await res.json();
 
       if (res.ok && data.success) {
-        const finalData = data.data || payload;
+        setShowOtpModal(true);
+        setOtpCountdown(60);
+        setRegistrationOtp("");
+        toast.success(data.message || "6-digit OTP code sent to your Mobile & Email!");
+      } else {
+        toast.error(data.error || "Failed to dispatch verification code. Please try again.");
+      }
+    } catch (err) {
+      console.error("Failed to send OTP:", err);
+      toast.error("Network error. Could not dispatch OTP.");
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  // Step 2: Resend Registration OTP
+  const handleResendRegistrationOtp = async () => {
+    if (otpCountdown > 0 || isSendingOtp || !pendingPayload) return;
+    setIsSendingOtp(true);
+    try {
+      const res = await fetch("/api/auth/send-registration-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: pendingPayload.phone,
+          email: pendingPayload.email,
+          name: pendingPayload.name,
+          role: "mtp",
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setOtpCountdown(60);
+        toast.success(data.message || "A new 6-digit OTP code has been dispatched.");
+      } else {
+        toast.error(data.error || "Failed to resend verification code.");
+      }
+    } catch (err) {
+      toast.error("Network error. Failed to resend code.");
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  // Step 3: Verify OTP and finalize MTP Registration
+  const handleVerifyAndRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanOtp = registrationOtp.trim();
+    if (!cleanOtp || cleanOtp.length < 4) {
+      toast.error("Please enter the 6-digit verification code.");
+      return;
+    }
+    if (!pendingPayload) {
+      toast.error("Registration session expired. Please fill the form again.");
+      setShowOtpModal(false);
+      return;
+    }
+
+    setIsVerifyingOtp(true);
+
+    try {
+      const res = await fetch("/api/mtp/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...pendingPayload,
+          otp: cleanOtp,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        const finalData = data.data || pendingPayload;
         setSubmittedData(finalData);
+        setShowOtpModal(false);
         setShowSuccessModal(true);
         try {
           confetti({
-            particleCount: 110,
-            spread: 75,
-            origin: { y: 0.6 }
+            particleCount: 120,
+            spread: 80,
+            origin: { y: 0.6 },
           });
-        } catch (e) {
-          // ignore confetti execution error if canvas fails
-        }
-        toast.success("MTP Registration submitted successfully! Welcome to Amma Seva.");
+        } catch (e) {}
+        toast.success("MTP Registration verified & submitted successfully!");
       } else {
-        toast.error(data.error || "Failed to submit registration. Please try again.");
+        toast.error(data.error || "Verification failed. Please check the code and try again.");
       }
     } catch (err) {
       console.error(err);
-      toast.error("Network error. Please check your connection and try again.");
+      toast.error("Network error during verification. Please try again.");
     } finally {
-      setIsSubmitting(false);
+      setIsVerifyingOtp(false);
     }
   };
 
@@ -623,12 +729,13 @@ function MTPPage() {
 
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                        Email Address <span className="text-slate-400 font-normal">(Optional)</span>
+                        Email Address <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="email"
+                        required
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e) => setEmail(e.target.value.toLowerCase().trim())}
                         placeholder="yourname@gmail.com"
                         className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-gold focus:bg-white focus:ring-2 focus:ring-gold/15 outline-none transition-all font-medium"
                       />
@@ -1187,6 +1294,111 @@ function MTPPage() {
         </div>
       </section>
 
+      {/* OTP Verification Modal for Registration */}
+      {showOtpModal && pendingPayload && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md rounded-3xl bg-white p-6 sm:p-8 shadow-2xl border-2 border-gold/40 text-center animate-in zoom-in-95 duration-200 space-y-6 my-auto">
+            
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={() => {
+                if (!isVerifyingOtp) setShowOtpModal(false);
+              }}
+              className="absolute top-4 right-4 h-9 w-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            {/* Lock / Key Icon */}
+            <div className="space-y-2">
+              <div className="mx-auto h-16 w-16 rounded-2xl bg-gradient-to-tr from-[#091438] via-[#1e2a5a] to-[#091438] text-gold flex items-center justify-center shadow-lg border border-gold/30">
+                <Lock className="h-8 w-8 text-gold" />
+              </div>
+              <h2 className="text-xl sm:text-2xl font-extrabold text-primary font-display tracking-tight">
+                Verify OTP to Complete
+              </h2>
+              <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+                Enter the 6-digit verification code sent to your registered mobile and email.
+              </p>
+            </div>
+
+            {/* Destination Badges */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs space-y-1 text-slate-700 text-left">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">📱 Mobile:</span>
+                <span className="font-bold text-primary font-mono">+91 {pendingPayload.phone}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">✉️ Email:</span>
+                <span className="font-bold text-primary truncate max-w-[200px]">{pendingPayload.email}</span>
+              </div>
+            </div>
+
+            {/* OTP Input Form */}
+            <form onSubmit={handleVerifyAndRegister} className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5 text-left">
+                  Enter 6-Digit OTP Code
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoFocus
+                  maxLength={6}
+                  value={registrationOtp}
+                  onChange={(e) => setRegistrationOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="• • • • • •"
+                  className="w-full h-13 rounded-xl border-2 border-gold/50 bg-slate-50 text-center text-2xl font-mono font-extrabold tracking-[8px] text-primary focus:border-gold focus:bg-white focus:ring-4 focus:ring-gold/15 outline-none transition-all placeholder:tracking-normal placeholder:font-sans placeholder:text-sm placeholder:font-normal"
+                />
+              </div>
+
+              {/* Resend Countdown */}
+              <div className="flex items-center justify-between text-xs pt-1">
+                <span className="text-slate-500">Didn&apos;t receive the code?</span>
+                {otpCountdown > 0 ? (
+                  <span className="font-bold text-gold font-mono">
+                    Resend in {otpCountdown}s
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={isSendingOtp}
+                    onClick={handleResendRegistrationOtp}
+                    className="font-bold text-gold hover:text-[#9e7a2b] transition-colors cursor-pointer flex items-center gap-1"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${isSendingOtp ? "animate-spin" : ""}`} />
+                    Resend Code
+                  </button>
+                )}
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={isVerifyingOtp || registrationOtp.length < 4}
+                className="w-full h-12 rounded-xl bg-gradient-to-r from-gold via-[#d8b458] to-gold text-[#091438] font-extrabold text-sm shadow-lg hover:shadow-xl hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {isVerifyingOtp ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" /> Verifying &amp; Registering...
+                  </>
+                ) : (
+                  <>
+                    Verify &amp; Submit Application <ArrowRight className="h-4 w-4" />
+                  </>
+                )}
+              </button>
+            </form>
+
+            <p className="text-[11px] text-slate-400">
+              🔒 Safe &amp; verified via Amma Seva Care Network
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* High-Converting Success / Congratulations Modal */}
       {showSuccessModal && submittedData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200">
@@ -1274,28 +1486,38 @@ function MTPPage() {
                 <ShieldCheck className="h-4 w-4 text-emerald-600" /> What Happens Next?
               </div>
               <p className="text-[11px] text-emerald-800/90 leading-relaxed">
-                1. Our Hyderabad coordination desk will verify your Aadhaar, PAN & Police verification records.<br />
-                2. You will receive a 10-minute safety orientation and start receiving task alerts on WhatsApp!
+                1. Our Hyderabad coordination desk will verify your Aadhaar, PAN &amp; Police verification records.<br />
+                2. You can log in using your registered Mobile / Email + OTP anytime to check your real-time approval status.<br />
+                3. Once approved, your live task assignment dashboard opens with available companion gigs!
               </p>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 pt-1">
-              <a
-                href={`https://wa.me/${contact.WHATSAPP}?text=Hi%20Amma%20Seva%20Team,%20I%20registered%20as%20an%20MTP%20(${encodeURIComponent(submittedData.name)}%20-%20${encodeURIComponent(submittedData.phone)}).%20My%20MTP%20Reference%20ID%20is%20%23${submittedData.id || "PENDING"}.%20Please%20verify%20my%20profile.`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-5 py-3 text-xs sm:text-sm font-bold text-white shadow-md hover:bg-emerald-600 transition-all cursor-pointer"
+            <div className="flex flex-col gap-2.5 pt-1">
+              <Link
+                to="/login"
+                search={{ role: "caretaker" }}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#091438] hover:bg-[#1e2a5a] px-5 py-3 text-xs sm:text-sm font-bold text-gold shadow-md transition-all cursor-pointer border border-gold/40"
               >
-                <MessageCircle className="h-4 w-4" /> Message Coordinator on WhatsApp
-              </a>
-              <button
-                type="button"
-                onClick={handleCloseModal}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3 text-xs sm:text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer"
-              >
-                Done &amp; Close
-              </button>
+                <Lock className="h-4 w-4" /> Go to Login / Partner Portal →
+              </Link>
+              <div className="flex flex-col sm:flex-row gap-2.5">
+                <a
+                  href={`https://wa.me/${contact.WHATSAPP}?text=Hi%20Amma%20Seva%20Team,%20I%20registered%20as%20an%20MTP%20(${encodeURIComponent(submittedData.name)}%20-%20${encodeURIComponent(submittedData.phone)}).%20My%20MTP%20Reference%20ID%20is%20%23${submittedData.id || "PENDING"}.%20Please%20verify%20my%20profile.`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md hover:bg-emerald-600 transition-all cursor-pointer"
+                >
+                  <MessageCircle className="h-4 w-4" /> WhatsApp Coordinator
+                </a>
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-xs sm:text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer"
+                >
+                  Done &amp; Close
+                </button>
+              </div>
             </div>
 
           </div>

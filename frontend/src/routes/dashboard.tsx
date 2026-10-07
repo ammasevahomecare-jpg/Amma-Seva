@@ -1514,8 +1514,10 @@ function CustomerDashboard() {
                       )}
                     </div>
                     
-                    <h2 className="text-xl font-bold text-[#1e2a5a] font-display">{caretakerName || caretaker?.name || "Caregiver Partner"}</h2>
-                    <p className="text-xs text-[#c9a24c] font-bold uppercase tracking-wider mt-0.5">{caretakerSpecialty || caretaker?.specialty || "Caregiver"}</p>
+                    <h2 className="text-xl font-bold text-[#1e2a5a] font-display">{caretakerName || caretaker?.name || (caretaker?.isMtp ? "MTP Companion" : "Caregiver Partner")}</h2>
+                    <p className="text-xs text-[#c9a24c] font-bold uppercase tracking-wider mt-0.5">
+                      {caretaker?.isMtp ? "Multi Tasking Professional (MTP)" : (caretakerSpecialty || caretaker?.specialty || "Caregiver")}
+                    </p>
                     
                     {caretaker?.rating > 0 && (
                       <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-100 flex items-center gap-1 mt-2">
@@ -1527,7 +1529,7 @@ function CustomerDashboard() {
                       {caretaker?.status === "Verified" ? (
                         <div className="space-y-2">
                           <span className="inline-flex items-center justify-center gap-1.5 w-full py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-100 text-xs font-bold uppercase tracking-wider">
-                            <CheckCircle2 className="h-3.5 w-3.5" /> Active Partner
+                            <CheckCircle2 className="h-3.5 w-3.5" /> {caretaker?.isMtp ? "Verified MTP Companion" : "Active Partner"}
                           </span>
                           <button
                             type="button"
@@ -1540,11 +1542,11 @@ function CustomerDashboard() {
                         </div>
                       ) : caretaker?.status === "Rejected" ? (
                         <span className="inline-flex items-center justify-center gap-1.5 w-full py-1.5 rounded-xl bg-rose-50 text-rose-800 border border-rose-100 text-xs font-bold uppercase tracking-wider">
-                          <AlertTriangle className="h-3.5 w-3.5 animate-pulse" /> Rejected
+                          <AlertTriangle className="h-3.5 w-3.5 animate-pulse" /> Application Rejected
                         </span>
                       ) : (
                         <span className="inline-flex items-center justify-center gap-1.5 w-full py-1.5 rounded-xl bg-amber-50 text-amber-800 border border-amber-100 text-xs font-bold uppercase tracking-wider">
-                          <Clock className="h-3.5 w-3.5" /> Pending Verification
+                          <Clock className="h-3.5 w-3.5" /> {caretaker?.isMtp ? "MTP Verification Pending" : "Pending Verification"}
                         </span>
                       )}
                     </div>
@@ -1564,7 +1566,7 @@ function CustomerDashboard() {
                       }`}
                     >
                       <Calendar className="h-4 w-4 shrink-0" />
-                      <span className="text-left flex-1">Assigned Shifts</span>
+                      <span className="text-left flex-1">{caretaker?.isMtp ? "Assigned Gigs & Shifts" : "Assigned Shifts"}</span>
                       {caretakerBookings.length > 0 && caretaker?.status === "Verified" && (
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                           activeCaregiverTab === "shifts" ? "bg-white text-[#1e2a5a]" : "bg-[#1e2a5a] text-white"
@@ -1584,7 +1586,7 @@ function CustomerDashboard() {
                       }`}
                     >
                       <User className="h-4 w-4 shrink-0" />
-                      <span className="text-left flex-1">Profile Details</span>
+                      <span className="text-left flex-1">{caretaker?.isMtp ? "Application & KYC Details" : "Profile Details"}</span>
                     </button>
 
                     {caretaker?.status === "Verified" && (
@@ -1665,15 +1667,15 @@ function CustomerDashboard() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] uppercase font-black tracking-widest text-[#f0d48b] bg-[#c9a24c]/20 px-2.5 py-0.5 rounded-full border border-[#c9a24c]/30 flex items-center gap-1">
-                          <Gift className="h-3 w-3 text-[#f0d48b]" /> Care Partner Referral
+                          <Gift className="h-3 w-3 text-[#f0d48b]" /> {caretaker?.isMtp ? "MTP Network Referral" : "Care Partner Referral"}
                         </span>
                         <span className="text-xs text-slate-300 font-medium">Earn Referral Rewards</span>
                       </div>
                       <h3 className="text-lg sm:text-xl font-extrabold font-display text-white">
-                        Invite Caregivers &amp; Nurses to Amma Seva
+                        {caretaker?.isMtp ? "Invite Companions & MTPs to Amma Seva" : "Invite Caregivers & Nurses to Amma Seva"}
                       </h3>
                       <p className="text-xs text-slate-300 leading-relaxed max-w-xl">
-                        When caregivers apply using your link, their application automatically locks your referral code.
+                        When partners apply using your link, their application automatically locks your referral code.
                       </p>
                     </div>
 
@@ -1719,7 +1721,7 @@ function CustomerDashboard() {
 
                     <a
                       href={`https://wa.me/?text=${encodeURIComponent(
-                        `Namaste! Join Amma Seva as a caregiver or nurse in Hyderabad. Great daily/monthly payouts, flexible shift options & doctor-backed support.\n\nRegister directly using my referral link:\n${typeof window !== "undefined" ? window.location.origin : "https://ammaseva.in"}/login?ref=${getCaregiverReferralCode(caretaker)}&type=caretaker`
+                        `Namaste! Join Amma Seva as a care partner or MTP companion in Hyderabad. Great payouts, flexible shift options & doctor-backed support.\n\nRegister directly using my referral link:\n${typeof window !== "undefined" ? window.location.origin : "https://ammaseva.in"}/login?ref=${getCaregiverReferralCode(caretaker)}&type=caretaker`
                       )}`}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -1751,9 +1753,13 @@ function CustomerDashboard() {
                       <CheckCircle2 className="h-6 w-6" />
                     </div>
                     <div className="space-y-1">
-                      <h3 className="text-lg font-bold text-emerald-900 font-display">Profile Approved &amp; Active</h3>
+                      <h3 className="text-lg font-bold text-emerald-900 font-display">
+                        {caretaker?.isMtp ? "MTP Profile Approved & Active" : "Profile Approved & Active"}
+                      </h3>
                       <p className="text-sm text-emerald-800 leading-relaxed">
-                        Your caretaker profile is fully verified by the administrator. Your profile is visible in the care network, and you can now be assigned to customer booking shifts.
+                        {caretaker?.isMtp
+                          ? "Your MTP companion profile has been verified and approved by the Amma Seva administrator. You can now view and accept patient hospital drops, senior walks, and home assistance gigs below."
+                          : "Your caretaker profile is fully verified by the administrator. Your profile is visible in the care network, and you can now be assigned to customer booking shifts."}
                       </p>
                     </div>
                   </div>
@@ -1765,8 +1771,82 @@ function CustomerDashboard() {
                     <div className="space-y-1">
                       <h3 className="text-lg font-bold text-rose-900 font-display">Application Rejected</h3>
                       <p className="text-sm text-rose-800 leading-relaxed">
-                        Your caregiver profile has been rejected by the administrator. Please update and fill your details accurately below, re-upload clear copies of all required documents, and submit for re-verification.
+                        Your application could not be verified due to incomplete KYC or mismatched records. Please update your profile details and re-upload clear copies of all required documents.
                       </p>
+                    </div>
+                  </div>
+                ) : caretaker?.isMtp ? (
+                  <div className="rounded-3xl border-2 border-amber-300 bg-gradient-to-br from-amber-50/80 via-white to-amber-50/40 p-6 sm:p-7 shadow-sm text-left space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-200/60 pb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-12 w-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 shadow-xs">
+                          <Clock className="h-6 w-6 animate-pulse" />
+                        </div>
+                        <div>
+                          <div className="text-[10px] font-extrabold uppercase tracking-widest text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full inline-block mb-0.5">
+                            MTP Reference ID #{caretaker.id || "MTP-PENDING"}
+                          </div>
+                          <h3 className="text-lg sm:text-xl font-extrabold text-primary font-display">
+                            MTP Application Under Admin Verification
+                          </h3>
+                        </div>
+                      </div>
+                      <span className="inline-flex items-center gap-1.5 font-bold text-xs text-amber-800 bg-amber-100/90 border border-amber-300 px-3.5 py-1.5 rounded-xl shadow-xs self-start sm:self-auto">
+                        ⏳ 4–12 Hours Verification Window
+                      </span>
+                    </div>
+
+                    <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
+                      Thank you for registering as a <strong>Multi Tasking Professional (MTP)</strong> with Amma Seva. Your profile, Aadhaar, PAN, and police verification documents are currently undergoing administrative background checks.
+                    </p>
+
+                    {/* MTP Applicant Summary Card */}
+                    <div className="rounded-2xl border border-slate-200/80 bg-white p-4 grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-xs text-slate-700">
+                      <div>
+                        <span className="text-slate-400 block text-[10px] font-bold uppercase">Applicant Name</span>
+                        <span className="font-bold text-primary">{caretaker.name}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px] font-bold uppercase">Registered Phone</span>
+                        <span className="font-bold text-primary font-mono">{caretaker.phone}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px] font-bold uppercase">Email Address</span>
+                        <span className="font-medium text-slate-800 truncate block">{caretaker.email || "N/A"}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px] font-bold uppercase">Operational Zone</span>
+                        <span className="font-bold text-primary">{caretaker.workingLocations || caretaker.locality || "Hyderabad"}</span>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <span className="text-slate-400 block text-[10px] font-bold uppercase">Selected Task Roles</span>
+                        <span className="font-bold text-emerald-700">
+                          {Array.isArray(caretaker.roles) ? caretaker.roles.join(', ') : (caretaker.roles || "On-Demand Tasks & Senior Escort")}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Next Steps & Support Buttons */}
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+                      <div className="text-xs text-slate-500 text-center sm:text-left">
+                        Once approved by admin, your live task dispatch feed and weekly payout ledger will unlock here automatically.
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <a
+                          href={`https://wa.me/919494516543?text=Hi%20Amma%20Seva%20Coordinator,%20I%20have%20registered%20as%20an%20MTP%20(${encodeURIComponent(caretaker.name)}%20-%20${encodeURIComponent(caretaker.phone)}).%20My%20Ref%20ID%20is%20%23${caretaker.id || "PENDING"}.%20Please%20verify%20my%20application.`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#25D366] hover:bg-emerald-600 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
+                        >
+                          <MessageCircle className="h-3.5 w-3.5" /> WhatsApp Desk
+                        </a>
+                        <a
+                          href="tel:+919494516543"
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gold hover:bg-[#b58e38] text-[#091438] text-xs font-bold shadow-xs transition-all cursor-pointer"
+                        >
+                          <Phone className="h-3.5 w-3.5" /> Call Coordinator
+                        </a>
+                      </div>
                     </div>
                   </div>
                 ) : (
