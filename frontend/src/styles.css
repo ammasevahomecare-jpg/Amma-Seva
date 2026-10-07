@@ -543,3 +543,80 @@ html.js-scroll-anim .dark-luxury-card.scroll-in-view:hover {
   }
 }
 
+/* ========================================================================= */
+/* Official Guaranteed 1-Page A4 GST Tax Invoice Print Stylesheet             */
+/* ========================================================================= */
+
+@page {
+  size: A4 portrait;
+  margin: 6mm 8mm;
+}
+
+@media print {
+  html, body {
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    font-size: 11px !important;
+    line-height: 1.35 !important;
+    color: #0f172a !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    overflow: visible !important;
+  }
+
+  /* Hide everything on page during invoice printing except the invoice modal root */
+  body > *:not(#invoice-modal-root) {
+    display: none !important;
+  }
+
+  #invoice-modal-root {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+    z-index: 999999 !important;
+    overflow: visible !important;
+  }
+
+  #invoice-sheet {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 4px 6px !important;
+    box-sizing: border-box !important;
+    page-break-inside: avoid !important;
+    page-break-after: avoid !important;
+    page-break-before: avoid !important;
+  }
+
+  .no-print,
+  .no-print * {
+    display: none !important;
+  }
+
+  /* High quality table rendering on print */
+  .invoice-table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+  .invoice-table th,
+  .invoice-table td {
+    padding: 4px 6px !important;
+    border-color: #cbd5e1 !important;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+

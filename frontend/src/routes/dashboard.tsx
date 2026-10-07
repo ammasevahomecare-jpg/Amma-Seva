@@ -3063,61 +3063,53 @@ function CustomerDashboard() {
 
               {/* Quick Metrics Statistics Grid (Rendered for logged in customers in My Bookings view) */}
               {user && (
-                <div className="grid gap-3.5 grid-cols-2 lg:grid-cols-4 mb-6">
+                <div className="grid gap-2.5 sm:gap-3.5 grid-cols-2 lg:grid-cols-4 mb-5 sm:mb-6">
                   {/* 1. Total Bookings */}
-                  <div className="rounded-2xl border border-slate-200/80 bg-white/90 backdrop-blur-md p-4 text-left shadow-xs hover:border-[#c9a24c]/50 transition-all">
-                    <div className="flex items-center gap-3">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-[#b38b32] border border-amber-500/25">
-                        <Calendar className="h-5 w-5" />
-                      </span>
-                      <div>
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Bookings</div>
-                        <div className="text-xl font-black text-[#0b183b] font-display">{bookings.length}</div>
-                      </div>
+                  <div className="rounded-2xl border border-slate-200/80 bg-white/95 backdrop-blur-md p-3 sm:p-4 text-left shadow-xs hover:border-[#c9a24c]/50 transition-all flex items-center gap-2.5 sm:gap-3 min-w-0">
+                    <span className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-[#b38b32] border border-amber-500/25">
+                      <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-slate-400 truncate">Bookings</div>
+                      <div className="text-base sm:text-lg lg:text-xl font-black text-[#0b183b] font-display truncate">{bookings.length} Shifts</div>
                     </div>
                   </div>
 
                   {/* 2. Assigned Caregivers */}
-                  <div className="rounded-2xl border border-slate-200/80 bg-white/90 backdrop-blur-md p-4 text-left shadow-xs hover:border-[#c9a24c]/50 transition-all">
-                    <div className="flex items-center gap-3">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500/15 text-[#1e2a5a] border border-indigo-500/25">
-                        <User className="h-5 w-5" />
-                      </span>
-                      <div>
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Caregivers</div>
-                        <div className="text-xl font-black text-[#0b183b] font-display">
-                          {bookings.filter(b => b.assignedStaff && b.status !== "Cancelled").length} Active
-                        </div>
+                  <div className="rounded-2xl border border-slate-200/80 bg-white/95 backdrop-blur-md p-3 sm:p-4 text-left shadow-xs hover:border-[#c9a24c]/50 transition-all flex items-center gap-2.5 sm:gap-3 min-w-0">
+                    <span className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500/15 text-[#1e2a5a] border border-indigo-500/25">
+                      <User className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-slate-400 truncate">Caregivers</div>
+                      <div className="text-base sm:text-lg lg:text-xl font-black text-[#0b183b] font-display truncate">
+                        {bookings.filter(b => b.assignedStaff && b.status !== "Cancelled").length} <span className="text-[10px] sm:text-xs font-bold text-emerald-600 font-sans">Active</span>
                       </div>
                     </div>
                   </div>
 
                   {/* 3. Total Spend (Paid) */}
-                  <div className="rounded-2xl border border-slate-200/80 bg-white/90 backdrop-blur-md p-4 text-left shadow-xs hover:border-[#c9a24c]/50 transition-all">
-                    <div className="flex items-center gap-3">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 border border-emerald-500/25">
-                        <DollarSign className="h-5 w-5" />
-                      </span>
-                      <div>
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Spend</div>
-                        <div className="text-xl font-black text-slate-800 font-display">
-                          ₹{bookings.reduce((sum, b) => sum + Number(b.advancePaid || 0), 0).toLocaleString()}
-                        </div>
+                  <div className="rounded-2xl border border-slate-200/80 bg-white/95 backdrop-blur-md p-3 sm:p-4 text-left shadow-xs hover:border-[#c9a24c]/50 transition-all flex items-center gap-2.5 sm:gap-3 min-w-0">
+                    <span className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 border border-emerald-500/25">
+                      <DollarSign className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-slate-400 truncate">Total Paid</div>
+                      <div className="text-base sm:text-lg lg:text-xl font-black text-slate-800 font-display truncate">
+                        ₹{bookings.reduce((sum, b) => sum + Number(b.advancePaid || 0), 0).toLocaleString()}
                       </div>
                     </div>
                   </div>
 
                   {/* 4. Pending Balance */}
-                  <div className="rounded-2xl border border-slate-200/80 bg-white/90 backdrop-blur-md p-4 text-left shadow-xs hover:border-[#c9a24c]/50 transition-all">
-                    <div className="flex items-center gap-3">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-500/15 text-rose-600 border border-rose-500/25">
-                        <CreditCard className="h-5 w-5" />
-                      </span>
-                      <div>
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pending Balance</div>
-                        <div className="text-xl font-black text-slate-800 font-display">
-                          ₹{bookings.filter(b => b.status !== "Cancelled" && b.paymentStatus !== "Paid").reduce((sum, b) => sum + Number(b.balanceAmount || 0), 0).toLocaleString()}
-                        </div>
+                  <div className="rounded-2xl border border-slate-200/80 bg-white/95 backdrop-blur-md p-3 sm:p-4 text-left shadow-xs hover:border-[#c9a24c]/50 transition-all flex items-center gap-2.5 sm:gap-3 min-w-0">
+                    <span className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-rose-500/15 text-rose-600 border border-rose-500/25">
+                      <CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-slate-400 truncate">Balance Due</div>
+                      <div className="text-base sm:text-lg lg:text-xl font-black text-slate-800 font-display truncate">
+                        ₹{bookings.filter(b => b.status !== "Cancelled" && b.paymentStatus !== "Paid").reduce((sum, b) => sum + Number(b.balanceAmount || 0), 0).toLocaleString()}
                       </div>
                     </div>
                   </div>
@@ -3199,7 +3191,7 @@ function CustomerDashboard() {
           {activeView === "bookings" ? (
             
             // MY BOOKINGS VIEW
-            <div className="space-y-6">
+            <div className="space-y-5 sm:space-y-6 pb-28 sm:pb-16">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-2xl font-black text-[#0b183b] font-display flex items-center gap-2.5 text-left">
@@ -3330,36 +3322,66 @@ function CustomerDashboard() {
                         >
                           <div className="space-y-4 flex-1">
                             {/* Summary Header */}
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <span className="text-[10px] uppercase font-bold tracking-widest text-[#c9a24c]">Shift #{booking.id}</span>
-                                <h3 className="text-xl font-bold text-[#1e2a5a] font-display mt-0.5">{booking.service}</h3>
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-100/80">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] uppercase font-extrabold tracking-widest text-[#c9a24c] bg-[#c9a24c]/10 px-2 py-0.5 rounded">
+                                    Shift #{booking.id}
+                                  </span>
+                                  <span className={`text-[10px] uppercase font-extrabold tracking-wider px-2.5 py-0.5 rounded-full border ${
+                                    booking.status === "Confirmed" ? "bg-emerald-50 text-emerald-800 border-emerald-200 shadow-2xs" :
+                                    booking.status === "Cancelled" ? "bg-rose-50 text-rose-800 border-rose-200 shadow-2xs" :
+                                    booking.status === "Completed" ? "bg-indigo-50 text-indigo-800 border-indigo-200 shadow-2xs" :
+                                    "bg-amber-50 text-amber-800 border-amber-200 shadow-2xs animate-pulse"
+                                  }`}>
+                                    {booking.status}
+                                  </span>
+                                </div>
+                                <h3 className="text-lg sm:text-xl font-bold text-[#1e2a5a] font-display">
+                                  {booking.service}
+                                </h3>
                                 {!isExpanded && (
-                                  <div className="flex items-center gap-2 flex-wrap mt-2.5">
-                                    <span className="inline-flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded text-[10px] text-slate-500 font-bold">📅 {booking.date} at {booking.time}</span>
-                                    <span className="inline-flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded text-[10px] text-slate-500 font-bold">⏱ {booking.duration}</span>
-                                    <span className="inline-flex items-center gap-1 bg-[#c9a24c]/10 px-2 py-0.5 rounded text-[10px] text-[#c9a24c] font-extrabold">₹{booking.amount}</span>
+                                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap pt-1 text-xs">
+                                    <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg text-[10.5px] font-semibold">
+                                      📅 {booking.date} at {booking.time}
+                                    </span>
+                                    <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg text-[10.5px] font-semibold">
+                                      ⏱ {booking.duration}
+                                    </span>
+                                    <span className="inline-flex items-center gap-1 bg-[#1e2a5a]/5 text-[#1e2a5a] px-2.5 py-1 rounded-lg text-[10.5px] font-extrabold font-mono">
+                                      Total: ₹{Number(booking.amount).toLocaleString()}
+                                    </span>
+                                    {booking.advancePaid ? (
+                                      <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-200">
+                                        Paid: ₹{Number(booking.advancePaid).toLocaleString()}
+                                      </span>
+                                    ) : null}
                                   </div>
                                 )}
                               </div>
                               
-                              <div className="flex items-center gap-3">
-                                <span className={`text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-xl border ${
-                                  booking.status === "Confirmed" ? "bg-emerald-50 text-emerald-800 border-emerald-100 shadow-sm" :
-                                  booking.status === "Cancelled" ? "bg-rose-50 text-rose-800 border-rose-100 shadow-sm" :
-                                  booking.status === "Completed" ? "bg-indigo-50 text-indigo-800 border-indigo-100 shadow-sm" :
-                                  "bg-amber-50 text-amber-800 border-amber-100 shadow-sm animate-pulse"
-                                }`}>
-                                  {booking.status}
-                                </span>
-                                
-                                {(booking.status === "Completed" || booking.status === "Cancelled") && (
+                              <div className="flex items-center gap-2 self-start sm:self-center shrink-0 pt-1 sm:pt-0">
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedBookingIds(prev => ({ ...prev, [booking.id]: !isExpanded }))}
+                                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer shadow-xs active:scale-95 flex items-center gap-1.5 ${
+                                    isExpanded
+                                      ? "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300"
+                                      : "bg-[#0b183b] hover:bg-[#162554] text-[#c9a24c] hover:text-white border border-[#0b183b]"
+                                  }`}
+                                >
+                                  <span>{isExpanded ? "Hide Details" : "View Details"}</span>
+                                  <span className="text-[10px]">{isExpanded ? "▲" : "▼"}</span>
+                                </button>
+                                {!isExpanded && (
                                   <button
                                     type="button"
-                                    onClick={() => setExpandedBookingIds(prev => ({ ...prev, [booking.id]: !isExpanded }))}
-                                    className="px-3 py-1.5 border border-[#c9a24c]/50 hover:bg-[#c9a24c] hover:text-white text-[#c9a24c] rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer shadow-sm active:scale-95"
+                                    onClick={() => setActiveInvoice(booking)}
+                                    className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer border border-slate-200 flex items-center gap-1"
+                                    title="Download Invoice PDF"
                                   >
-                                    {isExpanded ? "Hide Details" : "View Details"}
+                                    <Download className="h-3.5 w-3.5 text-slate-500" />
+                                    <span className="hidden sm:inline">Invoice</span>
                                   </button>
                                 )}
                               </div>
@@ -3830,10 +3852,18 @@ function CustomerDashboard() {
                             </>
                           )}
                           <button
+                            type="button"
                             onClick={() => setActiveInvoice(booking)}
-                            className="px-4 py-2.5 rounded-xl bg-[#1e2a5a] border border-[#1e2a5a]/10 text-white text-xs font-bold uppercase tracking-wider hover:bg-[#1e2a5a]/90 cursor-pointer transition-all hover:translate-y-[-1px] flex items-center justify-center gap-1.5 w-full sm:w-auto"
+                            className="px-4 py-2.5 rounded-xl bg-[#1e2a5a] border border-[#1e2a5a]/10 text-[#c9a24c] hover:text-white text-xs font-bold uppercase tracking-wider hover:bg-[#1e2a5a]/90 cursor-pointer transition-all hover:translate-y-[-1px] flex items-center justify-center gap-1.5 w-full sm:w-auto shadow-sm"
                           >
                             <Download className="h-3.5 w-3.5" /> Invoice PDF
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setExpandedBookingIds(prev => ({ ...prev, [booking.id]: false }))}
+                            className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold uppercase tracking-wider cursor-pointer transition-all hover:translate-y-[-1px] flex items-center justify-center gap-1 w-full sm:w-auto border border-slate-200"
+                          >
+                            <span>▲ Close Details</span>
                           </button>
                         </div>
                       )}
@@ -5078,195 +5108,216 @@ function CustomerDashboard() {
         </div>
       )}
 
-      {/* Invoice Modal Details View */}
-      {activeInvoice && (
-        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
-          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 sm:p-8 border border-slate-200 shadow-2xl space-y-6 animate-in zoom-in duration-200 relative max-h-[92vh] overflow-y-auto">
-            
-            {/* Invoice Print Sheet Header */}
-            <div id="invoice-sheet" className="space-y-6">
+      {/* Invoice Modal Details View - Guaranteed Single-Page A4 Layout */}
+      {activeInvoice && (() => {
+        const invBase = activeInvoice.baseAmount !== undefined && activeInvoice.baseAmount !== null
+          ? Number(activeInvoice.baseAmount)
+          : Math.round(Number(activeInvoice.amount) / 1.18);
+        const invGst = activeInvoice.gstAmount !== undefined && activeInvoice.gstAmount !== null
+          ? Number(activeInvoice.gstAmount)
+          : (Number(activeInvoice.amount) - invBase);
+        const invCgst = Math.round(invGst / 2);
+        const invSgst = invGst - invCgst;
+        const invTotal = Number(activeInvoice.amount);
+        const invAdvPaid = activeInvoice.advancePaid !== undefined && activeInvoice.advancePaid !== null
+          ? Number(activeInvoice.advancePaid)
+          : (activeInvoice.paymentStatus === 'Paid' ? invTotal : 0);
+        const invBalance = activeInvoice.balanceAmount !== undefined && activeInvoice.balanceAmount !== null
+          ? Number(activeInvoice.balanceAmount)
+          : Math.max(0, invTotal - invAdvPaid);
+
+        return (
+          <div id="invoice-modal-root" className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 animate-fade-in overflow-y-auto">
+            <div className="w-full max-w-2xl sm:max-w-3xl rounded-2xl bg-white p-4 sm:p-6 border border-slate-300 shadow-2xl space-y-3.5 animate-in zoom-in duration-150 relative my-auto">
               
-              {/* Receipt Header */}
-              <div className="flex flex-col sm:flex-row justify-between items-start gap-4 border-b border-slate-200 pb-6">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl font-black font-display text-primary tracking-tight">AMMA SEVA</span>
-                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300">
-                      GST Tax Invoice
+              {/* Invoice Printable Sheet */}
+              <div id="invoice-sheet" className="space-y-3 text-slate-800 bg-white">
+                
+                {/* 1. Header: Brand / Corporate & Invoice Identification */}
+                <div className="flex justify-between items-start gap-3 border-b-2 border-[#1e2a5a] pb-3">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl font-black font-display text-[#1e2a5a] tracking-tight">AMMA SEVA</span>
+                      <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-300">
+                        TAX INVOICE
+                      </span>
+                    </div>
+                    <p className="text-[11px] font-bold text-slate-700">LUXDHANA GLOBAL PRIVATE LIMITED</p>
+                    <p className="text-[9.5px] text-slate-500 leading-tight">
+                      GSTIN: <strong className="font-mono text-slate-900">36AAACL8921M1ZT</strong> &nbsp;|&nbsp; State Code: <strong>36 (Telangana)</strong><br />
+                      8-2-630/B/B/1, Mount Banjara complex, Rd #12, Banjara Hills, Hyderabad - 500034<br />
+                      Helpdesk: +91 94945 16543 &nbsp;|&nbsp; Email: support@ammaseva.in &nbsp;|&nbsp; www.ammaseva.in
+                    </p>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <div className="inline-block bg-slate-100 px-2.5 py-1 rounded border border-slate-300 mb-1">
+                      <span className="text-[9px] font-extrabold text-slate-600 uppercase tracking-widest block">Original for Recipient</span>
+                      <span className="text-sm font-black text-[#1e2a5a] font-mono block">#INV-{activeInvoice.id}</span>
+                    </div>
+                    <div className="text-[10px] text-slate-600 font-medium">
+                      Date: <strong className="text-slate-900">{new Date(activeInvoice.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</strong>
+                    </div>
+                    <div className="mt-1">
+                      <span className={`inline-block text-[9px] font-extrabold px-2 py-0.5 rounded border uppercase tracking-wider ${
+                        activeInvoice.paymentStatus === 'Paid'
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                          : activeInvoice.paymentStatus === 'Advance Paid'
+                            ? 'bg-blue-50 text-blue-800 border-blue-300'
+                            : 'bg-amber-50 text-amber-800 border-amber-300'
+                      }`}>
+                        {activeInvoice.paymentStatus || 'Pay on Service'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Client & Service Delivery Details (2-Column Compact Grid) */}
+                <div className="grid grid-cols-2 gap-3 text-[10.5px]">
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <span className="block text-slate-400 font-extrabold text-[8.5px] uppercase tracking-wider mb-0.5">Billed To (Client / Patient)</span>
+                    <span className="block font-bold text-slate-900 text-xs">{activeInvoice.name || user?.name || "Valued Client"}</span>
+                    <span className="block text-slate-600 font-mono">{activeInvoice.phone || user?.phone || "—"}</span>
+                    <span className="block text-slate-600">{activeInvoice.email || user?.email || "—"}</span>
+                    {activeInvoice.patientName && (
+                      <div className="mt-1 pt-1 border-t border-slate-200 text-[10px] text-slate-700">
+                        Patient: <strong>{activeInvoice.patientName}</strong> {activeInvoice.patientAge ? `(${activeInvoice.patientAge} yrs)` : ''}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <span className="block text-slate-400 font-extrabold text-[8.5px] uppercase tracking-wider mb-0.5">Service Delivery Details</span>
+                    <span className="block font-bold text-[#1e2a5a] text-xs">{activeInvoice.service}</span>
+                    <span className="block text-slate-700">
+                      Schedule: <strong>{activeInvoice.date}</strong> at <strong>{activeInvoice.time}</strong> ({activeInvoice.duration})
+                    </span>
+                    <span className="block text-slate-600 truncate" title={activeInvoice.address}>
+                      Location: {activeInvoice.address}
+                    </span>
+                    <span className="block text-[9px] text-slate-500 mt-0.5">
+                      Place of Supply: <strong>Telangana (36)</strong>
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500 mt-0.5 font-medium">Professional Home Healthcare &amp; Caregiving</p>
-                  <p className="text-[10px] text-slate-500 leading-normal max-w-xs mt-1">
-                    <strong>LUXDHANA GLOBAL PRIVATE LIMITED</strong><br />
-                    GSTIN: <span className="font-mono font-bold text-slate-800">36AAACL8921M1ZT</span><br />
-                    8-2-630/B/B/1, Mount Banjara complex, Road No. 12, Banjara Hills, Hyderabad - 500034, Telangana.<br />
-                    State Code: 36 (Telangana)
-                  </p>
                 </div>
-                <div className="sm:text-right">
-                  <span className="inline-block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest bg-slate-100 px-2.5 py-1 rounded-md mb-1 border border-slate-200">
-                    Tax Invoice Receipt
-                  </span>
-                  <span className="block text-xl font-bold text-primary font-display">#INV-{activeInvoice.id}</span>
-                  <span className="block text-[11px] text-slate-400 mt-0.5">Date: {new Date(activeInvoice.createdAt).toLocaleDateString()}</span>
-                  <span className="inline-block text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 mt-1">
-                    18% GST Compliant
-                  </span>
-                </div>
-              </div>
 
-              {/* Patient & Customer Billing Rows */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs border-b border-slate-200 pb-6">
-                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/60">
-                  <span className="block text-slate-400 font-bold mb-1 uppercase tracking-wider text-[10px]">Billed Client</span>
-                  <span className="block font-bold text-slate-900 text-sm">{activeInvoice.name || user?.name}</span>
-                  <span className="block text-slate-500 mt-0.5">{activeInvoice.phone || user?.phone}</span>
-                  <span className="block text-slate-500">{user?.email || "Customer"}</span>
-                  {activeInvoice.patientName && (
-                    <span className="block text-[11px] text-slate-600 mt-1 pt-1 border-t border-slate-200/60">
-                      Patient: <strong>{activeInvoice.patientName}</strong> {activeInvoice.patientAge ? `(${activeInvoice.patientAge} yrs)` : ''}
-                    </span>
-                  )}
-                </div>
-                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/60">
-                  <span className="block text-slate-400 font-bold mb-1 uppercase tracking-wider text-[10px]">Service Delivery Address</span>
-                  <span className="block text-slate-700 italic leading-relaxed">{activeInvoice.address}</span>
-                  <span className="block text-[10px] text-slate-400 mt-2 font-medium">
-                    Place of Supply: Telangana (Code 36)
-                  </span>
-                </div>
-              </div>
-
-              {/* Invoice Table Items */}
-              <div>
-                <span className="block text-slate-400 font-bold text-[10px] mb-3 uppercase tracking-wider">Itemized Tax Invoice Breakdown</span>
-                <div className="overflow-x-auto rounded-2xl border border-slate-200">
-                  <table className="w-full text-left text-xs border-collapse">
+                {/* 3. Itemized Tax Invoice Breakdown Table */}
+                <div className="overflow-hidden rounded-xl border border-slate-300 text-[10.5px]">
+                  <table className="w-full text-left invoice-table border-collapse">
                     <thead>
-                      <tr className="border-b border-slate-200 font-bold text-slate-800 bg-slate-50">
-                        <th className="py-3 px-4">Service Description</th>
-                        <th className="py-3 px-4">Duration Contract</th>
-                        <th className="py-3 px-4">Schedule Date</th>
-                        <th className="py-3 px-4 text-right">Base Amount</th>
+                      <tr className="bg-slate-100 border-b border-slate-300 font-bold text-slate-800 text-[9.5px] uppercase tracking-wider">
+                        <th className="py-1.5 px-3">Service &amp; Scope Description</th>
+                        <th className="py-1.5 px-2.5 text-center">HSN / SAC</th>
+                        <th className="py-1.5 px-2.5 text-center">Duration</th>
+                        <th className="py-1.5 px-3 text-right">Taxable Value (₹)</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      <tr className="text-slate-700">
-                        <td className="py-3.5 px-4 font-bold text-primary">{activeInvoice.service}</td>
-                        <td className="py-3.5 px-4 font-medium">{activeInvoice.duration}</td>
-                        <td className="py-3.5 px-4 text-slate-600">{activeInvoice.date} at {activeInvoice.time}</td>
-                        <td className="py-3.5 px-4 text-right font-bold text-slate-900 font-mono">
-                          ₹{(activeInvoice.baseAmount || Math.round(activeInvoice.amount / 1.18)).toLocaleString()}
+                    <tbody className="divide-y divide-slate-200">
+                      <tr className="text-slate-800">
+                        <td className="py-2 px-3 font-semibold text-[#1e2a5a]">
+                          {activeInvoice.service}
+                          <span className="block text-[9px] font-normal text-slate-500">Verified Healthcare &amp; Caregiver Support Assistance</span>
+                        </td>
+                        <td className="py-2 px-2.5 text-center font-mono text-slate-600">999312</td>
+                        <td className="py-2 px-2.5 text-center text-slate-700">{activeInvoice.duration}</td>
+                        <td className="py-2 px-3 text-right font-bold text-slate-900 font-mono">
+                          ₹{invBase.toLocaleString()}
                         </td>
                       </tr>
                     </tbody>
-                    <tfoot className="divide-y divide-slate-100 bg-slate-50/60">
-                      <tr className="text-slate-700">
-                        <td colSpan={3} className="py-2.5 px-4 text-right font-medium text-slate-600 text-xs">
-                          Base Service Subtotal:
+                    <tfoot className="bg-slate-50/80 divide-y divide-slate-200 font-medium">
+                      <tr>
+                        <td colSpan={3} className="py-1 px-3 text-right text-slate-600">Base Taxable Subtotal:</td>
+                        <td className="py-1 px-3 text-right font-bold text-slate-900 font-mono">₹{invBase.toLocaleString()}</td>
+                      </tr>
+                      <tr className="text-slate-600 text-[10px]">
+                        <td colSpan={3} className="py-1 px-3 text-right">CGST (Central Tax @ 9.0%):</td>
+                        <td className="py-1 px-3 text-right font-mono text-slate-800">₹{invCgst.toLocaleString()}</td>
+                      </tr>
+                      <tr className="text-slate-600 text-[10px]">
+                        <td colSpan={3} className="py-1 px-3 text-right">SGST (State Tax @ 9.0%):</td>
+                        <td className="py-1 px-3 text-right font-mono text-slate-800">₹{invSgst.toLocaleString()}</td>
+                      </tr>
+                      <tr className="text-amber-900 bg-amber-50/60 font-semibold text-[10.5px]">
+                        <td colSpan={3} className="py-1 px-3 text-right">Total 18% GST (CGST 9% + SGST 9%):</td>
+                        <td className="py-1 px-3 text-right font-bold text-amber-900 font-mono">+₹{invGst.toLocaleString()}</td>
+                      </tr>
+                      <tr className="bg-slate-100 text-slate-900 font-bold border-t-2 border-slate-400">
+                        <td colSpan={3} className="py-1.5 px-3 text-right uppercase tracking-wider text-[10px] text-[#1e2a5a]">
+                          Total Shift Value (incl. 18% GST):
                         </td>
-                        <td className="py-2.5 px-4 text-right font-bold text-slate-900 font-mono">
-                          ₹{(activeInvoice.baseAmount || Math.round(activeInvoice.amount / 1.18)).toLocaleString()}
+                        <td className="py-1.5 px-3 text-right text-sm font-black text-[#1e2a5a] font-display">
+                          ₹{invTotal.toLocaleString()}
                         </td>
                       </tr>
-                      <tr className="text-slate-600 text-[11px]">
-                        <td colSpan={3} className="py-2 px-4 text-right text-slate-500">
-                          CGST (Central GST @ 9.0%):
-                        </td>
-                        <td className="py-2 px-4 text-right font-medium text-slate-700 font-mono">
-                          ₹{Math.round((activeInvoice.gstAmount || (activeInvoice.amount - Math.round(activeInvoice.amount / 1.18))) / 2).toLocaleString()}
-                        </td>
-                      </tr>
-                      <tr className="text-slate-600 text-[11px]">
-                        <td colSpan={3} className="py-2 px-4 text-right text-slate-500">
-                          SGST (State GST @ 9.0%):
-                        </td>
-                        <td className="py-2 px-4 text-right font-medium text-slate-700 font-mono">
-                          ₹{( (activeInvoice.gstAmount || (activeInvoice.amount - Math.round(activeInvoice.amount / 1.18))) - Math.round((activeInvoice.gstAmount || (activeInvoice.amount - Math.round(activeInvoice.amount / 1.18))) / 2) ).toLocaleString()}
-                        </td>
-                      </tr>
-                      <tr className="text-amber-900 bg-amber-50/60 font-semibold text-xs">
-                        <td colSpan={3} className="py-2.5 px-4 text-right text-amber-900">
-                          Total 18% GST (CGST + SGST):
-                        </td>
-                        <td className="py-2.5 px-4 text-right font-extrabold text-amber-900 font-mono">
-                          +₹{(activeInvoice.gstAmount || (activeInvoice.amount - Math.round(activeInvoice.amount / 1.18))).toLocaleString()}
-                        </td>
-                      </tr>
-                      <tr className="text-slate-900 font-bold bg-slate-100/90 border-t-2 border-slate-300">
-                        <td colSpan={3} className="py-3 px-4 text-right uppercase tracking-wider text-slate-800 text-xs">
-                          Total Invoice Value (incl. 18% GST):
-                        </td>
-                        <td className="py-3 px-4 text-right text-base text-primary font-black font-display">
-                          ₹{Number(activeInvoice.amount).toLocaleString()}
-                        </td>
-                      </tr>
-                      {(activeInvoice.advancePaid !== undefined && activeInvoice.advancePaid > 0) || activeInvoice.paymentStatus === 'Paid' ? (
-                        <tr className="text-emerald-800 bg-emerald-50/80 font-semibold text-xs border-t border-emerald-100">
-                          <td colSpan={3} className="py-2.5 px-4 text-right">
-                            ✓ Advance Paid (Escrow Locked):
-                          </td>
-                          <td className="py-2.5 px-4 text-right font-bold text-emerald-800 font-mono">
-                            -₹{Number(activeInvoice.advancePaid || activeInvoice.amount).toLocaleString()}
-                          </td>
+                      {invAdvPaid > 0 ? (
+                        <tr className="text-emerald-800 bg-emerald-50 font-semibold">
+                          <td colSpan={3} className="py-1 px-3 text-right text-[10px]">✓ Advance Paid (Escrow Locked):</td>
+                          <td className="py-1 px-3 text-right font-bold text-emerald-800 font-mono">-₹{invAdvPaid.toLocaleString()}</td>
                         </tr>
                       ) : null}
-                      {activeInvoice.balanceAmount !== undefined && (
-                        <tr className="text-amber-950 bg-amber-100/70 font-bold text-xs border-t border-amber-200">
-                          <td colSpan={3} className="py-2.5 px-4 text-right">
-                            Balance Due (Post-Shift Settlement):
-                          </td>
-                          <td className="py-2.5 px-4 text-right text-sm font-black text-amber-950 font-display">
-                            ₹{Number(activeInvoice.balanceAmount).toLocaleString()}
-                          </td>
-                        </tr>
-                      )}
+                      <tr className="text-slate-900 bg-slate-50 font-bold border-t border-slate-300">
+                        <td colSpan={3} className="py-1.5 px-3 text-right text-[10px] uppercase tracking-wider">
+                          Post-Shift Balance Due:
+                        </td>
+                        <td className="py-1.5 px-3 text-right text-xs font-black text-slate-900 font-display">
+                          ₹{invBalance.toLocaleString()}
+                        </td>
+                      </tr>
                     </tfoot>
                   </table>
                 </div>
+
+                {/* 4. Payment Guarantee & Authorized Seal Row */}
+                <div className="grid grid-cols-2 gap-3 items-center pt-1 border-t border-slate-200 text-[9.5px]">
+                  <div className="p-2 rounded-lg bg-emerald-50/70 border border-emerald-200 text-emerald-950 space-y-0.5">
+                    <span className="font-bold flex items-center gap-1 text-[10px] text-emerald-900">
+                      🛡️ Amma Seva Escrow &amp; Shift Guarantee
+                    </span>
+                    <p className="text-[9px] text-emerald-800 leading-tight">
+                      Payment Mode: <strong>{activeInvoice.paymentMethod === 'razorpay' ? 'Razorpay Online Gateway (UPI/Card)' : 'Pay on Service / Offline Escrow'}</strong><br />
+                      Advance is safely escrow-held until verified caregiver arrival &amp; shift fulfillment.
+                    </p>
+                  </div>
+
+                  <div className="text-right space-y-0.5">
+                    <p className="text-[9px] font-extrabold text-slate-600 uppercase tracking-wider">For LUXDHANA GLOBAL PRIVATE LIMITED</p>
+                    <div className="h-6 flex items-center justify-end">
+                      <span className="font-display font-bold text-xs text-[#1e2a5a] tracking-wider italic">Amma Seva Healthcare</span>
+                    </div>
+                    <p className="text-[8.5px] text-slate-500 font-medium">Authorized Digital Signatory</p>
+                  </div>
+                </div>
+
+                {/* 5. Compact 1-Page Declaration Footer */}
+                <div className="border-t border-slate-200 pt-1.5 text-center text-[8.5px] text-slate-400">
+                  This is a computer-generated GST Tax Invoice compliant with Section 31 of CGST Act, 2017. Issued by Luxdhana Global Pvt. Ltd.
+                </div>
+
               </div>
 
-              {/* Status details info */}
-              <div className="rounded-2xl bg-slate-50 p-4 border border-slate-200 flex justify-between items-center text-xs">
-                <div>
-                  <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Payment Mode</span>
-                  <span className="font-bold text-slate-800">
-                    {activeInvoice.paymentMethod === 'razorpay' ? 'Razorpay Online Escrow (UPI/Card)' : 'Pay on Service / Offline Escrow'}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Payment Status</span>
-                  <span className={`font-extrabold px-2.5 py-1 rounded-full text-xs ${
-                    activeInvoice.paymentStatus === 'Paid' 
-                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
-                      : 'bg-amber-100 text-amber-800 border border-amber-300'
-                  }`}>
-                    {activeInvoice.paymentStatus}
-                  </span>
-                </div>
+              {/* Action Buttons (Excluded from Print) */}
+              <div className="no-print flex gap-3 border-t border-slate-200 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setActiveInvoice(null)}
+                  className="btn-outline flex-1 py-2.5 text-xs font-bold uppercase tracking-wider cursor-pointer"
+                >
+                  Close View
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="btn-primary flex-1 py-2.5 text-xs font-bold uppercase tracking-wider cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
+                >
+                  <Download className="h-4 w-4" /> Print / Save PDF (1-Page)
+                </button>
               </div>
 
             </div>
-
-            {/* Print and Close controls */}
-            <div className="flex gap-3 border-t border-slate-200 pt-5">
-              <button
-                onClick={() => setActiveInvoice(null)}
-                className="btn-outline flex-1 py-3 text-xs font-bold uppercase tracking-wider cursor-pointer"
-              >
-                Close View
-              </button>
-              <button
-                onClick={() => window.print()}
-                className="btn-primary flex-1 py-3 text-xs font-bold uppercase tracking-wider cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
-              >
-                <Download className="h-4 w-4" /> Print / Save PDF
-              </button>
-            </div>
-
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Booking EDIT DETAILS Modal Overlay */}
       {isEditModalOpen && editBookingId && (
