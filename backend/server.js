@@ -2698,8 +2698,30 @@ app.post('/api/booking', async (req, res) => {
     } catch (e) {}
   }
 
+  // If no authUser found by token/id, verify if the phone or email belongs to an existing registered user
+  if (!authUser) {
+    const rawP = String(phone || '').replace(/\D/g, '').slice(-10)
+    const rawE = String(email || '').toLowerCase().trim()
+    if (rawP.length === 10) {
+      authUser = await db.getUserByPhone(rawP)
+    }
+    if (!authUser && rawE && rawE.includes('@')) {
+      authUser = await db.getUserByEmail(rawE)
+    }
+    if (authUser) {
+      authUserId = authUser.id
+    }
+  }
+
+  if (!authUser && !authUserId) {
+    return res.status(401).json({
+      success: false,
+      error: 'User registration is required before booking a service. Please register or sign in to continue.'
+    })
+  }
+
   const effectiveName = String(name || patientName || (authUser && authUser.name) || 'Valued Customer').trim()
-  const effectivePhone = String(phone || (authUser && authUser.phone) || '9490587575').trim()
+  const effectivePhone = String(phone || (authUser && authUser.phone) || '').trim()
   const effectiveEmail = String(email || (authUser && authUser.email) || '').trim()
   const effectiveService = String(service || 'Home Healthcare Support').trim()
   const effectiveDate = String(date || new Date().toISOString().split('T')[0]).trim()

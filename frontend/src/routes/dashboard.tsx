@@ -3114,17 +3114,6 @@ function CustomerDashboard() {
                   </div>
                 </div>
               )}
-
-              {/* Announcements */}
-              {announcements.map((ann) => (
-                <div key={ann.id} className="bg-gradient-to-r from-amber-600 to-[#b88d30] text-white px-4 py-2.5 rounded-2xl flex items-center justify-between shadow-xs border border-amber-400/40 mb-4 text-xs">
-                  <div className="flex items-center gap-2">
-                    <span>📢</span>
-                    <span className="font-semibold">{ann.message}</span>
-                  </div>
-                  <span className="text-[10px] text-amber-100 font-mono shrink-0 ml-2">{new Date(ann.createdAt).toLocaleDateString()}</span>
-                </div>
-              ))}
             </>
           ) : (
             /* Compact Header when in Scheduling Mode */
@@ -3303,15 +3292,19 @@ function CustomerDashboard() {
                 return (
                   <div className="grid gap-6">
                     {sortedFiltered.map((booking) => {
-                      const isExpanded = expandedBookingIds[booking.id] !== undefined
-                        ? expandedBookingIds[booking.id]
-                        : (booking.status !== "Completed" && booking.status !== "Cancelled");
+                      const isExpanded = !!expandedBookingIds[booking.id];
                       const isActive = booking.status !== "Completed" && booking.status !== "Cancelled";
+                      const advPaid = booking.advancePaid !== undefined && booking.advancePaid !== null 
+                        ? Number(booking.advancePaid) 
+                        : (booking.paymentStatus === "Paid" ? Number(booking.amount) : 0);
+                      const balDue = booking.balanceAmount !== undefined && booking.balanceAmount !== null
+                        ? Number(booking.balanceAmount)
+                        : Math.max(0, Number(booking.amount) - advPaid);
 
                       return (
                         <div
                           key={booking.id}
-                          className={`rounded-3xl border border-slate-200/60 p-6 sm:p-7 shadow-sm transition-all duration-300 flex flex-col lg:flex-row justify-between gap-6 text-left ${
+                          className={`rounded-3xl border border-slate-200/60 p-5 sm:p-7 shadow-sm transition-all duration-300 flex flex-col lg:flex-row justify-between gap-5 sm:gap-6 text-left ${
                             isActive
                               ? "bg-white border-l-4 border-l-[#c9a24c] hover:shadow-md hover:shadow-slate-100/40 hover:border-[#c9a24c]/50"
                               : booking.status === "Cancelled"
@@ -3350,11 +3343,18 @@ function CustomerDashboard() {
                                     <span className="inline-flex items-center gap-1 bg-[#1e2a5a]/5 text-[#1e2a5a] px-2.5 py-1 rounded-lg text-[10.5px] font-extrabold font-mono">
                                       Total: ₹{Number(booking.amount).toLocaleString()}
                                     </span>
-                                    {booking.advancePaid ? (
-                                      <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-200">
-                                        Paid: ₹{Number(booking.advancePaid).toLocaleString()}
+                                    <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 px-2.5 py-1 rounded-lg text-[10.5px] font-bold border border-emerald-200">
+                                      Paid: ₹{advPaid.toLocaleString()}
+                                    </span>
+                                    {balDue > 0 ? (
+                                      <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-900 px-2.5 py-1 rounded-lg text-[10.5px] font-bold border border-amber-300">
+                                        Balance: ₹{balDue.toLocaleString()}
                                       </span>
-                                    ) : null}
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-900 px-2.5 py-1 rounded-lg text-[10.5px] font-bold border border-emerald-300">
+                                        Settled
+                                      </span>
+                                    )}
                                   </div>
                                 )}
                               </div>
