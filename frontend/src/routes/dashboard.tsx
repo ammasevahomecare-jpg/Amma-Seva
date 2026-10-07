@@ -499,13 +499,17 @@ function CustomerDashboard() {
   // View states
   const [activeView, setActiveView] = useState<"bookings" | "new-booking">(() => {
     if (typeof window !== "undefined") {
-      const userToken = localStorage.getItem("ammaseva_user_token");
       const urlParams = new URLSearchParams(window.location.search);
-      if (!userToken || urlParams.get("service") || urlParams.get("book") === "true") {
+      // Only switch to new-booking if specifically requested via URL parameters
+      if (urlParams.get("service") || urlParams.get("book") === "true") {
         return "new-booking";
       }
+      const userToken = localStorage.getItem("ammaseva_user_token");
+      if (userToken) {
+        return "bookings";
+      }
     }
-    return "new-booking";
+    return "bookings";
   });
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [caretakerBookings, setCaretakerBookings] = useState<Booking[]>([]);
@@ -750,6 +754,10 @@ function CustomerDashboard() {
           }
         } else {
           setSelectedServiceId(formatted[0].id);
+          const userToken = typeof window !== "undefined" ? localStorage.getItem("ammaseva_user_token") : null;
+          if (userToken) {
+            setActiveView("bookings");
+          }
         }
       }
     });
@@ -759,7 +767,8 @@ function CustomerDashboard() {
   useEffect(() => {
     if (servicesList.length === 0) return;
     const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
-    const preSelected = ((search?.service || search?.book || urlParams.get("service") || urlParams.get("book") || "") as string).toLowerCase().trim();
+    const rawService = search?.service || search?.book || urlParams.get("service") || urlParams.get("book");
+    const preSelected = (rawService ? String(rawService) : "").toLowerCase().trim();
     if (preSelected === "mtp" || preSelected.startsWith("mtp")) {
       const mtpItem = servicesList.find(s => s.isMtp || s.id.startsWith("mtp")) || { id: "mtp-hospital-escort" };
       setSelectedServiceId(mtpItem.id);
@@ -779,6 +788,12 @@ function CustomerDashboard() {
       if (matchingService) {
         setSelectedServiceId(matchingService.id);
         setActiveView("new-booking");
+      }
+    } else {
+      // Direct dashboard navigation without preselected service
+      const userToken = typeof window !== "undefined" ? localStorage.getItem("ammaseva_user_token") : null;
+      if (userToken) {
+        setActiveView("bookings");
       }
     }
   }, [servicesList, search?.service, search?.book]);
