@@ -841,6 +841,30 @@ function CustomerDashboard() {
     }
   }, [user, activeView]);
 
+  // Handle auto-triggering balance payment or opening a booking from email link ?payBookingId=123
+  useEffect(() => {
+    if (typeof window !== "undefined" && bookings.length > 0) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const payBookingId = urlParams.get("payBookingId") || urlParams.get("bookingId");
+      if (payBookingId) {
+        const targetId = Number(payBookingId);
+        const targetBooking = bookings.find((b) => b.id === targetId);
+        if (targetBooking) {
+          setExpandedBookingIds((prev) => ({ ...prev, [targetId]: true }));
+          setTimeout(() => {
+            const el = document.getElementById(`booking-card-${targetId}`);
+            if (el) {
+              el.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+            if (Number(targetBooking.balanceAmount) > 0 && targetBooking.status !== "Cancelled") {
+              handlePayBalance(targetBooking);
+            }
+          }, 500);
+        }
+      }
+    }
+  }, [bookings]);
+
   // Automatically adjust billing option based on selected service's pricing unit
   useEffect(() => {
     const current = servicesList.find(s => s.id === selectedServiceId) || servicesList[0];
@@ -3304,6 +3328,7 @@ function CustomerDashboard() {
                       return (
                         <div
                           key={booking.id}
+                          id={`booking-card-${booking.id}`}
                           className={`rounded-3xl border border-slate-200/60 p-5 sm:p-7 shadow-sm transition-all duration-300 flex flex-col lg:flex-row justify-between gap-5 sm:gap-6 text-left ${
                             isActive
                               ? "bg-white border-l-4 border-l-[#c9a24c] hover:shadow-md hover:shadow-slate-100/40 hover:border-[#c9a24c]/50"
@@ -3360,6 +3385,16 @@ function CustomerDashboard() {
                               </div>
                               
                               <div className="flex items-center gap-2 self-start sm:self-center shrink-0 pt-1 sm:pt-0">
+                                {!isExpanded && balDue > 0 && booking.status !== "Cancelled" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handlePayBalance(booking)}
+                                    className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95 flex items-center gap-1"
+                                    title="Pay Remaining Balance Online"
+                                  >
+                                    <span>💳 Pay Bal (₹{balDue.toLocaleString()})</span>
+                                  </button>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() => setExpandedBookingIds(prev => ({ ...prev, [booking.id]: !isExpanded }))}
