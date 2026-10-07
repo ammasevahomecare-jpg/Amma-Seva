@@ -9,7 +9,7 @@ import {
   AlertTriangle, RefreshCw, XCircle, Download, CreditCard, 
   Phone, Briefcase, ChevronRight, Check, DollarSign, QrCode, Upload,
   Star, MessageSquare, Eye, Gift, Copy, Send, Share2, ExternalLink, Sparkles,
-  Shield, ArrowRight, ShieldCheck, Filter, Search, RotateCcw
+  Shield, ArrowRight, ShieldCheck, Filter, Search, RotateCcw, MessageCircle, Heart, Lock, ShieldAlert
 } from "lucide-react";
 
 // Helper to compute / format Referral Code (FIRSTNAME + LAST 4 DIGITS OF PHONE)
@@ -1784,7 +1784,7 @@ function CustomerDashboard() {
                         </div>
                         <div>
                           <div className="text-[10px] font-extrabold uppercase tracking-widest text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full inline-block mb-0.5">
-                            MTP Reference ID #{caretaker.id || "MTP-PENDING"}
+                            MTP Reference ID #{caretaker?.id || "MTP-PENDING"}
                           </div>
                           <h3 className="text-lg sm:text-xl font-extrabold text-primary font-display">
                             MTP Application Under Admin Verification
@@ -1804,24 +1804,24 @@ function CustomerDashboard() {
                     <div className="rounded-2xl border border-slate-200/80 bg-white p-4 grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-xs text-slate-700">
                       <div>
                         <span className="text-slate-400 block text-[10px] font-bold uppercase">Applicant Name</span>
-                        <span className="font-bold text-primary">{caretaker.name}</span>
+                        <span className="font-bold text-primary">{caretaker?.name || "Applicant"}</span>
                       </div>
                       <div>
                         <span className="text-slate-400 block text-[10px] font-bold uppercase">Registered Phone</span>
-                        <span className="font-bold text-primary font-mono">{caretaker.phone}</span>
+                        <span className="font-bold text-primary font-mono">{caretaker?.phone || ""}</span>
                       </div>
                       <div>
                         <span className="text-slate-400 block text-[10px] font-bold uppercase">Email Address</span>
-                        <span className="font-medium text-slate-800 truncate block">{caretaker.email || "N/A"}</span>
+                        <span className="font-medium text-slate-800 truncate block">{caretaker?.email || "N/A"}</span>
                       </div>
                       <div>
                         <span className="text-slate-400 block text-[10px] font-bold uppercase">Operational Zone</span>
-                        <span className="font-bold text-primary">{caretaker.workingLocations || caretaker.locality || "Hyderabad"}</span>
+                        <span className="font-bold text-primary">{caretaker?.workingLocations || caretaker?.locality || "Hyderabad"}</span>
                       </div>
                       <div className="sm:col-span-2">
                         <span className="text-slate-400 block text-[10px] font-bold uppercase">Selected Task Roles</span>
                         <span className="font-bold text-emerald-700">
-                          {Array.isArray(caretaker.roles) ? caretaker.roles.join(', ') : (caretaker.roles || "On-Demand Tasks & Senior Escort")}
+                          {Array.isArray(caretaker?.roles) ? caretaker.roles.join(', ') : (caretaker?.roles || "On-Demand Tasks & Senior Escort")}
                         </span>
                       </div>
                     </div>
@@ -1833,7 +1833,7 @@ function CustomerDashboard() {
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <a
-                          href={`https://wa.me/919494516543?text=Hi%20Amma%20Seva%20Coordinator,%20I%20have%20registered%20as%20an%20MTP%20(${encodeURIComponent(caretaker.name)}%20-%20${encodeURIComponent(caretaker.phone)}).%20My%20Ref%20ID%20is%20%23${caretaker.id || "PENDING"}.%20Please%20verify%20my%20application.`}
+                          href={`https://wa.me/919494516543?text=Hi%20Amma%20Seva%20Coordinator,%20I%20have%20registered%20as%20an%20MTP%20(${encodeURIComponent(caretaker?.name || "")}%20-%20${encodeURIComponent(caretaker?.phone || "")}).%20My%20Ref%20ID%20is%20%23${caretaker?.id || "PENDING"}.%20Please%20verify%20my%20application.`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#25D366] hover:bg-emerald-600 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
