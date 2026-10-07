@@ -542,6 +542,12 @@ function CustomerDashboard() {
   const [bookingDuration, setBookingDuration] = useState("Daily");
   const [durationCount, setDurationCount] = useState<number>(1);
   const [bookingStep, setBookingStep] = useState(1);
+  const goToBookingStep = (step: number) => {
+    setBookingStep(step);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+  };
   const [bookingAddress, setBookingAddress] = useState("");
   const [patientName, setPatientName] = useState("");
   const [patientAge, setPatientAge] = useState("");
@@ -4363,11 +4369,11 @@ function CustomerDashboard() {
                         type="button"
                         key={s.step}
                         onClick={() => {
-                          if (s.step === 1) setBookingStep(1);
-                          else if (s.step === 2 && validateStep1()) setBookingStep(2);
-                          else if (s.step === 3 && validateStep1() && validateStep2()) setBookingStep(3);
+                          if (s.step === 1) goToBookingStep(1);
+                          else if (s.step === 2 && validateStep1()) goToBookingStep(2);
+                          else if (s.step === 3 && validateStep1() && validateStep2()) goToBookingStep(3);
                         }}
-                        className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                        className={`flex items-center justify-center gap-2 min-h-[42px] py-2 px-3 rounded-xl text-xs font-bold leading-normal transition-all cursor-pointer border ${
                           isActive
                             ? "bg-[#0b183b] text-[#c9a24c] border-[#0b183b] shadow-sm ring-2 ring-[#c9a24c]/20"
                             : isCompleted
@@ -4550,12 +4556,12 @@ function CustomerDashboard() {
                       <button
                         type="button"
                         onClick={() => {
-                          if (validateStep1()) setBookingStep(2);
+                          if (validateStep1()) goToBookingStep(2);
                         }}
-                        className="h-11 sm:h-12 px-6 bg-[#1e2a5a] hover:bg-[#283870] text-[#c9a24c] hover:text-white rounded-xl font-extrabold text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all"
+                        className="min-h-[46px] h-auto py-2.5 px-5 sm:px-6 bg-[#1e2a5a] hover:bg-[#283870] text-[#c9a24c] hover:text-white rounded-xl font-extrabold text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all whitespace-nowrap leading-snug"
                       >
                         <span>Next: Patient Profile</span>
-                        <ChevronRight className="h-4 w-4" />
+                        <ChevronRight className="h-4 w-4 shrink-0" />
                       </button>
                     </div>
 
@@ -4752,20 +4758,20 @@ function CustomerDashboard() {
                     <div className="flex justify-between items-center gap-3 pt-2">
                       <button
                         type="button"
-                        onClick={() => setBookingStep(1)}
-                        className="h-11 sm:h-12 px-5 rounded-xl border border-slate-200 hover:bg-slate-100 font-bold text-xs sm:text-sm uppercase tracking-wider text-slate-700 cursor-pointer transition-all"
+                        onClick={() => goToBookingStep(1)}
+                        className="min-h-[46px] h-auto py-2.5 px-4 sm:px-5 rounded-xl border border-slate-200 hover:bg-slate-100 font-bold text-xs sm:text-sm uppercase tracking-wider text-slate-700 cursor-pointer transition-all shrink-0 whitespace-nowrap leading-snug"
                       >
                         ← Back
                       </button>
                       <button
                         type="button"
                         onClick={() => {
-                          if (validateStep2()) setBookingStep(3);
+                          if (validateStep2()) goToBookingStep(3);
                         }}
-                        className="h-11 sm:h-12 px-6 bg-[#1e2a5a] hover:bg-[#283870] text-[#c9a24c] hover:text-white rounded-xl font-extrabold text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all"
+                        className="min-h-[46px] h-auto py-2.5 px-4 sm:px-6 bg-[#1e2a5a] hover:bg-[#283870] text-[#c9a24c] hover:text-white rounded-xl font-extrabold text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all whitespace-nowrap leading-snug"
                       >
                         <span>Next: Location &amp; Pay</span>
-                        <ChevronRight className="h-4 w-4" />
+                        <ChevronRight className="h-4 w-4 shrink-0" />
                       </button>
                     </div>
 
@@ -4845,76 +4851,80 @@ function CustomerDashboard() {
                       </div>
                     </div>
 
-                    {/* Transparent Price Settlement Breakdown with 18% GST */}
-                    <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-50/50 via-white to-slate-50 border border-amber-300/80 shadow-sm space-y-4">
-                      <div className="flex items-center justify-between border-b border-slate-200/80 pb-3">
-                        <span className="text-xs font-black uppercase tracking-wider text-[#1e2a5a] flex items-center gap-1.5">
-                          <span>🧾</span> Dynamic Price &amp; Tax Settlement
+                    {/* Clean Luxury Payment Summary Breakdown */}
+                    <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/90 border border-slate-200/90 shadow-2xs space-y-3.5">
+                      {/* Header */}
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
+                        <span className="text-xs font-bold uppercase tracking-wider text-[#0b183b] flex items-center gap-1.5">
+                          <span>🧾</span> Payment Summary
                         </span>
-                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/90 px-2.5 py-0.5 rounded-full border border-emerald-300">
-                          18% GST Dynamic
+                        <span className="text-[10px] sm:text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                          <ShieldCheck className="h-3 w-3 text-emerald-600 shrink-0" />
+                          <span>100% Escrow Protected</span>
                         </span>
                       </div>
 
+                      {/* Line Items */}
                       <div className="space-y-2 text-xs">
                         <div className="flex justify-between items-center text-slate-600">
-                          <span className="font-medium">Base Service Value ({durationCount} {bookingDuration}):</span>
-                          <span className="font-bold text-slate-900 font-mono">₹{calculateBaseAmount().toLocaleString()}</span>
+                          <span className="font-medium">Base Service ({durationCount} {bookingDuration}):</span>
+                          <span className="font-bold text-slate-900 font-mono text-xs sm:text-sm">₹{calculateBaseAmount().toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between items-center text-slate-600">
-                          <span className="flex items-center gap-1">
-                            <span className="font-medium">+ 18% GST (CGST 9% + SGST 9%):</span>
-                            <span className="text-[9px] text-amber-800 bg-amber-100/80 px-1.5 py-0.2 rounded font-bold">Govt. Tax</span>
-                          </span>
-                          <span className="font-bold text-amber-900 font-mono">+₹{calculateGST().toLocaleString()}</span>
+                          <span className="font-medium">GST Govt. Tax (18%):</span>
+                          <span className="font-bold text-slate-700 font-mono text-xs sm:text-sm">+₹{calculateGST().toLocaleString()}</span>
                         </div>
-                        <div className="flex justify-between items-center pt-2 border-t border-dashed border-slate-300 text-sm">
-                          <span className="font-extrabold text-[#0b183b]">Total Shift Value (incl. 18% GST):</span>
-                          <span className="font-black text-lg text-[#0b183b] font-display">₹{calculateTotal().toLocaleString()}</span>
+                        <div className="flex justify-between items-center pt-2 border-t border-dashed border-slate-200 text-sm">
+                          <span className="font-extrabold text-[#0b183b]">Total Shift Amount:</span>
+                          <span className="font-black text-base sm:text-lg text-[#0b183b] font-display">₹{calculateTotal().toLocaleString()}</span>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-center pt-1">
-                        <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-300 shadow-2xs text-left">
-                          <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-800 block">
-                            Advance Booking (Pay Now)
-                          </span>
-                          <div className="flex items-baseline justify-between mt-1">
-                            <span className="text-xl font-black text-emerald-900 font-display">
+                      {/* Split Payment Card (Pay Advance vs Post-Shift Balance) */}
+                      {calculateAdvance() > 0 ? (
+                        <div className="bg-white rounded-xl border border-slate-200/90 p-3 shadow-2xs grid grid-cols-2 divide-x divide-slate-150">
+                          <div className="pr-3">
+                            <span className="text-[10px] uppercase font-bold text-emerald-800 tracking-wider block">
+                              Pay Advance Now
+                            </span>
+                            <div className="text-lg sm:text-xl font-black text-emerald-950 font-display mt-0.5">
                               ₹{calculateAdvance().toLocaleString()}
+                            </div>
+                            <span className="text-[10px] font-bold text-emerald-700 flex items-center gap-1 mt-0.5">
+                              🔒 Locks Caregiver
                             </span>
-                            <span className="text-[10px] font-bold text-emerald-700">🔒 Escrow Lock</span>
                           </div>
-                        </div>
 
-                        <div className="bg-amber-50 p-3 rounded-xl border border-amber-300 shadow-2xs text-left">
-                          <span className="text-[10px] uppercase font-bold tracking-wider text-amber-900 block">
-                            Post-Shift Balance Due
-                          </span>
-                          <div className="flex items-baseline justify-between mt-1">
-                            <span className="text-xl font-black text-amber-950 font-display">
+                          <div className="pl-3">
+                            <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block">
+                              Post-Shift Balance
+                            </span>
+                            <div className="text-lg sm:text-xl font-black text-slate-900 font-display mt-0.5">
                               ₹{(calculateTotal() - calculateAdvance()).toLocaleString()}
+                            </div>
+                            <span className="text-[10px] font-medium text-slate-500 block mt-0.5">
+                              Pay after service
                             </span>
-                            <span className="text-[10px] font-bold text-amber-700">Pay after shift</span>
                           </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="p-3 rounded-xl bg-white border border-slate-200/90 text-xs text-slate-700 flex items-center justify-between">
+                          <span className="font-semibold">Pay On Service Completion:</span>
+                          <span className="font-black text-sm text-[#0b183b] font-mono">₹{calculateTotal().toLocaleString()}</span>
+                        </div>
+                      )}
 
-                      {/* Escrow Guarantee Trust Banner */}
-                      <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs leading-relaxed flex items-center gap-2.5">
-                        <span className="text-lg shrink-0">🛡️</span>
+                      {/* Escrow Guarantee Note */}
+                      <p className="text-[11px] text-slate-500 leading-normal flex items-start gap-1.5 pt-0.5">
+                        <span className="text-emerald-600 font-bold shrink-0">🛡️</span>
                         <span>
                           {calculateAdvance() > 0 ? (
-                            <>
-                              <strong>Amma Seva Escrow:</strong> Pay advance (<strong>₹{calculateAdvance().toLocaleString()}</strong>) now to lock verified caregiver. Remaining balance (<strong>₹{(calculateTotal() - calculateAdvance()).toLocaleString()}</strong>) is payable after shift completion.
-                            </>
+                            <>Advance (<strong>₹{calculateAdvance().toLocaleString()}</strong>) secures verified staff dispatch. Remaining balance is payable only after shift completion.</>
                           ) : (
-                            <>
-                              <strong>Amma Seva Verified Care:</strong> No upfront advance required. Complete shift amount (<strong>₹{calculateTotal().toLocaleString()}</strong>) is payable directly upon caregiver arrival / service completion.
-                            </>
+                            <>No advance required. Pay complete amount directly after caregiver visit.</>
                           )}
                         </span>
-                      </div>
+                      </p>
                     </div>
 
                     {/* Terms Agreement & Final Action Buttons */}
@@ -4935,26 +4945,28 @@ function CustomerDashboard() {
                       <div className="flex gap-3">
                         <button
                           type="button"
-                          onClick={() => setBookingStep(2)}
-                          className="h-12 sm:h-13 px-5 rounded-xl border border-slate-200 hover:bg-slate-100 font-bold text-xs sm:text-sm uppercase tracking-wider text-slate-700 cursor-pointer transition-all shrink-0"
+                          onClick={() => goToBookingStep(2)}
+                          className="min-h-[48px] h-auto py-3 px-4 sm:px-5 rounded-xl border border-slate-200 hover:bg-slate-100 font-bold text-xs sm:text-sm uppercase tracking-wider text-slate-700 cursor-pointer transition-all shrink-0 whitespace-nowrap leading-snug"
                         >
                           ← Back
                         </button>
                         <button
                           type="submit"
                           disabled={isSubmitting || isPaymentProcessing || !agreeTermsBooking}
-                          className="flex-1 h-12 sm:h-13 bg-gradient-to-r from-[#1e2a5a] via-[#091129] to-[#1e2a5a] hover:from-[#283870] hover:to-[#14224c] text-[#c9a24c] hover:text-white rounded-xl font-black uppercase tracking-wider text-xs sm:text-sm flex items-center justify-center gap-2.5 cursor-pointer shadow-xl shadow-[#1e2a5a]/25 disabled:opacity-50 transition-all"
+                          className="flex-1 min-h-[48px] h-auto py-3 px-4 bg-gradient-to-r from-[#1e2a5a] via-[#091129] to-[#1e2a5a] hover:from-[#283870] hover:to-[#14224c] text-[#c9a24c] hover:text-white rounded-xl font-black uppercase tracking-wider text-xs sm:text-sm flex items-center justify-center gap-2.5 cursor-pointer shadow-xl shadow-[#1e2a5a]/25 disabled:opacity-50 transition-all leading-snug text-center"
                         >
                           {(isSubmitting || isPaymentProcessing) && (
                             <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
                           )}
-                          {isPaymentProcessing 
-                            ? "Opening Gateway..." 
-                            : isSubmitting 
-                              ? "Securing Shift Allocation..." 
-                              : calculateAdvance() > 0
-                                ? `Pay ₹${calculateAdvance().toLocaleString()} Advance & Confirm`
-                                : "Confirm Booking & Dispatch"}
+                          <span className="leading-snug">
+                            {isPaymentProcessing 
+                              ? "Opening Gateway..." 
+                              : isSubmitting 
+                                ? "Securing Shift Allocation..." 
+                                : calculateAdvance() > 0
+                                  ? `Pay ₹${calculateAdvance().toLocaleString()} Advance & Confirm`
+                                  : "Confirm Booking & Dispatch"}
+                          </span>
                         </button>
                       </div>
                     </div>

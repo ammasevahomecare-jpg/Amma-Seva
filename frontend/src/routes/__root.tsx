@@ -78,6 +78,12 @@ function RootComponent() {
   const location = useLocation();
 
   useEffect(() => {
+    if (typeof window !== "undefined" && "scrollRestoration" in window.history) {
+      try {
+        window.history.scrollRestoration = "manual";
+      } catch (e) {}
+    }
+
     const scrollToTop = () => {
       if (location.hash) {
         const id = location.hash.replace("#", "");
@@ -87,16 +93,17 @@ function RootComponent() {
           return;
         }
       }
-      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
+      window.scrollTo(0, 0);
+      if (document.documentElement) document.documentElement.scrollTop = 0;
+      if (document.body) document.body.scrollTop = 0;
     };
 
     scrollToTop();
-    const rafId = requestAnimationFrame(scrollToTop);
-    const timer1 = setTimeout(scrollToTop, 20);
-    const timer2 = setTimeout(scrollToTop, 80);
-    const timer3 = setTimeout(scrollToTop, 200);
+    const rafId1 = requestAnimationFrame(scrollToTop);
+    const rafId2 = requestAnimationFrame(() => requestAnimationFrame(scrollToTop));
+    const timer1 = setTimeout(scrollToTop, 10);
+    const timer2 = setTimeout(scrollToTop, 60);
+    const timer3 = setTimeout(scrollToTop, 180);
 
     // Track Single-Page-App (SPA) route changes in Google Analytics GA4
     if (typeof window !== "undefined" && typeof (window as any).gtag === "function") {
@@ -118,11 +125,10 @@ function RootComponent() {
       clearTimeout(timer2);
       clearTimeout(timer3);
     };
-  }, [location.pathname, location.href, location.search]);
+  }, [location.pathname, location.search, location.hash]);
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ScrollRestoration getKey={(location) => location.pathname} />
       <Outlet />
     </QueryClientProvider>
   );

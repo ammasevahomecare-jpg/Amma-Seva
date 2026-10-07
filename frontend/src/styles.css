@@ -148,6 +148,21 @@
     text-align: justify;
   }
 
+  /* Universal Button Typography & Anti-Overlap */
+  button,
+  [role="button"],
+  input[type="button"],
+  input[type="submit"],
+  .btn {
+    line-height: 1.35 !important;
+    text-rendering: optimizeLegibility;
+  }
+
+  button span,
+  [role="button"] span {
+    line-height: inherit;
+  }
+
   h1 {
     font-family: var(--font-sans);
     font-weight: 800;
