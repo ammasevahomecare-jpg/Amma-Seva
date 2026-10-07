@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { useState, useEffect, type ReactNode } from "react";
 import { 
   Menu, X, Phone, MessageCircle, Mail, MapPin, Building2, 
@@ -539,34 +539,39 @@ function Footer() {
 }
 
 function FloatingActions() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isOnBookingOrAuth = pathname.startsWith("/dashboard") || pathname.startsWith("/login") || pathname.startsWith("/admin");
+
   return (
     <>
-      {/* Bottom-Left Quick Action Pills (Visible on all screens including Mobile) */}
-      <div className="fixed bottom-4 left-3 sm:bottom-5 sm:left-5 z-40 flex flex-col gap-2 sm:gap-2.5">
-        <a
-          href="/dashboard?service=elderly-care"
-          className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl bg-[#0b183b] text-white text-[11px] sm:text-xs font-bold shadow-xl border border-white/20 hover:scale-105 hover:bg-[#14234f] transition-all cursor-pointer backdrop-blur-md"
-        >
-          <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gold shrink-0" />
-          <span>Book Care Service</span>
-        </a>
-        <a
-          href="/dashboard?service=mtp"
-          className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl bg-gradient-to-r from-[#c9a24c] via-[#dfba63] to-[#b38938] text-[#0b183b] text-[11px] sm:text-xs font-extrabold shadow-xl border border-amber-200/50 hover:scale-105 transition-all cursor-pointer backdrop-blur-md"
-        >
-          <Car className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#0b183b] shrink-0" />
-          <span>Book MTP Task</span>
-          <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-emerald-500 animate-pulse ml-0.5 shrink-0" />
-        </a>
-      </div>
+      {/* Bottom-Left Quick Action Pills (Hidden on Dashboard and Auth to avoid overlap) */}
+      {!isOnBookingOrAuth && (
+        <div className="fixed bottom-4 left-3 sm:bottom-5 sm:left-5 z-40 flex flex-col gap-2 sm:gap-2.5">
+          <a
+            href="/dashboard?service=elderly-care"
+            className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl bg-[#0b183b] text-white text-[11px] sm:text-xs font-bold shadow-xl border border-white/20 hover:scale-105 hover:bg-[#14234f] transition-all cursor-pointer backdrop-blur-md"
+          >
+            <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gold shrink-0" />
+            <span>Book Care Service</span>
+          </a>
+          <a
+            href="/dashboard?service=mtp"
+            className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl bg-gradient-to-r from-[#c9a24c] via-[#dfba63] to-[#b38938] text-[#0b183b] text-[11px] sm:text-xs font-extrabold shadow-xl border border-amber-200/50 hover:scale-105 transition-all cursor-pointer backdrop-blur-md"
+          >
+            <Car className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#0b183b] shrink-0" />
+            <span>Book MTP Task</span>
+            <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-emerald-500 animate-pulse ml-0.5 shrink-0" />
+          </a>
+        </div>
+      )}
 
       {/* Bottom-Right Helpline & WhatsApp Floating Actions */}
-      <div className="fixed bottom-4 right-3 sm:bottom-5 sm:right-5 z-50 flex flex-col gap-2.5 sm:gap-3">
+      <div className={`fixed ${isOnBookingOrAuth ? "bottom-3 right-3 sm:bottom-5 sm:right-5" : "bottom-4 right-3 sm:bottom-5 sm:right-5"} z-50 flex flex-col gap-2 sm:gap-2.5`}>
         {/* Call Floating Action */}
         <a
           href={`tel:${PHONE_TEL}`}
           aria-label="Call Amma Seva"
-          className="flex h-11 w-11 sm:h-13 sm:w-13 items-center justify-center rounded-full bg-slate-900 text-white shadow-2xl border border-white/20 transition-all hover:bg-slate-800 hover:scale-110 active:scale-95 group relative"
+          className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-slate-900 text-white shadow-2xl border border-white/20 transition-all hover:bg-slate-800 hover:scale-110 active:scale-95 group relative"
         >
           <Phone className="h-4 w-4 sm:h-5 sm:w-5 text-white group-hover:animate-pulse" />
           <span className="absolute right-15 bg-slate-900 text-white text-[10px] font-bold py-1 px-2.5 rounded-lg shadow-md border border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap hidden sm:block">
@@ -580,11 +585,11 @@ function FloatingActions() {
           target="_blank"
           rel="noreferrer"
           aria-label="Chat on WhatsApp"
-          className="flex h-11 w-11 sm:h-13 sm:w-13 items-center justify-center rounded-full bg-[#25D366] text-white shadow-xl transition-all hover:scale-110 active:scale-95 group relative"
+          className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-[#25D366] text-white shadow-xl transition-all hover:scale-110 active:scale-95 group relative"
         >
           <svg 
             viewBox="0 0 24 24" 
-            className="h-6 w-6 sm:h-7 sm:w-7 fill-current text-white" 
+            className="h-5 w-5 sm:h-6 sm:w-6 fill-current text-white" 
             xmlns="http://www.w3.org/2000/svg"
           >
             <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.42 9.864-9.864.002-2.637-1.03-5.114-2.905-6.99C16.546 1.875 14.072 1.84 11.43 1.84 6.002 1.84 1.578 6.262 1.574 11.693c-.001 1.705.452 3.369 1.31 4.8l-.94 3.433 3.506-.921zm12.338-7.531c-.34-.17-2.01-.993-2.321-1.106-.312-.113-.538-.17-.765.17-.227.34-.879 1.106-1.078 1.328-.199.222-.399.249-.739.08-.34-.17-1.436-.53-2.735-1.69-1.01-.9-1.694-2.01-1.892-2.35-.198-.34-.021-.524.149-.693.153-.152.34-.399.51-.599.17-.2.227-.34.34-.566.113-.227.056-.425-.028-.595-.085-.17-.765-1.842-1.049-2.528-.276-.662-.555-.572-.765-.583-.198-.011-.425-.013-.652-.013-.227 0-.595.085-.907.425-.312.34-1.191 1.164-1.191 2.837 0 1.673 1.218 3.293 1.388 3.52.17.227 2.399 3.662 5.811 5.137.812.35 1.446.56 1.94.717.816.26 1.56.223 2.148.135.656-.098 2.01-.822 2.294-1.583.283-.762.283-1.417.198-1.583-.085-.17-.312-.27-.652-.44z"/>

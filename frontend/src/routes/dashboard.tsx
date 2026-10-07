@@ -127,6 +127,8 @@ interface Booking {
   status: string;
   assignedStaff: string | null;
   amount: number;
+  baseAmount?: number;
+  gstAmount?: number;
   paymentStatus: string;
   createdAt: string;
   patientName?: string;
@@ -539,6 +541,8 @@ function CustomerDashboard() {
   const [bookingAddress, setBookingAddress] = useState("");
   const [patientName, setPatientName] = useState("");
   const [patientAge, setPatientAge] = useState("");
+  const [patientRelation, setPatientRelation] = useState("Parents (Elderly)");
+  const [patientMobility, setPatientMobility] = useState("Fully Mobile");
   const [patientNeeds, setPatientNeeds] = useState("");
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
@@ -891,13 +895,13 @@ function CustomerDashboard() {
     return { hourly, daily, weekly, monthly, basis };
   };
 
-  const calculateTotal = () => {
+  const calculateBaseAmount = () => {
     const isMtpBooking = Boolean(currentService?.isMtp || (selectedServiceId && (selectedServiceId.startsWith("mtp") || selectedServiceId.includes("mtp"))));
     if (isMtpBooking) {
-      return 100; // Present base fee of ₹100 for MTP task bookings (admin can adjust later)
+      return 0; // Free Dispatch / Pay on Service (₹0 upfront advance)
     }
-    const rates = getServiceRates();
     const count = Number(durationCount) || 1;
+    const rates = getServiceRates();
     switch (bookingDuration) {
       case "Hourly": return rates.hourly * count;
       case "Daily": return rates.daily * count;
@@ -907,16 +911,24 @@ function CustomerDashboard() {
     }
   };
 
+  const calculateGST = (base?: number) => {
+    const b = base !== undefined ? base : calculateBaseAmount();
+    return Math.round(b * 0.18);
+  };
+
+  const calculateTotal = () => {
+    const base = calculateBaseAmount();
+    const gst = calculateGST(base);
+    return base + gst;
+  };
+
   const calculateAdvance = () => {
     const isMtpBooking = Boolean(currentService?.isMtp || (selectedServiceId && (selectedServiceId.startsWith("mtp") || selectedServiceId.includes("mtp"))));
     if (isMtpBooking) {
-      return paymentMethod === "razorpay" ? 100 : 0;
+      return 0; // ₹0 upfront advance for MTP tasks
     }
-    const service = servicesList.find(s => s.id === selectedServiceId) || SERVICES_CATALOG.find(s => s.id === selectedServiceId) || servicesList[0] || SERVICES_CATALOG[0];
-    if (!service) return 300;
-    const baseAdvance = service.advance !== undefined ? Number(service.advance) : Math.round((service.rate || 1200) * 0.2);
-    const count = Number(durationCount) || 1;
-    return baseAdvance * count;
+    // 20% advance on total amount (inclusive of 18% GST)
+    return Math.round(calculateTotal() * 0.2);
   };
 
   const validateStep1 = () => {
@@ -1055,9 +1067,11 @@ function CustomerDashboard() {
               (durationCount === 1 ? "Month" : "Months")
             }`;
 
-        const totalCost = isMtpBooking ? 100 : calculateTotal();
+        const baseCost = calculateBaseAmount();
+        const gstCost = calculateGST(baseCost);
+        const totalCost = calculateTotal();
         const advPaid = isMtpBooking 
-          ? (payStatus === "Advance Paid" || payStatus === "Paid" ? 100 : 0)
+          ? (payStatus === "Advance Paid" || payStatus === "Paid" ? totalCost : 0)
           : (payStatus === "Advance Paid" ? calculateAdvance() : 0);
         const balDue = Math.max(0, totalCost - advPaid);
 
@@ -1076,6 +1090,8 @@ function CustomerDashboard() {
             time: bookingTime || "09:00 AM",
             duration: formattedDuration || "1 Day",
             address: bookingAddress || "Hyderabad, Telangana",
+            baseAmount: baseCost,
+            gstAmount: gstCost,
             amount: totalCost,
             patientName: isMtpBooking ? bookerName : (patientName || bookerName),
             patientAge: isMtpBooking ? "" : patientAge,
@@ -1143,8 +1159,8 @@ function CustomerDashboard() {
       return;
     }
 
-    if (paymentMethod === "razorpay" && (isMtpBooking ? 100 : calculateAdvance()) > 0) {
-      const chargeAmount = isMtpBooking ? 100 : calculateAdvance();
+    if (paymentMethod === "razorpay" && (isMtpBooking ? calculateTotal() : calculateAdvance()) > 0) {
+      const chargeAmount = isMtpBooking ? calculateTotal() : calculateAdvance();
       try {
         setIsPaymentProcessing(true);
         const orderRes = await fetch("/api/payment/order", {
@@ -2978,160 +2994,202 @@ function CustomerDashboard() {
 
         <div className="mx-auto max-w-[1440px] relative z-10">
           
-          {/* Executive Welcome Banner */}
-          <div className="relative overflow-hidden rounded-3xl border border-[#c9a24c]/35 bg-gradient-to-r from-[#091129] via-[#0f1d44] to-[#182858] p-6 sm:p-9 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 text-left">
-            {/* Ambient inner glow orbs */}
-            <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-[#c9a24c]/15 via-transparent to-transparent rounded-full blur-2xl pointer-events-none" />
-            <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-indigo-600/10 rounded-full blur-2xl pointer-events-none" />
-            
-            <div className="flex items-center gap-5 relative z-10">
-              {/* Dual-ring gold avatar / icon */}
-              <div className="p-0.5 rounded-2xl bg-gradient-to-tr from-[#c9a24c] via-[#ecd599] to-[#c9a24c] shadow-lg shadow-black/30 shrink-0">
-                <div className="h-16 w-16 rounded-[14px] bg-[#091129] flex items-center justify-center font-display font-black text-2xl text-[#c9a24c] uppercase tracking-wider select-none">
-                  {user ? (user?.name || "P").substring(0, 2) : "✨"}
+          {/* Header Section: Full Banner when in Bookings view, Sleek Compact Bar when in Booking Wizard */}
+          {activeView === "bookings" ? (
+            <>
+              {/* Executive Welcome Banner */}
+              <div className="relative overflow-hidden rounded-3xl border border-[#c9a24c]/35 bg-gradient-to-r from-[#091129] via-[#0f1d44] to-[#182858] p-5 sm:p-8 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-5 mb-6 text-left">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-[#c9a24c]/15 via-transparent to-transparent rounded-full blur-2xl pointer-events-none" />
+                <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-indigo-600/10 rounded-full blur-2xl pointer-events-none" />
+                
+                <div className="flex items-center gap-4 relative z-10">
+                  <div className="p-0.5 rounded-2xl bg-gradient-to-tr from-[#c9a24c] via-[#ecd599] to-[#c9a24c] shadow-lg shadow-black/30 shrink-0">
+                    <div className="h-14 w-14 rounded-[14px] bg-[#091129] flex items-center justify-center font-display font-black text-xl text-[#c9a24c] uppercase tracking-wider select-none">
+                      {user ? (user?.name || "P").substring(0, 2) : "✨"}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-[10px] font-bold uppercase tracking-widest text-[#e4c277] mb-1 shadow-xs">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>{user ? "Verified Customer Portal" : "Direct Instant Booking"}</span>
+                    </div>
+                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold font-display leading-tight text-white">
+                      {user ? (
+                        <>Welcome back, <span className="bg-gradient-to-r from-[#edd69c] via-[#f7e8c2] to-[#c9a24c] bg-clip-text text-transparent">{user?.name || "Patient"}</span></>
+                      ) : (
+                        <>Book <span className="bg-gradient-to-r from-[#edd69c] via-[#f7e8c2] to-[#c9a24c] bg-clip-text text-transparent">Home Care &amp; MTP Tasks</span></>
+                      )}
+                    </h1>
+                    <p className="text-xs text-slate-300/90 mt-0.5 max-w-xl leading-relaxed">
+                      {user 
+                        ? "Manage your homecare bookings, track assigned verified caregivers, and schedule new care shifts."
+                        : "Fast, background-verified caretaker allocation and companion tasks with 100% escrow protection across Hyderabad."}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto shrink-0 relative z-10">
+                  {user ? (
+                    <>
+                      <button
+                        onClick={() => setActiveView("new-booking")}
+                        className="px-5 py-2.5 bg-gradient-to-r from-[#d8b456] via-[#c9a24c] to-[#b88d30] hover:from-[#e0be67] hover:to-[#c4983b] text-[#091129] text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all font-sans"
+                      >
+                        <Calendar className="h-3.5 w-3.5" /> Schedule New Shift
+                      </button>
+                      <button
+                        onClick={handleLogout}
+                        className="px-4 py-2.5 rounded-xl border border-white/15 bg-white/5 hover:bg-rose-500/15 hover:border-rose-500/40 text-slate-200 hover:text-rose-300 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                      >
+                        Sign Out
+                      </button>
+                    </>
+                  ) : (
+                    <Link
+                      to="/login"
+                      className="px-5 py-2.5 rounded-xl border border-white/20 bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition-all backdrop-blur-md shadow-md"
+                    >
+                      <User className="h-3.5 w-3.5 text-gold" /> Existing Customer Sign In
+                    </Link>
+                  )}
                 </div>
               </div>
 
-              <div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-[10px] font-bold uppercase tracking-widest text-[#e4c277] mb-1.5 shadow-xs">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>{user ? "Verified Customer Portal" : "Direct Instant Booking"}</span>
+              {/* Quick Metrics Statistics Grid (Rendered for logged in customers in My Bookings view) */}
+              {user && (
+                <div className="grid gap-3.5 grid-cols-2 lg:grid-cols-4 mb-6">
+                  {/* 1. Total Bookings */}
+                  <div className="rounded-2xl border border-slate-200/80 bg-white/90 backdrop-blur-md p-4 text-left shadow-xs hover:border-[#c9a24c]/50 transition-all">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-[#b38b32] border border-amber-500/25">
+                        <Calendar className="h-5 w-5" />
+                      </span>
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Bookings</div>
+                        <div className="text-xl font-black text-[#0b183b] font-display">{bookings.length}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2. Assigned Caregivers */}
+                  <div className="rounded-2xl border border-slate-200/80 bg-white/90 backdrop-blur-md p-4 text-left shadow-xs hover:border-[#c9a24c]/50 transition-all">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500/15 text-[#1e2a5a] border border-indigo-500/25">
+                        <User className="h-5 w-5" />
+                      </span>
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Caregivers</div>
+                        <div className="text-xl font-black text-[#0b183b] font-display">
+                          {bookings.filter(b => b.assignedStaff && b.status !== "Cancelled").length} Active
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3. Total Spend (Paid) */}
+                  <div className="rounded-2xl border border-slate-200/80 bg-white/90 backdrop-blur-md p-4 text-left shadow-xs hover:border-[#c9a24c]/50 transition-all">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 border border-emerald-500/25">
+                        <DollarSign className="h-5 w-5" />
+                      </span>
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Spend</div>
+                        <div className="text-xl font-black text-slate-800 font-display">
+                          ₹{bookings.reduce((sum, b) => sum + Number(b.advancePaid || 0), 0).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4. Pending Balance */}
+                  <div className="rounded-2xl border border-slate-200/80 bg-white/90 backdrop-blur-md p-4 text-left shadow-xs hover:border-[#c9a24c]/50 transition-all">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-500/15 text-rose-600 border border-rose-500/25">
+                        <CreditCard className="h-5 w-5" />
+                      </span>
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pending Balance</div>
+                        <div className="text-xl font-black text-slate-800 font-display">
+                          ₹{bookings.filter(b => b.status !== "Cancelled" && b.paymentStatus !== "Paid").reduce((sum, b) => sum + Number(b.balanceAmount || 0), 0).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold font-display leading-tight text-white">
-                  {user ? (
-                    <>Welcome back, <span className="bg-gradient-to-r from-[#edd69c] via-[#f7e8c2] to-[#c9a24c] bg-clip-text text-transparent">{user?.name || "Patient"}</span></>
-                  ) : (
-                    <>Book <span className="bg-gradient-to-r from-[#edd69c] via-[#f7e8c2] to-[#c9a24c] bg-clip-text text-transparent">Home Care &amp; MTP Tasks</span></>
-                  )}
-                </h1>
-                <p className="text-xs sm:text-sm text-slate-300/90 mt-1 max-w-xl leading-relaxed">
-                  {user 
-                    ? "Manage your homecare bookings, track assigned verified caregivers, and schedule new care shifts."
-                    : "Fast, background-verified caretaker allocation and companion tasks with 100% escrow protection across Hyderabad."}
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto shrink-0 relative z-10">
-              {user ? (
-                <>
-                  <button
-                    onClick={() => setActiveView(activeView === "bookings" ? "new-booking" : "bookings")}
-                    className="px-6 py-3.5 bg-gradient-to-r from-[#d8b456] via-[#c9a24c] to-[#b88d30] hover:from-[#e0be67] hover:to-[#c4983b] text-[#091129] text-xs font-extrabold uppercase tracking-wider rounded-2xl flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-[#c9a24c]/20 hover:shadow-xl hover:shadow-[#c9a24c]/30 hover:-translate-y-0.5 active:translate-y-0 transition-all font-sans w-full sm:w-auto"
-                  >
-                    {activeView === "bookings" ? (
-                      <>
-                        <Calendar className="h-4 w-4" /> Book New Service
-                      </>
-                    ) : (
-                      <>
-                        <FileText className="h-4 w-4" /> View My Bookings
-                      </>
-                    )}
-                  </button>
-                  <button
-                    onClick={handleLogout}
-                    className="px-5 py-3.5 rounded-2xl border border-white/15 bg-white/5 hover:bg-rose-500/15 hover:border-rose-500/40 text-slate-200 hover:text-rose-300 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all hover:-translate-y-0.5 active:translate-y-0 backdrop-blur-md font-sans w-full sm:w-auto"
-                  >
-                    Sign Out
-                  </button>
-                </>
-              ) : (
-                <Link
-                  to="/login"
-                  className="px-6 py-3.5 rounded-2xl border border-white/20 bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all hover:-translate-y-0.5 active:translate-y-0 backdrop-blur-md font-sans w-full sm:w-auto shadow-md"
-                >
-                  <User className="h-4 w-4 text-gold" /> Existing Customer Sign In
-                </Link>
               )}
-            </div>
-          </div>
- 
-          {/* Quick Metrics Statistics Grid (Rendered for logged in customers) */}
-          {user && (
-          <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-            {/* 1. Total Bookings */}
-            <div className="rounded-3xl border border-slate-200/80 bg-white/90 backdrop-blur-md p-6 text-left shadow-sm hover:border-[#c9a24c]/50 hover:shadow-xl hover:shadow-[#c9a24c]/10 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
-              <Calendar className="absolute -right-3 -bottom-3 h-24 w-24 text-slate-100/70 group-hover:text-amber-500/10 transition-colors pointer-events-none -z-0" />
-              <div className="flex items-center gap-4 relative z-10">
-                <span className="flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500/15 to-amber-500/5 text-[#b38b32] border border-amber-500/25 shadow-inner">
-                  <Calendar className="h-6 w-6" />
-                </span>
-                <div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Bookings</div>
-                  <div className="text-2xl font-black text-[#0b183b] font-display mt-0.5">{bookings.length}</div>
-                  <span className="inline-block text-[10px] text-slate-500 font-semibold mt-0.5">Lifetime care requests</span>
-                </div>
-              </div>
-            </div>
- 
-            {/* 2. Assigned Caregivers */}
-            <div className="rounded-3xl border border-slate-200/80 bg-white/90 backdrop-blur-md p-6 text-left shadow-sm hover:border-[#c9a24c]/50 hover:shadow-xl hover:shadow-indigo-500/10 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
-              <User className="absolute -right-3 -bottom-3 h-24 w-24 text-slate-100/70 group-hover:text-indigo-500/10 transition-colors pointer-events-none -z-0" />
-              <div className="flex items-center gap-4 relative z-10">
-                <span className="flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1e2a5a]/15 to-[#1e2a5a]/5 text-[#1e2a5a] border border-[#1e2a5a]/25 shadow-inner">
-                  <User className="h-6 w-6" />
-                </span>
-                <div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Assigned Caregivers</div>
-                  <div className="text-2xl font-black text-[#0b183b] font-display mt-0.5">
-                    {bookings.filter(b => b.assignedStaff && b.status !== "Cancelled").length} Active
+
+              {/* Announcements */}
+              {announcements.map((ann) => (
+                <div key={ann.id} className="bg-gradient-to-r from-amber-600 to-[#b88d30] text-white px-4 py-2.5 rounded-2xl flex items-center justify-between shadow-xs border border-amber-400/40 mb-4 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span>📢</span>
+                    <span className="font-semibold">{ann.message}</span>
                   </div>
-                  <span className="inline-block text-[10px] text-emerald-600 font-semibold mt-0.5">Verified clinical staff</span>
+                  <span className="text-[10px] text-amber-100 font-mono shrink-0 ml-2">{new Date(ann.createdAt).toLocaleDateString()}</span>
                 </div>
-              </div>
-            </div>
- 
-            {/* 3. Total Spend (Paid) */}
-            <div className="rounded-3xl border border-slate-200/80 bg-white/90 backdrop-blur-md p-6 text-left shadow-sm hover:border-[#c9a24c]/50 hover:shadow-xl hover:shadow-emerald-500/10 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
-              <DollarSign className="absolute -right-3 -bottom-3 h-24 w-24 text-slate-100/70 group-hover:text-emerald-500/10 transition-colors pointer-events-none -z-0" />
-              <div className="flex items-center gap-4 relative z-10">
-                <span className="flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 text-emerald-600 border border-emerald-500/25 shadow-inner">
-                  <DollarSign className="h-6 w-6" />
-                </span>
-                <div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Spend (Paid)</div>
-                  <div className="text-2xl font-black text-slate-800 font-display mt-0.5 font-sans">
-                    ₹{bookings.reduce((sum, b) => sum + Number(b.advancePaid || 0), 0).toLocaleString()}
+              ))}
+            </>
+          ) : (
+            /* Compact Header when in Scheduling Mode */
+            <div className="max-w-4xl mx-auto flex items-center justify-between gap-2 sm:gap-3 mb-5 text-left bg-white/95 backdrop-blur-md px-3 sm:px-6 py-2.5 sm:py-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                {user ? (
+                  <button
+                    onClick={() => setActiveView("bookings")}
+                    className="inline-flex items-center gap-1 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer shadow-xs shrink-0"
+                    title="Back to My Shifts"
+                  >
+                    <span>←</span>
+                    <span className="hidden sm:inline">My Shifts</span>
+                    <span className="sm:hidden">Shifts</span>
+                  </button>
+                ) : (
+                  <Link
+                    to="/"
+                    className="inline-flex items-center gap-1 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all shadow-xs shrink-0"
+                  >
+                    <span>←</span>
+                    <span>Home</span>
+                  </Link>
+                )}
+                
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs sm:text-sm md:text-base font-black text-[#0b183b] font-display flex items-center gap-1.5 truncate">
+                    <span className="truncate">
+                      {isMtpBooking ? "MTP Tasks" : "Shift Booking"}
+                    </span>
+                    <span className="hidden md:inline-block text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                      Escrow Protected
+                    </span>
                   </div>
-                  <span className="inline-block text-[10px] text-emerald-600 font-semibold mt-0.5">Verified advance paid</span>
                 </div>
               </div>
-            </div>
- 
-            {/* 4. Pending Balance */}
-            <div className="rounded-3xl border border-slate-200/80 bg-white/90 backdrop-blur-md p-6 text-left shadow-sm hover:border-[#c9a24c]/50 hover:shadow-xl hover:shadow-rose-500/10 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
-              <CreditCard className="absolute -right-3 -bottom-3 h-24 w-24 text-slate-100/70 group-hover:text-rose-500/10 transition-colors pointer-events-none -z-0" />
-              <div className="flex items-center gap-4 relative z-10">
-                <span className="flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500/15 to-rose-500/5 text-rose-600 border border-rose-500/25 shadow-inner">
-                  <CreditCard className="h-6 w-6" />
-                </span>
-                <div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Pending Balance</div>
-                  <div className="text-2xl font-black text-slate-800 font-display mt-0.5 font-sans">
-                    ₹{bookings.filter(b => b.status !== "Cancelled" && b.paymentStatus !== "Paid").reduce((sum, b) => sum + Number(b.balanceAmount || 0), 0).toLocaleString()}
+
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                {user ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-700 hidden md:inline">
+                      👤 {user.name}
+                    </span>
+                    <button
+                      onClick={handleLogout}
+                      className="text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100/80 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl border border-rose-200 cursor-pointer transition-all whitespace-nowrap shadow-2xs"
+                    >
+                      Sign Out
+                    </button>
                   </div>
-                  <span className="inline-block text-[10px] text-amber-600 font-semibold mt-0.5">Pay after service delivery</span>
-                </div>
+                ) : (
+                  <Link
+                    to="/login"
+                    className="text-xs font-bold text-[#1e2a5a] hover:underline bg-slate-100 px-3 py-1.5 sm:py-2 rounded-xl border border-slate-200 whitespace-nowrap"
+                  >
+                    Login
+                  </Link>
+                )}
               </div>
             </div>
-          </div>
           )}
- 
-          {/* Main Workspace View */}
-          {/* Announcement Banners for Customer */}
-          {announcements.map((ann) => (
-            <div key={ann.id} className="bg-gradient-to-r from-amber-600 via-amber-700 to-[#b88d30] text-white px-6 py-4 rounded-3xl flex items-center justify-between shadow-md border border-amber-400/40 mb-6">
-              <div className="flex items-center gap-3">
-                <span className="text-xl animate-bounce">📢</span>
-                <div className="space-y-0.5 text-left">
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-amber-100">Broadcaster Alert</span>
-                  <p className="text-sm font-semibold">{ann.message}</p>
-                </div>
-              </div>
-              <span className="text-[10px] text-amber-100 font-semibold shrink-0 ml-4">{new Date(ann.createdAt).toLocaleDateString()}</span>
-            </div>
-          ))}
 
           {activeView === "bookings" ? (
             
@@ -3397,7 +3455,10 @@ function CustomerDashboard() {
                             </span>
                           </div>
                           <div className="bg-slate-50 border border-slate-200/50 p-2.5 rounded-2xl space-y-1">
-                            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Invoice Billing</span>
+                            <div className="flex justify-between items-center">
+                              <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Total (incl. 18% GST)</span>
+                              <span className="text-[8px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">18% GST</span>
+                            </div>
                             <div className="flex justify-between items-center gap-1.5">
                               <span className="text-xs font-extrabold text-[#1e2a5a]">
                                 ₹{Number(booking.amount).toLocaleString()}
@@ -3412,7 +3473,7 @@ function CustomerDashboard() {
                             </div>
                             <div className="text-[9px] text-slate-500 border-t border-slate-200/60 pt-1 flex justify-between gap-2 font-medium">
                               <span>Paid: <strong className="text-slate-700">₹{Number(booking.advancePaid || 0).toLocaleString()}</strong></span>
-                              <span>Bal: <strong className="text-amber-750">₹{Number(booking.balanceAmount || 0).toLocaleString()}</strong></span>
+                              <span>Bal: <strong className="text-amber-800">₹{Number(booking.balanceAmount || 0).toLocaleString()}</strong></span>
                             </div>
                           </div>
                         </div>
@@ -3772,27 +3833,39 @@ function CustomerDashboard() {
                         </div>
                       )}
                     </div>
-                    );
-                  })}
-                  </div>
-                );
-              })()}
-            </div>
-          ) : isMtpBooking ? (
-            // DEDICATED MTP TASK BOOKING VIEW
-            <div className="rounded-3xl bg-white border border-amber-300/80 shadow-xl shadow-amber-900/5 p-4 sm:p-10 text-left animate-fade-in relative overflow-hidden">
-              {/* Top brand accent line */}
-              <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-amber-600 via-gold to-amber-600" />
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
+      ) : isMtpBooking ? (
+            // =========================================================================
+            // 🚗 COMPACT ULTRA-PREMIUM 1-STEP MTP TASK BOOKING VIEW
+            // =========================================================================
+            <div className="max-w-4xl mx-auto rounded-3xl bg-white border border-amber-300/80 shadow-2xl shadow-amber-900/10 p-5 sm:p-8 text-left animate-fade-in relative overflow-hidden mb-16">
               
               {/* Category Mode Switcher Tabs */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pb-6 mb-6 border-b border-slate-100">
-                <div className="flex items-center gap-2 p-1 bg-slate-100/80 rounded-2xl border border-slate-200/80">
-                  <button
-                    type="button"
-                    className="px-4 py-2 rounded-xl text-xs font-extrabold transition-all shadow-xs bg-[#1e2a5a] text-gold cursor-pointer"
-                  >
-                    🚗 MTP &amp; Task Companion (Zero Docs)
-                  </button>
+              <div className="space-y-4 pb-6 mb-6 border-b border-slate-150">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">Booking Category</span>
+                    <h2 className="text-lg sm:text-xl font-black text-[#0b183b] font-display flex items-center gap-2">
+                      <span>🚗 Multi-Tasking Professional (MTP)</span>
+                    </h2>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-start sm:self-auto">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-black text-amber-900 bg-amber-100/90 border border-amber-300/80 px-3.5 py-1 rounded-full shadow-xs">
+                      <span className="h-2 w-2 rounded-full bg-amber-600 animate-pulse" />
+                      ⚡ 1-Step Fast Dispatch
+                    </span>
+                  </div>
+                </div>
+
+                {/* Full-width Luxury 2-Tab Segmented Control */}
+                <div className="grid grid-cols-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200/90 gap-1.5 shadow-inner">
+                  {/* Tab 1: Clinical Home Care */}
                   <button
                     type="button"
                     onClick={() => {
@@ -3800,116 +3873,97 @@ function CustomerDashboard() {
                       if (standard) setSelectedServiceId(standard.id);
                       setBookingStep(1);
                     }}
-                    className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-[#1e2a5a] hover:bg-white/80 transition-all cursor-pointer"
+                    className="relative py-2.5 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 text-center select-none bg-transparent text-slate-600 hover:text-[#0b183b] hover:bg-white/80"
                   >
-                    🏥 Clinical &amp; Nursing Home Care
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-extrabold text-amber-900 bg-amber-100/80 border border-amber-300 px-3 py-1.5 rounded-xl shadow-xs">
-                    ⚡ 1-Step Fast Booking • ₹100 Base Fee
-                  </span>
-                </div>
-              </div>
-
-              {/* Header Section */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 mb-6 border-b border-slate-100">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-200/60 via-amber-100/40 to-transparent border border-amber-300 flex items-center justify-center text-amber-900 shadow-inner">
-                    <Sparkles className="h-6 w-6 text-amber-700" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="text-xl sm:text-2xl font-bold text-[#1e2a5a] font-display tracking-tight">
-                        Book MTP Task &amp; Companion Partner
-                      </h2>
-                      <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Verified Task Partner
+                    <span className="text-base sm:text-lg shrink-0">🩺</span>
+                    <div className="text-left leading-tight">
+                      <span className="block text-xs sm:text-sm font-bold text-slate-700">
+                        Clinical Home Care
+                      </span>
+                      <span className="hidden xs:block text-[10px] sm:text-[11px] text-slate-400 font-medium">
+                        Nursing, Elderly &amp; ICU
                       </span>
                     </div>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      On-demand verified companion for hospital visits, senior walks, medicine collection &amp; city errands across Hyderabad.
-                    </p>
-                  </div>
+                  </button>
+
+                  {/* Tab 2: MTP Tasks (Active) */}
+                  <button
+                    type="button"
+                    className="relative py-2.5 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 text-center select-none bg-[#0b183b] text-[#c9a24c] shadow-md border border-[#0b183b]"
+                  >
+                    <span className="text-base sm:text-lg shrink-0">🚗</span>
+                    <div className="text-left leading-tight">
+                      <span className="block text-xs sm:text-sm font-black text-[#c9a24c]">
+                        MTP Tasks &amp; Errands
+                      </span>
+                      <span className="hidden xs:block text-[10px] sm:text-[11px] text-amber-200/90 font-medium">
+                        ₹100 Base • Zero Docs
+                      </span>
+                    </div>
+                  </button>
                 </div>
               </div>
 
               <form onSubmit={handleBookingSubmit} className="space-y-6">
                 
-                {/* 1. MTP Task Selection */}
-                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-amber-50/50 via-white to-orange-50/30 border border-amber-200/90 shadow-xs space-y-3">
-                  <div className="flex items-center justify-between gap-2 border-b border-amber-200/60 pb-2">
-                    <label className="block text-[11px] font-extrabold uppercase tracking-wider text-amber-950 flex items-center gap-1.5">
-                      <Briefcase className="h-3.5 w-3.5 text-amber-700" /> Select MTP Task Service
+                {/* 1. MTP Visual 6-Card Category Selector */}
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold uppercase tracking-wider text-amber-950 flex items-center gap-1.5">
+                      <Briefcase className="h-3.5 w-3.5 text-amber-700" /> Select MTP Task Category
                     </label>
-                    <span className="text-[10px] text-amber-800 font-bold bg-amber-100 px-2 py-0.5 rounded-md">
-                      Instant Dispatch
+                    <span className="text-xs text-amber-800 font-extrabold bg-amber-50 px-2.5 py-0.5 rounded-md border border-amber-200">
+                      ₹100 Base Dispatch Fee
                     </span>
                   </div>
 
-                  <select
-                    value={selectedServiceId}
-                    onChange={(e) => setSelectedServiceId(e.target.value)}
-                    className="w-full px-4 py-3 text-sm rounded-2xl border border-amber-300 bg-white text-slate-900 outline-none transition-all focus:border-amber-600 focus:ring-4 focus:ring-amber-500/15 shadow-sm font-semibold cursor-pointer"
-                  >
-                    <optgroup label="🚗 MTP Companion & Task Services">
-                      {servicesList
-                        .filter(s => s.isMtp)
-                        .map(s => (
-                          <option key={s.id} value={s.id}>✨ {s.title} (₹100 Base Booking)</option>
-                        ))
-                      }
-                      {!servicesList.some(s => s.isMtp) && (
-                        <>
-                          <option value="mtp-hospital-escort">✨ Hospital &amp; Clinic Escort Companion (₹100 Base Booking)</option>
-                          <option value="mtp-senior-walk">✨ Elderly Outdoor Walk &amp; Senior Companion (₹100 Base Booking)</option>
-                          <option value="mtp-medicine-pickup">✨ Medicine &amp; Diagnostic Report Pickup (₹100 Base Booking)</option>
-                          <option value="mtp-grocery-errand">✨ Emergency Grocery &amp; Utility Errand (₹100 Base Booking)</option>
-                          <option value="mtp-bank-assistant">✨ Bank &amp; Government Work Assistant (₹100 Base Booking)</option>
-                          <option value="mtp-general">✨ General Multi-Tasking Partner (MTP) (₹100 Base Booking)</option>
-                        </>
-                      )}
-                    </optgroup>
-                    <optgroup label="🏥 Switch to Clinical Services">
-                      {servicesList
-                        .filter(s => !s.isMtp)
-                        .map(s => (
-                          <option key={s.id} value={s.id}>🩺 {s.title} (Clinical Care)</option>
-                        ))
-                      }
-                    </optgroup>
-                  </select>
-
-                  {currentService?.desc && (
-                    <div className="p-3 rounded-xl bg-white border border-amber-200/70 text-slate-700 text-xs flex items-start gap-2">
-                      <span className="text-amber-600 font-bold shrink-0">✦</span>
-                      <span className="leading-relaxed font-medium">{currentService?.desc}</span>
-                    </div>
-                  )}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
+                    {[
+                      { id: "mtp-hospital-escort", icon: "🚗", title: "Hospital Escort", sub: "Doctor Visits" },
+                      { id: "mtp-senior-walk", icon: "🧓", title: "Senior Walk", sub: "Park Companion" },
+                      { id: "mtp-medicine-pickup", icon: "💊", title: "Medicine Pickup", sub: "Chemist Errand" },
+                      { id: "mtp-grocery-errand", icon: "🛒", title: "Grocery & Utility", sub: "Home Supplies" },
+                      { id: "mtp-bank-assistant", icon: "🏦", title: "Bank & Govt", sub: "Official Work" },
+                      { id: "mtp-general", icon: "🤝", title: "General MTP", sub: "City Errands" }
+                    ].map((cat) => {
+                      const isSelected = selectedServiceId === cat.id || (!selectedServiceId.startsWith("mtp-") && cat.id === "mtp-hospital-escort");
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => setSelectedServiceId(cat.id)}
+                          className={`p-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                            isSelected
+                              ? "bg-amber-500/15 border-amber-500 text-amber-950 font-black shadow-md ring-2 ring-amber-400/40"
+                              : "bg-slate-50/70 border-slate-200 text-slate-700 hover:bg-amber-50/60 hover:border-amber-300 shadow-2xs"
+                          }`}
+                        >
+                          <span className="text-xl">{cat.icon}</span>
+                          <span className="text-xs font-bold leading-tight truncate w-full mt-0.5">{cat.title}</span>
+                          <span className="text-[10px] text-slate-400 font-medium truncate w-full">{cat.sub}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* 2. Customer Contact Details */}
-                <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/70 border border-slate-200/90 shadow-xs space-y-4">
-                  <div className="flex items-center justify-between gap-2 border-b border-slate-200/70 pb-2">
-                    <span className="text-xs font-extrabold uppercase tracking-wider text-[#1e2a5a] flex items-center gap-1.5 font-display">
-                      <User className="h-3.5 w-3.5 text-indigo-600" /> Customer Contact Details
+                <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/70 border border-slate-200/90 shadow-2xs space-y-3.5">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-200/70">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#1e2a5a] flex items-center gap-1.5">
+                      <User className="h-3.5 w-3.5 text-indigo-600" /> Customer Information
                     </span>
                     {!user ? (
-                      <span className="text-[10px] text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full font-bold">
-                        Direct Booking
-                      </span>
+                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full">Direct Guest Booking</span>
                     ) : (
-                      <span className="text-[10px] text-indigo-800 bg-indigo-100 px-2 py-0.5 rounded-full font-bold">
-                        Logged-in: {user.name}
-                      </span>
+                      <span className="text-[10px] font-bold text-indigo-800 bg-indigo-100 px-2.5 py-0.5 rounded-full">Logged In: {user.name}</span>
                     )}
                   </div>
 
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                     <div>
-                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                        Your Full Name <span className="text-rose-500">*</span>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                        Full Name <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="text"
@@ -3917,13 +3971,13 @@ function CustomerDashboard() {
                         value={user?.name || contactName}
                         onChange={(e) => setContactName(sanitizeName(e.target.value))}
                         placeholder="e.g. Suresh Kumar"
-                        className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-semibold"
+                        className="w-full h-11 px-3.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                        Mobile Number (For Coordinator Call) <span className="text-rose-500">*</span>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                        Mobile Number <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="tel"
@@ -3932,40 +3986,37 @@ function CustomerDashboard() {
                         value={user?.phone || contactPhone}
                         onChange={(e) => setContactPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
                         placeholder="10-digit mobile number"
-                        className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-semibold font-mono"
+                        className="w-full h-11 px-3.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold font-mono"
                       />
                     </div>
 
-                    <div className="sm:col-span-2">
-                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex justify-between">
-                        <span>Email Address (For Invoices &amp; Updates)</span>
-                        <span className="text-[10px] text-slate-400 font-medium">Optional</span>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                        Email Address <span className="text-slate-400 font-normal lowercase">(optional)</span>
                       </label>
                       <input
                         type="email"
                         value={user?.email || contactEmail}
                         onChange={(e) => setContactEmail(e.target.value)}
-                        placeholder="e.g. suresh.kumar@gmail.com"
-                        className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-medium"
+                        placeholder="name@gmail.com"
+                        className="w-full h-11 px-3.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-medium"
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* 3. Schedule & Timing */}
-                <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/70 border border-slate-200/90 shadow-xs space-y-4">
-                  <div className="flex items-center justify-between gap-2 border-b border-slate-200/70 pb-2">
-                    <span className="text-xs font-extrabold uppercase tracking-wider text-[#1e2a5a] flex items-center gap-1.5 font-display">
-                      <Calendar className="h-3.5 w-3.5 text-indigo-600" /> Task Date &amp; Time Schedule
+                {/* 3. Schedule & Scope */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/70 border border-slate-200/90 shadow-2xs space-y-3.5">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-200/70">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#1e2a5a] flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5 text-indigo-600" /> Date &amp; Shift Schedule
                     </span>
-                    <span className="text-[10px] text-slate-500 font-medium">
-                      Today or upcoming date
-                    </span>
+                    <span className="text-[10px] text-slate-400 font-semibold">Today or upcoming</span>
                   </div>
 
-                  <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                     <div>
-                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
                         Task Date <span className="text-rose-500">*</span>
                       </label>
                       <input
@@ -3974,177 +4025,120 @@ function CustomerDashboard() {
                         min={todayStr}
                         max="2099-12-31"
                         value={bookingDate}
-                        onChange={(e) => {
-                          let val = e.target.value;
-                          if (val) {
-                            const parts = val.split("-");
-                            if (parts[0] && parts[0].length > 4) {
-                              parts[0] = parts[0].slice(0, 4);
-                              val = parts.join("-");
-                            }
-                            if (val.length === 10 && val < todayStr) {
-                              alert("Booking date cannot be in the past. Please select today or a future date.");
-                              val = todayStr;
-                            }
-                          }
-                          setBookingDate(val);
-                        }}
-                        className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-semibold cursor-pointer"
+                        onChange={(e) => setBookingDate(e.target.value)}
+                        className="w-full h-11 px-3.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                        Preferred Start Time <span className="text-rose-500">*</span>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                        Start Time <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="time"
                         required
                         value={bookingTime}
                         onChange={(e) => setBookingTime(e.target.value)}
-                        className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-semibold cursor-pointer"
+                        className="w-full h-11 px-3.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                        Estimated Scope / Visits
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                        Scope / Duration
                       </label>
                       <select
                         value={durationCount}
                         onChange={(e) => setDurationCount(Math.max(1, Number(e.target.value)))}
-                        className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-semibold cursor-pointer"
+                        className="w-full h-11 px-3.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
                       >
                         <option value={1}>1 Task / Single Visit</option>
                         <option value={2}>2 Hours Assistant</option>
                         <option value={4}>4 Hours (Half Day)</option>
-                        <option value={8}>8 Hours (Full Day Companion)</option>
+                        <option value={8}>8 Hours (Full Day)</option>
                       </select>
                     </div>
                   </div>
                 </div>
 
                 {/* 4. Task Location & GPS */}
-                <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/70 border border-slate-200/90 shadow-xs space-y-4">
-                  <div className="flex items-center justify-between gap-2 border-b border-slate-200/70 pb-2">
-                    <span className="text-xs font-extrabold uppercase tracking-wider text-[#1e2a5a] flex items-center gap-1.5 font-display">
-                      <MapPin className="h-3.5 w-3.5 text-indigo-600" /> Task Location &amp; Navigation
+                <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/70 border border-slate-200/90 shadow-2xs space-y-3.5">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-200/70">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#1e2a5a] flex items-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5 text-indigo-600" /> Location &amp; Navigation
                     </span>
-                    <span className="text-[10px] text-slate-500 font-medium">
-                      Exact address in Hyderabad
-                    </span>
+                    <span className="text-[10px] text-slate-400">Hyderabad</span>
                   </div>
 
-                  <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                      Complete Task Location / Address <span className="text-rose-500">*</span>
-                    </label>
-                    <textarea
-                      rows={2}
-                      required
-                      value={bookingAddress}
-                      onChange={(e) => setBookingAddress(e.target.value)}
-                      placeholder="Enter flat/door no, building, street, landmark, area & pincode (e.g. Flat 302, Fortune Towers, Road No 10, Banjara Hills, Hyderabad)"
-                      className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-medium leading-relaxed"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex justify-between">
-                      <span>Exact Geolocation GPS Pin (For Task Partner Navigation)</span>
-                      <span className="text-[10px] text-slate-400">Optional / Recommended</span>
-                    </label>
-                    <div className="flex gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 items-start">
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                        Address / Pickup Spot <span className="text-rose-500">*</span>
+                      </label>
                       <input
                         type="text"
-                        readOnly
-                        value={bookingGoogleMapLocation}
-                        placeholder="Click Fetch GPS to pin exact location..."
-                        className="min-w-0 flex-1 px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 bg-slate-100 text-slate-700 outline-none truncate font-mono"
+                        required
+                        value={bookingAddress}
+                        onChange={(e) => setBookingAddress(e.target.value)}
+                        placeholder="Door/Flat no, building, street, landmark, area & pincode"
+                        className="w-full h-11 px-3.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-medium"
                       />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!navigator.geolocation) {
-                            alert("Geolocation is not supported by your browser");
-                            return;
-                          }
-                          setIsFetchingLocationBooking(true);
-                          navigator.geolocation.getCurrentPosition(
-                            (position) => {
-                              const lat = position.coords.latitude;
-                              const lng = position.coords.longitude;
-                              setBookingGoogleMapLocation(`https://www.google.com/maps?q=${lat},${lng}`);
-                              setIsFetchingLocationBooking(false);
-                            },
-                            () => {
-                              alert("Failed to fetch GPS coordinates. Please ensure location permissions are granted.");
-                              setIsFetchingLocationBooking(false);
-                            }
-                          );
-                        }}
-                        disabled={isFetchingLocationBooking}
-                        className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-gold via-amber-400 to-gold hover:opacity-90 text-slate-900 text-xs font-bold rounded-xl flex items-center gap-1.5 shrink-0 disabled:opacity-50 cursor-pointer shadow-sm transition-all whitespace-nowrap"
-                      >
-                        {isFetchingLocationBooking ? (
-                          <>
-                            <span className="w-3.5 h-3.5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
-                            <span>Fetching GPS...</span>
-                          </>
-                        ) : (
-                          <>
-                            <span>📍</span>
-                            <span>Fetch GPS Pin</span>
-                          </>
-                        )}
-                      </button>
                     </div>
-                    {bookingGoogleMapLocation && (
-                      <div className="flex justify-between items-center text-xs mt-2 px-1">
-                        <span className="text-emerald-700 font-bold flex items-center gap-1">
-                          ✓ GPS Pin coordinates saved!
-                        </span>
-                        <a
-                          href={bookingGoogleMapLocation}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary hover:text-gold font-bold underline"
+
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                        GPS Pin <span className="text-slate-400 font-normal lowercase">(optional)</span>
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          value={bookingGoogleMapLocation}
+                          placeholder="GPS Coordinates"
+                          className="min-w-0 flex-1 h-11 px-3 text-xs rounded-xl border border-slate-200 bg-slate-100 text-slate-600 outline-none truncate font-mono"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!navigator.geolocation) return;
+                            setIsFetchingLocationBooking(true);
+                            navigator.geolocation.getCurrentPosition(
+                              (position) => {
+                                const lat = position.coords.latitude;
+                                const lng = position.coords.longitude;
+                                setBookingGoogleMapLocation(`https://www.google.com/maps?q=${lat},${lng}`);
+                                setIsFetchingLocationBooking(false);
+                              },
+                              () => setIsFetchingLocationBooking(false)
+                            );
+                          }}
+                          disabled={isFetchingLocationBooking}
+                          className="h-11 px-3.5 bg-[#1e2a5a] hover:bg-[#283870] text-[#c9a24c] text-xs font-black rounded-xl flex items-center gap-1.5 shrink-0 disabled:opacity-50 cursor-pointer shadow-2xs transition-all whitespace-nowrap"
                         >
-                          Open in Google Maps ↗
-                        </a>
+                          {isFetchingLocationBooking ? "..." : "📍 GPS"}
+                        </button>
                       </div>
-                    )}
+                    </div>
                   </div>
                 </div>
 
                 {/* 5. Task Instructions & Notes */}
-                <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/70 border border-slate-200/90 shadow-xs space-y-3">
-                  <div className="flex items-center justify-between gap-2 border-b border-slate-200/70 pb-2">
-                    <span className="text-xs font-extrabold uppercase tracking-wider text-[#1e2a5a] flex items-center gap-1.5 font-display">
-                      <MessageSquare className="h-3.5 w-3.5 text-indigo-600" /> Task Details &amp; Instructions
-                    </span>
-                    <span className="text-[10px] text-slate-500">Brief details</span>
-                  </div>
-
+                <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/70 border border-slate-200/90 shadow-2xs space-y-2.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
+                    Specific Task Notes / Requirements
+                  </label>
                   <textarea
                     rows={3}
                     value={patientNeeds}
                     onChange={(e) => setPatientNeeds(e.target.value)}
-                    placeholder="Describe what task you need done (e.g. Escort grandfather to Apollo Clinic for consultation, help with wheelchair, collect prescription from chemist, bank work accompaniment)..."
-                    className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-medium leading-relaxed"
+                    placeholder="Describe specific task needs (e.g. Escort to Apollo clinic, wheelchair assist, buy medicines from Apollo pharmacy)..."
+                    className="w-full p-3 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-medium"
                   />
 
-                  {/* Quick Tag Suggestion Chips */}
+                  {/* Compact Quick Tags */}
                   <div className="flex flex-wrap items-center gap-2 pt-1">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Quick Tags:</span>
-                    {[
-                      "Hospital Escort",
-                      "Medicine Pickup",
-                      "Senior Walk Companion",
-                      "Bank & Govt Work",
-                      "Grocery & Utility Errand",
-                      "Wheelchair Support"
-                    ].map((tag) => (
+                    {["Hospital Escort", "Medicine Pickup", "Senior Walk", "Bank Work", "Grocery Errand", "Wheelchair Support"].map((tag) => (
                       <button
                         key={tag}
                         type="button"
@@ -4152,7 +4146,7 @@ function CustomerDashboard() {
                           if (patientNeeds.includes(tag)) return;
                           setPatientNeeds(prev => prev ? `${prev}, ${tag}` : tag);
                         }}
-                        className="text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 hover:text-amber-900 text-slate-600 border border-slate-200 transition-all cursor-pointer shadow-2xs"
+                        className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 hover:text-amber-900 text-slate-600 border border-slate-200 transition-all cursor-pointer shadow-2xs"
                       >
                         + {tag}
                       </button>
@@ -4160,98 +4154,39 @@ function CustomerDashboard() {
                   </div>
                 </div>
 
-                {/* 6. No Medical Documents Required Card */}
-                <div className="rounded-2xl border-2 border-emerald-300/80 bg-gradient-to-r from-emerald-50 via-emerald-50/70 to-teal-50/40 p-4 sm:p-5 text-emerald-950 flex items-start gap-3.5 shadow-xs">
-                  <div className="p-2 rounded-xl bg-emerald-200/80 text-emerald-900 shrink-0 mt-0.5">
-                    <CheckCircle2 className="h-5 w-5" />
-                  </div>
-                  <div className="space-y-1">
-                    <span className="font-extrabold block text-sm text-emerald-950 font-display">
-                      ✓ No Medical Documents or Prescriptions Required
-                    </span>
-                    <p className="text-emerald-900 text-xs leading-relaxed font-medium">
-                      MTP companion and errand tasks are non-clinical personal assistance services. You do <strong>not</strong> need to upload any doctor prescriptions, medical case files, or patient health histories.
-                    </p>
-                  </div>
-                </div>
-
-                {/* 7. Pricing Summary & Payment Option */}
-                <div className="rounded-2xl border-2 border-amber-300 bg-gradient-to-r from-amber-50 via-amber-50/70 to-orange-50/40 p-5 sm:p-6 text-amber-950 space-y-4 shadow-sm">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-amber-200/80">
+                {/* 6. Pay on Service / Free Dispatch Request */}
+                <div className="rounded-2xl border border-amber-300 bg-gradient-to-r from-amber-50 via-white to-orange-50/40 p-5 text-amber-950 space-y-3.5 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-amber-200/80">
                     <div>
-                      <span className="text-[10px] uppercase font-bold tracking-wider text-amber-800 block">Initial Booking Charge</span>
-                      <div className="flex items-baseline gap-2 mt-0.5">
-                        <span className="text-3xl font-black text-amber-950 font-display">₹100</span>
-                        <span className="text-xs text-amber-800 font-bold">(Present Base Token Fee)</span>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-2xl sm:text-3xl font-black text-amber-950 font-display">Pay on Service</span>
+                        <span className="text-xs text-emerald-800 font-bold bg-emerald-100/90 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                          ₹0 Advance (Free Dispatch)
+                        </span>
                       </div>
-                      <p className="text-[11px] text-amber-900 mt-1 leading-relaxed">
-                        Fixed initial dispatch fee. Our coordinator / admin can review travel distance or additional hours and adjust or provide the final quote if needed.
+                      <p className="text-xs text-slate-600 mt-1">
+                        No advance payment needed now. Pay caregiver directly or settle via UPI upon arrival/service completion.
                       </p>
                     </div>
-
-                    <div className="shrink-0">
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold text-xs">
-                        <ShieldCheck className="h-4 w-4 text-emerald-700" /> 100% Escrow Protected
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[11px] font-extrabold text-emerald-800 bg-emerald-100/90 border border-emerald-300 px-2.5 py-1 rounded-lg">
+                        ✓ No Medical Docs
+                      </span>
+                      <span className="text-[11px] font-extrabold text-emerald-800 bg-emerald-100/90 border border-emerald-300 px-2.5 py-1 rounded-lg">
+                        ✓ 100% Escrow Protected
                       </span>
                     </div>
                   </div>
 
-                  {/* Payment Method Selector */}
-                  <div className="space-y-2">
-                    <label className="block text-[11px] font-extrabold uppercase tracking-wider text-amber-950">
-                      Choose How You Wish to Pay
-                    </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <label 
-                        onClick={() => setPaymentMethod("razorpay")}
-                        className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-3 ${
-                          paymentMethod === "razorpay" 
-                            ? "bg-white border-amber-600 shadow-md ring-2 ring-amber-500/20" 
-                            : "bg-amber-100/50 border-amber-200/80 hover:bg-white"
-                        }`}
-                      >
-                        <input 
-                          type="radio" 
-                          name="mtp_payment_method" 
-                          checked={paymentMethod === "razorpay"} 
-                          onChange={() => setPaymentMethod("razorpay")} 
-                          className="h-4 w-4 text-amber-600 accent-amber-600"
-                        />
-                        <div className="text-left">
-                          <span className="text-xs font-bold text-slate-900 block flex items-center gap-1.5">
-                            <CreditCard className="h-3.5 w-3.5 text-amber-700" /> Pay ₹100 Online Now
-                          </span>
-                          <span className="text-[10px] text-slate-500 block">Instant UPI, Cards &amp; NetBanking</span>
-                        </div>
-                      </label>
-
-                      <label 
-                        onClick={() => setPaymentMethod("pay_later")}
-                        className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-3 ${
-                          paymentMethod === "pay_later" 
-                            ? "bg-white border-amber-600 shadow-md ring-2 ring-amber-500/20" 
-                            : "bg-amber-100/50 border-amber-200/80 hover:bg-white"
-                        }`}
-                      >
-                        <input 
-                          type="radio" 
-                          name="mtp_payment_method" 
-                          checked={paymentMethod === "pay_later"} 
-                          onChange={() => setPaymentMethod("pay_later")} 
-                          className="h-4 w-4 text-amber-600 accent-amber-600"
-                        />
-                        <div className="text-left">
-                          <span className="text-xs font-bold text-slate-900 block flex items-center gap-1.5">
-                            <Clock className="h-3.5 w-3.5 text-amber-700" /> Pay on Service (₹100 on Arrival)
-                          </span>
-                          <span className="text-[10px] text-slate-500 block">Cash or Direct UPI upon task start</span>
-                        </div>
-                      </label>
-                    </div>
+                  <div className="p-3.5 rounded-xl bg-white border border-amber-200 text-xs text-slate-700 flex items-center gap-2.5">
+                    <span className="text-lg shrink-0">🤝</span>
+                    <span>
+                      <strong>On-Demand Companion Dispatch:</strong> A verified caregiver will be allocated immediately for your requested time slot. Service fees are finalized transparently upon arrival.
+                    </span>
                   </div>
                 </div>
 
-                {/* 8. Agreement & Instant Submit */}
+                {/* 7. Agreement & Submit */}
                 <div className="pt-2 space-y-4">
                   <label className="flex items-start gap-3 cursor-pointer">
                     <input
@@ -4259,83 +4194,97 @@ function CustomerDashboard() {
                       required
                       checked={agreeTermsBooking}
                       onChange={(e) => setAgreeTermsBooking(e.target.checked)}
-                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary focus:ring-gold cursor-pointer accent-[#c9a24c]"
+                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#1e2a5a] focus:ring-gold cursor-pointer accent-[#c9a24c]"
                     />
-                    <span className="text-xs font-semibold text-slate-700 select-none">
-                      I confirm this MTP Task Booking (₹100 base fee) and agree to Amma Seva terms.
+                    <span className="text-xs font-semibold text-slate-600 select-none leading-relaxed">
+                      I confirm this MTP Task Request (Pay on Service) and agree to Amma Seva terms.
                     </span>
                   </label>
 
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <button
-                      type="submit"
-                      disabled={isSubmitting || isPaymentProcessing || !agreeTermsBooking}
-                      className="btn-primary py-3.5 sm:py-4 px-8 font-extrabold uppercase tracking-wider text-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 w-full shadow-xl shadow-amber-900/15 hover:scale-[1.01] transition-all bg-gradient-to-r from-amber-700 via-amber-800 to-amber-900 hover:from-amber-800 hover:to-amber-950 text-white"
-                    >
-                      {(isSubmitting || isPaymentProcessing) && (
-                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
-                      )}
-                      {isPaymentProcessing 
-                        ? "Opening Razorpay Gateway..." 
-                        : isSubmitting 
-                          ? "Registering Task Partner..." 
-                          : paymentMethod === "razorpay"
-                            ? "Pay ₹100 & Confirm MTP Booking"
-                            : "Confirm MTP Task Booking (Pay ₹100 on Service)"}
-                    </button>
-                  </div>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || !agreeTermsBooking}
+                    className="w-full h-12 sm:h-13 bg-gradient-to-r from-[#1e2a5a] via-[#091129] to-[#1e2a5a] hover:from-[#283870] hover:to-[#14224c] text-[#c9a24c] hover:text-white rounded-2xl font-black uppercase tracking-wider text-xs sm:text-sm flex items-center justify-center gap-2.5 cursor-pointer shadow-xl shadow-[#1e2a5a]/25 disabled:opacity-50 transition-all"
+                  >
+                    {isSubmitting && (
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
+                    )}
+                    {isSubmitting ? "Allocating MTP Companion..." : "Confirm MTP Booking (Pay on Service)"}
+                  </button>
                 </div>
               </form>
             </div>
           ) : (
-            // STANDARD CLINICAL HEALTHCARE BOOKING VIEW (3-STEP WIZARD)
-            <div className="rounded-3xl bg-white border border-slate-200/90 shadow-xl shadow-slate-200/40 p-4 sm:p-10 text-left animate-fade-in relative overflow-hidden">
-              {/* Subtle top brand accent line */}
-              <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary via-gold to-primary" />
+            // =========================================================================
+            // 🏥 COMPACT ULTRA-PREMIUM 3-STEP CLINICAL HEALTHCARE BOOKING WIZARD
+            // =========================================================================
+            <div className="max-w-4xl mx-auto rounded-3xl bg-white border border-slate-200/90 shadow-2xl shadow-slate-200/40 p-5 sm:p-8 text-left animate-fade-in relative overflow-hidden mb-16">
               
-              {/* Header Section */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 mb-8 border-b border-slate-100">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-gold/20 via-gold/10 to-transparent border border-gold/40 flex items-center justify-center text-primary shadow-inner">
-                    <Calendar className="h-6 w-6 text-gold" />
-                  </div>
+              {/* Category Mode Switcher Tabs */}
+              <div className="space-y-4 pb-6 mb-6 border-b border-slate-150">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-xl sm:text-2xl font-bold text-primary font-display tracking-tight">
-                        Schedule Verified Home Care
-                      </h2>
-                      <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Verified Caregivers
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-450 mt-0.5">
-                      Fast, background-verified caretaker allocation with escrow payment protection.
-                    </p>
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">Booking Category</span>
+                    <h2 className="text-lg sm:text-xl font-black text-[#0b183b] font-display flex items-center gap-2">
+                      <span>🩺 Clinical Healthcare Home Booking</span>
+                    </h2>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-start sm:self-auto">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-black text-slate-700 bg-slate-100 border border-slate-200 px-3.5 py-1 rounded-full shadow-xs">
+                      Step <strong className="text-[#0b183b] font-black">{bookingStep}</strong> of 3
+                    </span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-semibold text-slate-400 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200/60">
-                    Step <strong className="text-primary font-bold">{bookingStep}</strong> of 3
-                  </span>
+                {/* Full-width Luxury 2-Tab Segmented Control */}
+                <div className="grid grid-cols-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200/90 gap-1.5 shadow-inner">
+                  {/* Tab 1: Clinical Home Care (Active) */}
+                  <button
+                    type="button"
+                    className="relative py-2.5 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 text-center select-none bg-[#0b183b] text-white shadow-md border border-[#0b183b]"
+                  >
+                    <span className="text-base sm:text-lg shrink-0">🩺</span>
+                    <div className="text-left leading-tight">
+                      <span className="block text-xs sm:text-sm font-black text-white">
+                        Clinical Home Care
+                      </span>
+                      <span className="hidden xs:block text-[10px] sm:text-[11px] text-[#c9a24c] font-medium">
+                        Nursing, Elderly &amp; ICU
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* Tab 2: MTP Tasks */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const mtpItem = servicesList.find(s => s.isMtp || s.id.startsWith("mtp")) || { id: "mtp-hospital-escort" };
+                      setSelectedServiceId(mtpItem.id);
+                    }}
+                    className="relative py-2.5 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 text-center select-none bg-transparent text-slate-600 hover:text-[#0b183b] hover:bg-white/80"
+                  >
+                    <span className="text-base sm:text-lg shrink-0">🚗</span>
+                    <div className="text-left leading-tight">
+                      <span className="block text-xs sm:text-sm font-bold text-slate-700">
+                        MTP Tasks &amp; Errands
+                      </span>
+                      <span className="hidden xs:block text-[10px] sm:text-[11px] text-slate-400 font-medium">
+                        ₹100 Base • Zero Docs
+                      </span>
+                    </div>
+                  </button>
                 </div>
               </div>
 
-              {/* Progress Stepper Navigation Bar */}
-              <div className="relative mb-10 max-w-2xl mx-auto px-2">
-                {/* Background line */}
-                <div className="absolute top-1/2 -translate-y-1/2 left-8 right-8 h-1 bg-slate-100 rounded-full -z-0" />
-                {/* Active progress line */}
-                <div 
-                  className="absolute top-1/2 -translate-y-1/2 left-8 h-1 bg-gradient-to-r from-primary via-gold to-gold rounded-full transition-all duration-500 -z-0" 
-                  style={{ width: bookingStep === 1 ? "0%" : bookingStep === 2 ? "45%" : "88%" }} 
-                />
-
-                <div className="flex justify-between items-center relative z-10">
+              {/* Progress Stepper Bar (Responsive & Spacious) */}
+              <div className="mb-8 max-w-2xl mx-auto px-1">
+                {/* Desktop 3-Step Pill Bar */}
+                <div className="hidden sm:grid grid-cols-3 gap-3">
                   {[
-                    { step: 1, label: "1. Service & Schedule", icon: "✨" },
-                    { step: 2, label: "2. Patient Profile", icon: "👤" },
-                    { step: 3, label: "3. Location & Pay", icon: "💳" }
+                    { step: 1, label: "1. Service & Schedule" },
+                    { step: 2, label: "2. Patient Profile" },
+                    { step: 3, label: "3. Location & Pay" }
                   ].map((s) => {
                     const isActive = bookingStep === s.step;
                     const isCompleted = bookingStep > s.step;
@@ -4349,220 +4298,221 @@ function CustomerDashboard() {
                           else if (s.step === 2 && validateStep1()) setBookingStep(2);
                           else if (s.step === 3 && validateStep1() && validateStep2()) setBookingStep(3);
                         }}
-                        className={`group flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-full text-xs font-bold transition-all duration-300 cursor-pointer shadow-xs ${
+                        className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
                           isActive
-                            ? "bg-gradient-to-r from-[#0b183b] to-[#1e2a5a] text-gold border-2 border-gold/80 shadow-md shadow-gold/20 scale-105"
+                            ? "bg-[#0b183b] text-[#c9a24c] border-[#0b183b] shadow-sm ring-2 ring-[#c9a24c]/20"
                             : isCompleted
-                              ? "bg-emerald-50 text-emerald-800 border-2 border-emerald-400 hover:bg-emerald-100"
-                              : "bg-white border-2 border-slate-200 text-slate-400 hover:border-slate-300"
+                              ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100/70"
+                              : "bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100"
                         }`}
                       >
-                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
-                          isActive ? "bg-gold text-primary font-black" : isCompleted ? "bg-emerald-500 text-white font-bold" : "bg-slate-100 text-slate-500"
+                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${
+                          isActive ? "bg-[#c9a24c] text-[#091129]" : isCompleted ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-600"
                         }`}>
                           {isCompleted ? "✓" : s.step}
                         </span>
-                        <span className="hidden sm:inline font-display tracking-tight">{s.label}</span>
+                        <span className="truncate">{s.label}</span>
                       </button>
                     );
                   })}
                 </div>
+
+                {/* Mobile Stepper Indicator (Clean, non-squished) */}
+                <div className="sm:hidden space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold px-1">
+                    <span className="text-[#0b183b] flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-[#0b183b] text-[#c9a24c] text-[10px] font-black flex items-center justify-center">
+                        {bookingStep}
+                      </span>
+                      <span>
+                        {bookingStep === 1 && "Service & Shift Schedule"}
+                        {bookingStep === 2 && "Patient & Booker Profile"}
+                        {bookingStep === 3 && "Location & Advance Payment"}
+                      </span>
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-semibold">Step {bookingStep} of 3</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5 h-1.5 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-200/60">
+                    <div className={`h-full rounded-full transition-all ${bookingStep >= 1 ? "bg-emerald-500" : "bg-slate-200"}`} />
+                    <div className={`h-full rounded-full transition-all ${bookingStep >= 2 ? "bg-emerald-500" : "bg-slate-200"}`} />
+                    <div className={`h-full rounded-full transition-all ${bookingStep >= 3 ? "bg-emerald-500" : "bg-slate-200"}`} />
+                  </div>
+                </div>
               </div>
 
-              <form onSubmit={handleBookingSubmit} className="space-y-8">
+              <form onSubmit={handleBookingSubmit} className="space-y-6">
                 
-                {/* STEP 1: SERVICE & SCHEDULING DETAILS */}
+                {/* ========================================================================= */}
+                {/* 🌟 STEP 1: SERVICE & SCHEDULING */}
+                {/* ========================================================================= */}
                 {bookingStep === 1 && (
-                  <div className="space-y-6 animate-fade-in">
-                    <div className="grid gap-6 md:grid-cols-2">
-                      {/* Select Service */}
-                      <div className="md:col-span-2">
-                        <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
+                  <div className="space-y-5 animate-fade-in">
+                    
+                    {/* Select Service Dropdown + Description */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
                           Select Healthcare Service
                         </label>
-                        <div className="relative">
+                        <span className="text-xs text-emerald-700 font-bold bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
+                          Verified Clinical Care
+                        </span>
+                      </div>
+
+                      <select
+                        value={selectedServiceId}
+                        onChange={(e) => setSelectedServiceId(e.target.value)}
+                        className="w-full h-11 sm:h-12 px-3.5 text-sm rounded-xl border border-slate-200 bg-slate-50/70 text-slate-900 outline-none transition-all focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
+                      >
+                        <optgroup label="🌟 Standard Clinical Healthcare Services">
+                          {servicesList
+                            .filter(s => !s.isMtp)
+                            .map(s => (
+                              <option key={s.id} value={s.id}>{s.title} (₹{s.rate}/{s.unit})</option>
+                            ))
+                          }
+                        </optgroup>
+                        {servicesList.some(s => s.isMtp) && (
+                          <optgroup label="🚗 Switch to MTP Tasks (Zero Docs • ₹100 Base Fee)">
+                            {servicesList
+                              .filter(s => s.isMtp)
+                              .map(s => (
+                                <option key={s.id} value={s.id}>✨ {s.title} (₹100 Base Booking)</option>
+                              ))
+                            }
+                          </optgroup>
+                        )}
+                      </select>
+
+                      {currentService?.desc && (
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70 text-slate-600 text-xs flex items-center gap-2">
+                          <span className="text-[#c9a24c] font-bold text-sm">✦</span>
+                          <span className="leading-snug">{currentService?.desc}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Schedule Inputs: 1 col on mobile, 2 on tablet, 4 on desktop */}
+                    <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/70 border border-slate-200/90 shadow-2xs space-y-3.5">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-200/70">
+                        <span className="text-xs font-bold uppercase tracking-wider text-[#1e2a5a] flex items-center gap-1.5">
+                          <Clock className="h-3.5 w-3.5 text-indigo-600" /> Billing Option &amp; Shift Schedule
+                        </span>
+                        <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                          Flexible shifts
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                        {/* 1. Billing Frequency */}
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 truncate">
+                            Billing Option
+                          </label>
                           <select
-                            value={selectedServiceId}
-                            onChange={(e) => setSelectedServiceId(e.target.value)}
-                            className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-slate-50/60 text-slate-900 outline-none transition-all focus:bg-white focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-semibold cursor-pointer"
+                            value={bookingDuration}
+                            onChange={(e) => {
+                              setBookingDuration(e.target.value);
+                              setDurationCount(1);
+                            }}
+                            className="w-full h-11 px-3 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
                           >
-                            <optgroup label="🌟 Standard Caregiver & Clinical Services">
-                              {servicesList
-                                .filter(s => !s.isMtp)
-                                .map(s => (
-                                  <option key={s.id} value={s.id}>{s.title} (₹{s.rate}/{s.unit})</option>
-                                ))
-                              }
-                            </optgroup>
-                            {servicesList.some(s => s.isMtp) && (
-                              <optgroup label="🚗 MTP & Multi-Tasking Tasks (Zero Docs • ₹100 Base Fee)">
-                                {servicesList
-                                  .filter(s => s.isMtp)
-                                  .map(s => (
-                                    <option key={s.id} value={s.id}>✨ {s.title} (₹100 Base Booking)</option>
-                                  ))
-                                }
-                              </optgroup>
-                            )}
+                            <option value="Daily">Daily</option>
+                            <option value="Hourly">Hourly</option>
+                            <option value="Weekly">Weekly</option>
+                            <option value="Monthly">Monthly</option>
                           </select>
                         </div>
 
-                        {/* Service Description Card */}
-                        {currentService?.desc && (
-                          <div className="mt-2.5 p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70 text-slate-600 text-xs flex items-start gap-2.5">
-                            <span className="text-gold text-base shrink-0">✦</span>
-                            <span className="leading-relaxed font-medium">{currentService?.desc}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Duration Selector */}
-                      <div>
-                        <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-                          Billing Option
-                        </label>
-                        <select
-                          value={bookingDuration}
-                          onChange={(e) => {
-                            setBookingDuration(e.target.value);
-                            setDurationCount(1);
-                          }}
-                          className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-slate-50/60 text-slate-900 outline-none transition-all focus:bg-white focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-semibold cursor-pointer"
-                        >
-                          <option value="Daily">Daily</option>
-                          <option value="Hourly">Hourly</option>
-                          <option value="Weekly">Weekly</option>
-                          <option value="Monthly">Monthly</option>
-                        </select>
-                      </div>
-
-                      {/* Duration Count Multiplier */}
-                      <div>
-                        <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 flex justify-between items-center">
-                          <span>
-                            {bookingDuration === "Hourly" ? "Number of Hours" :
-                             bookingDuration === "Daily" ? "Number of Days" :
-                             bookingDuration === "Weekly" ? "Number of Weeks" : "Number of Months"}
-                          </span>
-                          <span className="text-[11px] text-primary font-bold px-2 py-0.5 rounded-md bg-gold/15 border border-gold/30">
-                            ₹{
+                        {/* 2. Duration count multiplier with rate badge */}
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 truncate">
+                            {bookingDuration === "Hourly" ? "Hours" : bookingDuration === "Daily" ? "Days" : bookingDuration === "Weekly" ? "Weeks" : "Months"} (₹{
                               bookingDuration === "Hourly" ? getServiceRates().hourly :
                               bookingDuration === "Daily" ? getServiceRates().daily :
                               bookingDuration === "Weekly" ? getServiceRates().weekly :
                               getServiceRates().monthly
-                            } / {
-                              bookingDuration === "Hourly" ? "hr" :
-                              bookingDuration === "Daily" ? "day" :
-                              bookingDuration === "Weekly" ? "wk" : "mo"
-                            }
-                          </span>
-                        </label>
-                        <input
-                          type="number"
-                          min={1}
-                          required
-                          value={durationCount}
-                          onChange={(e) => setDurationCount(Math.max(1, Number(e.target.value)))}
-                          className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-slate-50/60 text-slate-900 outline-none transition-all focus:bg-white focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-semibold"
-                        />
-                      </div>
-
-                      {/* Date selection */}
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                            Preferred Start Date
+                            }/{bookingDuration === "Hourly" ? "hr" : bookingDuration === "Daily" ? "day" : bookingDuration === "Weekly" ? "wk" : "mo"})
                           </label>
-                          <span className="text-[10px] text-slate-400 font-medium">Today or future date</span>
+                          <input
+                            type="number"
+                            min={1}
+                            required
+                            value={durationCount}
+                            onChange={(e) => setDurationCount(Math.max(1, Number(e.target.value)))}
+                            className="w-full h-11 px-3.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold"
+                          />
                         </div>
-                        <input
-                          type="date"
-                          required
-                          min={todayStr}
-                          max="2099-12-31"
-                          value={bookingDate}
-                          onChange={(e) => {
-                            let val = e.target.value;
-                            if (val) {
-                              const parts = val.split("-");
-                              if (parts[0] && parts[0].length > 4) {
-                                parts[0] = parts[0].slice(0, 4);
-                                val = parts.join("-");
-                              }
-                              if (val.length === 10 && val < todayStr) {
-                                alert("Booking date cannot be in the past. Please select today or a future date.");
-                                val = todayStr;
-                              }
-                            }
-                            setBookingDate(val);
-                          }}
-                          className={`w-full px-4 py-3 text-sm rounded-2xl border bg-slate-50/60 text-slate-900 outline-none transition-all focus:bg-white focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-semibold cursor-pointer ${
-                            bookingDate && bookingDate.length === 10 && bookingDate < todayStr
-                              ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/20"
-                              : "border-slate-200"
-                          }`}
-                        />
-                        {bookingDate && bookingDate.length === 10 && bookingDate < todayStr && (
-                          <p className="text-[11px] text-rose-500 mt-1 font-semibold flex items-center gap-1">
-                            ⚠️ Booking date cannot be in the past. Please select today or a future date.
-                          </p>
-                        )}
-                      </div>
 
-                      {/* Time selection */}
-                      <div>
-                        <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-                          Shift Start Time
-                        </label>
-                        <input
-                          type="time"
-                          required
-                          value={bookingTime}
-                          onChange={(e) => setBookingTime(e.target.value)}
-                          className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-slate-50/60 text-slate-900 outline-none transition-all focus:bg-white focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-semibold cursor-pointer"
-                        />
+                        {/* 3. Preferred Start Date */}
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 truncate">
+                            Start Date <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="date"
+                            required
+                            min={todayStr}
+                            max="2099-12-31"
+                            value={bookingDate}
+                            onChange={(e) => setBookingDate(e.target.value)}
+                            className="w-full h-11 px-3 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
+                          />
+                        </div>
+
+                        {/* 4. Shift Start Time */}
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 truncate">
+                            Start Time <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="time"
+                            required
+                            value={bookingTime}
+                            onChange={(e) => setBookingTime(e.target.value)}
+                            className="w-full h-11 px-3 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
+                          />
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex justify-end pt-6 border-t border-slate-100">
+                    {/* Next Action */}
+                    <div className="flex justify-end pt-2">
                       <button
                         type="button"
                         onClick={() => {
                           if (validateStep1()) setBookingStep(2);
                         }}
-                        className="btn-primary py-2.5 sm:py-3 px-5 sm:px-8 font-bold text-[11px] sm:text-xs uppercase tracking-normal sm:tracking-wider flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all whitespace-nowrap"
+                        className="h-11 sm:h-12 px-6 bg-[#1e2a5a] hover:bg-[#283870] text-[#c9a24c] hover:text-white rounded-xl font-extrabold text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all"
                       >
-                        Next: Patient Profile <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        <span>Next: Patient Profile</span>
+                        <ChevronRight className="h-4 w-4" />
                       </button>
                     </div>
+
                   </div>
                 )}
 
-                {/* STEP 2: PATIENT & BOOKER PROFILE DETAILS */}
+                {/* ========================================================================= */}
+                {/* 👤 STEP 2: PATIENT & BOOKER DETAILS */}
+                {/* ========================================================================= */}
                 {bookingStep === 2 && (
-                  <div className="space-y-6 animate-fade-in">
+                  <div className="space-y-5 animate-fade-in">
                     
                     {/* Guest Booker Information Section */}
                     {!user ? (
-                      <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-slate-50 via-indigo-50/20 to-amber-50/20 border border-slate-200/90 shadow-xs space-y-4">
-                        <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-200/70">
-                          <div className="flex items-center gap-2">
-                            <span className="h-6 w-6 rounded-lg bg-[#1e2a5a] text-white flex items-center justify-center text-xs font-bold">
-                              👤
-                            </span>
-                            <span className="text-xs font-extrabold uppercase tracking-wider text-[#1e2a5a] font-display">
-                              Your Contact Information
-                            </span>
-                          </div>
-                          <span className="text-[10px] text-emerald-800 bg-emerald-100/70 border border-emerald-300/80 px-2.5 py-0.5 rounded-full font-bold">
-                            Direct Booking
+                      <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/70 border border-slate-200/90 shadow-2xs space-y-3.5">
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-200/70">
+                          <span className="text-xs font-bold uppercase tracking-wider text-[#1e2a5a] flex items-center gap-1.5">
+                            <User className="h-3.5 w-3.5 text-indigo-600" /> Booker Contact Details
                           </span>
+                          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full">Direct Booking</span>
                         </div>
 
-                        <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                           <div>
-                            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                              Your Full Name <span className="text-rose-500">*</span>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                              Booker Name <span className="text-rose-500">*</span>
                             </label>
                             <input
                               type="text"
@@ -4570,13 +4520,13 @@ function CustomerDashboard() {
                               value={contactName}
                               onChange={(e) => setContactName(sanitizeName(e.target.value))}
                               placeholder="e.g. Suresh Kumar"
-                              className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-semibold"
+                              className="w-full h-11 px-3.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold"
                             />
                           </div>
 
                           <div>
-                            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                              Mobile Number (For Care Coordinator) <span className="text-rose-500">*</span>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                              Mobile Number <span className="text-rose-500">*</span>
                             </label>
                             <input
                               type="tel"
@@ -4585,99 +4535,135 @@ function CustomerDashboard() {
                               value={contactPhone}
                               onChange={(e) => setContactPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
                               placeholder="10-digit mobile number"
-                              className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-semibold font-mono"
+                              className="w-full h-11 px-3.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold font-mono"
                             />
                           </div>
 
-                          <div className="sm:col-span-2">
-                            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex justify-between">
-                              <span>Email Address (For Invoices &amp; Reports)</span>
-                              <span className="text-[10px] text-slate-400 font-medium">Optional</span>
+                          <div>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                              Email Address <span className="text-slate-400 font-normal lowercase">(optional)</span>
                             </label>
                             <input
                               type="email"
                               value={contactEmail}
                               onChange={(e) => setContactEmail(e.target.value)}
-                              placeholder="e.g. suresh.kumar@gmail.com"
-                              className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-medium"
+                              placeholder="name@gmail.com"
+                              className="w-full h-11 px-3.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-medium"
                             />
                           </div>
                         </div>
                       </div>
                     ) : (
-                      <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2">
-                          <span className="text-primary font-bold">Booking Account:</span>
-                          <span className="font-semibold text-slate-700">{user.name} ({user.phone || user.email})</span>
+                      <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs sm:text-sm">
+                        <div className="flex items-center gap-2 truncate">
+                          <span className="text-[#1e2a5a] font-bold">Booking Account:</span>
+                          <span className="font-semibold text-slate-700 truncate">{user.name} ({user.phone || user.email})</span>
                         </div>
-                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                          ✓ Verified Customer
+                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
+                          ✓ Verified Account
                         </span>
                       </div>
                     )}
 
-                    <div className="grid gap-6 md:grid-cols-2">
-                      {/* Patient Name */}
-                      <div>
-                        <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-                          Patient Full Name <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={patientName}
-                          onChange={(e) => setPatientName(sanitizeName(e.target.value))}
-                          placeholder="e.g. Ramesh Chandra / Smt. Lakshmi"
-                          className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-slate-50/60 text-slate-900 outline-none transition-all focus:bg-white focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-semibold"
-                        />
+                    {/* Patient Details: 1 col on mobile, 2 on tablet, 4 on desktop */}
+                    <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/70 border border-slate-200/90 shadow-2xs space-y-3.5">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-200/70">
+                        <span className="text-xs font-bold uppercase tracking-wider text-[#1e2a5a] flex items-center gap-1.5">
+                          <User className="h-3.5 w-3.5 text-indigo-600" /> Patient Profile
+                        </span>
+                        <span className="text-[10px] text-slate-400">Personalized Staff Allocation</span>
                       </div>
 
-                      {/* Patient Age */}
-                      <div>
-                        <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 flex justify-between items-center">
-                          <span>Patient Age</span>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase">Max 2 Digits</span>
-                        </label>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          maxLength={2}
-                          required
-                          value={patientAge}
-                          onChange={(e) => {
-                            const val = e.target.value.replace(/\D/g, "").slice(0, 2);
-                            setPatientAge(val);
-                          }}
-                          placeholder="e.g. 72"
-                          className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-slate-50/60 text-slate-900 outline-none transition-all focus:bg-white focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-semibold"
-                        />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                        {/* 1. Patient Name */}
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 truncate">
+                            Patient Name <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={patientName}
+                            onChange={(e) => setPatientName(sanitizeName(e.target.value))}
+                            placeholder="e.g. Ramesh Chandra"
+                            className="w-full h-11 px-3.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold"
+                          />
+                        </div>
+
+                        {/* 2. Patient Age */}
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 truncate">
+                            Patient Age <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={2}
+                            required
+                            value={patientAge}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/\D/g, "").slice(0, 2);
+                              setPatientAge(val);
+                            }}
+                            placeholder="e.g. 72"
+                            className="w-full h-11 px-3.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold font-mono"
+                          />
+                        </div>
+
+                        {/* 3. Care For */}
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 truncate">
+                            Care For
+                          </label>
+                          <select
+                            value={patientRelation}
+                            onChange={(e) => setPatientRelation(e.target.value)}
+                            className="w-full h-11 px-3 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
+                          >
+                            <option value="Parents (Elderly)">Parents (Elderly)</option>
+                            <option value="Self">Self</option>
+                            <option value="Spouse">Spouse</option>
+                            <option value="Child">Child</option>
+                            <option value="Relative / Friend">Relative / Friend</option>
+                          </select>
+                        </div>
+
+                        {/* 4. Mobility Status */}
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 truncate">
+                            Mobility Status
+                          </label>
+                          <select
+                            value={patientMobility}
+                            onChange={(e) => setPatientMobility(e.target.value)}
+                            className="w-full h-11 px-3 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
+                          >
+                            <option value="Fully Mobile">🟢 Fully Mobile</option>
+                            <option value="Assisted Walking">🟡 Assisted Walking</option>
+                            <option value="Wheelchair Bound">🟠 Wheelchair Bound</option>
+                            <option value="Bedridden">🔴 Bedridden</option>
+                          </select>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Patient Special Needs */}
-                    <div>
-                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-                        Medical Conditions &amp; Special Care Instructions
+                    {/* Conditions & Special Care Instructions */}
+                    <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/70 border border-slate-200/90 shadow-2xs space-y-2.5">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
+                        Medical Conditions &amp; Special Care Directives
                       </label>
                       <textarea
                         rows={3}
                         value={patientNeeds}
                         onChange={(e) => setPatientNeeds(e.target.value)}
-                        placeholder="Describe specific care needs (e.g. post-knee surgery, mobility assistance, diabetic diet, wheelchair support, dementia monitoring)..."
-                        className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-slate-50/60 text-slate-900 outline-none transition-all focus:bg-white focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-medium leading-relaxed"
+                        placeholder="Describe special care instructions (e.g. post-cardiac surgery recovery, BP/Sugar monitoring, Ryle's tube, catheter care, wound dressing, dementia care)..."
+                        className="w-full p-3 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-medium"
                       />
 
-                      {/* Quick Suggester Chips */}
-                      <div className="flex flex-wrap items-center gap-2 mt-2.5">
+                      {/* Quick Tags */}
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Quick Tags:</span>
-                        {[
-                          "Post-Op Recovery",
-                          "Mobility & Wheelchair",
-                          "Dementia & Memory Care",
-                          "Vitals & Medication Tracker",
-                          "Bedridden Nursing Care",
-                          "Elderly Companion"
-                        ].map((tag) => (
+                        {["Post-Op Recovery", "Vitals & Sugar Check", "Mobility & Wheelchair", "Dementia & Memory", "Catheter Care", "Wound Dressing", "Bedridden Nursing"].map((tag) => (
                           <button
                             key={tag}
                             type="button"
@@ -4685,7 +4671,7 @@ function CustomerDashboard() {
                               if (patientNeeds.includes(tag)) return;
                               setPatientNeeds(prev => prev ? `${prev}, ${tag}` : tag);
                             }}
-                            className="text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-gold/20 hover:text-primary text-slate-600 border border-slate-200/80 transition-all cursor-pointer"
+                            className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 hover:text-amber-900 text-slate-600 border border-slate-200 transition-all cursor-pointer shadow-2xs"
                           >
                             + {tag}
                           </button>
@@ -4693,265 +4679,210 @@ function CustomerDashboard() {
                       </div>
                     </div>
 
-                    <div className="flex justify-between items-center gap-2 pt-6 border-t border-slate-100">
+                    {/* Navigation Buttons */}
+                    <div className="flex justify-between items-center gap-3 pt-2">
                       <button
                         type="button"
                         onClick={() => setBookingStep(1)}
-                        className="btn-outline py-2.5 sm:py-3 px-3 sm:px-6 font-bold text-[11px] sm:text-xs uppercase tracking-normal sm:tracking-wider cursor-pointer whitespace-nowrap"
+                        className="h-11 sm:h-12 px-5 rounded-xl border border-slate-200 hover:bg-slate-100 font-bold text-xs sm:text-sm uppercase tracking-wider text-slate-700 cursor-pointer transition-all"
                       >
-                        Back: Service
+                        ← Back
                       </button>
                       <button
                         type="button"
                         onClick={() => {
                           if (validateStep2()) setBookingStep(3);
                         }}
-                        className="btn-primary py-2.5 sm:py-3 px-3.5 sm:px-7 font-bold text-[11px] sm:text-xs uppercase tracking-normal sm:tracking-wider flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all whitespace-nowrap"
+                        className="h-11 sm:h-12 px-6 bg-[#1e2a5a] hover:bg-[#283870] text-[#c9a24c] hover:text-white rounded-xl font-extrabold text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all"
                       >
-                        Next: Location &amp; Pay <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        <span>Next: Location &amp; Pay</span>
+                        <ChevronRight className="h-4 w-4" />
                       </button>
                     </div>
+
                   </div>
                 )}
 
-                {/* STEP 3: LOCATION & PAYMENT DETAILS */}
+                {/* ========================================================================= */}
+                {/* 💳 STEP 3: LOCATION & PAYMENT */}
+                {/* ========================================================================= */}
                 {bookingStep === 3 && (
-                  <div className="space-y-6 animate-fade-in">
-                    {/* Address */}
-                    <div>
-                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-                        Care Delivery Address
+                  <div className="space-y-5 animate-fade-in">
+                    
+                    {/* Care Address */}
+                    <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/70 border border-slate-200/90 shadow-2xs space-y-2">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
+                        Care Delivery Address in Hyderabad <span className="text-rose-500">*</span>
                       </label>
-                      <textarea
-                        rows={2}
+                      <input
+                        type="text"
                         required
                         value={bookingAddress}
                         onChange={(e) => setBookingAddress(e.target.value)}
-                        placeholder="Enter complete door no, building name, street, landmark, area & pincode (e.g. Flat 402, Royal Residency, Road No. 12, Banjara Hills, Hyderabad - 500034)"
-                        className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 bg-slate-50/60 text-slate-900 outline-none transition-all focus:bg-white focus:border-gold focus:ring-4 focus:ring-gold/15 shadow-sm font-medium leading-relaxed"
+                        placeholder="Door/Flat no, building, street, landmark, area & pincode (e.g. Flat 402, Royal Residency, Road 12, Banjara Hills)"
+                        className="w-full h-11 sm:h-12 px-3.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-medium"
                       />
                     </div>
 
-                    {/* Google Map Location */}
-                    <div>
-                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-                        Exact GPS Geolocation (For Caregiver Navigation)
-                      </label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          readOnly
-                          required
-                          value={bookingGoogleMapLocation}
-                          placeholder="Click Fetch to obtain exact pin coordinates..."
-                          className="min-w-0 flex-1 px-3 sm:px-4 py-2 sm:py-2.5 text-xs rounded-xl border border-slate-200 bg-slate-100 text-slate-700 outline-none truncate font-mono"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!navigator.geolocation) {
-                              alert("Geolocation is not supported by your browser");
-                              return;
-                            }
-                            setIsFetchingLocationBooking(true);
-                            navigator.geolocation.getCurrentPosition(
-                              (position) => {
-                                const lat = position.coords.latitude;
-                                const lng = position.coords.longitude;
-                                setBookingGoogleMapLocation(`https://www.google.com/maps?q=${lat},${lng}`);
-                                setIsFetchingLocationBooking(false);
-                              },
-                              () => {
-                                alert("Failed to fetch location. Please ensure location permissions are enabled.");
-                                setIsFetchingLocationBooking(false);
-                              }
-                            );
-                          }}
-                          disabled={isFetchingLocationBooking}
-                          className="px-2.5 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-gold via-amber-400 to-gold hover:opacity-90 text-slate-900 text-[11px] sm:text-xs font-bold rounded-xl flex items-center gap-1 sm:gap-1.5 shrink-0 disabled:opacity-50 cursor-pointer shadow-sm transition-all whitespace-nowrap"
-                        >
-                          {isFetchingLocationBooking ? (
-                            <>
-                              <span className="w-3 h-3 sm:w-3.5 sm:h-3.5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
-                              <span className="hidden sm:inline">Fetching </span>GPS...
-                            </>
-                          ) : (
-                            <>
-                              <span>📍</span>
-                              <span className="hidden sm:inline">Fetch </span>GPS Pin
-                            </>
-                          )}
-                        </button>
-                      </div>
-                      {bookingGoogleMapLocation && (
-                        <div className="flex justify-between items-center text-xs mt-2 px-1">
-                          <span className="text-emerald-700 font-bold flex items-center gap-1.5">
-                            ✓ Geolocation coordinates successfully verified!
-                          </span>
-                          <a
-                            href={bookingGoogleMapLocation}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:text-gold font-bold underline transition-colors"
+                    {/* GPS Pin & Prescription Upload */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                      {/* GPS Pin */}
+                      <div className="p-4 rounded-2xl bg-slate-50/70 border border-slate-200/90 shadow-2xs space-y-2">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 truncate">
+                          Exact GPS Pin <span className="text-slate-400 font-normal lowercase">(for staff navigation)</span>
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            readOnly
+                            value={bookingGoogleMapLocation}
+                            placeholder="GPS Coordinates"
+                            className="min-w-0 flex-1 h-11 px-3 text-xs rounded-xl border border-slate-200 bg-slate-100 text-slate-600 outline-none truncate font-mono"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!navigator.geolocation) return;
+                              setIsFetchingLocationBooking(true);
+                              navigator.geolocation.getCurrentPosition(
+                                (position) => {
+                                  const lat = position.coords.latitude;
+                                  const lng = position.coords.longitude;
+                                  setBookingGoogleMapLocation(`https://www.google.com/maps?q=${lat},${lng}`);
+                                  setIsFetchingLocationBooking(false);
+                                },
+                                () => setIsFetchingLocationBooking(false)
+                              );
+                            }}
+                            disabled={isFetchingLocationBooking}
+                            className="h-11 px-3.5 bg-[#1e2a5a] hover:bg-[#283870] text-[#c9a24c] text-xs font-black rounded-xl flex items-center gap-1.5 shrink-0 disabled:opacity-50 cursor-pointer shadow-2xs transition-all whitespace-nowrap"
                           >
-                            Preview Google Map ↗
-                          </a>
+                            {isFetchingLocationBooking ? "..." : "📍 GPS"}
+                          </button>
                         </div>
-                      )}
-                    </div>
+                      </div>
 
-                    {/* Document Upload */}
-                    <div>
-                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-                        Doctor Prescription or Case File (PDF / Image) (Required for Clinical Care)
-                      </label>
-                      <div className="p-4 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 hover:bg-gold/5 hover:border-gold/50 transition-all">
+                      {/* Doctor Prescription Upload */}
+                      <div className="p-4 rounded-2xl bg-slate-50/70 border border-slate-200/90 shadow-2xs space-y-2">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 truncate">
+                          Doctor Prescription / Case File <span className="text-slate-400 font-normal lowercase">(optional)</span>
+                        </label>
                         <input
                           type="file"
                           accept="image/*,application/pdf"
-                          required
                           onChange={(e) => handleCaretakerFileChange(e, setPrescriptionFile)}
-                          className="w-full text-xs text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-primary file:text-gold hover:file:bg-primary/90 cursor-pointer"
+                          className="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-[#1e2a5a] file:text-[#c9a24c] hover:file:bg-[#283870] cursor-pointer"
                         />
-                        {prescriptionFile && (
-                          <div className="mt-3 flex items-center gap-2 text-xs text-emerald-700 font-bold bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 w-fit">
-                            ✓ File attached successfully
-                          </div>
-                        )}
                       </div>
                     </div>
 
-                    {/* Payment Selection Banner */}
-                    <div className="border-t border-slate-100 pt-6">
-                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-3">
-                        Payment &amp; Escrow Guarantee
-                      </label>
-                      <div className="p-5 border-2 border-gold/40 bg-gradient-to-br from-[#091129] to-[#182858] text-white rounded-2xl flex items-center gap-4 shadow-lg shadow-slate-900/10">
-                        <div className="p-3 rounded-2xl bg-gold/20 text-gold border border-gold/40 shrink-0">
-                          <CreditCard className="h-6 w-6" />
+                    {/* Transparent Price Settlement Breakdown with 18% GST */}
+                    <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-50/50 via-white to-slate-50 border border-amber-300/80 shadow-sm space-y-4">
+                      <div className="flex items-center justify-between border-b border-slate-200/80 pb-3">
+                        <span className="text-xs font-black uppercase tracking-wider text-[#1e2a5a] flex items-center gap-1.5">
+                          <span>🧾</span> Dynamic Price &amp; Tax Settlement
+                        </span>
+                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/90 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                          18% GST Dynamic
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 text-xs">
+                        <div className="flex justify-between items-center text-slate-600">
+                          <span className="font-medium">Base Service Value ({durationCount} {bookingDuration}):</span>
+                          <span className="font-bold text-slate-900 font-mono">₹{calculateBaseAmount().toLocaleString()}</span>
                         </div>
-                        <div className="text-left">
-                          <div className="flex items-center gap-2">
-                            <span className="block text-sm font-bold text-white font-display">
-                              Razorpay Escrow Protection
-                            </span>
-                            <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-gold text-primary">
-                              Verified Secure
-                            </span>
-                          </div>
-                          <span className="text-xs text-slate-300 block mt-1 leading-relaxed">
-                            Pay only the 20% advance booking allocation fee online. Your remaining balance is payable only after your caregiver delivers the scheduled shifts!
+                        <div className="flex justify-between items-center text-slate-600">
+                          <span className="flex items-center gap-1">
+                            <span className="font-medium">+ 18% GST (CGST 9% + SGST 9%):</span>
+                            <span className="text-[9px] text-amber-800 bg-amber-100/80 px-1.5 py-0.2 rounded font-bold">Govt. Tax</span>
                           </span>
+                          <span className="font-bold text-amber-900 font-mono">+₹{calculateGST().toLocaleString()}</span>
                         </div>
+                        <div className="flex justify-between items-center pt-2 border-t border-dashed border-slate-300 text-sm">
+                          <span className="font-extrabold text-[#0b183b]">Total Shift Value (incl. 18% GST):</span>
+                          <span className="font-black text-lg text-[#0b183b] font-display">₹{calculateTotal().toLocaleString()}</span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-center pt-1">
+                        <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-300 shadow-2xs text-left">
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-800 block">
+                            20% Advance (Pay Now)
+                          </span>
+                          <div className="flex items-baseline justify-between mt-1">
+                            <span className="text-xl font-black text-emerald-900 font-display">
+                              ₹{calculateAdvance().toLocaleString()}
+                            </span>
+                            <span className="text-[10px] font-bold text-emerald-700">🔒 Escrow Lock</span>
+                          </div>
+                        </div>
+
+                        <div className="bg-amber-50 p-3 rounded-xl border border-amber-300 shadow-2xs text-left">
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-amber-900 block">
+                            80% Post-Shift Balance
+                          </span>
+                          <div className="flex items-baseline justify-between mt-1">
+                            <span className="text-xl font-black text-amber-950 font-display">
+                              ₹{(calculateTotal() - calculateAdvance()).toLocaleString()}
+                            </span>
+                            <span className="text-[10px] font-bold text-amber-700">Pay after shift</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Escrow Guarantee Trust Banner */}
+                      <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs leading-relaxed flex items-center gap-2.5">
+                        <span className="text-lg shrink-0">🛡️</span>
+                        <span>
+                          <strong>Amma Seva Escrow:</strong> Pay only 20% advance (<strong>₹{calculateAdvance().toLocaleString()}</strong>) now to lock verified caregiver. Remaining 80% (<strong>₹{(calculateTotal() - calculateAdvance()).toLocaleString()}</strong>) is payable after shift completion.
+                        </span>
                       </div>
                     </div>
 
-                    {/* Terms and Conditions */}
-                    <div className="border border-slate-200/80 rounded-2xl p-4 sm:p-5 bg-slate-50/60 space-y-3">
-                      <div className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center justify-between">
-                        <span>Amma Seva — Patient Booking Terms &amp; Conditions</span>
-                        <span className="text-[10px] text-slate-400 font-mono">v2.4</span>
-                      </div>
-                      <div className="max-h-24 overflow-y-auto border border-slate-200 rounded-xl p-3 bg-white text-[11px] text-slate-650 leading-relaxed font-sans space-y-1.5 shadow-inner">
-                        <p className="font-bold text-slate-800">Effective Date: 2026-2027 Care Policies</p>
-                        <p>1. Service Scope: Amma Seva coordinates background-checked nurses and care companions.</p>
-                        <p>2. Medical Care Directives: Nurses and caregivers provide support according to verified prescriptions.</p>
-                        <p>3. Escrow Security: Advance payments are held in escrow until care shifts commence.</p>
-                      </div>
-                      
-                      <label className="flex items-start gap-3 pt-1 cursor-pointer">
+                    {/* Terms Agreement & Final Action Buttons */}
+                    <div className="pt-2 space-y-4">
+                      <label className="flex items-start gap-3 cursor-pointer">
                         <input
                           type="checkbox"
                           required
                           checked={agreeTermsBooking}
                           onChange={(e) => setAgreeTermsBooking(e.target.checked)}
-                          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary focus:ring-gold cursor-pointer accent-[#c9a24c]"
+                          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#1e2a5a] focus:ring-gold cursor-pointer accent-[#c9a24c]"
                         />
-                        <span className="text-xs font-semibold text-slate-700 select-none">
-                          I have read and agree to the Amma Seva Patient Booking Terms &amp; Conditions
+                        <span className="text-xs font-semibold text-slate-600 select-none leading-relaxed">
+                          I have read and agree to Amma Seva Patient Booking Terms &amp; Escrow Guarantee Policies.
                         </span>
                       </label>
-                    </div>
 
-                    {/* Cost Summary & Actions */}
-                    <div className="border-t border-slate-200 pt-6 flex flex-col justify-between items-stretch gap-6 bg-slate-50/80 -mx-4 sm:-mx-10 -mb-4 sm:-mb-10 p-4 sm:p-8 rounded-b-3xl text-left">
-                      {/* Step Progress visual indicator */}
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                          <span className="text-emerald-700">1. Pay Advance (20%)</span>
-                          <span className="text-amber-700">2. Pay Balance (80%) After Shifts</span>
-                        </div>
-                        <div className="h-2 bg-slate-200 rounded-full overflow-hidden flex">
-                          <div className="w-[20%] bg-emerald-500 h-full rounded-l-full" />
-                          <div className="w-[80%] bg-amber-400 h-full rounded-r-full" />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-b border-slate-200 pb-5">
-                        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
-                          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Total Estimated Cost</span>
-                          <span className="block text-xl font-extrabold text-primary font-display mt-1">₹{calculateTotal().toLocaleString()}</span>
-                        </div>
-                        <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-200/70 shadow-xs">
-                          <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-700 block">Advance to Pay Now</span>
-                          <span className="block text-xl font-extrabold text-emerald-700 font-display mt-1">₹{calculateAdvance().toLocaleString()}</span>
-                        </div>
-                        <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-200/70 shadow-xs">
-                          <span className="text-[10px] uppercase font-bold tracking-wider text-amber-700 block">Pending Balance (After Care)</span>
-                          <span className="block text-xl font-extrabold text-amber-700 font-display mt-1">₹{(calculateTotal() - calculateAdvance()).toLocaleString()}</span>
-                        </div>
-                      </div>
-
-                      {/* Escrow Guarantee Trust Banner */}
-                      <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-emerald-900 text-xs leading-relaxed">
-                        <span className="text-base shrink-0">🛡️</span>
-                        <div>
-                          <strong className="font-extrabold block text-emerald-950 mb-0.5 font-display">Amma Seva Escrow Guarantee</strong>
-                          Pay only the verified advance of <span className="font-extrabold text-emerald-800">₹{calculateAdvance().toLocaleString()}</span> now to secure your caregiver. Pay the remaining balance of <span className="font-extrabold text-emerald-800">₹{(calculateTotal() - calculateAdvance()).toLocaleString()}</span> only after the shift is safely completed!
-                        </div>
-                      </div>
-
-                      <div>
-                        <p className="text-[11px] text-slate-500 leading-relaxed font-semibold">
-                          Calculation: ₹{
-                            bookingDuration === "Hourly" ? getServiceRates().hourly :
-                            bookingDuration === "Daily" ? getServiceRates().daily :
-                            bookingDuration === "Weekly" ? getServiceRates().weekly :
-                            getServiceRates().monthly
-                          } per {
-                            bookingDuration === "Hourly" ? "Hour" :
-                            bookingDuration === "Daily" ? "Day" :
-                            bookingDuration === "Weekly" ? "Week" : "Month"
-                          } × {durationCount} units = ₹{calculateTotal().toLocaleString()} (Advance: ₹{calculateAdvance().toLocaleString()} | Balance: ₹{(calculateTotal() - calculateAdvance()).toLocaleString()})
-                        </p>
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3.5 w-full pt-2">
+                      <div className="flex gap-3">
                         <button
                           type="button"
                           onClick={() => setBookingStep(2)}
-                          className="btn-outline py-2.5 sm:py-3.5 px-4 sm:px-6 font-bold uppercase tracking-normal sm:tracking-wider text-[11px] sm:text-xs cursor-pointer w-full sm:w-36 order-2 sm:order-1"
+                          className="h-12 sm:h-13 px-5 rounded-xl border border-slate-200 hover:bg-slate-100 font-bold text-xs sm:text-sm uppercase tracking-wider text-slate-700 cursor-pointer transition-all shrink-0"
                         >
-                          Back: Patient
+                          ← Back
                         </button>
                         <button
                           type="submit"
                           disabled={isSubmitting || isPaymentProcessing || !agreeTermsBooking}
-                          className="btn-primary py-3 sm:py-4 px-4 sm:px-8 font-bold uppercase tracking-normal sm:tracking-wider text-[11px] sm:text-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 w-full sm:w-auto flex-grow order-1 sm:order-2 shadow-xl shadow-primary/25 hover:scale-[1.01] transition-all"
+                          className="flex-1 h-12 sm:h-13 bg-gradient-to-r from-[#1e2a5a] via-[#091129] to-[#1e2a5a] hover:from-[#283870] hover:to-[#14224c] text-[#c9a24c] hover:text-white rounded-xl font-black uppercase tracking-wider text-xs sm:text-sm flex items-center justify-center gap-2.5 cursor-pointer shadow-xl shadow-[#1e2a5a]/25 disabled:opacity-50 transition-all"
                         >
                           {(isSubmitting || isPaymentProcessing) && (
                             <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
                           )}
                           {isPaymentProcessing 
-                            ? "Verifying Razorpay Gateway..." 
+                            ? "Opening Gateway..." 
                             : isSubmitting 
                               ? "Securing Shift Allocation..." 
-                              : `Pay Advance & Book Shift (₹${calculateAdvance().toLocaleString()})`}
+                              : `Pay ₹${calculateAdvance().toLocaleString()} Advance & Confirm`}
                         </button>
                       </div>
                     </div>
+
                   </div>
                 )}
+
               </form>
             </div>
           )}
@@ -4998,9 +4929,34 @@ function CustomerDashboard() {
                 <span className="text-slate-400 font-medium">Shift Start</span>
                 <span className="font-semibold text-slate-700">{successBooking.date}</span>
               </div>
+
+              {/* Dynamic 18% GST itemized breakdown in success modal */}
+              <div className="pt-2 border-t border-slate-200/60 space-y-1.5 text-[11px]">
+                <div className="flex justify-between items-center text-slate-600">
+                  <span>Base Service Value</span>
+                  <span className="font-semibold text-slate-800 font-mono">
+                    ₹{(successBooking.baseAmount || Math.round(successBooking.amount / 1.18)).toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-slate-600">
+                  <span>18% GST (CGST 9% + SGST 9%)</span>
+                  <span className="font-semibold text-amber-800 font-mono">
+                    +₹{(successBooking.gstAmount || (successBooking.amount - Math.round(successBooking.amount / 1.18))).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
               <div className="flex justify-between items-center pt-2 border-t border-slate-200/60">
-                <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Total Order Amount</span>
-                <span className="font-extrabold text-emerald-700 text-sm">₹{successBooking.amount}</span>
+                <span className="text-slate-700 font-bold uppercase tracking-wider text-[10px]">Total Shift Amount</span>
+                <span className="font-black text-emerald-700 text-sm font-display">₹{Number(successBooking.amount).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center text-[11px] pt-1">
+                <span className="text-emerald-700 font-medium">Advance Paid:</span>
+                <span className="font-bold text-emerald-800 font-mono">₹{Number(successBooking.advancePaid || 0).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center text-[11px]">
+                <span className="text-amber-800 font-medium">Balance Payable:</span>
+                <span className="font-bold text-amber-900 font-mono">₹{Number(successBooking.balanceAmount || 0).toLocaleString()}</span>
               </div>
             </div>
 
@@ -5120,20 +5076,27 @@ function CustomerDashboard() {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-xl font-black font-display text-primary tracking-tight">AMMA SEVA</span>
-                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-gold/15 text-primary border border-gold/30">Official</span>
+                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300">
+                      GST Tax Invoice
+                    </span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-0.5">Professional Home Healthcare &amp; Caregiving</p>
-                  <p className="text-[10px] text-slate-400 leading-normal max-w-xs mt-1">
-                    LUXDHANA GLOBAL PRIVATE LIMITED<br />
-                    8-2-630/B/B/1, Mount Banjara complex, Road No. 12, Banjara Hills, Hyderabad - 500034, Telangana.
+                  <p className="text-xs text-slate-500 mt-0.5 font-medium">Professional Home Healthcare &amp; Caregiving</p>
+                  <p className="text-[10px] text-slate-500 leading-normal max-w-xs mt-1">
+                    <strong>LUXDHANA GLOBAL PRIVATE LIMITED</strong><br />
+                    GSTIN: <span className="font-mono font-bold text-slate-800">36AAACL8921M1ZT</span><br />
+                    8-2-630/B/B/1, Mount Banjara complex, Road No. 12, Banjara Hills, Hyderabad - 500034, Telangana.<br />
+                    State Code: 36 (Telangana)
                   </p>
                 </div>
                 <div className="sm:text-right">
-                  <span className="inline-block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest bg-slate-100 px-2.5 py-1 rounded-md mb-1">
-                    Receipt Invoice
+                  <span className="inline-block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest bg-slate-100 px-2.5 py-1 rounded-md mb-1 border border-slate-200">
+                    Tax Invoice Receipt
                   </span>
                   <span className="block text-xl font-bold text-primary font-display">#INV-{activeInvoice.id}</span>
                   <span className="block text-[11px] text-slate-400 mt-0.5">Date: {new Date(activeInvoice.createdAt).toLocaleDateString()}</span>
+                  <span className="inline-block text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 mt-1">
+                    18% GST Compliant
+                  </span>
                 </div>
               </div>
 
@@ -5141,19 +5104,27 @@ function CustomerDashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs border-b border-slate-200 pb-6">
                 <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/60">
                   <span className="block text-slate-400 font-bold mb-1 uppercase tracking-wider text-[10px]">Billed Client</span>
-                  <span className="block font-bold text-slate-900 text-sm">{user?.name}</span>
-                  <span className="block text-slate-500 mt-0.5">{user?.phone}</span>
-                  <span className="block text-slate-500">{user?.email}</span>
+                  <span className="block font-bold text-slate-900 text-sm">{activeInvoice.name || user?.name}</span>
+                  <span className="block text-slate-500 mt-0.5">{activeInvoice.phone || user?.phone}</span>
+                  <span className="block text-slate-500">{user?.email || "Customer"}</span>
+                  {activeInvoice.patientName && (
+                    <span className="block text-[11px] text-slate-600 mt-1 pt-1 border-t border-slate-200/60">
+                      Patient: <strong>{activeInvoice.patientName}</strong> {activeInvoice.patientAge ? `(${activeInvoice.patientAge} yrs)` : ''}
+                    </span>
+                  )}
                 </div>
                 <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/60">
                   <span className="block text-slate-400 font-bold mb-1 uppercase tracking-wider text-[10px]">Service Delivery Address</span>
                   <span className="block text-slate-700 italic leading-relaxed">{activeInvoice.address}</span>
+                  <span className="block text-[10px] text-slate-400 mt-2 font-medium">
+                    Place of Supply: Telangana (Code 36)
+                  </span>
                 </div>
               </div>
 
               {/* Invoice Table Items */}
               <div>
-                <span className="block text-slate-400 font-bold text-[10px] mb-3 uppercase tracking-wider">Service Breakdown</span>
+                <span className="block text-slate-400 font-bold text-[10px] mb-3 uppercase tracking-wider">Itemized Tax Invoice Breakdown</span>
                 <div className="overflow-x-auto rounded-2xl border border-slate-200">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
@@ -5161,7 +5132,7 @@ function CustomerDashboard() {
                         <th className="py-3 px-4">Service Description</th>
                         <th className="py-3 px-4">Duration Contract</th>
                         <th className="py-3 px-4">Schedule Date</th>
-                        <th className="py-3 px-4 text-right">Amount</th>
+                        <th className="py-3 px-4 text-right">Base Amount</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -5169,14 +5140,72 @@ function CustomerDashboard() {
                         <td className="py-3.5 px-4 font-bold text-primary">{activeInvoice.service}</td>
                         <td className="py-3.5 px-4 font-medium">{activeInvoice.duration}</td>
                         <td className="py-3.5 px-4 text-slate-600">{activeInvoice.date} at {activeInvoice.time}</td>
-                        <td className="py-3.5 px-4 text-right font-extrabold text-slate-900">₹{activeInvoice.amount}</td>
+                        <td className="py-3.5 px-4 text-right font-bold text-slate-900 font-mono">
+                          ₹{(activeInvoice.baseAmount || Math.round(activeInvoice.amount / 1.18)).toLocaleString()}
+                        </td>
                       </tr>
                     </tbody>
-                    <tfoot>
-                      <tr className="text-slate-900 font-bold bg-slate-50/70 border-t border-slate-200">
-                        <td colSpan={3} className="py-3 px-4 text-right uppercase tracking-wider text-slate-500 text-[10px]">Total Order Amount</td>
-                        <td className="py-3 px-4 text-right text-base text-primary font-extrabold">₹{activeInvoice.amount}</td>
+                    <tfoot className="divide-y divide-slate-100 bg-slate-50/60">
+                      <tr className="text-slate-700">
+                        <td colSpan={3} className="py-2.5 px-4 text-right font-medium text-slate-600 text-xs">
+                          Base Service Subtotal:
+                        </td>
+                        <td className="py-2.5 px-4 text-right font-bold text-slate-900 font-mono">
+                          ₹{(activeInvoice.baseAmount || Math.round(activeInvoice.amount / 1.18)).toLocaleString()}
+                        </td>
                       </tr>
+                      <tr className="text-slate-600 text-[11px]">
+                        <td colSpan={3} className="py-2 px-4 text-right text-slate-500">
+                          CGST (Central GST @ 9.0%):
+                        </td>
+                        <td className="py-2 px-4 text-right font-medium text-slate-700 font-mono">
+                          ₹{Math.round((activeInvoice.gstAmount || (activeInvoice.amount - Math.round(activeInvoice.amount / 1.18))) / 2).toLocaleString()}
+                        </td>
+                      </tr>
+                      <tr className="text-slate-600 text-[11px]">
+                        <td colSpan={3} className="py-2 px-4 text-right text-slate-500">
+                          SGST (State GST @ 9.0%):
+                        </td>
+                        <td className="py-2 px-4 text-right font-medium text-slate-700 font-mono">
+                          ₹{( (activeInvoice.gstAmount || (activeInvoice.amount - Math.round(activeInvoice.amount / 1.18))) - Math.round((activeInvoice.gstAmount || (activeInvoice.amount - Math.round(activeInvoice.amount / 1.18))) / 2) ).toLocaleString()}
+                        </td>
+                      </tr>
+                      <tr className="text-amber-900 bg-amber-50/60 font-semibold text-xs">
+                        <td colSpan={3} className="py-2.5 px-4 text-right text-amber-900">
+                          Total 18% GST (CGST + SGST):
+                        </td>
+                        <td className="py-2.5 px-4 text-right font-extrabold text-amber-900 font-mono">
+                          +₹{(activeInvoice.gstAmount || (activeInvoice.amount - Math.round(activeInvoice.amount / 1.18))).toLocaleString()}
+                        </td>
+                      </tr>
+                      <tr className="text-slate-900 font-bold bg-slate-100/90 border-t-2 border-slate-300">
+                        <td colSpan={3} className="py-3 px-4 text-right uppercase tracking-wider text-slate-800 text-xs">
+                          Total Invoice Value (incl. 18% GST):
+                        </td>
+                        <td className="py-3 px-4 text-right text-base text-primary font-black font-display">
+                          ₹{Number(activeInvoice.amount).toLocaleString()}
+                        </td>
+                      </tr>
+                      {(activeInvoice.advancePaid !== undefined && activeInvoice.advancePaid > 0) || activeInvoice.paymentStatus === 'Paid' ? (
+                        <tr className="text-emerald-800 bg-emerald-50/80 font-semibold text-xs border-t border-emerald-100">
+                          <td colSpan={3} className="py-2.5 px-4 text-right">
+                            ✓ Advance Paid (Escrow Locked):
+                          </td>
+                          <td className="py-2.5 px-4 text-right font-bold text-emerald-800 font-mono">
+                            -₹{Number(activeInvoice.advancePaid || activeInvoice.amount).toLocaleString()}
+                          </td>
+                        </tr>
+                      ) : null}
+                      {activeInvoice.balanceAmount !== undefined && (
+                        <tr className="text-amber-950 bg-amber-100/70 font-bold text-xs border-t border-amber-200">
+                          <td colSpan={3} className="py-2.5 px-4 text-right">
+                            Balance Due (Post-Shift Settlement):
+                          </td>
+                          <td className="py-2.5 px-4 text-right text-sm font-black text-amber-950 font-display">
+                            ₹{Number(activeInvoice.balanceAmount).toLocaleString()}
+                          </td>
+                        </tr>
+                      )}
                     </tfoot>
                   </table>
                 </div>
@@ -5185,11 +5214,13 @@ function CustomerDashboard() {
               {/* Status details info */}
               <div className="rounded-2xl bg-slate-50 p-4 border border-slate-200 flex justify-between items-center text-xs">
                 <div>
-                  <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Payment Method</span>
-                  <span className="font-bold text-slate-800">Online Escrow / Offline Settlement</span>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Payment Mode</span>
+                  <span className="font-bold text-slate-800">
+                    {activeInvoice.paymentMethod === 'razorpay' ? 'Razorpay Online Escrow (UPI/Card)' : 'Pay on Service / Offline Escrow'}
+                  </span>
                 </div>
                 <div className="text-right">
-                  <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Shift Status</span>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Payment Status</span>
                   <span className={`font-extrabold px-2.5 py-1 rounded-full text-xs ${
                     activeInvoice.paymentStatus === 'Paid' 
                       ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 

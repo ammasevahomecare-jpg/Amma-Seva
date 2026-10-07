@@ -2083,14 +2083,26 @@ export const db = {
 
   // User Bookings Operations
   addBookingForUser: async (bookingData) => {
-    const { name, phone, service, date, time, duration, address, amount = 1200, userId = null, patientName = '', patientAge = '', patientNeeds = '', prescription = '', googleMapLocation = '', paymentStatus = 'Unpaid', paymentMethod = '', transactionId = '', paymentDate = '', advancePaid = 0, balanceAmount = 0 } = bookingData
+    const { 
+      name, phone, service, date, time, duration, address, amount = 1200, 
+      baseAmount: providedBase, gstAmount: providedGst,
+      userId = null, patientName = '', patientAge = '', patientNeeds = '', 
+      prescription = '', googleMapLocation = '', paymentStatus = 'Unpaid', 
+      paymentMethod = '', transactionId = '', paymentDate = '', 
+      advancePaid = 0, balanceAmount = 0 
+    } = bookingData
+
+    const finalAmount = Number(amount) || 1200
+    const finalBase = providedBase !== undefined && providedBase !== null ? Number(providedBase) : Math.round(finalAmount / 1.18)
+    const finalGst = providedGst !== undefined && providedGst !== null ? Number(providedGst) : (finalAmount - finalBase)
+
     const createdAt = new Date().toISOString()
     if (useMySQL) {
       const [result] = await pool.query(
         'INSERT INTO bookings (name, phone, service, date, time, duration, address, amount, userId, createdAt, patientName, patientAge, patientNeeds, prescription, googleMapLocation, paymentStatus, paymentMethod, transactionId, paymentDate, advancePaid, balanceAmount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [name, phone, service, date, time, duration, address, amount, userId, createdAt, patientName, patientAge, patientNeeds, prescription, googleMapLocation, paymentStatus, paymentMethod, transactionId, paymentDate, advancePaid, balanceAmount]
+        [name, phone, service, date, time, duration, address, finalAmount, userId, createdAt, patientName, patientAge, patientNeeds, prescription, googleMapLocation, paymentStatus, paymentMethod, transactionId, paymentDate, advancePaid, balanceAmount]
       )
-      return { id: result.insertId, name, phone, service, date, time, duration, address, status: 'Pending', assignedStaff: null, amount, paymentStatus, userId, createdAt, patientName, patientAge, patientNeeds, prescription, googleMapLocation, paymentMethod, transactionId, paymentDate, advancePaid, balanceAmount }
+      return { id: result.insertId, name, phone, service, date, time, duration, address, status: 'Pending', assignedStaff: null, amount: finalAmount, baseAmount: finalBase, gstAmount: finalGst, paymentStatus, userId, createdAt, patientName, patientAge, patientNeeds, prescription, googleMapLocation, paymentMethod, transactionId, paymentDate, advancePaid, balanceAmount }
     } else {
       const data = await readJSONDb()
       const newBooking = {
@@ -2104,7 +2116,9 @@ export const db = {
         address,
         status: 'Pending',
         assignedStaff: null,
-        amount,
+        amount: finalAmount,
+        baseAmount: finalBase,
+        gstAmount: finalGst,
         paymentStatus,
         paymentMethod,
         transactionId,

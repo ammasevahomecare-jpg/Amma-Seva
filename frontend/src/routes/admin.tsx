@@ -60,6 +60,8 @@ interface Booking {
   status: string;
   assignedStaff: string | null;
   amount: number;
+  baseAmount?: number;
+  gstAmount?: number;
   paymentStatus: string;
   createdAt: string;
   patientName?: string;

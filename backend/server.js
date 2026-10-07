@@ -2668,6 +2668,7 @@ app.post('/api/payment/order', async (req, res) => {
 app.post('/api/booking', async (req, res) => {
   const { 
     name, phone, service, date, time, duration, address, amount, userId, 
+    baseAmount, gstAmount,
     patientName, patientAge, patientNeeds, paymentMethod, email, prescription, 
     googleMapLocation, razorpay_order_id, razorpay_payment_id, razorpay_signature,
     advancePaid = 0, balanceAmount = 0
@@ -2735,6 +2736,16 @@ app.post('/api/booking', async (req, res) => {
     const parsedAmount = typeof amount === 'number' ? amount : (amount !== undefined && amount !== '' ? Number(amount) : (paymentMethod === 'pay_on_service' ? 0 : 1200))
     const statusOfPayment = req.body.paymentStatus || (paymentMethod === 'razorpay' ? 'Advance Paid' : (paymentMethod === 'pay_on_service' ? 'Pay on Service' : 'Unpaid'))
 
+    // Dynamic 18% GST Calculations
+    const calculatedBase = baseAmount !== undefined && baseAmount !== null 
+      ? Number(baseAmount) 
+      : Math.round(parsedAmount / 1.18)
+    const calculatedGst = gstAmount !== undefined && gstAmount !== null 
+      ? Number(gstAmount) 
+      : (parsedAmount - calculatedBase)
+    const cgstAmount = Math.round(calculatedGst / 2)
+    const sgstAmount = calculatedGst - cgstAmount
+
     const newBooking = await db.addBookingForUser({ 
       name: effectiveName, 
       phone: effectivePhone, 
@@ -2744,6 +2755,8 @@ app.post('/api/booking', async (req, res) => {
       duration: effectiveDuration, 
       address: effectiveAddress, 
       amount: parsedAmount, 
+      baseAmount: calculatedBase,
+      gstAmount: calculatedGst,
       userId: authUserId,
       patientName: patientName || effectiveName,
       patientAge: patientAge || '',
@@ -2767,29 +2780,95 @@ app.post('/api/booking', async (req, res) => {
       const mailOptions = {
         from: `"Amma Seva Bookings" <${process.env.SMTP_EMAIL || 'ammasevahomecare@gmail.com'}>`,
         to: email,
-        subject: 'Booking Confirmation - Amma Seva',
+        subject: `Booking Confirmed & Tax Invoice #INV-${newBooking.id} - Amma Seva`,
         html: `
-          <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 16px;">
-            <h2 style="color: #10b981; margin-bottom: 8px;">Booking Confirmed!</h2>
-            <p style="color: #64748b; font-size: 14px;">Hi ${name},</p>
-            <p style="color: #64748b; font-size: 14px;">Your service booking has been successfully recorded. Here are the details:</p>
-            <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #334155; margin-top: 16px;">
-              <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; font-weight: bold;">Service</td><td style="padding: 8px 0; text-align: right;">${service}</td></tr>
-              <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; font-weight: bold;">Date &amp; Time</td><td style="padding: 8px 0; text-align: right;">${date} at ${time}</td></tr>
-              <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; font-weight: bold;">Duration</td><td style="padding: 8px 0; text-align: right;">${duration}</td></tr>
-              <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; font-weight: bold;">Patient</td><td style="padding: 8px 0; text-align: right;">${patientName || name} (Age: ${patientAge || 'N/A'})</td></tr>
-              <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; font-weight: bold;">Address</td><td style="padding: 8px 0; text-align: right;">${address}</td></tr>
-              <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; font-weight: bold;">Total Amount</td><td style="padding: 8px 0; text-align: right; font-weight: bold; color: #0f172a;">₹${amount || 1200}</td></tr>
-              <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; font-weight: bold;">Advance Paid</td><td style="padding: 8px 0; text-align: right; color: #10b981; font-weight: bold;">₹${advancePaid}</td></tr>
-              <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; font-weight: bold;">Balance Due</td><td style="padding: 8px 0; text-align: right; color: #f59e0b; font-weight: bold;">₹${balanceAmount}</td></tr>
-            </table>
-            <p style="color: #94a3b8; font-size: 12px; margin-top: 24px; text-align: center;">We will assign a caregiver shortly. Thank you for choosing Amma Seva.</p>
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 20px; overflow: hidden; background-color: #ffffff;">
+            <div style="background: linear-gradient(135deg, #1e2a5a 0%, #0b183b 100%); padding: 24px 28px; color: #ffffff;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #c9a24c; letter-spacing: 0.5px;">AMMA SEVA</h1>
+                  <p style="margin: 4px 0 0; font-size: 11px; color: #cbd5e1;">Professional Home Healthcare &amp; Caregiving</p>
+                </div>
+                <div style="text-align: right;">
+                  <span style="display: inline-block; background-color: rgba(201, 162, 76, 0.2); border: 1px solid #c9a24c; color: #fef08a; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 9999px; text-transform: uppercase;">
+                    GST Tax Invoice
+                  </span>
+                  <p style="margin: 4px 0 0; font-size: 11px; color: #94a3b8;">#INV-${newBooking.id}</p>
+                </div>
+              </div>
+            </div>
+
+            <div style="padding: 24px 28px;">
+              <h2 style="color: #059669; font-size: 18px; margin-top: 0; margin-bottom: 8px;">✓ Booking Confirmed &amp; Verified</h2>
+              <p style="color: #64748b; font-size: 13px; line-height: 1.5; margin: 0 0 16px;">
+                Dear <strong>${effectiveName}</strong>, your care shift reservation has been registered. Below is your itemized service receipt and tax invoice breakdown:
+              </p>
+
+              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; margin-bottom: 16px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px; color: #475569;">
+                  <tr><td style="padding: 3px 0; color: #94a3b8;">Service:</td><td style="padding: 3px 0; text-align: right; font-weight: 700; color: #1e2a5a;">${effectiveService}</td></tr>
+                  <tr><td style="padding: 3px 0; color: #94a3b8;">Date &amp; Time:</td><td style="padding: 3px 0; text-align: right; font-weight: 600;">${effectiveDate} at ${effectiveTime}</td></tr>
+                  <tr><td style="padding: 3px 0; color: #94a3b8;">Duration:</td><td style="padding: 3px 0; text-align: right; font-weight: 600;">${effectiveDuration}</td></tr>
+                  <tr><td style="padding: 3px 0; color: #94a3b8;">Patient:</td><td style="padding: 3px 0; text-align: right; font-weight: 600;">${patientName || effectiveName} ${patientAge ? `(${patientAge} yrs)` : ''}</td></tr>
+                  <tr><td style="padding: 3px 0; color: #94a3b8;">Service Address:</td><td style="padding: 3px 0; text-align: right; font-style: italic;">${effectiveAddress}</td></tr>
+                </table>
+              </div>
+
+              <h3 style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; margin: 16px 0 8px;">Price &amp; 18% GST Breakdown</h3>
+              <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #334155; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
+                <tr style="background-color: #f1f5f9; border-bottom: 1px solid #e2e8f0;">
+                  <td style="padding: 10px 12px; font-weight: 700; color: #1e2a5a;">Description</td>
+                  <td style="padding: 10px 12px; text-align: right; font-weight: 700; color: #1e2a5a;">Amount</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                  <td style="padding: 8px 12px;">Base Service Subtotal</td>
+                  <td style="padding: 8px 12px; text-align: right; font-weight: 600; font-family: monospace;">₹${calculatedBase.toLocaleString()}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #f1f5f9; color: #64748b; font-size: 12px;">
+                  <td style="padding: 6px 12px;">CGST @ 9.0%</td>
+                  <td style="padding: 6px 12px; text-align: right; font-family: monospace;">₹${cgstAmount.toLocaleString()}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #f1f5f9; color: #64748b; font-size: 12px;">
+                  <td style="padding: 6px 12px;">SGST @ 9.0%</td>
+                  <td style="padding: 6px 12px; text-align: right; font-family: monospace;">₹${sgstAmount.toLocaleString()}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #e2e8f0; background-color: #fffbeb; font-weight: 600; color: #92400e; font-size: 12px;">
+                  <td style="padding: 8px 12px;">Total 18% GST (CGST + SGST)</td>
+                  <td style="padding: 8px 12px; text-align: right; font-family: monospace;">+₹${calculatedGst.toLocaleString()}</td>
+                </tr>
+                <tr style="background-color: #f8fafc; border-top: 2px solid #cbd5e1; font-weight: 800; font-size: 14px; color: #0b183b;">
+                  <td style="padding: 10px 12px;">Total Order Value (incl. 18% GST)</td>
+                  <td style="padding: 10px 12px; text-align: right; color: #1e2a5a; font-family: monospace;">₹${parsedAmount.toLocaleString()}</td>
+                </tr>
+                ${advancePaid > 0 ? `
+                <tr style="background-color: #ecfdf5; color: #065f46; font-size: 12px; font-weight: 600; border-top: 1px solid #a7f3d0;">
+                  <td style="padding: 8px 12px;">✓ 20% Advance Paid (Escrow Locked)</td>
+                  <td style="padding: 8px 12px; text-align: right; font-family: monospace;">-₹${Number(advancePaid).toLocaleString()}</td>
+                </tr>` : ''}
+                <tr style="background-color: #fffbeb; color: #78350f; font-size: 12px; font-weight: 700; border-top: 1px solid #fde68a;">
+                  <td style="padding: 8px 12px;">Balance Due (Payable Post-Shift)</td>
+                  <td style="padding: 8px 12px; text-align: right; font-family: monospace;">₹${Number(balanceAmount).toLocaleString()}</td>
+                </tr>
+              </table>
+
+              <div style="margin-top: 20px; padding: 12px; background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px; font-size: 11px; color: #065f46; line-height: 1.4;">
+                🛡️ <strong>Amma Seva Escrow Protection:</strong> Advance funds are safely escrow-held until your care shift is fulfilled to satisfaction.
+              </div>
+
+              <div style="margin-top: 24px; text-align: center; border-top: 1px solid #f1f5f9; pt: 16px;">
+                <p style="color: #94a3b8; font-size: 11px; margin: 0;">
+                  LUXDHANA GLOBAL PRIVATE LIMITED • GSTIN: 36AAACL8921M1ZT<br />
+                  8-2-630/B/B/1, Mount Banjara complex, Road No. 12, Banjara Hills, Hyderabad - 500034, Telangana.<br />
+                  Helpdesk: +91 94905 87575 | support@ammaseva.com
+                </p>
+              </div>
+            </div>
           </div>
         `
       }
       try {
         await transporter.sendMail(mailOptions)
-        console.log(`[Email Notification] Dispatch confirmed to ${email} for booking ID: ${newBooking.id}`)
+        console.log(`[Email Notification] Tax Invoice & confirmation dispatch confirmed to ${email} for booking ID: ${newBooking.id}`)
       } catch (err) {
         console.error('Failed to send booking confirmation email:', err.message)
       }
