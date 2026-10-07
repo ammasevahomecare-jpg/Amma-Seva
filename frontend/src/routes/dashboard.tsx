@@ -4293,7 +4293,7 @@ function CustomerDashboard() {
             // =========================================================================
             // 🏥 COMPACT ULTRA-PREMIUM 3-STEP CLINICAL HEALTHCARE BOOKING WIZARD
             // =========================================================================
-            <div className="max-w-4xl mx-auto rounded-3xl bg-white border border-slate-200/90 shadow-2xl shadow-slate-200/40 p-5 sm:p-8 text-left animate-fade-in relative overflow-hidden mb-16">
+            <div className="max-w-4xl mx-auto rounded-3xl bg-white border border-slate-200/90 shadow-2xl shadow-slate-200/40 p-3.5 sm:p-6 md:p-8 text-left animate-fade-in relative overflow-hidden mb-16">
               
               {/* Category Mode Switcher Tabs */}
               <div className="space-y-4 pb-6 mb-6 border-b border-slate-150">
@@ -4558,7 +4558,7 @@ function CustomerDashboard() {
                         onClick={() => {
                           if (validateStep1()) goToBookingStep(2);
                         }}
-                        className="min-h-[46px] h-auto py-2.5 px-5 sm:px-6 bg-[#1e2a5a] hover:bg-[#283870] text-[#c9a24c] hover:text-white rounded-xl font-extrabold text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all whitespace-nowrap leading-snug"
+                        className="h-10 sm:h-11 px-4 sm:px-6 bg-[#1e2a5a] hover:bg-[#283870] text-[#c9a24c] hover:text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all"
                       >
                         <span>Next: Patient Profile</span>
                         <ChevronRight className="h-4 w-4 shrink-0" />
@@ -4755,11 +4755,11 @@ function CustomerDashboard() {
                     </div>
 
                     {/* Navigation Buttons */}
-                    <div className="flex justify-between items-center gap-3 pt-2">
+                    <div className="flex items-center justify-between gap-2 pt-2">
                       <button
                         type="button"
                         onClick={() => goToBookingStep(1)}
-                        className="min-h-[46px] h-auto py-2.5 px-4 sm:px-5 rounded-xl border border-slate-200 hover:bg-slate-100 font-bold text-xs sm:text-sm uppercase tracking-wider text-slate-700 cursor-pointer transition-all shrink-0 whitespace-nowrap leading-snug"
+                        className="h-10 sm:h-11 px-3 sm:px-4 rounded-xl border border-slate-200 hover:bg-slate-100 font-bold text-xs text-slate-700 cursor-pointer transition-all shrink-0 flex items-center justify-center"
                       >
                         ← Back
                       </button>
@@ -4768,7 +4768,7 @@ function CustomerDashboard() {
                         onClick={() => {
                           if (validateStep2()) goToBookingStep(3);
                         }}
-                        className="min-h-[46px] h-auto py-2.5 px-4 sm:px-6 bg-[#1e2a5a] hover:bg-[#283870] text-[#c9a24c] hover:text-white rounded-xl font-extrabold text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all whitespace-nowrap leading-snug"
+                        className="h-10 sm:h-11 px-3.5 sm:px-5 bg-[#1e2a5a] hover:bg-[#283870] text-[#c9a24c] hover:text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all shrink-0"
                       >
                         <span>Next: Location &amp; Pay</span>
                         <ChevronRight className="h-4 w-4 shrink-0" />
@@ -4942,27 +4942,27 @@ function CustomerDashboard() {
                         </span>
                       </label>
 
-                      <div className="flex gap-3">
+                      <div className="flex items-center gap-2.5">
                         <button
                           type="button"
                           onClick={() => goToBookingStep(2)}
-                          className="min-h-[48px] h-auto py-3 px-4 sm:px-5 rounded-xl border border-slate-200 hover:bg-slate-100 font-bold text-xs sm:text-sm uppercase tracking-wider text-slate-700 cursor-pointer transition-all shrink-0 whitespace-nowrap leading-snug"
+                          className="h-11 sm:h-12 px-3 sm:px-4 rounded-xl border border-slate-200 hover:bg-slate-100 font-bold text-xs text-slate-700 cursor-pointer transition-all shrink-0 flex items-center justify-center"
                         >
                           ← Back
                         </button>
                         <button
                           type="submit"
                           disabled={isSubmitting || isPaymentProcessing || !agreeTermsBooking}
-                          className="flex-1 min-h-[48px] h-auto py-3 px-4 bg-gradient-to-r from-[#1e2a5a] via-[#091129] to-[#1e2a5a] hover:from-[#283870] hover:to-[#14224c] text-[#c9a24c] hover:text-white rounded-xl font-black uppercase tracking-wider text-xs sm:text-sm flex items-center justify-center gap-2.5 cursor-pointer shadow-xl shadow-[#1e2a5a]/25 disabled:opacity-50 transition-all leading-snug text-center"
+                          className="flex-1 min-w-0 h-11 sm:h-12 px-3 sm:px-4 bg-gradient-to-r from-[#1e2a5a] via-[#091129] to-[#1e2a5a] hover:from-[#283870] hover:to-[#14224c] text-[#c9a24c] hover:text-white rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer shadow-xl shadow-[#1e2a5a]/25 disabled:opacity-50 transition-all text-center truncate"
                         >
                           {(isSubmitting || isPaymentProcessing) && (
-                            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
+                            <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
                           )}
-                          <span className="leading-snug">
+                          <span className="truncate">
                             {isPaymentProcessing 
                               ? "Opening Gateway..." 
                               : isSubmitting 
-                                ? "Securing Shift Allocation..." 
+                                ? "Securing Shift..." 
                                 : calculateAdvance() > 0
                                   ? `Pay ₹${calculateAdvance().toLocaleString()} Advance & Confirm`
                                   : "Confirm Booking & Dispatch"}
