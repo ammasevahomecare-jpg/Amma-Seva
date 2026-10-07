@@ -3017,50 +3017,33 @@ function CustomerDashboard() {
           {/* Header Section: Full Banner when in Bookings view, Sleek Compact Bar when in Booking Wizard */}
           {activeView === "bookings" ? (
             <>
-              {/* Executive Welcome Banner */}
-              <div className="relative overflow-hidden rounded-3xl border border-[#c9a24c]/35 bg-gradient-to-r from-[#091129] via-[#0f1d44] to-[#182858] p-5 sm:p-8 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-5 mb-6 text-left">
-                <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-[#c9a24c]/15 via-transparent to-transparent rounded-full blur-2xl pointer-events-none" />
-                <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-indigo-600/10 rounded-full blur-2xl pointer-events-none" />
-                
-                <div className="flex items-center gap-4 relative z-10">
-                  <div className="p-0.5 rounded-2xl bg-gradient-to-tr from-[#c9a24c] via-[#ecd599] to-[#c9a24c] shadow-lg shadow-black/30 shrink-0">
-                    <div className="h-14 w-14 rounded-[14px] bg-[#091129] flex items-center justify-center font-display font-black text-xl text-[#c9a24c] uppercase tracking-wider select-none">
-                      {user ? (user?.name || "P").substring(0, 2) : "✨"}
-                    </div>
+              {/* Sleek Compact User Header Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/95 backdrop-blur-md p-3.5 sm:p-4 rounded-2xl border border-slate-200/90 shadow-xs mb-4 sm:mb-5 text-left">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="h-9 w-9 rounded-xl bg-[#0b183b] text-[#c9a24c] flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                    <User className="h-4.5 w-4.5" />
                   </div>
-
-                  <div>
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-[10px] font-bold uppercase tracking-widest text-[#e4c277] mb-1 shadow-xs">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      <span>{user ? "Verified Customer Portal" : "Direct Instant Booking"}</span>
-                    </div>
-                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold font-display leading-tight text-white">
-                      {user ? (
-                        <>Welcome back, <span className="bg-gradient-to-r from-[#edd69c] via-[#f7e8c2] to-[#c9a24c] bg-clip-text text-transparent">{user?.name || "Patient"}</span></>
-                      ) : (
-                        <>Book <span className="bg-gradient-to-r from-[#edd69c] via-[#f7e8c2] to-[#c9a24c] bg-clip-text text-transparent">Home Care &amp; MTP Tasks</span></>
-                      )}
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Customer Portal</div>
+                    <h1 className="text-base sm:text-lg font-black text-[#0b183b] font-display truncate">
+                      {user ? user.name : "My Account"}
                     </h1>
-                    <p className="text-xs text-slate-300/90 mt-0.5 max-w-xl leading-relaxed">
-                      {user 
-                        ? "Manage your homecare bookings, track assigned verified caregivers, and schedule new care shifts."
-                        : "Fast, background-verified caretaker allocation and companion tasks with 100% escrow protection across Hyderabad."}
-                    </p>
                   </div>
                 </div>
-                
-                <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto shrink-0 relative z-10">
+
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                   {user ? (
                     <>
                       <button
                         onClick={() => setActiveView("new-booking")}
-                        className="px-5 py-2.5 bg-gradient-to-r from-[#d8b456] via-[#c9a24c] to-[#b88d30] hover:from-[#e0be67] hover:to-[#c4983b] text-[#091129] text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all font-sans"
+                        className="px-3.5 sm:px-4 py-2 bg-[#0b183b] hover:bg-[#14234f] text-[#c9a24c] hover:text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-xs transition-all"
                       >
-                        <Calendar className="h-3.5 w-3.5" /> Schedule New Shift
+                        <Calendar className="h-3.5 w-3.5" />
+                        <span>Schedule Shift</span>
                       </button>
                       <button
                         onClick={handleLogout}
-                        className="px-4 py-2.5 rounded-xl border border-white/15 bg-white/5 hover:bg-rose-500/15 hover:border-rose-500/40 text-slate-200 hover:text-rose-300 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                        className="px-3 sm:px-3.5 py-2 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-all cursor-pointer shadow-2xs"
                       >
                         Sign Out
                       </button>
@@ -3068,9 +3051,10 @@ function CustomerDashboard() {
                   ) : (
                     <Link
                       to="/login"
-                      className="px-5 py-2.5 rounded-xl border border-white/20 bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition-all backdrop-blur-md shadow-md"
+                      className="px-4 py-2 rounded-xl bg-[#0b183b] text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-xs"
                     >
-                      <User className="h-3.5 w-3.5 text-gold" /> Existing Customer Sign In
+                      <User className="h-3.5 w-3.5 text-[#c9a24c]" />
+                      <span>Sign In</span>
                     </Link>
                   )}
                 </div>
