@@ -11,7 +11,7 @@ import {
   ArrowUpRight, Star, BookOpen, HelpCircle, Menu, X, Image, Coins, Clock,
   Briefcase, Car, Eye, MessageCircle, FileText, Sparkles,
   GraduationCap, CreditCard, ShieldCheck, FileCheck, User, ExternalLink,
-  Gift, Copy, Share2
+  Gift, Copy, Share2, Heart, AlertTriangle, Zap, Navigation
 } from "lucide-react";
 
 const INDIAN_STATES = [
@@ -59,6 +59,9 @@ interface Booking {
   address: string;
   status: string;
   assignedStaff: string | null;
+  assignedStaffId?: number | null;
+  assignedStaffRole?: string | null;
+  assignedStaffPhone?: string | null;
   amount: number;
   baseAmount?: number;
   gstAmount?: number;
@@ -79,9 +82,17 @@ interface Booking {
   };
   advancePaid?: number;
   balanceAmount?: number;
+  caretakerPayout?: number | null;
   caretakerPayoutStatus?: string;
   caretakerPayoutMethod?: string;
   caretakerPayoutRef?: string;
+  email?: string;
+  userId?: number;
+  isMtp?: boolean | number;
+  mtpAcceptedAt?: string | null;
+  mtpAcceptedBy?: string | null;
+  mtpAcceptedById?: number | null;
+  mtpAcceptedPhone?: string | null;
 }
 
 interface Caregiver {
@@ -357,6 +368,9 @@ function AdminPage() {
   const [bookingAmount, setBookingAmount] = useState("");
   const [bookingStatus, setBookingStatus] = useState("Pending");
   const [bookingAssignedStaff, setBookingAssignedStaff] = useState("");
+  const [bookingAssignedStaffId, setBookingAssignedStaffId] = useState<number | null>(null);
+  const [bookingAssignedStaffRole, setBookingAssignedStaffRole] = useState<string | null>(null);
+  const [bookingAssignedStaffPhone, setBookingAssignedStaffPhone] = useState<string | null>(null);
   const [bookingPaymentStatus, setBookingPaymentStatus] = useState("Unpaid");
   const [bookingPaymentMethod, setBookingPaymentMethod] = useState("UPI");
   const [bookingTransactionId, setBookingTransactionId] = useState("");
@@ -373,6 +387,62 @@ function AdminPage() {
   const [bookingPatientNeeds, setBookingPatientNeeds] = useState("");
   const [bookingPrescription, setBookingPrescription] = useState("");
   const [bookingGoogleMapLocation, setBookingGoogleMapLocation] = useState("");
+
+  // MTP Gig Tracking States & Actions
+  const [bookingIsMtp, setBookingIsMtp] = useState(false);
+  const [bookingMtpAcceptedAt, setBookingMtpAcceptedAt] = useState<string | null>(null);
+  const [bookingMtpAcceptedBy, setBookingMtpAcceptedBy] = useState<string | null>(null);
+  const [bookingMtpAcceptedById, setBookingMtpAcceptedById] = useState<number | null>(null);
+  const [bookingMtpAcceptedPhone, setBookingMtpAcceptedPhone] = useState<string | null>(null);
+  const [isReleasingGig, setIsReleasingGig] = useState(false);
+  const [isRebroadcasting, setIsRebroadcasting] = useState(false);
+
+  const handleReleaseMTPGig = async (bookingId: number | string) => {
+    if (!confirm("Are you sure you want to release this MTP task back to the open pool? It will immediately become available again on the MTP Gig Radar for other companions to accept.")) return;
+    const token = localStorage.getItem("ammaseva_admin_token");
+    setIsReleasingGig(true);
+    try {
+      const res = await fetch(`/api/admin/release-mtp-gig/${bookingId}`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to release gig.");
+      alert("✅ Gig released! It has been returned to the open MTP radar and re-broadcasted to all MTPs.");
+      setBookingAssignedStaff("");
+      setBookingAssignedStaffId(null);
+      setBookingAssignedStaffRole(null);
+      setBookingAssignedStaffPhone(null);
+      setBookingMtpAcceptedAt(null);
+      setBookingMtpAcceptedBy(null);
+      setBookingMtpAcceptedById(null);
+      setBookingMtpAcceptedPhone(null);
+      setBookingStatus("Pending");
+      fetchDashboardData();
+    } catch (err: any) {
+      alert(err.message || "Failed to release gig.");
+    } finally {
+      setIsReleasingGig(false);
+    }
+  };
+
+  const handleRebroadcastMTPGig = async (bookingId: number | string) => {
+    const token = localStorage.getItem("ammaseva_admin_token");
+    setIsRebroadcasting(true);
+    try {
+      const res = await fetch(`/api/admin/rebroadcast-mtp-gig/${bookingId}`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to rebroadcast.");
+      alert("📢 Alert dispatched! Email notifications sent to all verified MTP partners.");
+    } catch (err: any) {
+      alert(err.message || "Failed to rebroadcast.");
+    } finally {
+      setIsRebroadcasting(false);
+    }
+  };
 
   // Form states - Caregiver
   const [caregiverName, setCaregiverName] = useState("");
@@ -1009,6 +1079,9 @@ function AdminPage() {
       setBookingAmount("1200");
       setBookingStatus("Pending");
       setBookingAssignedStaff("");
+      setBookingAssignedStaffId(null);
+      setBookingAssignedStaffRole(null);
+      setBookingAssignedStaffPhone(null);
       setBookingPaymentStatus("Unpaid");
       setBookingPaymentMethod("UPI");
       setBookingTransactionId("");
@@ -1019,6 +1092,11 @@ function AdminPage() {
       setBookingCaretakerPayoutRef("");
       setPayoutCalcMode("percentage");
       setPayoutPercentValue("85");
+      setBookingIsMtp(false);
+      setBookingMtpAcceptedAt(null);
+      setBookingMtpAcceptedBy(null);
+      setBookingMtpAcceptedById(null);
+      setBookingMtpAcceptedPhone(null);
     } else if (type === "caregiver") {
       setCaregiverName("");
       setCaregiverPhone("");
@@ -1091,7 +1169,34 @@ function AdminPage() {
       setBookingDuration(record.duration || "Daily");
       setBookingAddress(record.address);
       setBookingStatus(record.status || "Pending");
+      let foundId = record.assignedStaffId ? Number(record.assignedStaffId) : null;
+      let foundRole = record.assignedStaffRole || null;
+      let foundPhone = record.assignedStaffPhone || null;
+      if (!foundId && record.assignedStaff) {
+        const matchedCg = caregivers.find(c => c.name?.trim().toLowerCase() === record.assignedStaff.trim().toLowerCase());
+        if (matchedCg) {
+          foundId = matchedCg.id;
+          foundRole = "caregiver";
+          foundPhone = matchedCg.phone;
+        } else {
+          const matchedMtp = mtps.find(m => m.name?.trim().toLowerCase() === record.assignedStaff.trim().toLowerCase());
+          if (matchedMtp) {
+            foundId = matchedMtp.id;
+            foundRole = "mtp";
+            foundPhone = matchedMtp.phone;
+          }
+        }
+      }
       setBookingAssignedStaff(record.assignedStaff || "");
+      setBookingAssignedStaffId(foundId);
+      setBookingAssignedStaffRole(foundRole);
+      setBookingAssignedStaffPhone(foundPhone);
+      const isMtpRecord = Boolean(record.isMtp || (record.service && record.service.toLowerCase().includes("mtp")) || (foundRole === "mtp"));
+      setBookingIsMtp(isMtpRecord);
+      setBookingMtpAcceptedAt(record.mtpAcceptedAt || null);
+      setBookingMtpAcceptedBy(record.mtpAcceptedBy || record.assignedStaff || null);
+      setBookingMtpAcceptedById(record.mtpAcceptedById || foundId || null);
+      setBookingMtpAcceptedPhone(record.mtpAcceptedPhone || foundPhone || null);
       setBookingAmount(record.amount?.toString() || "0");
       setBookingPaymentStatus(record.paymentStatus || "Unpaid");
       setBookingPaymentMethod(record.paymentMethod || "");
@@ -1223,6 +1328,9 @@ function AdminPage() {
         caretakerPayoutRef: bookingCaretakerPayoutRef,
         status: bookingStatus,
         assignedStaff: bookingAssignedStaff || null,
+        assignedStaffId: bookingAssignedStaffId || null,
+        assignedStaffRole: bookingAssignedStaffRole || null,
+        assignedStaffPhone: bookingAssignedStaffPhone || null,
         paymentStatus: bookingPaymentStatus,
         paymentMethod: bookingPaymentMethod,
         transactionId: bookingTransactionId,
@@ -1231,7 +1339,12 @@ function AdminPage() {
         patientAge: bookingPatientAge,
         patientNeeds: bookingPatientNeeds,
         prescription: bookingPrescription,
-        googleMapLocation: bookingGoogleMapLocation
+        googleMapLocation: bookingGoogleMapLocation,
+        isMtp: bookingIsMtp ? 1 : 0,
+        mtpAcceptedAt: bookingMtpAcceptedAt,
+        mtpAcceptedBy: bookingMtpAcceptedBy,
+        mtpAcceptedById: bookingMtpAcceptedById,
+        mtpAcceptedPhone: bookingMtpAcceptedPhone
       };
     } else if (modalType === "caregiver") {
       const nameErr = validateName(caregiverName, "Staff full name");
@@ -1290,7 +1403,7 @@ function AdminPage() {
         referredBy: caregiverReferredBy.trim().toUpperCase()
       };
       if (modalMode === "add") {
-        bodyData.password = "123456"; // Default password
+        bodyData.password = Math.random().toString(36).slice(-8) + "A1!";
       }
     } else if (modalType === "service") {
       url = modalMode === "add" ? "/api/services" : `/api/services/${selectedId}`;
@@ -2148,10 +2261,47 @@ function AdminPage() {
                             </div>
                           </div>
 
-                          {/* Assigned Nurse/Staff */}
-                          <div className="space-y-1.5 min-w-[140px]">
-                            <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">Assigned Nurse/Staff</span>
-                            {b.assignedStaff ? (
+                          {/* Assigned Nurse/Staff or MTP Companion */}
+                          <div className="space-y-1.5 min-w-[150px]">
+                            <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">
+                              {b.isMtp || (b.service && (b.service.toLowerCase().includes("mtp") || b.service.toLowerCase().includes("escort") || b.service.toLowerCase().includes("companion")))
+                                ? "MTP Companion (Self-Claim)"
+                                : "Assigned Nurse/Staff"}
+                            </span>
+                            {b.isMtp || (b.service && (b.service.toLowerCase().includes("mtp") || b.service.toLowerCase().includes("escort") || b.service.toLowerCase().includes("companion"))) ? (
+                              b.assignedStaff || b.mtpAcceptedBy ? (
+                                <div className="space-y-0.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <div className="h-6 w-6 rounded-full bg-emerald-600 text-white font-black text-[10px] flex items-center justify-center shadow-xs shrink-0">
+                                      🚗
+                                    </div>
+                                    <div>
+                                      <div className="text-xs font-black text-emerald-900 flex items-center gap-1">
+                                        {b.assignedStaff || b.mtpAcceptedBy}
+                                        <span className="text-[8px] bg-emerald-100 text-emerald-700 font-extrabold px-1.5 py-0.2 rounded">Accepted</span>
+                                      </div>
+                                      {(b.mtpAcceptedPhone || b.assignedStaffPhone) && (
+                                        <div className="text-[9px] text-slate-500 font-semibold">📞 {b.mtpAcceptedPhone || b.assignedStaffPhone}</div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {b.mtpAcceptedAt && (
+                                    <div className="text-[8px] text-slate-400 font-medium pl-7">⏱️ {b.mtpAcceptedAt}</div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="space-y-1">
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg shadow-2xs">
+                                    <span className="relative flex h-2 w-2 mr-0.5">
+                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                                    </span>
+                                    ⚡ Open Gig Radar
+                                  </span>
+                                  <div className="text-[8px] text-slate-400 font-medium">Awaiting MTP accept</div>
+                                </div>
+                              )
+                            ) : b.assignedStaff ? (
                               <div className="flex items-center gap-2">
                                 <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-[#1e2a5a] to-[#0f1530] border border-slate-200/50 flex items-center justify-center font-bold text-xs text-white shadow-sm shrink-0">
                                   {b.assignedStaff.charAt(0).toUpperCase()}
@@ -2493,7 +2643,8 @@ function AdminPage() {
               }),
               ...caregivers.map((c) => {
                 const assignedShifts = bookings.filter(
-                  (b) => b.assignedStaff && b.assignedStaff.trim().toLowerCase() === c.name.trim().toLowerCase()
+                  (b) => (b.assignedStaffId && Number(b.assignedStaffId) === c.id) ||
+                         (b.assignedStaff && b.assignedStaff.trim().toLowerCase() === c.name.trim().toLowerCase())
                 );
                 return {
                   id: c.id,
@@ -2515,7 +2666,8 @@ function AdminPage() {
               }),
               ...mtps.map((m) => {
                 const assignedShifts = bookings.filter(
-                  (b) => b.assignedStaff && b.assignedStaff.trim().toLowerCase() === m.name.trim().toLowerCase()
+                  (b) => (b.assignedStaffId && Number(b.assignedStaffId) === m.id) ||
+                         (b.assignedStaff && b.assignedStaff.trim().toLowerCase() === m.name.trim().toLowerCase())
                 );
                 const roleList = Array.isArray(m.roles) ? m.roles : (m.roles ? [m.roles] : []);
                 return {
@@ -3445,7 +3597,7 @@ function AdminPage() {
               <div className="space-y-6 animate-in fade-in duration-200 text-left">
                 {selectedCaregiverForLedger ? (() => {
                   const cg = selectedCaregiverForLedger;
-                  const cgBookings = bookings.filter(b => b.assignedStaff === cg.name);
+                  const cgBookings = bookings.filter(b => (b.assignedStaffId && Number(b.assignedStaffId) === cg.id) || (b.assignedStaff && b.assignedStaff.trim().toLowerCase() === cg.name.trim().toLowerCase()));
                   const earned = cgBookings.filter(b => b.status === "Completed").reduce((sum, b) => sum + getPayoutValue(b), 0);
                   const paid = cgBookings.filter(b => b.status === "Completed" && b.caretakerPayoutStatus === "Paid").reduce((sum, b) => sum + getPayoutValue(b), 0);
                   const unpaid = earned - paid;
@@ -3776,7 +3928,7 @@ function AdminPage() {
                                   (cg.uniqueId && cg.uniqueId.toLowerCase().includes(q));
                               })
                               .map((cg) => {
-                                const cgBookings = bookings.filter(b => b.assignedStaff === cg.name);
+                                const cgBookings = bookings.filter(b => (b.assignedStaffId && Number(b.assignedStaffId) === cg.id) || (b.assignedStaff && b.assignedStaff.trim().toLowerCase() === cg.name.trim().toLowerCase()));
                                 const completed = cgBookings.filter(b => b.status === "Completed");
                                 const earned = completed.reduce((sum, b) => sum + getPayoutValue(b), 0);
                                 const paid = completed.filter(b => b.caretakerPayoutStatus === "Paid").reduce((sum, b) => sum + getPayoutValue(b), 0);
@@ -5581,7 +5733,12 @@ function AdminPage() {
                         <div>
                           <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Service Type *</label>
                           <select 
-                            value={bookingService} onChange={e => setBookingService(e.target.value)}
+                            value={bookingService} onChange={e => {
+                              const val = e.target.value;
+                              setBookingService(val);
+                              const isMtp = /mtp|escort|errand|walking|companion|hospital dropping/i.test(val);
+                              setBookingIsMtp(isMtp);
+                            }}
                             disabled={isRecordCaretakerPaymentMode}
                             className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800 cursor-pointer disabled:opacity-70 disabled:bg-slate-100/50"
                           >
@@ -5656,6 +5813,15 @@ function AdminPage() {
                         <DollarSign className="h-3.5 w-3.5 text-[#c9a24c]" /> Payout &amp; Assignment Status
                       </div>
 
+                      {bookingIsMtp && (
+                        <div className="bg-amber-50/80 border border-amber-200/80 rounded-xl p-2.5 flex items-start gap-2 shadow-2xs">
+                          <span className="text-sm">⚡</span>
+                          <div className="text-[10px] text-amber-900 leading-snug">
+                            <strong className="font-extrabold">On-Demand MTP Gig Radar Active:</strong> Admin manual assignment is removed for MTP services. Approved MTP companions receive task notifications and accept directly from their dashboard (Rapido model). Once accepted, it is atomically locked and hidden from other companions.
+                          </div>
+                        </div>
+                      )}
+
                       <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                         <div>
                           <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Total Fee (₹) *</label>
@@ -5691,48 +5857,132 @@ function AdminPage() {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Assign Staff / MTP</label>
-                          <select 
-                            value={bookingAssignedStaff} onChange={e => setBookingAssignedStaff(e.target.value)}
-                            disabled={isRecordCaretakerPaymentMode}
-                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none bg-white text-xs font-semibold text-slate-800 cursor-pointer disabled:opacity-70"
-                          >
-                            <option value="">-- Unassigned (Pending Allocation) --</option>
-                            {bookingAssignedStaff && 
-                              !caregivers.some(c => c.name === bookingAssignedStaff) && 
-                              !mtps.some(m => m.name === bookingAssignedStaff) && (
-                                <option value={bookingAssignedStaff}>Current: {bookingAssignedStaff}</option>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">
+                            {bookingIsMtp ? "🚗 MTP Companion (Self-Claim)" : "Assign Nurse / Staff"}
+                          </label>
+                          {bookingIsMtp ? (
+                            <div className="space-y-1.5">
+                              {bookingAssignedStaff || bookingMtpAcceptedBy ? (
+                                <div className="bg-emerald-50/90 border border-emerald-200 rounded-xl p-2.5 space-y-2 shadow-2xs">
+                                  <div className="flex items-center gap-2">
+                                    <div className="h-6 w-6 rounded-full bg-emerald-600 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-xs">
+                                      🚗
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="text-xs font-black text-emerald-950 flex items-center gap-1 truncate">
+                                        <span>{bookingAssignedStaff || bookingMtpAcceptedBy}</span>
+                                        <span className="text-[8px] bg-emerald-600 text-white px-1.5 py-0.2 rounded-full font-extrabold shrink-0">Accepted</span>
+                                      </div>
+                                      {(bookingMtpAcceptedPhone || bookingAssignedStaffPhone) && (
+                                        <div className="text-[10px] text-emerald-800 font-bold">
+                                          📞 {bookingMtpAcceptedPhone || bookingAssignedStaffPhone}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {bookingMtpAcceptedAt && (
+                                    <div className="text-[9px] text-slate-500 font-semibold bg-white/80 px-2 py-0.5 rounded border border-emerald-100 flex items-center gap-1">
+                                      ⏱️ {bookingMtpAcceptedAt}
+                                    </div>
+                                  )}
+                                  {selectedId && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleReleaseMTPGig(selectedId)}
+                                      disabled={isReleasingGig}
+                                      className="w-full py-1.5 px-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[10px] font-extrabold transition-all cursor-pointer flex items-center justify-center gap-1"
+                                      title="Release task back to open MTP radar pool"
+                                    >
+                                      {isReleasingGig ? "Releasing..." : "🔄 Release to Open Pool"}
+                                    </button>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="bg-amber-50/90 border border-amber-200 rounded-xl p-2.5 space-y-2 shadow-2xs">
+                                  <div className="flex items-center gap-2">
+                                    <span className="relative flex h-2.5 w-2.5 shrink-0">
+                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                                    </span>
+                                    <div>
+                                      <div className="text-[11px] font-black text-amber-900 leading-tight">Broadcasting on Radar</div>
+                                      <div className="text-[9px] text-amber-700 font-medium">Open to all verified MTPs</div>
+                                    </div>
+                                  </div>
+                                  {selectedId && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRebroadcastMTPGig(selectedId)}
+                                      disabled={isRebroadcasting}
+                                      className="w-full py-1.5 px-2 rounded-lg bg-white hover:bg-amber-100/70 text-amber-800 border border-amber-300 text-[10px] font-extrabold transition-all cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
+                                      title="Resend email alert to all approved MTP partners"
+                                    >
+                                      {isRebroadcasting ? "Dispatched..." : "📢 Resend Broadcast Alert"}
+                                    </button>
+                                  )}
+                                </div>
                               )}
-                            {caregivers.filter(c => c.status === "Verified" || c.status === "Active").length > 0 && (
-                              <optgroup label="🩺 Verified Caregivers & Nurses">
-                                {caregivers
-                                  .filter(c => c.status === "Verified" || c.status === "Active")
-                                  .map(c => (
-                                    <option key={`cg-${c.id}`} value={c.name}>
-                                      🩺 {c.name} — [{getCaregiverReferralCode(c)}] ({c.specialty || "Caregiver"})
-                                    </option>
-                                  ))}
-                              </optgroup>
-                            )}
-                            {mtps.filter(m => m.status === "Approved" || m.status === "Active" || m.status === "Verified").length > 0 && (
-                              <optgroup label="🚗 Approved MTP Companions">
-                                {mtps
-                                  .filter(m => m.status === "Approved" || m.status === "Active" || m.status === "Verified")
-                                  .map(m => {
-                                    const cleanPhone = (m.phone || "").replace(/[^0-9]/g, "");
-                                    const last4 = cleanPhone.length >= 4 ? cleanPhone.slice(-4) : (cleanPhone.padEnd(4, "0") || "0000");
-                                    const firstName = (m.name.split(/\s+/)[0] || "MTP").replace(/[^a-zA-Z]/g, "").toUpperCase();
-                                    const code = `${firstName}${last4}`;
-                                    const taskSummary = Array.isArray(m.roles) ? m.roles.join(", ") : (m.roles || m.locality || "MTP Companion");
-                                    return (
-                                      <option key={`mtp-${m.id}`} value={m.name}>
-                                        🚗 {m.name} — [{code}] ({taskSummary})
+                            </div>
+                          ) : (
+                            <select 
+                              value={
+                                bookingAssignedStaffId && bookingAssignedStaffRole
+                                  ? `${bookingAssignedStaffRole}:${bookingAssignedStaffId}`
+                                  : (bookingAssignedStaff || "")
+                              }
+                              onChange={e => {
+                                const val = e.target.value;
+                                if (!val) {
+                                  setBookingAssignedStaff("");
+                                  setBookingAssignedStaffId(null);
+                                  setBookingAssignedStaffRole(null);
+                                  setBookingAssignedStaffPhone(null);
+                                  return;
+                                }
+                                if (val.startsWith("caregiver:")) {
+                                  const id = Number(val.split(":")[1]);
+                                  const cg = caregivers.find(c => c.id === id);
+                                  if (cg) {
+                                    setBookingAssignedStaff(cg.name);
+                                    setBookingAssignedStaffId(cg.id);
+                                    setBookingAssignedStaffRole("caregiver");
+                                    setBookingAssignedStaffPhone(cg.phone);
+                                  }
+                                } else {
+                                  setBookingAssignedStaff(val);
+                                  const cg = caregivers.find(c => c.name.toLowerCase() === val.toLowerCase());
+                                  if (cg) {
+                                    setBookingAssignedStaffId(cg.id);
+                                    setBookingAssignedStaffRole("caregiver");
+                                    setBookingAssignedStaffPhone(cg.phone);
+                                  } else {
+                                    setBookingAssignedStaffId(null);
+                                    setBookingAssignedStaffRole(null);
+                                    setBookingAssignedStaffPhone(null);
+                                  }
+                                }
+                              }}
+                              disabled={isRecordCaretakerPaymentMode}
+                              className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none bg-white text-xs font-semibold text-slate-800 cursor-pointer disabled:opacity-70"
+                            >
+                              <option value="">-- Unassigned (Pending Allocation) --</option>
+                              {bookingAssignedStaff && 
+                                !caregivers.some(c => c.id === bookingAssignedStaffId || c.name === bookingAssignedStaff) && (
+                                  <option value={bookingAssignedStaff}>Current: {bookingAssignedStaff}</option>
+                                )}
+                              {caregivers.filter(c => c.status === "Verified" || c.status === "Active").length > 0 && (
+                                <optgroup label="🩺 Verified Caregivers & Nurses">
+                                  {caregivers
+                                    .filter(c => c.status === "Verified" || c.status === "Active")
+                                    .map(c => (
+                                      <option key={`cg-${c.id}`} value={`caregiver:${c.id}`}>
+                                        🩺 {c.name} — [{getCaregiverReferralCode(c)}] ({c.specialty || "Caregiver"})
                                       </option>
-                                    );
-                                  })}
-                              </optgroup>
-                            )}
-                          </select>
+                                    ))}
+                                </optgroup>
+                              )}
+                            </select>
+                          )}
                         </div>
                         <div>
                           <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Client Payment</label>

@@ -631,6 +631,15 @@ const initJSONDb = () => {
           }
         })
       }
+      if (data.bookings) {
+        data.bookings.forEach(b => {
+          if (b.isMtp === undefined) {
+            const s = String(b.service || '').toLowerCase()
+            b.isMtp = (s.includes('mtp') || s.includes('escort') || s.includes('errand') || s.includes('companion') || s.includes('walking') || s.includes('dropping')) ? 1 : 0
+            modified = true
+          }
+        })
+      }
       if (!data.notifications) { data.notifications = DEFAULT_MOCK_DATA.notifications; modified = true }
       if (!data.reviews) { data.reviews = []; modified = true }
       if (!data.announcements) { data.announcements = []; modified = true }
@@ -715,6 +724,22 @@ const readJSONDb = async () => {
 const writeJSONDb = async (data) => {
   if (!data.referrals) data.referrals = []
   await fs.promises.writeFile(JSON_DB_PATH, JSON.stringify(data, null, 2), 'utf-8')
+}
+
+// Helper to identify MTP / On-Demand Companion tasks
+export const isMTPService = (service, isMtpFlag) => {
+  if (isMtpFlag === true || isMtpFlag === 1 || isMtpFlag === '1') return true
+  if (!service) return false
+  const s = String(service).toLowerCase()
+  return s.includes('mtp') || 
+         s.includes('escort') || 
+         s.includes('errand') || 
+         s.includes('companion') || 
+         s.includes('hospital dropping') ||
+         s.includes('medicine delivery') ||
+         s.includes('walking') ||
+         s.includes('task helper') ||
+         s.includes('task force')
 }
 
 export const db = {
@@ -1109,6 +1134,42 @@ export const db = {
         try {
           await connection.query(`ALTER TABLE bookings ADD COLUMN balanceAmount DECIMAL(10,2) DEFAULT 0`)
         } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE bookings ADD COLUMN assignedStaffId INT NULL`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE bookings ADD COLUMN assignedStaffRole VARCHAR(50) NULL`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE bookings ADD COLUMN assignedStaffPhone VARCHAR(50) NULL`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE bookings ADD COLUMN caretakerPayout DECIMAL(10,2) DEFAULT 0`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE bookings ADD COLUMN caretakerPayoutStatus VARCHAR(50) DEFAULT 'Unpaid'`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE bookings ADD COLUMN caretakerPayoutMethod VARCHAR(100) DEFAULT ''`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE bookings ADD COLUMN caretakerPayoutRef VARCHAR(255) DEFAULT ''`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE bookings ADD COLUMN isMtp TINYINT DEFAULT 0`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE bookings ADD COLUMN mtpAcceptedAt VARCHAR(100) NULL`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE bookings ADD COLUMN mtpAcceptedBy VARCHAR(255) NULL`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE bookings ADD COLUMN mtpAcceptedById INT NULL`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE bookings ADD COLUMN mtpAcceptedPhone VARCHAR(50) NULL`)
+        } catch (e) {}
 
         // Migration queries for services table
         try {
@@ -1368,14 +1429,22 @@ export const db = {
   },
 
   addBooking: async (bookingData) => {
-    const { name, phone, service, date, time, duration, address, amount = 1200, paymentStatus = 'Unpaid', paymentMethod = '', transactionId = '', paymentDate = '', prescription = '', googleMapLocation = '', caretakerPayout, caretakerPayoutStatus = 'Unpaid', caretakerPayoutMethod = '', caretakerPayoutRef = '', advancePaid = 0, balanceAmount = 0 } = bookingData
+    const { 
+      name, phone, service, date, time, duration, address, 
+      status = 'Pending', assignedStaff = null, assignedStaffId = null, assignedStaffRole = null, assignedStaffPhone = null,
+      amount = 1200, paymentStatus = 'Unpaid', paymentMethod = '', transactionId = '', paymentDate = '', 
+      prescription = '', googleMapLocation = '', caretakerPayout = 0, caretakerPayoutStatus = 'Unpaid', caretakerPayoutMethod = '', caretakerPayoutRef = '', advancePaid = 0, balanceAmount = 0,
+      patientName = '', patientAge = '', patientNeeds = '',
+      isMtp = null, mtpAcceptedAt = null, mtpAcceptedBy = null, mtpAcceptedById = null, mtpAcceptedPhone = null
+    } = bookingData
     const createdAt = new Date().toISOString()
+    const isMtpVal = isMTPService(service, isMtp) ? 1 : 0
     if (useMySQL) {
       const [result] = await pool.query(
-        'INSERT INTO bookings (name, phone, service, date, time, duration, address, amount, paymentStatus, paymentMethod, transactionId, paymentDate, prescription, googleMapLocation, advancePaid, balanceAmount, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [name, phone, service, date, time, duration, address, amount, paymentStatus, paymentMethod, transactionId, paymentDate, prescription, googleMapLocation, advancePaid, balanceAmount, createdAt]
+        'INSERT INTO bookings (name, phone, service, date, time, duration, address, status, assignedStaff, assignedStaffId, assignedStaffRole, assignedStaffPhone, amount, paymentStatus, paymentMethod, transactionId, paymentDate, prescription, googleMapLocation, advancePaid, balanceAmount, patientName, patientAge, patientNeeds, caretakerPayout, caretakerPayoutStatus, caretakerPayoutMethod, caretakerPayoutRef, isMtp, mtpAcceptedAt, mtpAcceptedBy, mtpAcceptedById, mtpAcceptedPhone, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [name, phone, service, date, time, duration, address, status, assignedStaff, assignedStaffId, assignedStaffRole, assignedStaffPhone, amount, paymentStatus, paymentMethod, transactionId, paymentDate, prescription, googleMapLocation, advancePaid, balanceAmount, patientName, patientAge, patientNeeds, Number(caretakerPayout) || 0, caretakerPayoutStatus, caretakerPayoutMethod, caretakerPayoutRef, isMtpVal, mtpAcceptedAt, mtpAcceptedBy, mtpAcceptedById, mtpAcceptedPhone, createdAt]
       )
-      return { id: result.insertId, name, phone, service, date, time, duration, address, status: 'Pending', assignedStaff: null, amount, paymentStatus, paymentMethod, transactionId, paymentDate, prescription, googleMapLocation, advancePaid, balanceAmount, createdAt }
+      return { id: result.insertId, name, phone, service, date, time, duration, address, status, assignedStaff, assignedStaffId, assignedStaffRole, assignedStaffPhone, amount, paymentStatus, paymentMethod, transactionId, paymentDate, prescription, googleMapLocation, advancePaid, balanceAmount, patientName, patientAge, patientNeeds, caretakerPayout: Number(caretakerPayout) || 0, caretakerPayoutStatus, caretakerPayoutMethod, caretakerPayoutRef, isMtp: isMtpVal, mtpAcceptedAt, mtpAcceptedBy, mtpAcceptedById, mtpAcceptedPhone, createdAt }
     } else {
       const data = await readJSONDb()
       const newBooking = {
@@ -1387,8 +1456,11 @@ export const db = {
         time,
         duration,
         address,
-        status: 'Pending',
-        assignedStaff: null,
+        status,
+        assignedStaff,
+        assignedStaffId,
+        assignedStaffRole,
+        assignedStaffPhone,
         amount,
         caretakerPayout: Number(caretakerPayout) || 0,
         caretakerPayoutStatus,
@@ -1402,6 +1474,14 @@ export const db = {
         googleMapLocation,
         advancePaid: Number(advancePaid) || 0,
         balanceAmount: Number(balanceAmount) || 0,
+        patientName,
+        patientAge,
+        patientNeeds,
+        isMtp: isMtpVal,
+        mtpAcceptedAt,
+        mtpAcceptedBy,
+        mtpAcceptedById,
+        mtpAcceptedPhone,
         createdAt
       }
       data.bookings.push(newBooking)
@@ -1410,11 +1490,11 @@ export const db = {
     }
   },
 
-  updateBooking: async (id, status, assignedStaff, paymentStatus) => {
+  updateBooking: async (id, status, assignedStaff, paymentStatus, staffId = null, staffRole = null, staffPhone = null) => {
     if (useMySQL) {
       const [result] = await pool.query(
-        'UPDATE bookings SET status = ?, assignedStaff = ?, paymentStatus = ? WHERE id = ?',
-        [status, assignedStaff, paymentStatus, id]
+        'UPDATE bookings SET status = ?, assignedStaff = ?, paymentStatus = ?, assignedStaffId = COALESCE(?, assignedStaffId), assignedStaffRole = COALESCE(?, assignedStaffRole), assignedStaffPhone = COALESCE(?, assignedStaffPhone) WHERE id = ?',
+        [status, assignedStaff, paymentStatus, staffId, staffRole, staffPhone, id]
       )
       return result.affectedRows > 0
     } else {
@@ -1448,6 +1528,9 @@ export const db = {
           ...oldBooking,
           status,
           assignedStaff,
+          assignedStaffId: staffId !== null && staffId !== undefined ? staffId : oldBooking.assignedStaffId,
+          assignedStaffRole: staffRole || oldBooking.assignedStaffRole,
+          assignedStaffPhone: staffPhone || oldBooking.assignedStaffPhone,
           paymentStatus,
           confirmedAt,
           assignedAt,
@@ -2089,20 +2172,22 @@ export const db = {
       userId = null, patientName = '', patientAge = '', patientNeeds = '', 
       prescription = '', googleMapLocation = '', paymentStatus = 'Unpaid', 
       paymentMethod = '', transactionId = '', paymentDate = '', 
-      advancePaid = 0, balanceAmount = 0 
+      advancePaid = 0, balanceAmount = 0,
+      isMtp = null
     } = bookingData
 
     const finalAmount = Number(amount) || 1200
     const finalBase = providedBase !== undefined && providedBase !== null ? Number(providedBase) : Math.round(finalAmount / 1.18)
     const finalGst = providedGst !== undefined && providedGst !== null ? Number(providedGst) : (finalAmount - finalBase)
+    const isMtpVal = isMTPService(service, isMtp) ? 1 : 0
 
     const createdAt = new Date().toISOString()
     if (useMySQL) {
       const [result] = await pool.query(
-        'INSERT INTO bookings (name, phone, service, date, time, duration, address, amount, userId, createdAt, patientName, patientAge, patientNeeds, prescription, googleMapLocation, paymentStatus, paymentMethod, transactionId, paymentDate, advancePaid, balanceAmount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [name, phone, service, date, time, duration, address, finalAmount, userId, createdAt, patientName, patientAge, patientNeeds, prescription, googleMapLocation, paymentStatus, paymentMethod, transactionId, paymentDate, advancePaid, balanceAmount]
+        'INSERT INTO bookings (name, phone, service, date, time, duration, address, amount, userId, createdAt, patientName, patientAge, patientNeeds, prescription, googleMapLocation, paymentStatus, paymentMethod, transactionId, paymentDate, advancePaid, balanceAmount, isMtp, mtpAcceptedAt, mtpAcceptedBy, mtpAcceptedById, mtpAcceptedPhone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL)',
+        [name, phone, service, date, time, duration, address, finalAmount, userId, createdAt, patientName, patientAge, patientNeeds, prescription, googleMapLocation, paymentStatus, paymentMethod, transactionId, paymentDate, advancePaid, balanceAmount, isMtpVal]
       )
-      return { id: result.insertId, name, phone, service, date, time, duration, address, status: 'Pending', assignedStaff: null, amount: finalAmount, baseAmount: finalBase, gstAmount: finalGst, paymentStatus, userId, createdAt, patientName, patientAge, patientNeeds, prescription, googleMapLocation, paymentMethod, transactionId, paymentDate, advancePaid, balanceAmount }
+      return { id: result.insertId, name, phone, service, date, time, duration, address, status: 'Pending', assignedStaff: null, amount: finalAmount, baseAmount: finalBase, gstAmount: finalGst, paymentStatus, userId, createdAt, patientName, patientAge, patientNeeds, prescription, googleMapLocation, paymentMethod, transactionId, paymentDate, advancePaid, balanceAmount, isMtp: isMtpVal, mtpAcceptedAt: null, mtpAcceptedBy: null, mtpAcceptedById: null, mtpAcceptedPhone: null }
     } else {
       const data = await readJSONDb()
       const newBooking = {
@@ -2131,6 +2216,11 @@ export const db = {
         googleMapLocation,
         advancePaid: Number(advancePaid) || 0,
         balanceAmount: Number(balanceAmount) || 0,
+        isMtp: isMtpVal,
+        mtpAcceptedAt: null,
+        mtpAcceptedBy: null,
+        mtpAcceptedById: null,
+        mtpAcceptedPhone: null,
         createdAt
       }
       data.bookings.push(newBooking)
@@ -2149,26 +2239,52 @@ export const db = {
     }
   },
 
-  getBookingsByUserId: async (userId) => {
+  getBookingsByUserId: async (userId, userPhone = null) => {
+    const cleanPhone = userPhone ? String(userPhone).replace(/\D/g, '').slice(-10) : null
     if (useMySQL) {
+      if (cleanPhone) {
+        const [rows] = await pool.query('SELECT * FROM bookings WHERE userId = ? OR phone = ? ORDER BY id DESC', [userId, cleanPhone])
+        return rows
+      }
       const [rows] = await pool.query('SELECT * FROM bookings WHERE userId = ? ORDER BY id DESC', [userId])
       return rows
     } else {
       const data = await readJSONDb()
-      return data.bookings.filter(b => b.userId === Number(userId)).reverse()
+      if (!data.bookings) return []
+      return data.bookings.filter(b => {
+        if (userId && Number(b.userId) === Number(userId)) return true
+        if (cleanPhone && b.phone && String(b.phone).replace(/\D/g, '').slice(-10) === cleanPhone) return true
+        return false
+      }).reverse()
     }
   },
 
-  getBookingsByAssignedStaff: async (staffName) => {
-    if (!staffName) return []
-    const trimmed = staffName.trim().toLowerCase()
+  getBookingsByAssignedStaff: async (staffName, staffId = null) => {
+    const trimmed = (staffName || '').trim().toLowerCase()
+    const numericId = staffId ? Number(staffId) : null
     if (useMySQL) {
-      const [rows] = await pool.query('SELECT * FROM bookings WHERE LOWER(TRIM(assignedStaff)) = ? ORDER BY id DESC', [trimmed])
-      return rows
+      if (numericId && trimmed) {
+        const [rows] = await pool.query(
+          'SELECT * FROM bookings WHERE assignedStaffId = ? OR LOWER(TRIM(assignedStaff)) = ? ORDER BY id DESC',
+          [numericId, trimmed]
+        )
+        return rows
+      } else if (numericId) {
+        const [rows] = await pool.query('SELECT * FROM bookings WHERE assignedStaffId = ? ORDER BY id DESC', [numericId])
+        return rows
+      } else if (trimmed) {
+        const [rows] = await pool.query('SELECT * FROM bookings WHERE LOWER(TRIM(assignedStaff)) = ? ORDER BY id DESC', [trimmed])
+        return rows
+      }
+      return []
     } else {
       const data = await readJSONDb()
       if (!data.bookings) return []
-      return data.bookings.filter(b => b.assignedStaff && b.assignedStaff.trim().toLowerCase() === trimmed).reverse()
+      return data.bookings.filter(b => {
+        if (numericId && Number(b.assignedStaffId) === numericId) return true
+        if (trimmed && b.assignedStaff && b.assignedStaff.trim().toLowerCase() === trimmed) return true
+        return false
+      }).reverse()
     }
   },
 
@@ -2284,15 +2400,17 @@ export const db = {
   adminUpdateBooking: async (id, bookingData) => {
     const { 
       name, phone, service, date, time, duration, address, status, 
-      assignedStaff, amount, paymentStatus, paymentMethod = '', 
+      assignedStaff, assignedStaffId, assignedStaffRole, assignedStaffPhone,
+      amount, paymentStatus, paymentMethod = '', 
       transactionId = '', paymentDate = '', caretakerPayout, 
       caretakerPayoutStatus, caretakerPayoutMethod, caretakerPayoutRef,
-      advancePaid, balanceAmount, patientName, patientAge, patientNeeds, googleMapLocation
+      advancePaid, balanceAmount, patientName, patientAge, patientNeeds, googleMapLocation,
+      isMtp, mtpAcceptedAt, mtpAcceptedBy, mtpAcceptedById, mtpAcceptedPhone
     } = bookingData
     if (useMySQL) {
       const [result] = await pool.query(
-        'UPDATE bookings SET name = ?, phone = ?, service = ?, date = ?, time = ?, duration = ?, address = ?, status = ?, assignedStaff = ?, amount = ?, paymentStatus = ?, paymentMethod = ?, transactionId = ?, paymentDate = ?, advancePaid = COALESCE(?, advancePaid), balanceAmount = COALESCE(?, balanceAmount), patientName = COALESCE(?, patientName), patientNeeds = COALESCE(?, patientNeeds), googleMapLocation = COALESCE(?, googleMapLocation) WHERE id = ?',
-        [name, phone, service, date, time, duration, address, status, assignedStaff || null, amount, paymentStatus, paymentMethod, transactionId, paymentDate, advancePaid !== undefined ? advancePaid : null, balanceAmount !== undefined ? balanceAmount : null, patientName !== undefined ? patientName : null, patientNeeds !== undefined ? patientNeeds : null, googleMapLocation !== undefined ? googleMapLocation : null, id]
+        'UPDATE bookings SET name = ?, phone = ?, service = ?, date = ?, time = ?, duration = ?, address = ?, status = ?, assignedStaff = ?, assignedStaffId = COALESCE(?, assignedStaffId), assignedStaffRole = COALESCE(?, assignedStaffRole), assignedStaffPhone = COALESCE(?, assignedStaffPhone), amount = ?, paymentStatus = ?, paymentMethod = ?, transactionId = ?, paymentDate = ?, advancePaid = COALESCE(?, advancePaid), balanceAmount = COALESCE(?, balanceAmount), patientName = COALESCE(?, patientName), patientAge = COALESCE(?, patientAge), patientNeeds = COALESCE(?, patientNeeds), googleMapLocation = COALESCE(?, googleMapLocation), caretakerPayout = COALESCE(?, caretakerPayout), caretakerPayoutStatus = COALESCE(?, caretakerPayoutStatus), caretakerPayoutMethod = COALESCE(?, caretakerPayoutMethod), caretakerPayoutRef = COALESCE(?, caretakerPayoutRef), isMtp = COALESCE(?, isMtp), mtpAcceptedAt = COALESCE(?, mtpAcceptedAt), mtpAcceptedBy = COALESCE(?, mtpAcceptedBy), mtpAcceptedById = COALESCE(?, mtpAcceptedById), mtpAcceptedPhone = COALESCE(?, mtpAcceptedPhone) WHERE id = ?',
+        [name, phone, service, date, time, duration, address, status, assignedStaff || null, assignedStaffId !== undefined ? assignedStaffId : null, assignedStaffRole || null, assignedStaffPhone || null, amount, paymentStatus, paymentMethod, transactionId, paymentDate, advancePaid !== undefined ? advancePaid : null, balanceAmount !== undefined ? balanceAmount : null, patientName !== undefined ? patientName : null, patientAge !== undefined ? patientAge : null, patientNeeds !== undefined ? patientNeeds : null, googleMapLocation !== undefined ? googleMapLocation : null, caretakerPayout !== undefined ? Number(caretakerPayout) : null, caretakerPayoutStatus || null, caretakerPayoutMethod || null, caretakerPayoutRef || null, isMtp !== undefined ? (isMtp ? 1 : 0) : null, mtpAcceptedAt !== undefined ? mtpAcceptedAt : null, mtpAcceptedBy !== undefined ? mtpAcceptedBy : null, mtpAcceptedById !== undefined ? mtpAcceptedById : null, mtpAcceptedPhone !== undefined ? mtpAcceptedPhone : null, id]
       )
       return result.affectedRows > 0
     } else {
@@ -2314,6 +2432,9 @@ export const db = {
           address,
           status,
           assignedStaff: assignedStaff || null,
+          assignedStaffId: assignedStaffId !== undefined ? assignedStaffId : data.bookings[idx].assignedStaffId,
+          assignedStaffRole: assignedStaffRole !== undefined ? assignedStaffRole : data.bookings[idx].assignedStaffRole,
+          assignedStaffPhone: assignedStaffPhone !== undefined ? assignedStaffPhone : data.bookings[idx].assignedStaffPhone,
           amount: parsedAmount,
           advancePaid: currentAdv,
           balanceAmount: calculatedBal,
@@ -2328,7 +2449,12 @@ export const db = {
           paymentStatus,
           paymentMethod,
           transactionId,
-          paymentDate
+          paymentDate,
+          isMtp: isMtp !== undefined ? (isMtp ? 1 : 0) : (data.bookings[idx].isMtp !== undefined ? data.bookings[idx].isMtp : (isMTPService(service) ? 1 : 0)),
+          mtpAcceptedAt: mtpAcceptedAt !== undefined ? mtpAcceptedAt : data.bookings[idx].mtpAcceptedAt,
+          mtpAcceptedBy: mtpAcceptedBy !== undefined ? mtpAcceptedBy : data.bookings[idx].mtpAcceptedBy,
+          mtpAcceptedById: mtpAcceptedById !== undefined ? mtpAcceptedById : data.bookings[idx].mtpAcceptedById,
+          mtpAcceptedPhone: mtpAcceptedPhone !== undefined ? mtpAcceptedPhone : data.bookings[idx].mtpAcceptedPhone
         }
         await writeJSONDb(data)
         return true
@@ -3202,6 +3328,117 @@ export const db = {
       }
       await writeJSONDb(data)
       return true
+    }
+  },
+
+  // Rapido-Style MTP On-Demand Gig Operations
+  getAvailableMTPGigs: async () => {
+    if (useMySQL) {
+      const [rows] = await pool.query(
+        `SELECT * FROM bookings 
+         WHERE (isMtp = 1 OR LOWER(service) LIKE '%mtp%' OR LOWER(service) LIKE '%escort%' OR LOWER(service) LIKE '%errand%' OR LOWER(service) LIKE '%walking%' OR LOWER(service) LIKE '%companion%') 
+           AND status != 'Cancelled' 
+           AND (assignedStaffId IS NULL OR assignedStaffId = 0) 
+           AND (assignedStaff IS NULL OR TRIM(assignedStaff) = '') 
+         ORDER BY id DESC`
+      )
+      return rows
+    } else {
+      const data = await readJSONDb()
+      if (!data.bookings) return []
+      return data.bookings.filter(b => {
+        const isMtpTask = b.isMtp === 1 || b.isMtp === true || isMTPService(b.service, b.isMtp)
+        const isCancelled = b.status === 'Cancelled'
+        const hasStaff = (b.assignedStaffId && Number(b.assignedStaffId) > 0) || (b.assignedStaff && b.assignedStaff.trim() !== '')
+        return isMtpTask && !isCancelled && !hasStaff
+      }).reverse()
+    }
+  },
+
+  claimMTPGig: async (bookingId, mtp) => {
+    const id = Number(bookingId)
+    const now = new Date().toISOString()
+    const mtpId = Number(mtp.id)
+    const mtpName = String(mtp.name || 'MTP Companion').trim()
+    const mtpPhone = String(mtp.phone || '').trim()
+
+    if (useMySQL) {
+      const [result] = await pool.query(
+        `UPDATE bookings 
+         SET assignedStaff = ?, assignedStaffId = ?, assignedStaffRole = 'mtp', assignedStaffPhone = ?,
+             status = 'Confirmed', isMtp = 1, mtpAcceptedAt = ?, mtpAcceptedBy = ?, mtpAcceptedById = ?, mtpAcceptedPhone = ?
+         WHERE id = ? 
+           AND status != 'Cancelled' 
+           AND (assignedStaffId IS NULL OR assignedStaffId = 0) 
+           AND (assignedStaff IS NULL OR TRIM(assignedStaff) = '')`,
+        [mtpName, mtpId, mtpPhone, now, mtpName, mtpId, mtpPhone, id]
+      )
+      if (result.affectedRows > 0) {
+        const [rows] = await pool.query('SELECT * FROM bookings WHERE id = ?', [id])
+        return { success: true, booking: rows[0] }
+      } else {
+        const [check] = await pool.query('SELECT * FROM bookings WHERE id = ?', [id])
+        if (!check[0]) return { success: false, reason: 'not_found', message: 'Gig booking not found.' }
+        if (check[0].status === 'Cancelled') return { success: false, reason: 'cancelled', message: 'This booking has been cancelled.' }
+        return { success: false, reason: 'already_claimed', message: 'This task was already accepted by another companion.', claimedBy: check[0].assignedStaff }
+      }
+    } else {
+      const data = await readJSONDb()
+      if (!data.bookings) return { success: false, reason: 'not_found', message: 'No bookings found.' }
+      const idx = data.bookings.findIndex(b => b.id === id)
+      if (idx === -1) return { success: false, reason: 'not_found', message: 'Gig booking not found.' }
+      const b = data.bookings[idx]
+      if (b.status === 'Cancelled') return { success: false, reason: 'cancelled', message: 'This booking has been cancelled.' }
+      if ((b.assignedStaffId && Number(b.assignedStaffId) > 0) || (b.assignedStaff && b.assignedStaff.trim() !== '')) {
+        return { success: false, reason: 'already_claimed', message: 'This task was already accepted by another companion.', claimedBy: b.assignedStaff }
+      }
+      b.assignedStaff = mtpName
+      b.assignedStaffId = mtpId
+      b.assignedStaffRole = 'mtp'
+      b.assignedStaffPhone = mtpPhone
+      b.status = 'Confirmed'
+      b.isMtp = 1
+      b.mtpAcceptedAt = now
+      b.mtpAcceptedBy = mtpName
+      b.mtpAcceptedById = mtpId
+      b.mtpAcceptedPhone = mtpPhone
+      await writeJSONDb(data)
+      return { success: true, booking: b }
+    }
+  },
+
+  releaseMTPGig: async (bookingId) => {
+    const id = Number(bookingId)
+    if (useMySQL) {
+      const [result] = await pool.query(
+        `UPDATE bookings 
+         SET assignedStaff = NULL, assignedStaffId = NULL, assignedStaffRole = NULL, assignedStaffPhone = NULL,
+             status = 'Pending', mtpAcceptedAt = NULL, mtpAcceptedBy = NULL, mtpAcceptedById = NULL, mtpAcceptedPhone = NULL, isMtp = 1
+         WHERE id = ?`,
+        [id]
+      )
+      if (result.affectedRows > 0) {
+        const [rows] = await pool.query('SELECT * FROM bookings WHERE id = ?', [id])
+        return { success: true, booking: rows[0] }
+      }
+      return { success: false, message: 'Booking not found.' }
+    } else {
+      const data = await readJSONDb()
+      if (!data.bookings) return { success: false, message: 'No bookings found.' }
+      const idx = data.bookings.findIndex(b => b.id === id)
+      if (idx === -1) return { success: false, message: 'Booking not found.' }
+      data.bookings[idx].assignedStaff = null
+      data.bookings[idx].assignedStaffId = null
+      data.bookings[idx].assignedStaffRole = null
+      data.bookings[idx].assignedStaffPhone = null
+      data.bookings[idx].status = 'Pending'
+      data.bookings[idx].mtpAcceptedAt = null
+      data.bookings[idx].mtpAcceptedBy = null
+      data.bookings[idx].mtpAcceptedById = null
+      data.bookings[idx].mtpAcceptedPhone = null
+      data.bookings[idx].isMtp = 1
+      await writeJSONDb(data)
+      return { success: true, booking: data.bookings[idx] }
     }
   },
 

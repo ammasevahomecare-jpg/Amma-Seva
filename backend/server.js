@@ -5,7 +5,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import compression from 'compression'
 import nodemailer from 'nodemailer'
-import { db } from './db.js'
+import { db, isMTPService } from './db.js'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 import Razorpay from 'razorpay'
@@ -293,47 +293,95 @@ const handleBookingEmailNotification = async (bookingId, oldBooking, newStatus, 
     // 1. Caretaker / MTP assigned scenario
     const oldStaff = oldBooking ? oldBooking.assignedStaff : null
     if (newAssignedStaff && newAssignedStaff !== oldStaff) {
-      let staffPerson = await db.getCaregiverByName(newAssignedStaff)
+      let staffPerson = null
+      if (booking.assignedStaffId) {
+        staffPerson = await db.getCaregiverById(booking.assignedStaffId)
+        if (!staffPerson) staffPerson = await db.getMTPById(booking.assignedStaffId)
+      }
+      if (!staffPerson) {
+        staffPerson = await db.getCaregiverByName(newAssignedStaff)
+      }
       let isMtp = false
       if (!staffPerson) {
         staffPerson = await db.getMTPByName(newAssignedStaff)
         if (staffPerson) isMtp = true
+      } else if (booking.assignedStaffRole === 'mtp') {
+        isMtp = true
       }
-      const phoneStr = staffPerson ? staffPerson.phone : 'N/A'
+      const phoneStr = staffPerson ? staffPerson.phone : (booking.assignedStaffPhone || 'N/A')
       const specialtyStr = staffPerson ? (staffPerson.specialty || staffPerson.roles || (isMtp ? 'MTP Companion' : 'Caregiver')) : 'Caregiver / Companion'
       const staffTypeTitle = isMtp ? 'MTP Companion' : 'Caregiver'
 
-      const mailOptions = {
-        from: `"Amma Seva Bookings" <${process.env.SMTP_EMAIL || 'ammasevahomecare@gmail.com'}>`,
-        to: email,
-        subject: `${staffTypeTitle} Assigned - Booking ID #${bookingId} - Amma Seva`,
-        html: `
-          <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 16px;">
-            <h2 style="color: #4f46e5; margin-bottom: 8px;">${staffTypeTitle} Assigned!</h2>
-            <p style="color: #64748b; font-size: 14px;">Hi ${booking.name},</p>
-            <p style="color: #64748b; font-size: 14px;">We have successfully matched and assigned a verified ${staffTypeTitle.toLowerCase()} to your request:</p>
-            
-            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 16px; border-radius: 12px; margin: 16px 0;">
-              <h3 style="color: #0f172a; margin-top: 0; margin-bottom: 8px;">Assigned Staff Details</h3>
-              <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #334155;">
-                <tr><td style="padding: 4px 0; font-weight: bold;">Name:</td><td style="padding: 4px 0; text-align: right;">${newAssignedStaff}</td></tr>
-                <tr><td style="padding: 4px 0; font-weight: bold;">Role / Specialty:</td><td style="padding: 4px 0; text-align: right;">${specialtyStr}</td></tr>
-                <tr><td style="padding: 4px 0; font-weight: bold;">Phone:</td><td style="padding: 4px 0; text-align: right;"><a href="tel:${phoneStr}">${phoneStr}</a></td></tr>
-              </table>
-            </div>
+      // Email to Customer
+      if (email) {
+        const mailOptions = {
+          from: `"Amma Seva Bookings" <${process.env.SMTP_EMAIL || 'ammasevahomecare@gmail.com'}>`,
+          to: email,
+          subject: `${staffTypeTitle} Assigned - Booking ID #${bookingId} - Amma Seva`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 16px;">
+              <h2 style="color: #4f46e5; margin-bottom: 8px;">${staffTypeTitle} Assigned!</h2>
+              <p style="color: #64748b; font-size: 14px;">Hi ${booking.name},</p>
+              <p style="color: #64748b; font-size: 14px;">We have successfully matched and assigned a verified ${staffTypeTitle.toLowerCase()} to your request:</p>
+              
+              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 16px; border-radius: 12px; margin: 16px 0;">
+                <h3 style="color: #0f172a; margin-top: 0; margin-bottom: 8px;">Assigned Staff Details</h3>
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #334155;">
+                  <tr><td style="padding: 4px 0; font-weight: bold;">Name:</td><td style="padding: 4px 0; text-align: right;">${newAssignedStaff}</td></tr>
+                  <tr><td style="padding: 4px 0; font-weight: bold;">Role / Specialty:</td><td style="padding: 4px 0; text-align: right;">${specialtyStr}</td></tr>
+                  <tr><td style="padding: 4px 0; font-weight: bold;">Phone:</td><td style="padding: 4px 0; text-align: right;"><a href="tel:${phoneStr}">${phoneStr}</a></td></tr>
+                </table>
+              </div>
 
-            <p style="color: #64748b; font-size: 14px;">Your assigned professional will arrive on <strong>${booking.date}</strong> at <strong>${booking.time}</strong> as scheduled. You can view the live progress and vitals logs directly inside your customer dashboard.</p>
-            <p style="color: #94a3b8; font-size: 12px; margin-top: 24px; text-align: center;">Thank you for choosing Amma Seva.</p>
-          </div>
-        `
+              <p style="color: #64748b; font-size: 14px;">Your assigned professional will arrive on <strong>${booking.date}</strong> at <strong>${booking.time}</strong> as scheduled. You can view the live progress and vitals logs directly inside your customer dashboard.</p>
+              <p style="color: #94a3b8; font-size: 12px; margin-top: 24px; text-align: center;">Thank you for choosing Amma Seva.</p>
+            </div>
+          `
+        }
+        await transporter.sendMail(mailOptions).catch(e => console.error('[Customer Assignment Email Error]:', e.message))
+        console.log(`[Email Notification] Staff assigned email sent to customer ${email} for booking ID: ${bookingId}`)
       }
-      await transporter.sendMail(mailOptions)
-      console.log(`[Email Notification] Staff assigned email sent to ${email} for booking ID: ${bookingId}`)
+
+      // Email to assigned Staff Member (Caregiver / MTP)
+      if (staffPerson && staffPerson.email && staffPerson.email.includes('@')) {
+        const staffMailOptions = {
+          from: `"Amma Seva Operations" <${process.env.SMTP_EMAIL || 'ammasevahomecare@gmail.com'}>`,
+          to: staffPerson.email,
+          subject: `📋 New Shift Assigned: ${booking.service} (Booking #${bookingId}) - Amma Seva`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 550px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 16px;">
+              <h2 style="color: #0f172a; margin-bottom: 8px;">New Shift Assignment!</h2>
+              <p style="color: #475569; font-size: 14px;">Hi ${staffPerson.name},</p>
+              <p style="color: #475569; font-size: 14px;">You have been assigned to a new patient homecare shift by the administrator:</p>
+              
+              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 16px; border-radius: 12px; margin: 16px 0;">
+                <h3 style="color: #0f172a; margin-top: 0; margin-bottom: 12px; font-size: 15px;">Duty &amp; Patient Details</h3>
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #334155;">
+                  <tr><td style="padding: 4px 0; font-weight: bold; width: 35%;">Service:</td><td style="padding: 4px 0;">${booking.service}</td></tr>
+                  <tr><td style="padding: 4px 0; font-weight: bold;">Date &amp; Time:</td><td style="padding: 4px 0;">${booking.date} at ${booking.time}</td></tr>
+                  <tr><td style="padding: 4px 0; font-weight: bold;">Duration:</td><td style="padding: 4px 0;">${booking.duration}</td></tr>
+                  <tr><td style="padding: 4px 0; font-weight: bold;">Patient Name:</td><td style="padding: 4px 0;">${booking.patientName || booking.name}</td></tr>
+                  <tr><td style="padding: 4px 0; font-weight: bold;">Patient Age:</td><td style="padding: 4px 0;">${booking.patientAge || 'N/A'}</td></tr>
+                  <tr><td style="padding: 4px 0; font-weight: bold;">Contact Phone:</td><td style="padding: 4px 0;"><a href="tel:${booking.phone}">${booking.phone}</a></td></tr>
+                  <tr><td style="padding: 4px 0; font-weight: bold;">Location Address:</td><td style="padding: 4px 0;">${booking.address}</td></tr>
+                  ${booking.patientNeeds ? `<tr><td style="padding: 4px 0; font-weight: bold;">Patient Needs:</td><td style="padding: 4px 0;">${booking.patientNeeds}</td></tr>` : ''}
+                </table>
+              </div>
+
+              <p style="color: #475569; font-size: 14px;">Please open your dashboard to view this shift and log patient vitals during your duty.</p>
+              <p style="color: #94a3b8; font-size: 12px; margin-top: 24px; text-align: center;">Amma Seva Healthcare Operations Team</p>
+            </div>
+          `
+        }
+        await transporter.sendMail(staffMailOptions).catch(e => console.error('[Staff Assignment Email Error]:', e.message))
+        console.log(`[Email Notification] Duty assignment alert sent to staff ${staffPerson.name} (${staffPerson.email}) for booking #${bookingId}`)
+      }
     }
 
     // 2. Booking completed scenario (Deal Closed / Review request)
     const oldStatus = oldBooking ? oldBooking.status : null
     if (newStatus === 'Completed' && oldStatus !== 'Completed') {
+      const appDashboardUrl = `${process.env.APP_URL || 'https://ammaseva.in'}/dashboard`
       const mailOptions = {
         from: `"Amma Seva Bookings" <${process.env.SMTP_EMAIL || 'ammasevahomecare@gmail.com'}>`,
         to: email,
@@ -354,12 +402,12 @@ const handleBookingEmailNotification = async (bookingId, oldBooking, newStatus, 
               </table>
             </div>
 
-            <p style="color: #64748b; font-size: 14px;">Please open your <a href="http://localhost:5173/dashboard" style="color: #4f46e5; text-decoration: underline; font-weight: bold;">Customer Dashboard</a> to rate the caregiver's performance and write a review. Your feedback helps us maintain the highest care standards.</p>
+            <p style="color: #64748b; font-size: 14px;">Please open your <a href="${appDashboardUrl}" style="color: #4f46e5; text-decoration: underline; font-weight: bold;">Customer Dashboard</a> to rate the caregiver's performance and write a review. Your feedback helps us maintain the highest care standards.</p>
             <p style="color: #94a3b8; font-size: 12px; margin-top: 24px; text-align: center;">We look forward to serving your family again. Thank you.</p>
           </div>
         `
       }
-      await transporter.sendMail(mailOptions)
+      await transporter.sendMail(mailOptions).catch(e => console.error('[Completion Email Error]:', e.message))
       console.log(`[Email Notification] Booking completed email sent to ${email} for booking ID: ${bookingId}`)
     }
   } catch (err) {
@@ -706,6 +754,206 @@ const sendMTPRegistrationEmail = async (mtp) => {
   }
 }
 
+// 4b. Send Instant MTP Task Broadcast Alert to all Approved MTPs (Rapido-Style Dispatch)
+const sendMTPBroadcastNotification = async (booking) => {
+  try {
+    const allMtps = await db.getMTPs()
+    const approvedMtps = allMtps.filter(m => m.status === 'Verified' || m.status === 'Approved' || m.status === 'Active')
+    if (approvedMtps.length === 0) {
+      console.log(`[MTP Broadcast] No verified MTPs found in system to broadcast booking #${booking.id}.`)
+      return
+    }
+
+    const serviceTitle = booking.service || 'MTP On-Demand Companion Task'
+    const bookingDate = booking.date || 'Immediate'
+    const bookingTime = booking.time || 'Immediate'
+    const bookingLocation = booking.address || 'Hyderabad'
+    const taskDetails = booking.patientNeeds || 'Assistance requested by client'
+    const bookingAmount = booking.amount || 800
+
+    const validEmails = approvedMtps
+      .map(m => (m.email || '').trim().toLowerCase())
+      .filter(e => e.includes('@') && !e.includes('@applicant.ammaseva.in'))
+
+    console.log(`[MTP Gig Broadcast] Broadcasting open gig #${booking.id} (${serviceTitle}) to ${approvedMtps.length} MTPs (${validEmails.length} emails).`)
+
+    if (validEmails.length > 0) {
+      const emailHtml = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 620px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.06);">
+          <div style="background: linear-gradient(135deg, #091438 0%, #1e2a5a 100%); padding: 32px 24px; text-align: center;">
+            <span style="display: inline-block; background-color: rgba(255,215,0,0.2); color: #ffd700; font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; padding: 6px 14px; border-radius: 999px; margin-bottom: 12px; border: 1px solid rgba(255,215,0,0.4);">
+              ⚡ NEW GIG BROADCAST — LIVE DISPATCH RADAR
+            </span>
+            <h1 style="color: #ffffff; font-size: 22px; font-weight: 800; margin: 0; letter-spacing: -0.5px;">
+              New MTP Companion Task Available!
+            </h1>
+            <p style="color: #cbd5e1; font-size: 13px; margin: 8px 0 0 0;">
+              First-come, first-served! Review details below &amp; accept on your dashboard.
+            </p>
+          </div>
+
+          <div style="padding: 28px 24px;">
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; margin-bottom: 24px;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <tr>
+                  <td style="padding: 8px 0; color: #64748b; font-weight: 600;">🚗 Task / Service:</td>
+                  <td style="padding: 8px 0; color: #091438; font-weight: 800; text-align: right;">${serviceTitle}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #64748b; font-weight: 600;">💰 Estimated Payout:</td>
+                  <td style="padding: 8px 0; color: #059669; font-weight: 800; text-align: right; font-size: 16px;">₹${bookingAmount}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #64748b; font-weight: 600;">📅 Date &amp; Time:</td>
+                  <td style="padding: 8px 0; color: #091438; font-weight: 700; text-align: right;">${bookingDate} at ${bookingTime}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #64748b; font-weight: 600;">📍 Location / Locality:</td>
+                  <td style="padding: 8px 0; color: #091438; font-weight: 700; text-align: right;">${bookingLocation}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #64748b; font-weight: 600;">📝 Needs / Errand:</td>
+                  <td style="padding: 8px 0; color: #334155; font-weight: 600; text-align: right;">${taskDetails}</td>
+                </tr>
+              </table>
+            </div>
+
+            <div style="text-align: center; margin: 28px 0 16px 0;">
+              <a href="https://ammaseva.in/dashboard" style="display: inline-block; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #091438; font-size: 15px; font-weight: 800; text-decoration: none; padding: 14px 36px; border-radius: 14px; box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);">
+                ⚡ Open Dashboard &amp; Accept Task Now
+              </a>
+            </div>
+
+            <p style="text-align: center; color: #94a3b8; font-size: 11px; margin-top: 16px;">
+              ⚡ First partner to accept locks the gig instantly. Once accepted, it disappears from other dashboards.
+            </p>
+          </div>
+        </div>
+      `
+
+      const mailOptions = {
+        from: `"Amma Seva MTP Dispatch" <${cleanSmtpEmail}>`,
+        to: cleanSmtpEmail,
+        bcc: validEmails,
+        subject: `⚡ New MTP Task Available: ${serviceTitle} in ${bookingLocation} (Earn ₹${bookingAmount})`,
+        html: emailHtml
+      }
+      await transporter.sendMail(mailOptions)
+      console.log(`[MTP Gig Broadcast] Email alert dispatched successfully to ${validEmails.length} MTPs.`)
+    }
+  } catch (err) {
+    console.error('[MTP Gig Broadcast Error]:', err.message)
+  }
+}
+
+// 4c. Send Notification to Customer when an MTP accepts their task
+const sendMTPClaimedNotificationToCustomer = async (booking, mtp) => {
+  try {
+    const customerEmail = (booking.email || '').trim().toLowerCase()
+    const customerPhone = booking.phone || ''
+    console.log(`[MTP Claimed Alert] Dispatching confirmation for Booking #${booking.id} to customer ${customerPhone} / ${customerEmail}`)
+
+    if (customerEmail && customerEmail.includes('@')) {
+      const emailHtml = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.06);">
+          <div style="background: linear-gradient(135deg, #091438 0%, #1e2a5a 100%); padding: 32px 24px; text-align: center;">
+            <span style="display: inline-block; background-color: rgba(37,211,102,0.2); color: #25d366; font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; padding: 6px 14px; border-radius: 999px; margin-bottom: 12px; border: 1px solid rgba(37,211,102,0.4);">
+              ✓ MTP COMPANION ASSIGNED &amp; CONFIRMED
+            </span>
+            <h1 style="color: #ffffff; font-size: 22px; font-weight: 800; margin: 0;">
+              Your Companion has Accepted!
+            </h1>
+            <p style="color: #cbd5e1; font-size: 13px; margin: 8px 0 0 0;">
+              Multi-Tasking Partner ${mtp.name} will attend to your request.
+            </p>
+          </div>
+
+          <div style="padding: 28px 24px;">
+            <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+              <h3 style="color: #166534; font-size: 15px; font-weight: 800; margin-top: 0; margin-bottom: 12px;">
+                🚗 Assigned MTP Partner Profile
+              </h3>
+              <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <tr>
+                  <td style="padding: 6px 0; color: #475569; font-weight: 600;">Companion Name:</td>
+                  <td style="padding: 6px 0; color: #091438; font-weight: 800; text-align: right;">${mtp.name}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 6px 0; color: #475569; font-weight: 600;">Contact Phone:</td>
+                  <td style="padding: 6px 0; color: #091438; font-weight: 800; text-align: right;">${mtp.phone}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 6px 0; color: #475569; font-weight: 600;">Vehicle / Mobility:</td>
+                  <td style="padding: 6px 0; color: #091438; font-weight: 700; text-align: right;">${mtp.vehicle || 'Available'}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 6px 0; color: #475569; font-weight: 600;">Verification Status:</td>
+                  <td style="padding: 6px 0; color: #166534; font-weight: 800; text-align: right;">✓ Background Verified</td>
+                </tr>
+              </table>
+            </div>
+
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; margin-bottom: 24px;">
+              <h4 style="color: #334155; font-size: 13px; font-weight: 700; margin: 0 0 10px 0;">Booking Details:</h4>
+              <p style="color: #475569; font-size: 13px; margin: 4px 0;"><strong>Service:</strong> ${booking.service}</p>
+              <p style="color: #475569; font-size: 13px; margin: 4px 0;"><strong>Scheduled:</strong> ${booking.date} at ${booking.time}</p>
+              <p style="color: #475569; font-size: 13px; margin: 4px 0;"><strong>Location:</strong> ${booking.address}</p>
+            </div>
+
+            <div style="text-align: center;">
+              <a href="tel:${mtp.phone}" style="display: inline-block; background-color: #091438; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 12px 28px; border-radius: 12px; margin-right: 8px;">
+                📞 Call Companion
+              </a>
+              <a href="https://wa.me/91${String(mtp.phone).replace(/\D/g, '').slice(-10)}" style="display: inline-block; background-color: #25D366; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 12px 28px; border-radius: 12px;">
+                💬 WhatsApp
+              </a>
+            </div>
+          </div>
+        </div>
+      `
+
+      await transporter.sendMail({
+        from: `"Amma Seva Bookings" <${cleanSmtpEmail}>`,
+        to: customerEmail,
+        bcc: process.env.ADMIN_EMAIL || cleanSmtpEmail,
+        subject: `🚗 Companion Confirmed! ${mtp.name} has accepted your request (#${booking.id})`,
+        html: emailHtml
+      })
+    }
+  } catch (err) {
+    console.error('[Customer MTP Claimed Alert Error]:', err.message)
+  }
+}
+
+// 4d. Send Alert to Admin when an MTP accepts a gig
+const sendAdminMTPClaimedAlert = async (booking, mtp) => {
+  try {
+    const adminEmail = (process.env.ADMIN_EMAIL || cleanSmtpEmail).trim()
+    const emailHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px;">
+        <h2 style="color: #091438; margin-top: 0;">⚡ MTP Task Claimed via Live Radar</h2>
+        <p style="color: #475569; font-size: 14px;">MTP Partner <strong>${mtp.name}</strong> has just accepted Booking <strong>#${booking.id}</strong>.</p>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin: 16px 0;">
+          <tr><td style="padding: 6px 0; color: #64748b;">MTP Name:</td><td style="padding: 6px 0; font-weight: bold; text-align: right;">${mtp.name}</td></tr>
+          <tr><td style="padding: 6px 0; color: #64748b;">MTP Phone:</td><td style="padding: 6px 0; font-weight: bold; text-align: right;">${mtp.phone}</td></tr>
+          <tr><td style="padding: 6px 0; color: #64748b;">Service:</td><td style="padding: 6px 0; font-weight: bold; text-align: right;">${booking.service}</td></tr>
+          <tr><td style="padding: 6px 0; color: #64748b;">Customer:</td><td style="padding: 6px 0; font-weight: bold; text-align: right;">${booking.name} (${booking.phone})</td></tr>
+          <tr><td style="padding: 6px 0; color: #64748b;">Accepted At:</td><td style="padding: 6px 0; font-weight: bold; text-align: right;">${new Date().toLocaleString('en-IN')}</td></tr>
+        </table>
+        <p style="color: #059669; font-size: 12px; font-weight: bold;">Status updated to Confirmed. Gig is locked and hidden from other MTPs.</p>
+      </div>
+    `
+    await transporter.sendMail({
+      from: `"Amma Seva Dispatch Desk" <${cleanSmtpEmail}>`,
+      to: adminEmail,
+      subject: `✅ MTP Accepted: ${mtp.name} claimed Booking #${booking.id} (${booking.service})`,
+      html: emailHtml
+    })
+  } catch (err) {
+    console.error('[Admin MTP Claimed Alert Error]:', err.message)
+  }
+}
+
 // 5. Booking Confirmation & GST Tax Invoice Email with Direct Balance Payment Action
 const sendBookingConfirmationAndTaxInvoiceEmail = async (booking, userEmail) => {
   if (!userEmail || !userEmail.includes('@')) return
@@ -1036,7 +1284,7 @@ const PORT = process.env.PORT || 5000
 
 // Middleware Configuration
 app.use(cors({
-  origin: 'http://localhost:5173', // Allow frontend Vite client during dev
+  origin: true, // Allow frontend Vite client during dev on any local port
   credentials: true
 }))
 app.use(express.json({ limit: '50mb' }))
@@ -1350,17 +1598,17 @@ app.post('/api/admin/login', async (req, res) => {
                      (await db.getOTP('9490587575')) || 
                      (await db.getOTP(identifier.toLowerCase()))
 
-  if (!storedData && otp.trim() !== '123456' && otp.trim() !== '999999') {
+  if (!storedData) {
     return res.status(401).json({ success: false, error: 'No OTP requested. Please click Send Code first.' })
   }
 
-  if (storedData && Date.now() > Number(storedData.expiresAt)) {
+  if (Date.now() > Number(storedData.expiresAt)) {
     await db.deleteOTP('ammasevahomecare@gmail.com')
     await db.deleteOTP('9490587575')
     return res.status(401).json({ success: false, error: 'OTP verification code has expired.' })
   }
 
-  const isMatched = (storedData && storedData.otp === otp.trim()) || otp.trim() === '123456' || otp.trim() === '999999'
+  const isMatched = storedData.otp === otp.trim()
   if (!isMatched) {
     return res.status(401).json({ success: false, error: 'Invalid verification OTP code.' })
   }
@@ -1638,17 +1886,17 @@ app.post('/api/auth/login', async (req, res) => {
     storedData = (await db.getOTP('ammasevahomecare@gmail.com')) || (await db.getOTP('9490587575'))
   }
 
-  if (!storedData && otp.trim() !== '123456' && otp.trim() !== '999999') {
+  if (!storedData) {
     return res.status(401).json({ success: false, error: 'No OTP requested for this mobile/email. Please click Send Code first.' })
   }
 
-  if (storedData && Date.now() > Number(storedData.expiresAt)) {
+  if (Date.now() > Number(storedData.expiresAt)) {
     await db.deleteOTP(normalizedEmail)
     if (cleanDigits) await db.deleteOTP(cleanDigits)
     return res.status(401).json({ success: false, error: 'OTP verification code has expired. Please request a new code.' })
   }
 
-  const isMatched = (storedData && storedData.otp === otp.trim()) || otp.trim() === '123456' || otp.trim() === '999999'
+  const isMatched = storedData.otp === otp.trim()
   if (!isMatched) {
     return res.status(401).json({ success: false, error: 'Invalid verification OTP code.' })
   }
@@ -1694,6 +1942,22 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     if (isMtp && mtp) {
+      const mtpStatus = String(mtp.status || 'Pending').trim()
+      if (mtpStatus === 'Rejected') {
+        return res.status(403).json({
+          success: false,
+          rejected: true,
+          error: 'Your MTP application was reviewed and not approved by the administrator. Please contact Amma Seva support for further assistance.'
+        })
+      }
+      if (mtpStatus === 'Pending' || mtpStatus === 'Contacted') {
+        return res.status(403).json({
+          success: false,
+          pendingApproval: true,
+          error: 'Your MTP application is currently under administrative verification. Once verified and approved by the admin team, you will receive an approval notification and will be able to log in.'
+        })
+      }
+
       const token = jwt.sign({ id: mtp.id, role: 'caretaker', isMtp: true, email: mtp.email, phone: mtp.phone }, JWT_SECRET, { expiresIn: '7d' })
       return res.json({
         success: true,
@@ -1705,7 +1969,7 @@ app.post('/api/auth/login', async (req, res) => {
           name: mtp.name,
           email: mtp.email,
           phone: mtp.phone,
-          status: mtp.status || 'Pending',
+          status: mtp.status || 'Verified',
           isMtp: true,
           specialty: 'MTP Companion & Tasks',
           experience: mtp.experience || 'Fresher',
@@ -1726,6 +1990,22 @@ app.post('/api/auth/login', async (req, res) => {
       })
     }
 
+    const caregiverStatus = String(caretaker.status || 'Pending').trim()
+    if (caregiverStatus === 'Rejected') {
+      return res.status(403).json({
+        success: false,
+        rejected: true,
+        error: 'Your Caregiver application was reviewed and not approved by the administrator. Please contact Amma Seva support for further details.'
+      })
+    }
+    if (caregiverStatus === 'Pending') {
+      return res.status(403).json({
+        success: false,
+        pendingApproval: true,
+        error: 'Your Caregiver registration is currently under administrative verification. Once approved by the admin team, you will receive an approval notification and can log in to access your shifts.'
+      })
+    }
+
     const token = jwt.sign({ id: caretaker.id, role: 'caretaker', isMtp: false, email: caretaker.email, phone: caretaker.phone }, JWT_SECRET, { expiresIn: '7d' })
     return res.json({
       success: true,
@@ -1737,7 +2017,7 @@ app.post('/api/auth/login', async (req, res) => {
         name: caretaker.name, 
         email: caretaker.email, 
         phone: caretaker.phone,
-        status: caretaker.status,
+        status: caretaker.status || 'Verified',
         isMtp: false,
         specialty: caretaker.specialty,
         experience: caretaker.experience,
@@ -1786,18 +2066,6 @@ const authenticateUser = (req, res, next) => {
   }
   const token = authHeader.split(' ')[1]
 
-  // Legacy local fallback/mock bypass (for zero-downtime development transition)
-  if (token.startsWith('mock-jwt-user-token-')) {
-    req.userId = Number(token.replace('mock-jwt-user-token-', ''))
-    req.role = 'user'
-    return next()
-  }
-  if (token.startsWith('mock-jwt-caretaker-token-')) {
-    req.userId = Number(token.replace('mock-jwt-caretaker-token-', ''))
-    req.role = 'caretaker'
-    return next()
-  }
-
   try {
     const decoded = jwt.verify(token, JWT_SECRET)
     req.userId = decoded.id
@@ -1816,12 +2084,6 @@ const authenticateAdmin = (req, res, next) => {
     return res.status(401).json({ error: 'Admin authorization token is missing or invalid.' })
   }
   const token = authHeader.split(' ')[1]
-
-  // Allow static system mock admin token transition
-  if (token === 'mock-jwt-admin-token-ammaseva' || token === 'mock-jwt-admin-token') {
-    req.admin = true
-    return next()
-  }
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET)
@@ -1992,7 +2254,7 @@ app.get('/api/caretaker/bookings', authenticateUser, async (req, res) => {
     if (!person) {
       return res.status(404).json({ error: 'Staff or MTP profile not found.' })
     }
-    const list = await db.getBookingsByAssignedStaff(person.name)
+    const list = await db.getBookingsByAssignedStaff(person.name, person.id)
     res.json(list)
   } catch (err) {
     console.error('Failed to retrieve caretaker bookings:', err)
@@ -2411,17 +2673,16 @@ app.post('/api/user/register', async (req, res) => {
   }
 
   const storedData = (await db.getOTP(cleanEmail)) || (await db.getOTP(cleanPhone))
-  const isTestOtp = inputOtp === '123456' || inputOtp === '999999'
 
-  if (!storedData && !isTestOtp) {
+  if (!storedData) {
     return res.status(401).json({ error: 'Verification code has expired or was not requested. Please request a new code.' })
   }
-  if (storedData && Date.now() > Number(storedData.expiresAt)) {
+  if (Date.now() > Number(storedData.expiresAt)) {
     await db.deleteOTP(cleanEmail)
     await db.deleteOTP(cleanPhone)
     return res.status(401).json({ error: 'Verification code has expired. Please request a new code.' })
   }
-  if (storedData && storedData.otp !== inputOtp && !isTestOtp) {
+  if (storedData.otp !== inputOtp) {
     return res.status(401).json({ error: 'Invalid verification OTP code. Please enter the 6-digit code received.' })
   }
 
@@ -2548,17 +2809,16 @@ app.post('/api/caretaker/register', async (req, res) => {
   }
 
   const storedData = (cleanEmail ? await db.getOTP(cleanEmail) : null) || (await db.getOTP(cleanPhone))
-  const isTestOtp = inputOtp === '123456' || inputOtp === '999999'
 
-  if (!storedData && !isTestOtp) {
+  if (!storedData) {
     return res.status(401).json({ error: 'Verification code has expired or was not requested. Please request a new code.' })
   }
-  if (storedData && Date.now() > Number(storedData.expiresAt)) {
+  if (Date.now() > Number(storedData.expiresAt)) {
     if (cleanEmail) await db.deleteOTP(cleanEmail)
     await db.deleteOTP(cleanPhone)
     return res.status(401).json({ error: 'Verification code has expired. Please request a new code.' })
   }
-  if (storedData && storedData.otp !== inputOtp && !isTestOtp) {
+  if (storedData.otp !== inputOtp) {
     return res.status(401).json({ error: 'Invalid verification OTP code. Please enter the 6-digit code received.' })
   }
 
@@ -2603,17 +2863,15 @@ app.post('/api/caretaker/register', async (req, res) => {
       additionalCertificates: uploadedAdditionalCertificates,
       referredBy: (referredBy || '').trim().toUpperCase()
     })
-
-    const token = jwt.sign({ id: newCaregiver.id, role: 'caretaker', email: newCaregiver.email }, JWT_SECRET, { expiresIn: '7d' })
     
     // Send professional onboarding confirmation email
     sendCaregiverRegistrationEmail(newCaregiver).catch(e => console.error('Onboarding email dispatch error:', e))
 
     res.status(201).json({
       success: true,
-      message: 'Caregiver application submitted! Verification is pending.',
-      token,
-      caretaker: { id: newCaregiver.id, name: newCaregiver.name, referCode: newCaregiver.referCode, uniqueId: newCaregiver.uniqueId }
+      pendingApproval: true,
+      message: 'Caregiver application submitted successfully! Your application and KYC documents are under administrative verification. Once approved by the administrator, you will receive confirmation and can log in to view shifts.',
+      caretaker: { id: newCaregiver.id, name: newCaregiver.name, status: 'Pending', referCode: newCaregiver.referCode, uniqueId: newCaregiver.uniqueId }
     })
   } catch (err) {
     res.status(500).json({ error: 'Failed to submit caretaker registration.' })
@@ -2678,10 +2936,28 @@ app.post('/api/caretaker/login', async (req, res) => {
   }
 })
 
+// GET current customer profile details
+app.get('/api/user/profile', authenticateUser, async (req, res) => {
+  if (req.role !== 'user' && req.role !== 'customer') {
+    return res.status(403).json({ error: 'Access forbidden. Customer profile only.' })
+  }
+  try {
+    const user = await db.getUserById(req.userId)
+    if (!user) {
+      return res.status(404).json({ error: 'User profile not found.' })
+    }
+    const { password, ...safeUser } = user
+    res.json({ success: true, user: safeUser })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve profile details.' })
+  }
+})
+
 // GET all bookings for current user
 app.get('/api/user/bookings', authenticateUser, async (req, res) => {
   try {
-    const list = await db.getBookingsByUserId(req.userId)
+    const user = await db.getUserById(req.userId)
+    const list = await db.getBookingsByUserId(req.userId, user ? user.phone : null)
     const listWithStaffDetails = await Promise.all(list.map(async (booking) => {
       const review = await db.getReviewByBookingId(booking.id)
       let extendedBooking = {
@@ -3007,25 +3283,33 @@ app.post('/api/mtp/register', async (req, res) => {
   const cleanPhone = String(phone).replace(/\D/g, '').slice(-10)
   const cleanEmail = email.trim().toLowerCase()
 
-  // Validate OTP code
-  if (otp) {
-    const inputOtp = String(otp).trim()
-    const storedData = (await db.getOTP(cleanEmail)) || (await db.getOTP(cleanPhone))
-    const isTestOtp = inputOtp === '123456' || inputOtp === '999999'
-    if (!storedData && !isTestOtp) {
-      return res.status(401).json({ success: false, error: 'OTP expired or not requested. Please click Send Verification Code.' })
-    }
-    if (storedData && storedData.otp !== inputOtp && !isTestOtp) {
-      return res.status(401).json({ success: false, error: 'Invalid verification OTP code. Please enter the 6-digit code received.' })
-    }
+  // Mandatory Mobile OTP code verification
+  const inputOtp = String(otp || '').trim()
+  if (!inputOtp) {
+    return res.status(400).json({ success: false, error: 'Mobile OTP verification code is mandatory to complete MTP registration. Please verify your mobile number.' })
   }
+  const storedData = (await db.getOTP(cleanPhone)) || (await db.getOTP(cleanEmail))
+  if (!storedData) {
+    return res.status(401).json({ success: false, error: 'Verification code expired or not requested. Please click Send Verification Code to receive OTP on your mobile.' })
+  }
+  if (Date.now() > Number(storedData.expiresAt)) {
+    await db.deleteOTP(cleanPhone)
+    await db.deleteOTP(cleanEmail)
+    return res.status(401).json({ success: false, error: 'Verification code has expired. Please request a new code.' })
+  }
+  if (storedData.otp !== inputOtp) {
+    return res.status(401).json({ success: false, error: 'Invalid verification OTP code. Please enter the 6-digit code received on your mobile.' })
+  }
+  // Clear OTP on successful validation
+  await db.deleteOTP(cleanPhone)
+  await db.deleteOTP(cleanEmail)
 
   // Check if phone or email already registered
   const existingByPhone = await db.getMTPByPhone(cleanPhone)
   if (existingByPhone) {
     return res.status(409).json({ 
       success: false, 
-      error: `An MTP application with mobile +91 ${cleanPhone} already exists (Status: ${existingByPhone.status || 'Pending'}). Please login via Caregiver/Staff login.` 
+      error: `An MTP application with mobile +91 ${cleanPhone} already exists (Status: ${existingByPhone.status || 'Pending'}). Please wait for verification or contact admin.` 
     })
   }
 
@@ -3079,14 +3363,12 @@ app.post('/api/mtp/register', async (req, res) => {
       sendMTPRegistrationEmail(newMTP).catch(err => console.error('[MTP Email Async Error]:', err.message))
     }
 
-    const token = jwt.sign({ id: newMTP.id, role: 'caretaker', isMtp: true, email: newMTP.email, phone: newMTP.phone }, JWT_SECRET, { expiresIn: '7d' })
-
     const caretakerData = {
       id: newMTP.id,
       name: newMTP.name,
       email: newMTP.email,
       phone: newMTP.phone,
-      status: newMTP.status || 'Pending',
+      status: 'Pending',
       isMtp: true,
       specialty: 'MTP Companion & Tasks',
       experience: newMTP.experience || 'Fresher',
@@ -3109,8 +3391,8 @@ app.post('/api/mtp/register', async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'MTP registration submitted successfully! Your application is under admin verification.',
-      token,
+      pendingApproval: true,
+      message: 'MTP registration submitted successfully! Your application and documents are under administrative verification. Once approved by the administrator, you will receive an approval confirmation and can log in to view gigs.',
       caretaker: caretakerData,
       data: newMTP
     })
@@ -3256,6 +3538,122 @@ app.delete('/api/admin/mtp/tasks/:id', authenticateAdmin, async (req, res) => {
   }
 })
 
+// ==========================================
+// RAPIDO-STYLE ON-DEMAND MTP GIG RADAR APIS
+// ==========================================
+
+// GET all open/available MTP gigs (for verified MTP Partners)
+app.get('/api/mtp/available-gigs', authenticateUser, async (req, res) => {
+  if (req.role !== 'caretaker' && req.role !== 'mtp') {
+    return res.status(403).json({ error: 'Access forbidden. MTP profile only.' })
+  }
+  try {
+    let mtp = null
+    if (req.role === 'mtp' || req.isMtp) {
+      mtp = await db.getMTPById(req.userId)
+      if (!mtp && req.userEmail) mtp = await db.getMTPByEmail(req.userEmail)
+    } else {
+      mtp = await db.getMTPById(req.userId)
+    }
+    if (!mtp && !req.isMtp) {
+      return res.status(403).json({ error: 'Only verified MTP companions can access the on-demand gig pool.' })
+    }
+    const gigs = await db.getAvailableMTPGigs()
+    res.json(gigs)
+  } catch (err) {
+    console.error('Failed to get available MTP gigs:', err)
+    res.status(500).json({ error: 'Failed to retrieve available gigs.' })
+  }
+})
+
+// POST claim / accept an open MTP gig (atomic first-come, first-served lock)
+app.post('/api/mtp/claim-gig/:id', authenticateUser, async (req, res) => {
+  if (req.role !== 'caretaker' && req.role !== 'mtp') {
+    return res.status(403).json({ error: 'Access forbidden. MTP profile only.' })
+  }
+  try {
+    let mtp = null
+    if (req.role === 'mtp' || req.isMtp) {
+      mtp = await db.getMTPById(req.userId)
+      if (!mtp && req.userEmail) mtp = await db.getMTPByEmail(req.userEmail)
+    } else {
+      mtp = await db.getMTPById(req.userId)
+    }
+    if (!mtp) {
+      return res.status(404).json({ error: 'MTP profile not found.' })
+    }
+
+    const mtpStatus = String(mtp.status || 'Pending').trim()
+    if (mtpStatus !== 'Verified' && mtpStatus !== 'Approved' && mtpStatus !== 'Active') {
+      return res.status(403).json({ error: 'Your MTP profile must be verified by the admin team before accepting gigs.' })
+    }
+
+    const result = await db.claimMTPGig(req.params.id, mtp)
+    if (!result.success) {
+      if (result.reason === 'already_claimed') {
+        return res.status(409).json({
+          success: false,
+          error: 'This task was already accepted by another companion just now!',
+          claimedBy: result.claimedBy
+        })
+      }
+      return res.status(400).json({ success: false, error: result.message || 'Unable to accept gig.' })
+    }
+
+    // Gig claimed successfully! Dispatch alerts to customer, admin and WhatsApp
+    sendMTPClaimedNotificationToCustomer(result.booking, mtp).catch(err => console.error('[MTP Customer Alert Error]:', err.message))
+    sendAdminMTPClaimedAlert(result.booking, mtp).catch(err => console.error('[MTP Admin Alert Error]:', err.message))
+    sendWhatsAppBookingConfirmation(result.booking).catch(err => console.error('[WhatsApp MTP Alert Error]:', err.message))
+
+    res.json({
+      success: true,
+      message: '🎉 Congratulations! You have successfully accepted and locked this task.',
+      booking: result.booking
+    })
+  } catch (err) {
+    console.error('Failed to claim MTP gig:', err)
+    res.status(500).json({ error: 'Failed to accept gig.' })
+  }
+})
+
+// POST release / re-open an MTP gig back to the public pool (Admin Panel)
+app.post('/api/admin/release-mtp-gig/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const result = await db.releaseMTPGig(req.params.id)
+    if (!result.success) {
+      return res.status(404).json({ error: result.message || 'Gig not found.' })
+    }
+    // Re-broadcast alert to all MTPs!
+    sendMTPBroadcastNotification(result.booking).catch(err => console.error('[MTP Re-broadcast Error]:', err.message))
+    res.json({
+      success: true,
+      message: 'Gig released successfully! It is now back in the available pool for all MTPs.',
+      booking: result.booking
+    })
+  } catch (err) {
+    console.error('Failed to release MTP gig:', err)
+    res.status(500).json({ error: 'Failed to release gig.' })
+  }
+})
+
+// POST re-broadcast an open MTP gig alert email to all MTPs (Admin Panel)
+app.post('/api/admin/rebroadcast-mtp-gig/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const booking = await db.getBookingById(req.params.id)
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found.' })
+    }
+    await sendMTPBroadcastNotification(booking)
+    res.json({
+      success: true,
+      message: 'Broadcast notification successfully sent to all approved MTP partners!'
+    })
+  } catch (err) {
+    console.error('Failed to rebroadcast MTP gig:', err)
+    res.status(500).json({ error: 'Failed to send broadcast.' })
+  }
+})
+
 // GET Proxy Document Stream (renders PDF and image documents directly without 3rd party viewer failures)
 app.get('/api/proxy-document', async (req, res) => {
   const { url } = req.query
@@ -3393,15 +3791,11 @@ app.post('/api/booking', async (req, res) => {
   const authHeader = req.headers.authorization
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.split(' ')[1]
-    if (token.startsWith('mock-jwt-user-token-')) {
-      authUserId = Number(token.replace('mock-jwt-user-token-', ''))
-    } else {
-      try {
-        const decoded = jwt.verify(token, JWT_SECRET)
-        authUserId = decoded.id
-      } catch (err) {
-        // Ignore invalid token
-      }
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET)
+      authUserId = decoded.id
+    } catch (err) {
+      // Ignore invalid token
     }
   }
 
@@ -3503,7 +3897,8 @@ app.post('/api/booking', async (req, res) => {
       transactionId: razorpay_payment_id || '',
       paymentDate: paymentMethod === 'razorpay' ? new Date().toISOString() : '',
       advancePaid,
-      balanceAmount
+      balanceAmount,
+      isMtp: req.body.isMtp
     })
 
     // Prepare notification logs and automated WhatsApp confirmation
@@ -3517,10 +3912,22 @@ app.post('/api/booking', async (req, res) => {
     // Dispatch instant new booking alert to admin
     sendAdminNewBookingNotificationEmail(newBooking).catch(err => console.error('[Admin Booking Alert Error]:', err.message))
 
+    // If MTP Task, trigger instant Rapido-style broadcast to all verified MTPs
+    if (newBooking.isMtp === 1 || isMTPService(newBooking.service, newBooking.isMtp)) {
+      sendMTPBroadcastNotification(newBooking).catch(err => console.error('[MTP Broadcast Async Error]:', err.message))
+    }
+
+    let userToken = null
+    if (authUser) {
+      userToken = jwt.sign({ id: authUser.id, role: 'user', email: authUser.email }, JWT_SECRET, { expiresIn: '7d' })
+    }
+
     res.status(201).json({
       success: true,
       message: 'Booking successfully created!',
-      data: newBooking
+      data: newBooking,
+      token: userToken,
+      user: authUser ? { id: authUser.id, name: authUser.name, email: authUser.email, phone: authUser.phone } : undefined
     })
   } catch (err) {
     res.status(500).json({ error: 'Failed to create booking.' })
@@ -3582,10 +3989,10 @@ app.post('/api/booking/:id/pay-balance', async (req, res) => {
 
 // PUT update booking (Admin Panel: assign caregiver or change status)
 app.put('/api/booking/:id', authenticateAdmin, async (req, res) => {
-  const { status, assignedStaff, paymentStatus } = req.body
+  const { status, assignedStaff, paymentStatus, assignedStaffId, assignedStaffRole, assignedStaffPhone } = req.body
   try {
     const oldBooking = await db.getBookingById(req.params.id)
-    const updated = await db.updateBooking(req.params.id, status, assignedStaff, paymentStatus)
+    const updated = await db.updateBooking(req.params.id, status, assignedStaff, paymentStatus, assignedStaffId, assignedStaffRole, assignedStaffPhone)
     if (updated) {
       const refreshedBooking = await db.getBookingById(req.params.id)
       handleBookingEmailNotification(req.params.id, oldBooking, status, assignedStaff)
@@ -3766,7 +4173,13 @@ app.delete('/api/admin/user/:id', authenticateAdmin, async (req, res) => {
 
 // POST create booking directly as admin (Admin Panel)
 app.post('/api/admin/booking', authenticateAdmin, async (req, res) => {
-  const { name, phone, service, date, time, duration, address, amount, paymentStatus, paymentMethod, transactionId, paymentDate, caretakerPayout, caretakerPayoutStatus, caretakerPayoutMethod, caretakerPayoutRef } = req.body
+  const { 
+    name, phone, service, date, time, duration, address, amount, 
+    status, assignedStaff, assignedStaffId, assignedStaffRole, assignedStaffPhone,
+    paymentStatus, paymentMethod, transactionId, paymentDate, 
+    caretakerPayout, caretakerPayoutStatus, caretakerPayoutMethod, caretakerPayoutRef,
+    patientName, patientAge, patientNeeds, googleMapLocation
+  } = req.body
   if (!name || !phone || !service || !date || !time || !duration || !address) {
     return res.status(400).json({ error: 'Missing required booking details.' })
   }
@@ -3779,7 +4192,12 @@ app.post('/api/admin/booking', authenticateAdmin, async (req, res) => {
       time,
       duration,
       address,
-      amount: Number(amount),
+      status: status || 'Pending',
+      assignedStaff: assignedStaff || null,
+      assignedStaffId: assignedStaffId || null,
+      assignedStaffRole: assignedStaffRole || null,
+      assignedStaffPhone: assignedStaffPhone || null,
+      amount: Number(amount) || 1200,
       caretakerPayout: Number(caretakerPayout) || 0,
       caretakerPayoutStatus: caretakerPayoutStatus || 'Unpaid',
       caretakerPayoutMethod: caretakerPayoutMethod || '',
@@ -3787,8 +4205,19 @@ app.post('/api/admin/booking', authenticateAdmin, async (req, res) => {
       paymentStatus: paymentStatus || 'Unpaid',
       paymentMethod: paymentMethod || '',
       transactionId: transactionId || '',
-      paymentDate: paymentDate || ''
+      paymentDate: paymentDate || '',
+      patientName: patientName || '',
+      patientAge: patientAge || '',
+      patientNeeds: patientNeeds || '',
+      googleMapLocation: googleMapLocation || '',
+      isMtp: req.body.isMtp !== undefined ? req.body.isMtp : undefined
     })
+    if (newBooking && newBooking.assignedStaff) {
+      handleBookingEmailNotification(newBooking.id, null, newBooking.status, newBooking.assignedStaff)
+    }
+    if (newBooking && (newBooking.isMtp === 1 || isMTPService(newBooking.service, newBooking.isMtp)) && !newBooking.assignedStaff) {
+      sendMTPBroadcastNotification(newBooking).catch(err => console.error('[Admin MTP Broadcast Error]:', err.message))
+    }
     res.status(201).json({ success: true, message: 'Booking successfully created.', data: newBooking })
   } catch (err) {
     res.status(500).json({ error: 'Failed to create booking.' })

@@ -1701,11 +1701,11 @@ function MTPPage() {
               <button
                 type="button"
                 onClick={() => {
-                  window.location.href = "/dashboard";
+                  window.location.href = "/login";
                 }}
                 className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-gold via-[#d8b458] to-gold text-[#091438] hover:brightness-105 px-5 py-3.5 text-sm font-extrabold shadow-lg hover:shadow-xl transition-all cursor-pointer border border-gold/40"
               >
-                <Sparkles className="h-4 w-4" /> Open MTP Dashboard →
+                <Clock className="h-4 w-4" /> Go to Login / Check Verification →
               </button>
               <div className="flex flex-col sm:flex-row gap-2.5">
                 <a

@@ -9,7 +9,8 @@ import {
   AlertTriangle, RefreshCw, XCircle, Download, CreditCard, 
   Phone, Briefcase, ChevronRight, Check, DollarSign, QrCode, Upload,
   Star, MessageSquare, Eye, Gift, Copy, Send, Share2, ExternalLink, Sparkles,
-  Shield, ArrowRight, ShieldCheck, Filter, Search, RotateCcw, MessageCircle, Heart, Lock, ShieldAlert
+  Shield, ArrowRight, ShieldCheck, Filter, Search, RotateCcw, MessageCircle, Heart, Lock, ShieldAlert,
+  Zap, Car, Navigation
 } from "lucide-react";
 
 // Helper to compute / format Referral Code (FIRSTNAME + LAST 4 DIGITS OF PHONE)
@@ -144,6 +145,11 @@ interface Booking {
     rating: number;
     comment?: string;
   };
+  email?: string;
+  isMtp?: boolean | number;
+  mtpAcceptedAt?: string | null;
+  mtpAcceptedBy?: string | null;
+  mtpAcceptedPhone?: string | null;
   advancePaid?: number;
   balanceAmount?: number;
   caretakerPayoutStatus?: string;
@@ -381,6 +387,31 @@ function CustomerDashboard() {
       setCaretakerError(err.message || "Failed to load profile.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Fetch customer profile
+  const fetchUserProfile = async () => {
+    const token = localStorage.getItem("ammaseva_user_token");
+    if (!token) return;
+    try {
+      const res = await fetch("/api/user/profile", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
+      const data = await res.json();
+      if (data.success && data.user) {
+        setUser(data.user);
+        localStorage.setItem("ammaseva_user_details", JSON.stringify(data.user));
+        setContactName(data.user.name || "");
+        setContactPhone(data.user.phone || "");
+        setContactEmail(data.user.email || "");
+      }
+    } catch (e) {
+      console.warn("Could not sync live user profile:", e);
     }
   };
 
@@ -630,6 +661,74 @@ function CustomerDashboard() {
   const [activeCaregiverTab, setActiveCaregiverTab] = useState("shifts");
   const hasServiceParam = !!(new URLSearchParams(window.location.search).get("service"));
 
+  // Caretaker / MTP Live On-Demand Gigs Radar State
+  const [availableGigs, setAvailableGigs] = useState<any[]>([]);
+  const [isLoadingGigs, setIsLoadingGigs] = useState(false);
+  const [claimingGigId, setClaimingGigId] = useState<number | null>(null);
+  const [gigClaimSuccess, setGigClaimSuccess] = useState<string | null>(null);
+  const [gigClaimError, setGigClaimError] = useState<string | null>(null);
+
+  // Fetch available on-demand MTP gigs
+  const fetchAvailableGigs = async () => {
+    const token = localStorage.getItem("ammaseva_caretaker_token");
+    if (!token) return;
+    setIsLoadingGigs(true);
+    try {
+      const res = await fetch("/api/mtp/available-gigs", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
+      if (res.ok) {
+        const data = await res.json();
+        setAvailableGigs(Array.isArray(data) ? data : []);
+      }
+    } catch (e) {
+      console.error("Failed to fetch available gigs", e);
+    } finally {
+      setIsLoadingGigs(false);
+    }
+  };
+
+  // Claim / Accept an open MTP gig (Rapido-style instant lock)
+  const handleClaimGig = async (gigId: number) => {
+    const token = localStorage.getItem("ammaseva_caretaker_token");
+    if (!token) return;
+    setClaimingGigId(gigId);
+    setGigClaimError(null);
+    setGigClaimSuccess(null);
+    try {
+      const res = await fetch(`/api/mtp/claim-gig/${gigId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to accept task.");
+      }
+      setGigClaimSuccess(data.message || "🎉 Task successfully accepted! It has been locked to your profile.");
+      // Refresh available gigs and my assigned bookings immediately
+      await fetchAvailableGigs();
+      await fetchCaretakerBookings();
+      // Auto-switch to My Shifts/Tasks tab after 1.8 seconds
+      setTimeout(() => {
+        setActiveCaregiverTab("shifts");
+        setGigClaimSuccess(null);
+      }, 1800);
+    } catch (err: any) {
+      setGigClaimError(err.message || "Failed to accept task.");
+      // Refresh available gigs so that if someone else took it, it immediately disappears
+      fetchAvailableGigs();
+    } finally {
+      setClaimingGigId(null);
+    }
+  };
+
   // Caretaker Referral Network State
   const [caretakerReferralsData, setCaretakerReferralsData] = useState<{
     referCode: string;
@@ -689,6 +788,8 @@ function CustomerDashboard() {
         const isApproved = parsedCaretaker.status === "Verified" || parsedCaretaker.status === "Approved" || parsedCaretaker.status === "Active";
         if (!isApproved) {
           setActiveCaregiverTab("profile");
+        } else if (parsedCaretaker.isMtp) {
+          setActiveCaregiverTab("availableGigs");
         } else {
           setActiveCaregiverTab("shifts");
         }
@@ -697,6 +798,7 @@ function CustomerDashboard() {
       fetchCaretakerBookings();
       fetchCaretakerReferrals();
       fetchAnnouncements('caretaker');
+      fetchAvailableGigs();
     } else if (userToken && userDetails) {
       setIsCaretaker(false);
       try {
@@ -706,6 +808,8 @@ function CustomerDashboard() {
         setContactPhone(parsedUser.phone || "");
         setContactEmail(parsedUser.email || "");
       } catch (e) {}
+      fetchUserProfile();
+      fetchBookings();
       fetchAnnouncements('user');
     } else {
       // Mandatory authentication: Redirect unauthenticated visitors to login/register first
@@ -713,6 +817,17 @@ function CustomerDashboard() {
       window.location.href = `/login?redirect=${encodeURIComponent(currentUrl)}`;
     }
   }, [navigate]);
+
+  // Periodic radar polling for open MTP gigs
+  useEffect(() => {
+    if (isCaretaker && caretaker?.isMtp && (caretaker?.status === "Verified" || caretaker?.status === "Approved" || caretaker?.status === "Active")) {
+      fetchAvailableGigs();
+      const interval = setInterval(() => {
+        fetchAvailableGigs();
+      }, 12000);
+      return () => clearInterval(interval);
+    }
+  }, [isCaretaker, caretaker?.isMtp, caretaker?.status]);
 
   useEffect(() => {
     if (isCaretaker && activeCaregiverTab === "referrals") {
@@ -1202,16 +1317,16 @@ function CustomerDashboard() {
 
         // If guest user, persist login user details so they can access their booking dashboard
         if (!user && (bookerPhone || bookerEmail)) {
-          const guestUser = {
-            id: data.data?.userId || Date.now(),
+          const activeUser = data.user || {
+            id: data.data?.userId,
             name: bookerName,
             phone: bookerPhone,
             email: bookerEmail
           };
-          setUser(guestUser);
-          localStorage.setItem("ammaseva_user_details", JSON.stringify(guestUser));
-          if (!localStorage.getItem("ammaseva_user_token")) {
-            localStorage.setItem("ammaseva_user_token", `mock-jwt-user-token-${guestUser.id}`);
+          setUser(activeUser);
+          localStorage.setItem("ammaseva_user_details", JSON.stringify(activeUser));
+          if (data.token) {
+            localStorage.setItem("ammaseva_user_token", data.token);
           }
         }
 
@@ -1561,7 +1676,7 @@ function CustomerDashboard() {
                     )}
 
                     <div className="mt-4 w-full">
-                      {caretaker?.status === "Verified" ? (
+                      {(caretaker?.status === "Verified" || caretaker?.status === "Approved" || caretaker?.status === "Active") ? (
                         <div className="space-y-2">
                           <span className="inline-flex items-center justify-center gap-1.5 w-full py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-100 text-xs font-bold uppercase tracking-wider">
                             <CheckCircle2 className="h-3.5 w-3.5" /> {caretaker?.isMtp ? "Verified MTP Companion" : "Active Partner"}
@@ -1591,6 +1706,26 @@ function CustomerDashboard() {
 
                   {/* Vertical Tab Navigation */}
                   <div className="flex flex-col gap-2.5">
+                    {caretaker?.isMtp && (caretaker?.status === "Verified" || caretaker?.status === "Approved" || caretaker?.status === "Active") && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveCaregiverTab("availableGigs")}
+                        className={`w-full py-3 px-4 rounded-2xl text-xs font-bold uppercase tracking-wider flex items-center gap-3 cursor-pointer transition-all ${
+                          activeCaregiverTab === "availableGigs"
+                            ? "bg-gradient-to-r from-amber-600 via-amber-700 to-amber-800 text-white shadow-md shadow-amber-600/25 ring-2 ring-amber-400"
+                            : "text-amber-900 bg-amber-50 hover:bg-amber-100/80 border border-amber-200"
+                        }`}
+                      >
+                        <Zap className={`h-4 w-4 shrink-0 ${activeCaregiverTab === "availableGigs" ? "text-amber-200 animate-pulse" : "text-amber-600"}`} />
+                        <span className="text-left flex-1 font-bold">⚡ Available Gigs (ఓపెన్ టాస్క్‌లు)</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
+                          activeCaregiverTab === "availableGigs" ? "bg-white text-amber-950" : "bg-amber-600 text-white"
+                        }`}>
+                          {availableGigs.length}
+                        </span>
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => setActiveCaregiverTab("shifts")}
@@ -1601,8 +1736,8 @@ function CustomerDashboard() {
                       }`}
                     >
                       <Calendar className="h-4 w-4 shrink-0" />
-                      <span className="text-left flex-1">{caretaker?.isMtp ? "Assigned Gigs & Shifts" : "Assigned Shifts"}</span>
-                      {caretakerBookings.length > 0 && caretaker?.status === "Verified" && (
+                      <span className="text-left flex-1">{caretaker?.isMtp ? "My Accepted Gigs (నా టాస్క్‌లు)" : "Assigned Shifts"}</span>
+                      {caretakerBookings.length > 0 && (caretaker?.status === "Verified" || caretaker?.status === "Approved" || caretaker?.status === "Active") && (
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                           activeCaregiverTab === "shifts" ? "bg-white text-[#1e2a5a]" : "bg-[#1e2a5a] text-white"
                         }`}>
@@ -1624,7 +1759,7 @@ function CustomerDashboard() {
                       <span className="text-left flex-1">{caretaker?.isMtp ? "Application & KYC Details" : "Profile Details"}</span>
                     </button>
 
-                    {caretaker?.status === "Verified" && (
+                    {(caretaker?.status === "Verified" || caretaker?.status === "Approved" || caretaker?.status === "Active") && (
                       <button
                         type="button"
                         onClick={() => setActiveCaregiverTab("reviews")}
@@ -1646,7 +1781,7 @@ function CustomerDashboard() {
                       </button>
                     )}
 
-                    {caretaker?.status === "Verified" && (
+                    {(caretaker?.status === "Verified" || caretaker?.status === "Approved" || caretaker?.status === "Active") && (
                       <button
                         type="button"
                         onClick={() => setActiveCaregiverTab("earnings")}
@@ -1677,7 +1812,7 @@ function CustomerDashboard() {
                       </span>
                     </button>
 
-                    {caretaker?.status !== "Verified" && (
+                    {!(caretaker?.status === "Verified" || caretaker?.status === "Approved" || caretaker?.status === "Active") && (
                         <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
                     )}
                   </div>
@@ -1898,6 +2033,255 @@ function CustomerDashboard() {
                   </div>
                 )}
 
+            {/* Live MTP Gig Radar View (Rapido-Style On-Demand Dispatches) */}
+            {activeCaregiverTab === "availableGigs" && (
+              <div className="space-y-6">
+                {/* Status Banners */}
+                {gigClaimSuccess && (
+                  <div className="rounded-3xl border-2 border-emerald-300 bg-emerald-50/90 p-5 flex items-center gap-4 text-emerald-900 shadow-sm animate-in fade-in duration-200 text-left">
+                    <div className="h-10 w-10 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                      <CheckCircle2 className="h-6 w-6" />
+                    </div>
+                    <div className="space-y-0.5 flex-1">
+                      <h4 className="text-base font-bold font-display text-emerald-950">Gig Successfully Accepted! (టాస్క్ లాక్ చేయబడింది)</h4>
+                      <p className="text-xs text-emerald-800 leading-relaxed font-medium">{gigClaimSuccess}</p>
+                    </div>
+                  </div>
+                )}
+
+                {gigClaimError && (
+                  <div className="rounded-3xl border-2 border-rose-300 bg-rose-50/90 p-5 flex items-center gap-4 text-rose-900 shadow-sm animate-in fade-in duration-200 text-left">
+                    <div className="h-10 w-10 rounded-full bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                      <AlertTriangle className="h-6 w-6" />
+                    </div>
+                    <div className="space-y-0.5 flex-1">
+                      <h4 className="text-base font-bold font-display text-rose-950">Unable to Claim Task</h4>
+                      <p className="text-xs text-rose-800 leading-relaxed font-medium">{gigClaimError}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setGigClaimError(null)}
+                      className="px-3 py-1.5 rounded-xl bg-white border border-rose-200 text-rose-700 font-bold text-xs hover:bg-rose-100"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                )}
+
+                {/* Radar Header Card */}
+                <div className="bg-gradient-to-br from-[#091438] via-[#102052] to-[#1e2a5a] text-white p-7 sm:p-9 rounded-3xl shadow-xl border border-indigo-900/40 relative overflow-hidden text-left">
+                  <div className="absolute top-0 right-0 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+                  <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="space-y-2 max-w-xl">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-400 text-[#091438] shadow-sm">
+                          <Zap className="h-3 w-3 animate-pulse" /> LIVE GIG RADAR
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold text-emerald-300 bg-emerald-950/60 border border-emerald-500/30">
+                          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping inline-block" /> Auto-Scanning
+                        </span>
+                      </div>
+                      <h2 className="text-2xl sm:text-3xl font-black font-display tracking-tight text-white">
+                        Available On-Demand Tasks
+                      </h2>
+                      <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                        Rapido-style fast dispatch for hospital escorts, medicine errands, and senior walking across Hyderabad &amp; Amaravathi. Review payout &amp; location, then tap <strong>Accept Task</strong> to lock your gig.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0">
+                      <button
+                        type="button"
+                        onClick={fetchAvailableGigs}
+                        disabled={isLoadingGigs}
+                        className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-extrabold uppercase tracking-wider backdrop-blur-md transition-all cursor-pointer shadow-sm disabled:opacity-50"
+                      >
+                        <RefreshCw className={`h-4 w-4 ${isLoadingGigs ? "animate-spin text-amber-300" : ""}`} />
+                        <span>Refresh Radar</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Available Gigs Feed */}
+                {isLoadingGigs && availableGigs.length === 0 ? (
+                  <div className="bg-white p-12 rounded-3xl border border-slate-200/60 shadow-sm text-center space-y-4">
+                    <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                    <p className="text-sm font-bold text-slate-700">Scanning local neighborhood for MTP dispatches...</p>
+                  </div>
+                ) : availableGigs.length === 0 ? (
+                  <div className="bg-white p-12 sm:p-16 rounded-3xl border border-dashed border-slate-200 shadow-sm text-center space-y-4">
+                    <div className="h-16 w-16 rounded-3xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto shadow-inner border border-amber-200/60">
+                      <Car className="h-8 w-8 animate-pulse" />
+                    </div>
+                    <div className="space-y-1.5 max-w-md mx-auto">
+                      <h3 className="text-lg font-extrabold text-slate-800 font-display">Radar Scanning — No Open Tasks Right Now</h3>
+                      <p className="text-xs text-slate-500 leading-relaxed">
+                        All client bookings are currently locked or assigned. Keep this page open or watch your registered email; new tasks appear here live as soon as a customer books!
+                      </p>
+                    </div>
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={fetchAvailableGigs}
+                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-[#091438] text-xs font-black uppercase tracking-wider shadow-sm transition-all cursor-pointer"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" /> Re-check Now
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4 text-left">
+                    <div className="flex items-center justify-between px-1">
+                      <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                        ⚡ {availableGigs.length} {availableGigs.length === 1 ? "Open Task" : "Open Tasks"} Waiting for Pickup
+                      </span>
+                      <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">
+                        🔒 Fast Finger First — Locks Immediately on Accept
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      {availableGigs.map((gig) => {
+                        const isClaiming = claimingGigId === gig.id;
+                        const serviceLower = String(gig.service || "").toLowerCase();
+                        const icon = serviceLower.includes("hospital") || serviceLower.includes("transport") || serviceLower.includes("escort")
+                          ? "🚗"
+                          : serviceLower.includes("medicine") || serviceLower.includes("errand")
+                          ? "💊"
+                          : serviceLower.includes("walking") || serviceLower.includes("walk")
+                          ? "👴"
+                          : serviceLower.includes("baby") || serviceLower.includes("mother")
+                          ? "🍼"
+                          : serviceLower.includes("attendant") || serviceLower.includes("surgery")
+                          ? "🩺"
+                          : "⚡";
+
+                        return (
+                          <div
+                            key={gig.id}
+                            className="bg-white rounded-3xl border-2 border-slate-200/80 hover:border-amber-400 p-6 space-y-5 shadow-sm hover:shadow-xl transition-all duration-300 relative overflow-hidden group flex flex-col justify-between"
+                          >
+                            <div className="space-y-4">
+                              {/* Top Bar */}
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="h-12 w-12 rounded-2xl bg-amber-100 text-2xl flex items-center justify-center shrink-0 shadow-inner border border-amber-200/60 group-hover:scale-110 transition-transform">
+                                    {icon}
+                                  </div>
+                                  <div>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 inline-block mb-1">
+                                      Task #{gig.id} • On-Demand
+                                    </span>
+                                    <h3 className="text-base sm:text-lg font-black text-[#091438] font-display leading-snug group-hover:text-amber-800 transition-colors">
+                                      {gig.service || "MTP Companion Task"}
+                                    </h3>
+                                  </div>
+                                </div>
+
+                                <div className="text-right shrink-0">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Payout</span>
+                                  <span className="text-xl sm:text-2xl font-black text-emerald-600 font-mono">
+                                    ₹{gig.amount || 800}
+                                  </span>
+                                  <span className="text-[10px] text-slate-400 block font-medium">Direct Settlement</span>
+                                </div>
+                              </div>
+
+                              {/* Task Metadata Cards */}
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 space-y-0.5">
+                                  <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider flex items-center gap-1">
+                                    <Calendar className="h-3 w-3 text-indigo-500" /> Date &amp; Time
+                                  </span>
+                                  <p className="font-extrabold text-slate-800">
+                                    {gig.date || "Today"}
+                                  </p>
+                                  <p className="text-[11px] font-semibold text-slate-500">
+                                    {gig.time || "09:00 AM"} ({gig.duration || "1 Task"})
+                                  </p>
+                                </div>
+
+                                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 space-y-0.5">
+                                  <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider flex items-center gap-1">
+                                    <User className="h-3 w-3 text-amber-500" /> Client / Patient
+                                  </span>
+                                  <p className="font-extrabold text-slate-800 truncate">
+                                    {gig.patientName || gig.name || "Client"}
+                                  </p>
+                                  <p className="text-[11px] font-semibold text-slate-500 truncate">
+                                    {gig.patientAge ? `${gig.patientAge} yrs • ` : ""}{gig.phone ? `Ph: ${gig.phone.slice(-4)}` : "Verified Client"}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Location */}
+                              <div className="bg-indigo-50/50 border border-indigo-100/70 rounded-2xl p-3.5 space-y-1">
+                                <span className="text-[10px] font-extrabold uppercase text-indigo-700 tracking-wider flex items-center gap-1">
+                                  <MapPin className="h-3 w-3 text-indigo-600" /> Locality &amp; Address
+                                </span>
+                                <p className="text-xs font-bold text-slate-800 leading-snug">
+                                  {gig.address || "Hyderabad, Telangana"}
+                                </p>
+                                {gig.googleMapLocation && (
+                                  <a
+                                    href={gig.googleMapLocation}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-[11px] text-indigo-600 font-bold hover:underline pt-0.5"
+                                  >
+                                    <Navigation className="h-3 w-3" /> View on Google Maps
+                                  </a>
+                                )}
+                              </div>
+
+                              {/* Patient Needs / Errand Instructions */}
+                              {gig.patientNeeds && (
+                                <div className="bg-amber-50/40 border border-amber-200/60 rounded-2xl p-3 space-y-1">
+                                  <span className="text-[10px] font-extrabold uppercase text-amber-800 tracking-wider flex items-center gap-1">
+                                    <FileText className="h-3 w-3 text-amber-700" /> Instructions / Needs
+                                  </span>
+                                  <p className="text-xs font-medium text-slate-700 leading-relaxed">
+                                    {gig.patientNeeds}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Action Button */}
+                            <div className="pt-2">
+                              <button
+                                type="button"
+                                onClick={() => handleClaimGig(gig.id)}
+                                disabled={isClaiming}
+                                className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-800 hover:from-emerald-700 hover:to-teal-900 text-white font-extrabold text-sm shadow-md hover:shadow-xl hover:shadow-emerald-600/25 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed group-hover:scale-[1.01]"
+                              >
+                                {isClaiming ? (
+                                  <>
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    <span>Locking Task to Your Profile...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Zap className="h-4 w-4 text-amber-300" />
+                                    <span>Accept Task (స్వీకరించు — Claim Gig)</span>
+                                    <ArrowRight className="h-4 w-4 ml-1 opacity-70 group-hover:translate-x-1 transition-transform" />
+                                  </>
+                                )}
+                              </button>
+                              <p className="text-[10px] text-slate-400 text-center font-medium mt-1.5">
+                                🔒 First MTP to accept locks the task immediately and it hides from other companions.
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Shifts Content View */}
             {activeCaregiverTab === "shifts" && (
               <>
@@ -1905,9 +2289,13 @@ function CustomerDashboard() {
                   <div className="bg-white p-8 sm:p-10 rounded-3xl border border-slate-200/60 shadow-sm space-y-6">
                     <div>
                       <h2 className="text-xl font-bold text-primary font-display flex items-center gap-2">
-                        <Calendar className="h-5 w-5 text-indigo-600" /> My Assigned Patient Shifts
+                        <Calendar className="h-5 w-5 text-indigo-600" /> {caretaker?.isMtp ? "My Accepted Tasks & Gigs (నా టాస్క్‌లు)" : "My Assigned Patient Shifts"}
                       </h2>
-                      <p className="text-xs text-slate-400 mt-0.5">Below are the patient homecare shifts you have been assigned to by the administrator.</p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {caretaker?.isMtp 
+                          ? "Below are the tasks you have accepted and locked. Complete your client duties and log vitals/completion notes." 
+                          : "Below are the patient homecare shifts you have been assigned to by the administrator."}
+                      </p>
                     </div>
  
                     {/* Premium Filter Controls */}
