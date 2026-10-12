@@ -573,6 +573,10 @@ function CustomerDashboard() {
   const [bookingDuration, setBookingDuration] = useState("Daily");
   const [durationCount, setDurationCount] = useState<number>(1);
   const [bookingStep, setBookingStep] = useState(1);
+  // MTP Dynamic Hourly Packages & Advance Payment State
+  const [mtpPriceTiers, setMtpPriceTiers] = useState<any[]>([]);
+  const [selectedMtpTierId, setSelectedMtpTierId] = useState<number | null>(null);
+  const [mtpPaymentOption, setMtpPaymentOption] = useState<"advance" | "pay_on_service">("advance");
   const goToBookingStep = (step: number) => {
     setBookingStep(step);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -917,6 +921,20 @@ function CustomerDashboard() {
         }
       }
     });
+
+    // Fetch active MTP hourly packages from database
+    fetch("/api/mtp/prices")
+      .then((res) => res.json())
+      .then((prices) => {
+        if (Array.isArray(prices) && prices.length > 0) {
+          setMtpPriceTiers(prices);
+          const firstActive = prices.find((p: any) => p.isActive !== false && p.isActive !== 0) || prices[0];
+          if (firstActive) {
+            setSelectedMtpTierId(firstActive.id);
+          }
+        }
+      })
+      .catch((err) => console.error("Error fetching MTP price packages:", err));
   }, [search?.service, search?.book]);
 
   // Listen to search params reactively
@@ -1090,10 +1108,22 @@ function CustomerDashboard() {
     return { hourly, daily, weekly, monthly, basis };
   };
 
+  const getActiveMtpTier = () => {
+    if (selectedMtpTierId) {
+      const found = mtpPriceTiers.find((t: any) => t.id === selectedMtpTierId);
+      if (found) return found;
+    }
+    const activeTiers = mtpPriceTiers.filter((t: any) => t.isActive !== false && t.isActive !== 0);
+    if (activeTiers.length > 0) return activeTiers[0];
+    if (mtpPriceTiers.length > 0) return mtpPriceTiers[0];
+    return { id: 1, hours: 2, price: 300, advancePercentage: 20, gstRate: 18, label: "2 Hours Package" };
+  };
+
   const calculateBaseAmount = () => {
     const isMtpBooking = Boolean(currentService?.isMtp || (selectedServiceId && (selectedServiceId.startsWith("mtp") || selectedServiceId.includes("mtp"))));
     if (isMtpBooking) {
-      return 0; // Free Dispatch / Pay on Service (₹0 upfront advance)
+      const tier = getActiveMtpTier();
+      return Number(tier.price) || 0;
     }
     const count = Number(durationCount) || 1;
     const rates = getServiceRates();
@@ -1107,8 +1137,10 @@ function CustomerDashboard() {
   };
 
   const calculateGST = (base?: number) => {
+    const isMtpBooking = Boolean(currentService?.isMtp || (selectedServiceId && (selectedServiceId.startsWith("mtp") || selectedServiceId.includes("mtp"))));
     const b = base !== undefined ? base : calculateBaseAmount();
-    return Math.round(b * 0.18);
+    const rate = isMtpBooking ? (Number(getActiveMtpTier().gstRate) || 18) : 18;
+    return Math.round(b * (rate / 100));
   };
 
   const calculateTotal = () => {
@@ -1120,7 +1152,10 @@ function CustomerDashboard() {
   const calculateAdvance = () => {
     const isMtpBooking = Boolean(currentService?.isMtp || (selectedServiceId && (selectedServiceId.startsWith("mtp") || selectedServiceId.includes("mtp"))));
     if (isMtpBooking) {
-      return 0; // ₹0 upfront advance for MTP tasks
+      const tier = getActiveMtpTier();
+      const total = calculateTotal();
+      const pct = tier.advancePercentage !== undefined ? Number(tier.advancePercentage) : 20;
+      return Math.round((total * pct) / 100);
     }
     const service = currentService || servicesList.find(s => s.id === selectedServiceId) || SERVICES_CATALOG.find(s => s.id === selectedServiceId);
     if (service && service.advance !== undefined && service.advance !== null && service.advance !== '') {
@@ -1257,9 +1292,9 @@ function CustomerDashboard() {
  
     const submitBooking = async (payStatus: string, razorpayPaymentDetails?: any) => {
       try {
-        const token = localStorage.getItem("ammaseva_user_token");
+        const activeTier = isMtpBooking ? getActiveMtpTier() : null;
         const formattedDuration = isMtpBooking
-          ? `${durationCount} ${durationCount === 1 ? "Task / Visit" : "Tasks / Visits"}`
+          ? `${activeTier?.hours || 2} Hours (MTP Package)`
           : `${durationCount} ${
               bookingDuration === "Hourly" ? (durationCount === 1 ? "Hour" : "Hours") :
               bookingDuration === "Daily" ? (durationCount === 1 ? "Day" : "Days") :
@@ -1270,9 +1305,9 @@ function CustomerDashboard() {
         const baseCost = calculateBaseAmount();
         const gstCost = calculateGST(baseCost);
         const totalCost = calculateTotal();
-        const advPaid = isMtpBooking 
-          ? (payStatus === "Advance Paid" || payStatus === "Paid" ? totalCost : 0)
-          : (payStatus === "Advance Paid" ? calculateAdvance() : 0);
+        const advPaid = (payStatus === "Advance Paid" || payStatus === "Paid") 
+          ? calculateAdvance() 
+          : 0;
         const balDue = Math.max(0, totalCost - advPaid);
 
         const res = await fetch("/api/booking", {
@@ -1285,10 +1320,12 @@ function CustomerDashboard() {
             name: bookerName,
             phone: bookerPhone,
             email: bookerEmail,
-            service: currentService?.title || (isMtpBooking ? "MTP Task Companion" : "Home Care Healthcare"),
+            service: isMtpBooking 
+              ? (currentService?.title?.includes("MTP") ? currentService.title : `Medical Transport Partner (MTP) - ${currentService?.title || "Escort"}`)
+              : (currentService?.title || "Home Care Healthcare"),
             date: bookingDate || new Date().toISOString().split("T")[0],
             time: bookingTime || "09:00 AM",
-            duration: formattedDuration || "1 Day",
+            duration: formattedDuration || "2 Hours",
             address: bookingAddress || "Hyderabad, Telangana",
             baseAmount: baseCost,
             gstAmount: gstCost,
@@ -1296,13 +1333,14 @@ function CustomerDashboard() {
             patientName: isMtpBooking ? bookerName : (patientName || bookerName),
             patientAge: isMtpBooking ? "" : patientAge,
             patientNeeds: patientNeeds || (isMtpBooking ? "MTP On-Demand Task & Errand Companion" : ""),
-            paymentMethod: isMtpBooking ? (paymentMethod === "razorpay" ? "razorpay" : "pay_on_service") : (paymentMethod || "pay_later"),
+            paymentMethod: isMtpBooking ? (mtpPaymentOption === "advance" ? "razorpay" : "pay_on_service") : (paymentMethod || "pay_later"),
             paymentStatus: isMtpBooking ? (payStatus === "Advance Paid" ? "Advance Paid" : "Pay on Service") : payStatus,
             userId: user?.id || undefined,
             prescription: isMtpBooking ? "" : prescriptionFile,
             googleMapLocation: bookingGoogleMapLocation,
             advancePaid: advPaid,
             balanceAmount: balDue,
+            isMtp: isMtpBooking ? 1 : 0,
             ...(razorpayPaymentDetails || {})
           })
         });
@@ -1354,13 +1392,13 @@ function CustomerDashboard() {
     };
 
     // If MTP task with pay on service selected, submit directly
-    if (isMtpBooking && paymentMethod !== "razorpay") {
+    if (isMtpBooking && mtpPaymentOption === "pay_on_service") {
       await submitBooking("Pay on Service");
       return;
     }
 
-    if (paymentMethod === "razorpay" && (isMtpBooking ? calculateTotal() : calculateAdvance()) > 0) {
-      const chargeAmount = isMtpBooking ? calculateTotal() : calculateAdvance();
+    if ((paymentMethod === "razorpay" || (isMtpBooking && mtpPaymentOption === "advance")) && calculateAdvance() > 0) {
+      const chargeAmount = calculateAdvance();
       try {
         setIsPaymentProcessing(true);
         const orderRes = await fetch("/api/payment/order", {
@@ -1526,20 +1564,25 @@ function CustomerDashboard() {
 
   const handlePayBalance = async (booking: Booking) => {
     const balanceVal = Number(booking.balanceAmount);
-    if (isNaN(balanceVal) || balanceVal <= 0) {
-      alert("No pending balance amount found for this booking.");
+    if (booking.paymentStatus === "Paid" || isNaN(balanceVal) || balanceVal <= 0) {
+      alert(`✓ Booking #${booking.id} is already fully settled with zero balance! No further payment is required.`);
       return;
     }
 
     try {
-      // 1. Create order for balance amount
+      // 1. Create order for balance amount with dual payment check
       const orderRes = await fetch("/api/payment/order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: balanceVal })
+        body: JSON.stringify({ amount: balanceVal, bookingId: booking.id })
       });
       const orderData = await orderRes.json();
       if (!orderRes.ok) {
+        if (orderData.alreadyPaid) {
+          alert(`✓ Notice: Booking #${booking.id} has already been settled in full! Duplicate payment prevented.`);
+          fetchBookings();
+          return;
+        }
         throw new Error(orderData.error || "Failed to initiate online payment order.");
       }
 
@@ -1566,6 +1609,11 @@ function CustomerDashboard() {
 
           const data = await res.json();
           if (!res.ok) {
+            if (data.alreadyPaid) {
+              alert(`✓ Notice: Booking #${booking.id} was already settled in full! Duplicate payment prevented.`);
+              fetchBookings();
+              return;
+            }
             throw new Error(data.error || "Verification of balance payment failed.");
           }
 
@@ -4636,213 +4684,382 @@ function CustomerDashboard() {
                   </div>
                 </div>
 
-                {/* 3. Schedule & Scope */}
-                <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/70 border border-slate-200/90 shadow-2xs space-y-3.5">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-200/70">
-                    <span className="text-xs font-bold uppercase tracking-wider text-[#1e2a5a] flex items-center gap-1.5">
-                      <Calendar className="h-3.5 w-3.5 text-indigo-600" /> Date &amp; Shift Schedule
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-semibold">Today or upcoming</span>
-                  </div>
+                {/* 3. Schedule & Hourly Package Selection */}
+                {(() => {
+                  const DEFAULT_MTP_TIERS = [
+                    { id: 1, hours: 2, price: 300, advancePercentage: 20, gstRate: 18, label: "2 Hours Package" },
+                    { id: 2, hours: 4, price: 600, advancePercentage: 20, gstRate: 18, label: "4 Hours Package" },
+                    { id: 3, hours: 6, price: 800, advancePercentage: 20, gstRate: 18, label: "6 Hours Package" },
+                    { id: 4, hours: 8, price: 1000, advancePercentage: 20, gstRate: 18, label: "8 Hours Package" }
+                  ];
+                  const displayMtpTiers = mtpPriceTiers.length > 0 
+                    ? mtpPriceTiers.filter((t: any) => t.isActive !== false && t.isActive !== 0) 
+                    : DEFAULT_MTP_TIERS;
+                  const currentMtpTier = displayMtpTiers.find((t: any) => t.id === selectedMtpTierId) || displayMtpTiers[0] || DEFAULT_MTP_TIERS[0];
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                        Task Date <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="date"
-                        required
-                        min={todayStr}
-                        max="2099-12-31"
-                        value={bookingDate}
-                        onChange={(e) => setBookingDate(e.target.value)}
-                        className="w-full h-11 px-3.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
-                      />
-                    </div>
+                  return (
+                    <>
+                      <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/70 border border-slate-200/90 shadow-2xs space-y-4">
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-200/70">
+                          <span className="text-xs font-bold uppercase tracking-wider text-[#1e2a5a] flex items-center gap-1.5">
+                            <Calendar className="h-3.5 w-3.5 text-indigo-600" /> Date &amp; Shift Schedule
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-semibold">Today or upcoming</span>
+                        </div>
 
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                        Start Time <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="time"
-                        required
-                        value={bookingTime}
-                        onChange={(e) => setBookingTime(e.target.value)}
-                        className="w-full h-11 px-3.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
-                      />
-                    </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                          <div>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                              Task Date <span className="text-rose-500">*</span>
+                            </label>
+                            <input
+                              type="date"
+                              required
+                              min={todayStr}
+                              max="2099-12-31"
+                              value={bookingDate}
+                              onChange={(e) => setBookingDate(e.target.value)}
+                              className="w-full h-11 px-3.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
+                            />
+                          </div>
 
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                        Scope / Duration
-                      </label>
-                      <select
-                        value={durationCount}
-                        onChange={(e) => setDurationCount(Math.max(1, Number(e.target.value)))}
-                        className="w-full h-11 px-3.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
-                      >
-                        <option value={1}>1 Task / Single Visit</option>
-                        <option value={2}>2 Hours Assistant</option>
-                        <option value={4}>4 Hours (Half Day)</option>
-                        <option value={8}>8 Hours (Full Day)</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
+                          <div>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                              Start Time <span className="text-rose-500">*</span>
+                            </label>
+                            <input
+                              type="time"
+                              required
+                              value={bookingTime}
+                              onChange={(e) => setBookingTime(e.target.value)}
+                              className="w-full h-11 px-3.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
+                            />
+                          </div>
+                        </div>
 
-                {/* 4. Task Location & GPS */}
-                <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/70 border border-slate-200/90 shadow-2xs space-y-3.5">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-200/70">
-                    <span className="text-xs font-bold uppercase tracking-wider text-[#1e2a5a] flex items-center gap-1.5">
-                      <MapPin className="h-3.5 w-3.5 text-indigo-600" /> Location &amp; Navigation
-                    </span>
-                    <span className="text-[10px] text-slate-400">Hyderabad</span>
-                  </div>
+                        {/* Interactive MTP Hourly Package Selector */}
+                        <div className="space-y-2.5 pt-3 border-t border-slate-200/80">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                            <label className="text-xs font-black uppercase tracking-wider text-[#1e2a5a] flex items-center gap-1.5">
+                              <Clock className="h-4 w-4 text-[#c9a24c]" /> Select Duration &amp; Hourly Package
+                            </label>
+                            <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/70">
+                              +18% GST Added Automatically
+                            </span>
+                          </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 items-start">
-                    <div className="sm:col-span-2">
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                        Address / Pickup Spot <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={bookingAddress}
-                        onChange={(e) => setBookingAddress(e.target.value)}
-                        placeholder="Door/Flat no, building, street, landmark, area & pincode"
-                        className="w-full h-11 px-3.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-medium"
-                      />
-                    </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                            {displayMtpTiers.map((tier: any) => {
+                              const isSelected = selectedMtpTierId === tier.id || (!selectedMtpTierId && tier.hours === 2);
+                              const base = Number(tier.price) || 0;
+                              const gst = Math.round(base * ((Number(tier.gstRate) || 18) / 100));
+                              const total = base + gst;
+                              const advPercent = tier.advancePercentage !== undefined ? Number(tier.advancePercentage) : 20;
+                              const advAmount = Math.round(total * (advPercent / 100));
 
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                        GPS Pin <span className="text-slate-400 font-normal lowercase">(optional)</span>
-                      </label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          readOnly
-                          value={bookingGoogleMapLocation}
-                          placeholder="GPS Coordinates"
-                          className="min-w-0 flex-1 h-11 px-3 text-xs rounded-xl border border-slate-200 bg-slate-100 text-slate-600 outline-none truncate font-mono"
+                              return (
+                                <button
+                                  key={tier.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedMtpTierId(tier.id);
+                                    setDurationCount(Number(tier.hours) || 2);
+                                  }}
+                                  className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer relative flex flex-col justify-between gap-2.5 ${
+                                    isSelected
+                                      ? "bg-gradient-to-br from-[#1e2a5a] to-[#0f1738] text-white border-[#1e2a5a] shadow-lg ring-2 ring-[#c9a24c]/70 scale-[1.02]"
+                                      : "bg-white border-slate-200/90 text-slate-800 hover:border-amber-400 hover:bg-amber-50/40 shadow-2xs"
+                                  }`}
+                                >
+                                  <div>
+                                    <div className="flex items-center justify-between mb-1">
+                                      <span className={`text-xs font-black font-display uppercase tracking-wider ${isSelected ? "text-[#f5d77f]" : "text-[#1e2a5a]"}`}>
+                                        {tier.hours} Hours
+                                      </span>
+                                      {isSelected && (
+                                        <span className="h-4 w-4 rounded-full bg-[#c9a24c] text-[#1e2a5a] flex items-center justify-center text-[10px] font-black shadow-xs">
+                                          ✓
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className={`text-lg font-black font-mono leading-none ${isSelected ? "text-white" : "text-slate-900"}`}>
+                                      ₹{base.toLocaleString()}
+                                    </div>
+                                    <div className={`text-[10px] font-medium mt-1 ${isSelected ? "text-slate-300" : "text-slate-500"}`}>
+                                      +₹{gst} (18% GST)
+                                    </div>
+                                  </div>
+
+                                  <div className={`pt-2 border-t text-[10px] font-extrabold flex items-center justify-between ${
+                                    isSelected ? "border-white/20 text-[#f5d77f]" : "border-slate-150 text-emerald-800"
+                                  }`}>
+                                    <span>Total: ₹{total}</span>
+                                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-black ${isSelected ? "bg-white/10 text-white" : "bg-emerald-50 text-emerald-800 border border-emerald-200/50"}`}>
+                                      {advPercent}% Adv (₹{advAmount})
+                                    </span>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 4. Task Location & GPS */}
+                      <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/70 border border-slate-200/90 shadow-2xs space-y-3.5">
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-200/70">
+                          <span className="text-xs font-bold uppercase tracking-wider text-[#1e2a5a] flex items-center gap-1.5">
+                            <MapPin className="h-3.5 w-3.5 text-indigo-600" /> Location &amp; Navigation
+                          </span>
+                          <span className="text-[10px] text-slate-400">Hyderabad</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 items-start">
+                          <div className="sm:col-span-2">
+                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                              Address / Pickup Spot <span className="text-rose-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              value={bookingAddress}
+                              onChange={(e) => setBookingAddress(e.target.value)}
+                              placeholder="Door/Flat no, building, street, landmark, area & pincode"
+                              className="w-full h-11 px-3.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-medium"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                              GPS Pin <span className="text-slate-400 font-normal lowercase">(optional)</span>
+                            </label>
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                readOnly
+                                value={bookingGoogleMapLocation}
+                                placeholder="GPS Coordinates"
+                                className="min-w-0 flex-1 h-11 px-3 text-xs rounded-xl border border-slate-200 bg-slate-100 text-slate-600 outline-none truncate font-mono"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!navigator.geolocation) return;
+                                  setIsFetchingLocationBooking(true);
+                                  navigator.geolocation.getCurrentPosition(
+                                    (position) => {
+                                      const lat = position.coords.latitude;
+                                      const lng = position.coords.longitude;
+                                      setBookingGoogleMapLocation(`https://www.google.com/maps?q=${lat},${lng}`);
+                                      setIsFetchingLocationBooking(false);
+                                    },
+                                    () => setIsFetchingLocationBooking(false)
+                                  );
+                                }}
+                                disabled={isFetchingLocationBooking}
+                                className="h-11 px-3.5 bg-[#1e2a5a] hover:bg-[#283870] text-[#c9a24c] text-xs font-black rounded-xl flex items-center gap-1.5 shrink-0 disabled:opacity-50 cursor-pointer shadow-2xs transition-all whitespace-nowrap"
+                              >
+                                {isFetchingLocationBooking ? "..." : "📍 GPS"}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 5. Task Instructions & Notes */}
+                      <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/70 border border-slate-200/90 shadow-2xs space-y-2.5">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
+                          Specific Task Notes / Requirements
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={patientNeeds}
+                          onChange={(e) => setPatientNeeds(e.target.value)}
+                          placeholder="Describe specific task needs (e.g. Escort to Apollo clinic, wheelchair assist, buy medicines from Apollo pharmacy)..."
+                          className="w-full p-3 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-medium"
                         />
+
+                        {/* Compact Quick Tags */}
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Quick Tags:</span>
+                          {["Hospital Escort", "Medicine Pickup", "Senior Walk", "Bank Work", "Grocery Errand", "Wheelchair Support"].map((tag) => (
+                            <button
+                              key={tag}
+                              type="button"
+                              onClick={() => {
+                                if (patientNeeds.includes(tag)) return;
+                                setPatientNeeds(prev => prev ? `${prev}, ${tag}` : tag);
+                              }}
+                              className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 hover:text-amber-900 text-slate-600 border border-slate-200 transition-all cursor-pointer shadow-2xs"
+                            >
+                              + {tag}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 6. Dynamic Financial Breakdown & Advance vs Service Payment */}
+                      <div className="rounded-2xl border border-amber-300 bg-gradient-to-br from-amber-50/70 via-white to-orange-50/30 p-5 text-slate-800 space-y-4 shadow-sm text-left">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-amber-200/80">
+                          <div>
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-900 block mb-0.5">
+                              Live Pricing Breakdown ({currentMtpTier.hours} Hours Package)
+                            </span>
+                            <div className="flex items-baseline gap-2.5">
+                              <span className="text-2xl sm:text-3xl font-black text-[#1e2a5a] font-display">
+                                ₹{calculateTotal().toLocaleString()}
+                              </span>
+                              <span className="text-xs text-slate-500 font-semibold">
+                                (₹{calculateBaseAmount().toLocaleString()} Base + ₹{calculateGST().toLocaleString()} GST)
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-[11px] font-extrabold text-emerald-800 bg-emerald-100/90 border border-emerald-300 px-2.5 py-1 rounded-lg">
+                              ✓ 18% GST Compliant
+                            </span>
+                            <span className="text-[11px] font-extrabold text-indigo-800 bg-indigo-100/90 border border-indigo-300 px-2.5 py-1 rounded-lg">
+                              ✓ Verified Escort Caregiver
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Financial summary breakdown table */}
+                        <div className="p-3.5 rounded-xl bg-white border border-amber-200/80 space-y-2 text-xs">
+                          <div className="flex justify-between items-center text-slate-600">
+                            <span>Duration Selected:</span>
+                            <span className="font-bold text-slate-900">{currentMtpTier.hours} Hours Package ({currentMtpTier.label || `${currentMtpTier.hours} Hours`})</span>
+                          </div>
+                          <div className="flex justify-between items-center text-slate-600">
+                            <span>Base Service Fee:</span>
+                            <span className="font-mono font-bold text-slate-900">₹{calculateBaseAmount().toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-slate-600">
+                            <span>Govt GST ({currentMtpTier.gstRate || 18}%):</span>
+                            <span className="font-mono font-bold text-amber-800">+₹{calculateGST().toLocaleString()}</span>
+                          </div>
+                          <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-sm font-black text-[#1e2a5a]">
+                            <span>Total Shift Value:</span>
+                            <span className="font-mono text-base">₹{calculateTotal().toLocaleString()}</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-dashed border-slate-200">
+                            <div className="bg-emerald-50/80 border border-emerald-200/70 p-2.5 rounded-lg">
+                              <span className="text-[10px] font-extrabold text-emerald-800 uppercase tracking-wider block">
+                                Advance Deposit ({currentMtpTier.advancePercentage || 20}%)
+                              </span>
+                              <span className="text-sm font-black text-emerald-900 font-mono mt-0.5 block">
+                                ₹{calculateAdvance().toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="bg-amber-50/80 border border-amber-200/70 p-2.5 rounded-lg">
+                              <span className="text-[10px] font-extrabold text-amber-900 uppercase tracking-wider block">
+                                Post-Service Balance ({100 - (currentMtpTier.advancePercentage || 20)}%)
+                              </span>
+                              <span className="text-sm font-black text-amber-950 font-mono mt-0.5 block">
+                                ₹{(calculateTotal() - calculateAdvance()).toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Select payment method */}
+                        <div className="space-y-2 pt-1">
+                          <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
+                            Choose Payment Option
+                          </label>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {/* Option 1: Pay Advance Online Now */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMtpPaymentOption("advance");
+                                setPaymentMethod("razorpay");
+                              }}
+                              className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex items-start gap-3 ${
+                                mtpPaymentOption === "advance"
+                                  ? "bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border-emerald-500 ring-2 ring-emerald-400/30 text-emerald-950 font-semibold"
+                                  : "bg-white border-slate-200 hover:border-slate-300 text-slate-700"
+                              }`}
+                            >
+                              <span className="text-xl">💳</span>
+                              <div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-black text-[#1e2a5a]">
+                                    Pay Advance Now (₹{calculateAdvance().toLocaleString()})
+                                  </span>
+                                  <span className="text-[9px] bg-emerald-100 text-emerald-800 font-extrabold px-1.5 py-0.2 rounded">
+                                    Recommended
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-slate-500 mt-0.5">
+                                  Pay {currentMtpTier.advancePercentage || 20}% deposit online via Razorpay (UPI, GPay, PhonePe, Cards). Balance ₹{(calculateTotal() - calculateAdvance()).toLocaleString()} post-service.
+                                </p>
+                              </div>
+                            </button>
+
+                            {/* Option 2: Pay on Service / Cash on Arrival */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMtpPaymentOption("pay_on_service");
+                                setPaymentMethod("pay_later");
+                              }}
+                              className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex items-start gap-3 ${
+                                mtpPaymentOption === "pay_on_service"
+                                  ? "bg-amber-500/15 border-amber-500 ring-2 ring-amber-400/40 text-amber-950 font-semibold"
+                                  : "bg-white border-slate-200 hover:border-slate-300 text-slate-700"
+                              }`}
+                            >
+                              <span className="text-xl">🤝</span>
+                              <div>
+                                <span className="text-xs font-black text-[#1e2a5a] block">
+                                  Pay on Service (₹0 Advance)
+                                </span>
+                                <p className="text-[11px] text-slate-500 mt-0.5">
+                                  No advance now. Pay full ₹{calculateTotal().toLocaleString()} directly to caregiver via Cash or UPI after service completion.
+                                </p>
+                              </div>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 7. Agreement & Submit */}
+                      <div className="pt-2 space-y-4">
+                        <label className="flex items-start gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            required
+                            checked={agreeTermsBooking}
+                            onChange={(e) => setAgreeTermsBooking(e.target.checked)}
+                            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#1e2a5a] focus:ring-gold cursor-pointer accent-[#c9a24c]"
+                          />
+                          <span className="text-xs font-semibold text-slate-600 select-none leading-relaxed">
+                            I confirm this MTP Task Booking ({currentMtpTier.hours} Hours Package) and agree to Amma Seva terms.
+                          </span>
+                        </label>
+
                         <button
-                          type="button"
-                          onClick={() => {
-                            if (!navigator.geolocation) return;
-                            setIsFetchingLocationBooking(true);
-                            navigator.geolocation.getCurrentPosition(
-                              (position) => {
-                                const lat = position.coords.latitude;
-                                const lng = position.coords.longitude;
-                                setBookingGoogleMapLocation(`https://www.google.com/maps?q=${lat},${lng}`);
-                                setIsFetchingLocationBooking(false);
-                              },
-                              () => setIsFetchingLocationBooking(false)
-                            );
-                          }}
-                          disabled={isFetchingLocationBooking}
-                          className="h-11 px-3.5 bg-[#1e2a5a] hover:bg-[#283870] text-[#c9a24c] text-xs font-black rounded-xl flex items-center gap-1.5 shrink-0 disabled:opacity-50 cursor-pointer shadow-2xs transition-all whitespace-nowrap"
+                          type="submit"
+                          disabled={isSubmitting || !agreeTermsBooking}
+                          className="w-full h-12 sm:h-13 bg-gradient-to-r from-[#1e2a5a] via-[#091129] to-[#1e2a5a] hover:from-[#283870] hover:to-[#14224c] text-[#c9a24c] hover:text-white rounded-2xl font-black uppercase tracking-wider text-xs sm:text-sm flex items-center justify-center gap-2.5 cursor-pointer shadow-xl shadow-[#1e2a5a]/25 disabled:opacity-50 transition-all"
                         >
-                          {isFetchingLocationBooking ? "..." : "📍 GPS"}
+                          {isSubmitting && (
+                            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
+                          )}
+                          {isSubmitting
+                            ? "Allocating MTP Companion..."
+                            : mtpPaymentOption === "advance"
+                            ? `Pay Advance ₹${calculateAdvance().toLocaleString()} & Confirm Booking`
+                            : `Confirm MTP Booking (Pay on Service - ₹0 Advance)`
+                          }
                         </button>
                       </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 5. Task Instructions & Notes */}
-                <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/70 border border-slate-200/90 shadow-2xs space-y-2.5">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-                    Specific Task Notes / Requirements
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={patientNeeds}
-                    onChange={(e) => setPatientNeeds(e.target.value)}
-                    placeholder="Describe specific task needs (e.g. Escort to Apollo clinic, wheelchair assist, buy medicines from Apollo pharmacy)..."
-                    className="w-full p-3 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-medium"
-                  />
-
-                  {/* Compact Quick Tags */}
-                  <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Quick Tags:</span>
-                    {["Hospital Escort", "Medicine Pickup", "Senior Walk", "Bank Work", "Grocery Errand", "Wheelchair Support"].map((tag) => (
-                      <button
-                        key={tag}
-                        type="button"
-                        onClick={() => {
-                          if (patientNeeds.includes(tag)) return;
-                          setPatientNeeds(prev => prev ? `${prev}, ${tag}` : tag);
-                        }}
-                        className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 hover:text-amber-900 text-slate-600 border border-slate-200 transition-all cursor-pointer shadow-2xs"
-                      >
-                        + {tag}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 6. Pay on Service / Free Dispatch Request */}
-                <div className="rounded-2xl border border-amber-300 bg-gradient-to-r from-amber-50 via-white to-orange-50/40 p-5 text-amber-950 space-y-3.5 shadow-sm">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-amber-200/80">
-                    <div>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-2xl sm:text-3xl font-black text-amber-950 font-display">Pay on Service</span>
-                        <span className="text-xs text-emerald-800 font-bold bg-emerald-100/90 px-2.5 py-0.5 rounded-full border border-emerald-300">
-                          ₹0 Advance (Free Dispatch)
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-600 mt-1">
-                        No advance payment needed now. Pay caregiver directly or settle via UPI upon arrival/service completion.
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-[11px] font-extrabold text-emerald-800 bg-emerald-100/90 border border-emerald-300 px-2.5 py-1 rounded-lg">
-                        ✓ No Medical Docs
-                      </span>
-                      <span className="text-[11px] font-extrabold text-emerald-800 bg-emerald-100/90 border border-emerald-300 px-2.5 py-1 rounded-lg">
-                        ✓ 100% Escrow Protected
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl bg-white border border-amber-200 text-xs text-slate-700 flex items-center gap-2.5">
-                    <span className="text-lg shrink-0">🤝</span>
-                    <span>
-                      <strong>On-Demand Companion Dispatch:</strong> A verified caregiver will be allocated immediately for your requested time slot. Service fees are finalized transparently upon arrival.
-                    </span>
-                  </div>
-                </div>
-
-                {/* 7. Agreement & Submit */}
-                <div className="pt-2 space-y-4">
-                  <label className="flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      required
-                      checked={agreeTermsBooking}
-                      onChange={(e) => setAgreeTermsBooking(e.target.checked)}
-                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#1e2a5a] focus:ring-gold cursor-pointer accent-[#c9a24c]"
-                    />
-                    <span className="text-xs font-semibold text-slate-600 select-none leading-relaxed">
-                      I confirm this MTP Task Request (Pay on Service) and agree to Amma Seva terms.
-                    </span>
-                  </label>
-
-                  <button
-                    type="submit"
-                    disabled={isSubmitting || !agreeTermsBooking}
-                    className="w-full h-12 sm:h-13 bg-gradient-to-r from-[#1e2a5a] via-[#091129] to-[#1e2a5a] hover:from-[#283870] hover:to-[#14224c] text-[#c9a24c] hover:text-white rounded-2xl font-black uppercase tracking-wider text-xs sm:text-sm flex items-center justify-center gap-2.5 cursor-pointer shadow-xl shadow-[#1e2a5a]/25 disabled:opacity-50 transition-all"
-                  >
-                    {isSubmitting && (
-                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
-                    )}
-                    {isSubmitting ? "Allocating MTP Companion..." : "Confirm MTP Booking (Pay on Service)"}
-                  </button>
-                </div>
+                    </>
+                  );
+                })()}
               </form>
             </div>
           ) : (

@@ -260,13 +260,15 @@ function AdminPage() {
     return "overview";
   };
 
-  const getInitialMtpSubTab = (): "applicants" | "tasks" => {
+  type MtpSubTab = "applicants" | "tasks" | "pricing";
+
+  const getInitialMtpSubTab = (): MtpSubTab => {
     try {
       const searchParams = new URLSearchParams(window.location.search);
-      const sub = searchParams.get("subtab");
-      if (sub === "applicants" || sub === "tasks") return sub;
-      const saved = localStorage.getItem("ammaseva_admin_mtp_subtab");
-      if (saved === "applicants" || saved === "tasks") return saved;
+      const sub = searchParams.get("subtab") as MtpSubTab;
+      if (sub === "applicants" || sub === "tasks" || sub === "pricing") return sub;
+      const saved = localStorage.getItem("ammaseva_admin_mtp_subtab") as MtpSubTab;
+      if (saved === "applicants" || saved === "tasks" || saved === "pricing") return saved;
     } catch (e) {}
     return "applicants";
   };
@@ -290,7 +292,8 @@ function AdminPage() {
   const [gallery, setGallery] = useState<any[]>([]);
   const [mtps, setMTPs] = useState<any[]>([]);
   const [mtpTasks, setMtpTasks] = useState<any[]>([]);
-  const [mtpSubTab, setMtpSubTab] = useState<"applicants" | "tasks">(getInitialMtpSubTab);
+  const [mtpPrices, setMtpPrices] = useState<any[]>([]);
+  const [mtpSubTab, setMtpSubTab] = useState<MtpSubTab>(getInitialMtpSubTab);
 
   // Referral Network State
   const [referralsData, setReferralsData] = useState<ReferralsData | null>(null);
@@ -316,6 +319,78 @@ function AdminPage() {
   const [taskDescription, setTaskDescription] = useState("");
   const [taskShiftType, setTaskShiftType] = useState("Part-time / On-Demand");
   const [taskEarningEstimate, setTaskEarningEstimate] = useState("₹300 - ₹1,500 / task");
+
+  // MTP Price Package Modal State
+  const [isMtpPriceModalOpen, setIsMtpPriceModalOpen] = useState(false);
+  const [mtpPriceModalMode, setMtpPriceModalMode] = useState<"add" | "edit">("add");
+  const [editingMtpPriceId, setEditingMtpPriceId] = useState<number | null>(null);
+  const [priceHours, setPriceHours] = useState(2);
+  const [priceLabel, setPriceLabel] = useState("2 Hours Package");
+  const [priceBase, setPriceBase] = useState(300);
+  const [priceAdvancePercentage, setPriceAdvancePercentage] = useState(20);
+  const [priceGstRate, setPriceGstRate] = useState(18);
+  const [priceDescription, setPriceDescription] = useState("");
+  const [priceIsActive, setPriceIsActive] = useState(true);
+  const [isSavingMtpPrice, setIsSavingMtpPrice] = useState(false);
+
+  // WhatsApp Pay Balance Modal State
+  const [whatsAppModalBooking, setWhatsAppModalBooking] = useState<any | null>(null);
+  const [isSendingWhatsAppReminder, setIsSendingWhatsAppReminder] = useState(false);
+  const [whatsAppReminderStatus, setWhatsAppReminderStatus] = useState<string | null>(null);
+  const [isCopiedLink, setIsCopiedLink] = useState(false);
+  const [isCopiedMessage, setIsCopiedMessage] = useState(false);
+
+  const handleOpenWhatsAppPayModal = (b: any) => {
+    setWhatsAppModalBooking(b);
+    setWhatsAppReminderStatus(null);
+    setIsCopiedLink(false);
+    setIsCopiedMessage(false);
+  };
+
+  const getWhatsAppPayText = (b: any) => {
+    if (!b) return "";
+    const customerName = b.name || b.patientName || "Customer";
+    const bookingId = b.id;
+    const balance = Number(b.balanceAmount) || Math.max(0, Number(b.amount) - Number(b.advancePaid || 0));
+    const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://ammaseva.in";
+    const payUrl = `${baseUrl}/pay-balance?id=${bookingId}`;
+
+    return `🙏 Namaste *${customerName}*,\n\nThank you for choosing *Amma Seva Home Healthcare*!\n\n📋 *Care Reservation Details:*\n• *Booking ID:* #${bookingId}\n• *Service:* ${b.service || "Healthcare"}\n• *Schedule:* ${b.date || "Scheduled"}${b.time ? " at " + b.time : ""}\n• *Total Shift Value:* ₹${Number(b.amount).toLocaleString("en-IN")}\n• *Advance Paid:* ₹${Number(b.advancePaid || 0).toLocaleString("en-IN")}\n• *Pending Balance Due:* *₹${balance.toLocaleString("en-IN")}*\n\n💳 *Click here to pay balance securely online:*\n👉 ${payUrl}\n_(Google Pay, PhonePe, UPI, Cards, NetBanking accepted)_\n\nNeed assistance? Call our 24/7 Coordinator at +91 94905 87575.`;
+  };
+
+  const handleOpenWhatsAppDirect = (b: any) => {
+    if (!b) return;
+    const rawPhone = String(b.phone || "").replace(/\D/g, "").slice(-10);
+    const targetPhone = rawPhone.length === 10 ? `91${rawPhone}` : "919490587575";
+    const message = getWhatsAppPayText(b);
+    const waUrl = `https://wa.me/${targetPhone}?text=${encodeURIComponent(message)}`;
+    window.open(waUrl, "_blank");
+  };
+
+  const handleTriggerServerWhatsAppReminder = async (b: any) => {
+    if (!b) return;
+    setIsSendingWhatsAppReminder(true);
+    setWhatsAppReminderStatus(null);
+    try {
+      const token = localStorage.getItem("ammaseva_token") || localStorage.getItem("token");
+      const res = await fetch(`/api/admin/booking/${b.id}/send-balance-reminder`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to dispatch WhatsApp reminder");
+      }
+      setWhatsAppReminderStatus("✓ WhatsApp notification successfully sent to customer!");
+    } catch (err: any) {
+      setWhatsAppReminderStatus("❌ Error: " + err.message);
+    } finally {
+      setIsSendingWhatsAppReminder(false);
+    }
+  };
 
   // Document Viewer Modal State
   const [docViewerState, setDocViewerState] = useState<{
@@ -366,6 +441,8 @@ function AdminPage() {
   const [bookingDuration, setBookingDuration] = useState("Daily");
   const [bookingAddress, setBookingAddress] = useState("");
   const [bookingAmount, setBookingAmount] = useState("");
+  const [bookingAdvancePaid, setBookingAdvancePaid] = useState("0");
+  const [bookingBalanceAmount, setBookingBalanceAmount] = useState("0");
   const [bookingStatus, setBookingStatus] = useState("Pending");
   const [bookingAssignedStaff, setBookingAssignedStaff] = useState("");
   const [bookingAssignedStaffId, setBookingAssignedStaffId] = useState<number | null>(null);
@@ -598,8 +675,8 @@ function AdminPage() {
     try {
       localStorage.setItem("ammaseva_admin_mtp_subtab", mtpSubTab);
       const url = new URL(window.location.href);
-      if (activeTab === "mtps" && mtpSubTab === "tasks") {
-        url.searchParams.set("subtab", "tasks");
+      if (activeTab === "mtps" && (mtpSubTab === "tasks" || mtpSubTab === "pricing")) {
+        url.searchParams.set("subtab", mtpSubTab);
       } else {
         url.searchParams.delete("subtab");
       }
@@ -636,7 +713,7 @@ function AdminPage() {
     };
 
     try {
-      const [bookingsRes, caregiversRes, enquiriesRes, usersRes, servicesRes, notificationsRes, blogsRes, faqsRes, galleryRes, mtpsRes, mtpTasksRes, referralsRes] = await Promise.all([
+      const [bookingsRes, caregiversRes, enquiriesRes, usersRes, servicesRes, notificationsRes, blogsRes, faqsRes, galleryRes, mtpsRes, mtpTasksRes, mtpPricesRes, referralsRes] = await Promise.all([
         fetchWithAuth("/api/bookings"),
         fetchWithAuth("/api/caregivers"),
         fetchWithAuth("/api/enquiries"),
@@ -648,6 +725,7 @@ function AdminPage() {
         fetch("/api/gallery").then(res => res.json()),
         fetchWithAuth("/api/admin/mtps").catch(() => []),
         fetch("/api/mtp/tasks").then(res => res.json()).catch(() => []),
+        fetch("/api/mtp/prices").then(res => res.json()).catch(() => []),
         fetchWithAuth("/api/admin/referrals").catch(() => null)
       ]);
       setBookings(Array.isArray(bookingsRes) ? bookingsRes : []);
@@ -661,6 +739,7 @@ function AdminPage() {
       setGallery(Array.isArray(galleryRes) ? galleryRes : []);
       setMTPs(Array.isArray(mtpsRes) ? mtpsRes : []);
       setMtpTasks(Array.isArray(mtpTasksRes) ? mtpTasksRes : []);
+      setMtpPrices(Array.isArray(mtpPricesRes) ? mtpPricesRes : []);
       if (referralsRes && referralsRes.success) {
         setReferralsData(referralsRes);
       }
@@ -976,6 +1055,125 @@ function AdminPage() {
     }
   };
 
+  // MTP Hourly Pricing & Packages Handlers
+  const refreshMtpPrices = () => {
+    fetch("/api/mtp/prices")
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setMtpPrices(data);
+      })
+      .catch(err => console.error(err));
+  };
+
+  const handleOpenAddMtpPrice = () => {
+    setMtpPriceModalMode("add");
+    setEditingMtpPriceId(null);
+    setPriceHours(2);
+    setPriceLabel("2 Hours Package");
+    setPriceBase(300);
+    setPriceAdvancePercentage(20);
+    setPriceGstRate(18);
+    setPriceDescription("Hospital escort & doctor consultation companion");
+    setPriceIsActive(true);
+    setIsMtpPriceModalOpen(true);
+  };
+
+  const handleOpenEditMtpPrice = (tier: any) => {
+    setMtpPriceModalMode("edit");
+    setEditingMtpPriceId(tier.id);
+    setPriceHours(Number(tier.hours) || 2);
+    setPriceLabel(tier.label || `${tier.hours} Hours Package`);
+    setPriceBase(Number(tier.price) || 0);
+    setPriceAdvancePercentage(tier.advancePercentage !== undefined ? Number(tier.advancePercentage) : 20);
+    setPriceGstRate(tier.gstRate !== undefined ? Number(tier.gstRate) : 18);
+    setPriceDescription(tier.description || "");
+    setPriceIsActive(tier.isActive !== false && tier.isActive !== 0);
+    setIsMtpPriceModalOpen(true);
+  };
+
+  const handleSaveMtpPrice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (priceHours <= 0 || priceBase < 0) {
+      alert("Please enter a valid duration in hours (> 0) and base price.");
+      return;
+    }
+    const token = localStorage.getItem("ammaseva_admin_token");
+    const payload = {
+      hours: Number(priceHours),
+      label: priceLabel.trim() || `${priceHours} Hours Package`,
+      price: Number(priceBase),
+      advancePercentage: Math.max(0, Math.min(100, Number(priceAdvancePercentage))),
+      gstRate: Number(priceGstRate) || 18,
+      description: priceDescription.trim(),
+      isActive: priceIsActive
+    };
+
+    setIsSavingMtpPrice(true);
+    try {
+      const url = mtpPriceModalMode === "add" 
+        ? "/api/admin/mtp/prices" 
+        : `/api/admin/mtp/prices/${editingMtpPriceId}`;
+      const method = mtpPriceModalMode === "add" ? "POST" : "PUT";
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        setIsMtpPriceModalOpen(false);
+        refreshMtpPrices();
+      } else {
+        alert(data.error || "Failed to save MTP pricing tier.");
+      }
+    } catch (err: any) {
+      alert("Error saving MTP pricing tier: " + err.message);
+    } finally {
+      setIsSavingMtpPrice(false);
+    }
+  };
+
+  const handleDeleteMtpPrice = async (id: number) => {
+    if (!window.confirm("Are you sure you want to permanently delete this MTP pricing package?")) return;
+    const token = localStorage.getItem("ammaseva_admin_token");
+    try {
+      const res = await fetch(`/api/admin/mtp/prices/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        refreshMtpPrices();
+      } else {
+        alert(data.error || "Failed to delete MTP pricing tier.");
+      }
+    } catch (err: any) {
+      alert("Error deleting MTP pricing tier: " + err.message);
+    }
+  };
+
+  const handleToggleMtpPriceActive = async (tier: any) => {
+    const token = localStorage.getItem("ammaseva_admin_token");
+    const newStatus = !(tier.isActive !== false && tier.isActive !== 0);
+    try {
+      const res = await fetch(`/api/admin/mtp/prices/${tier.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ ...tier, isActive: newStatus })
+      });
+      const data = await res.json();
+      if (data.success) {
+        refreshMtpPrices();
+      }
+    } catch (err) {}
+  };
+
   const handleDeleteService = (id: number) => {
     if (window.confirm("Are you sure you want to permanently delete this service?")) {
       const token = localStorage.getItem("ammaseva_admin_token");
@@ -1077,6 +1275,8 @@ function AdminPage() {
       setBookingDuration("Daily");
       setBookingAddress("");
       setBookingAmount("1200");
+      setBookingAdvancePaid("0");
+      setBookingBalanceAmount("1200");
       setBookingStatus("Pending");
       setBookingAssignedStaff("");
       setBookingAssignedStaffId(null);
@@ -1198,6 +1398,10 @@ function AdminPage() {
       setBookingMtpAcceptedById(record.mtpAcceptedById || foundId || null);
       setBookingMtpAcceptedPhone(record.mtpAcceptedPhone || foundPhone || null);
       setBookingAmount(record.amount?.toString() || "0");
+      const adv = record.advancePaid !== undefined ? record.advancePaid.toString() : "0";
+      setBookingAdvancePaid(adv);
+      const bal = record.balanceAmount !== undefined ? record.balanceAmount.toString() : Math.max(0, (Number(record.amount) || 0) - (Number(adv) || 0)).toString();
+      setBookingBalanceAmount(bal);
       setBookingPaymentStatus(record.paymentStatus || "Unpaid");
       setBookingPaymentMethod(record.paymentMethod || "");
       setBookingTransactionId(record.transactionId || "");
@@ -1322,6 +1526,8 @@ function AdminPage() {
         duration: bookingDuration,
         address: bookingAddress.trim(),
         amount: Number(bookingAmount) || 1200,
+        advancePaid: Number(bookingAdvancePaid) || 0,
+        balanceAmount: Number(bookingBalanceAmount) !== undefined ? Number(bookingBalanceAmount) : Math.max(0, (Number(bookingAmount) || 0) - (Number(bookingAdvancePaid) || 0)),
         caretakerPayout: Number(bookingCaretakerPayout) || 0,
         caretakerPayoutStatus: bookingCaretakerPayoutStatus,
         caretakerPayoutMethod: bookingCaretakerPayoutMethod,
@@ -2328,35 +2534,69 @@ function AdminPage() {
                                 {b.status}
                               </span>
                             </div>
-                            <div className="space-y-1 text-left">
-                              <div className="text-xs font-black text-slate-800">Total: ₹{b.amount.toLocaleString()}</div>
+                            <div className="space-y-1 text-left min-w-[140px]">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-black text-slate-900">Total: ₹{b.amount.toLocaleString()}</span>
+                                {(b.isMtp || (b.service && b.service.toLowerCase().includes("mtp"))) && (
+                                  <span className="text-[8px] font-black text-amber-900 bg-amber-100 px-1.5 py-0.2 rounded border border-amber-300">
+                                    🚗 MTP
+                                  </span>
+                                )}
+                              </div>
+
+                              {(b.baseAmount !== undefined && b.gstAmount !== undefined && Number(b.gstAmount) > 0) && (
+                                <div className="text-[9px] text-slate-400 font-semibold">
+                                  Base: ₹{b.baseAmount.toLocaleString()} + 18% GST: ₹{b.gstAmount.toLocaleString()}
+                                </div>
+                              )}
                               
                               {/* Custom Advance vs Balance badge */}
                               {b.advancePaid !== undefined && Number(b.advancePaid) > 0 ? (
                                 <div className="space-y-0.5 mt-1">
                                   <span className="inline-block text-[8px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100">
-                                    Adv: ₹{b.advancePaid.toLocaleString()}
+                                    ✓ Adv Paid: ₹{b.advancePaid.toLocaleString()}
                                   </span>
-                                  {Number(b.balanceAmount) > 0 && (
-                                    <span className="block text-[8px] font-extrabold uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-100 rounded px-1.5 py-0.5">
-                                      Bal: ₹{b.balanceAmount?.toLocaleString()}
+                                  {Number(b.balanceAmount) > 0 ? (
+                                    <span className="block text-[8px] font-extrabold uppercase tracking-wider text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                                      ⏳ Bal Due: ₹{b.balanceAmount?.toLocaleString()}
+                                    </span>
+                                  ) : (
+                                    <span className="block text-[8px] font-extrabold uppercase tracking-wider text-emerald-700 bg-emerald-100/70 rounded px-1.5 py-0.5">
+                                      ✓ Fully Paid
                                     </span>
                                   )}
                                 </div>
                               ) : (
-                                <span className={`inline-block text-[8px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded border ${
-                                  b.paymentStatus === "Paid" 
-                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200/60" 
-                                    : "bg-amber-50 text-amber-700 border-amber-200/60"
-                                }`}>
-                                  {b.paymentStatus}
-                                </span>
+                                <div className="mt-1">
+                                  <span className={`inline-block text-[8px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded border ${
+                                    b.paymentStatus === "Paid" 
+                                      ? "bg-emerald-50 text-emerald-700 border-emerald-200/60" 
+                                      : "bg-amber-50 text-amber-700 border-amber-200/60"
+                                  }`}>
+                                    {b.paymentStatus || "Pay on Service"}
+                                  </span>
+                                  {b.balanceAmount !== undefined && Number(b.balanceAmount) > 0 && (
+                                    <span className="block text-[8px] font-bold text-slate-500 mt-0.5">
+                                      Due: ₹{b.balanceAmount.toLocaleString()}
+                                    </span>
+                                  )}
+                                </div>
                               )}
                             </div>
                           </div>
 
                           {/* Action Controls */}
                           <div className="flex gap-2 self-stretch lg:self-auto justify-end border-t lg:border-t-0 border-slate-100 pt-3 lg:pt-0 shrink-0">
+                            {Number(b.balanceAmount) > 0 && (
+                              <button
+                                onClick={() => handleOpenWhatsAppPayModal(b)}
+                                className="px-3 py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 border border-emerald-200 hover:border-emerald-600 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all hover:translate-y-[-1px] shadow-sm"
+                                title="Send WhatsApp Pay Balance Link"
+                              >
+                                <MessageSquare className="h-3.5 w-3.5" />
+                                <span className="hidden sm:inline">WhatsApp Pay</span>
+                              </button>
+                            )}
                             <button
                               onClick={() => {
                                 setIsRecordCaretakerPaymentMode(false);
@@ -4234,6 +4474,18 @@ function AdminPage() {
                     <Sliders className="h-4 w-4" />
                     Manage MTP Tasks &amp; Roles ({mtpTasks.length})
                   </button>
+
+                  <button
+                    onClick={() => setMtpSubTab("pricing")}
+                    className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
+                      mtpSubTab === "pricing"
+                        ? "bg-[#1e2a5a] text-white shadow-sm"
+                        : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                    }`}
+                  >
+                    <Coins className="h-4 w-4" />
+                    Hourly Pricing &amp; Advance % ({mtpPrices.length})
+                  </button>
                 </div>
 
                 {/* VIEW 1: APPLICANTS */}
@@ -4552,6 +4804,200 @@ function AdminPage() {
                   </div>
                 )}
 
+                {/* VIEW 3: HOURLY PRICING & ADVANCE % PACKAGES */}
+                {mtpSubTab === "pricing" && (
+                  <div className="space-y-5">
+                    {/* Header bar */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+                      <div>
+                        <h3 className="text-lg font-bold text-[#1e2a5a] font-display flex items-center gap-2">
+                          <span>💰 MTP Hourly Packages &amp; Advance Deposit Pricing</span>
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Configure hourly tiers (2h, 4h, 6h, 8h, etc.), 18% GST calculation, and advance deposit percentage (e.g. 10%, 20%) stored dynamically in backend database.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={refreshMtpPrices}
+                          className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                          title="Refresh prices from DB"
+                        >
+                          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+                        </button>
+
+                        <button
+                          onClick={handleOpenAddMtpPrice}
+                          className="btn-primary py-2 px-4 text-xs font-bold flex items-center gap-1.5 shrink-0 shadow-md cursor-pointer"
+                        >
+                          <Plus className="h-4 w-4" /> Add Hourly Price Tier
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Metric highlights */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 text-left">
+                      <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">Total Active Tiers</span>
+                        <span className="text-2xl font-black text-[#1e2a5a] font-display mt-1 block">
+                          {mtpPrices.filter(p => p.isActive !== false && p.isActive !== 0).length} / {mtpPrices.length}
+                        </span>
+                        <span className="text-[10px] text-emerald-600 font-bold block mt-0.5">Live on Booking Screen</span>
+                      </div>
+
+                      <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">Base Price Range</span>
+                        <span className="text-2xl font-black text-[#c9a24c] font-display mt-1 block">
+                          {mtpPrices.length > 0 ? `₹${Math.min(...mtpPrices.map(p => Number(p.price)))} - ₹${Math.max(...mtpPrices.map(p => Number(p.price)))}` : "₹300 - ₹1,000"}
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-semibold block mt-0.5">+ 18% Mandatory GST</span>
+                      </div>
+
+                      <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">Advance Deposit %</span>
+                        <span className="text-2xl font-black text-indigo-700 font-display mt-1 block">
+                          {mtpPrices.length > 0 ? `${mtpPrices[0]?.advancePercentage ?? 20}%` : "20%"}
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-semibold block mt-0.5">Online via Razorpay UPI</span>
+                      </div>
+
+                      <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">Remaining Balance</span>
+                        <span className="text-2xl font-black text-amber-700 font-display mt-1 block">
+                          {mtpPrices.length > 0 ? `${100 - (mtpPrices[0]?.advancePercentage ?? 20)}%` : "80%"}
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-semibold block mt-0.5">Settled Post-Service</span>
+                      </div>
+                    </div>
+
+                    {/* Pricing Cards Grid */}
+                    {mtpPrices.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center text-slate-400 space-y-3">
+                        <Coins className="mx-auto h-12 w-12 text-slate-300" />
+                        <div className="font-bold text-primary text-base">No MTP Price Packages Found</div>
+                        <p className="text-xs text-slate-500 max-w-md mx-auto">
+                          Add custom hourly packages or standard tiers (2 Hours ₹300, 4 Hours ₹600, 6 Hours ₹800, 8 Hours ₹1,000) with 18% GST and your preferred advance payment percentage.
+                        </p>
+                        <button
+                          onClick={handleOpenAddMtpPrice}
+                          className="btn-primary px-5 py-2 text-xs font-bold shadow-md cursor-pointer inline-flex items-center gap-2"
+                        >
+                          <Plus className="h-4 w-4" /> Add First Hourly Price Tier
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        {mtpPrices.map((tier) => {
+                          const base = Number(tier.price) || 0;
+                          const gstRate = tier.gstRate !== undefined ? Number(tier.gstRate) : 18;
+                          const gstAmount = Math.round(base * (gstRate / 100));
+                          const total = base + gstAmount;
+                          const advPercent = tier.advancePercentage !== undefined ? Number(tier.advancePercentage) : 20;
+                          const advanceAmount = Math.round(total * (advPercent / 100));
+                          const balanceAmount = total - advanceAmount;
+                          const isTierActive = tier.isActive !== false && tier.isActive !== 0;
+
+                          return (
+                            <div
+                              key={tier.id}
+                              className={`rounded-3xl border bg-white p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between gap-4 text-left relative overflow-hidden ${
+                                isTierActive ? "border-slate-200/90" : "border-slate-200 opacity-60 bg-slate-50/50"
+                              }`}
+                            >
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/10 text-amber-900 font-black text-xs border border-amber-500/20">
+                                    <Clock className="h-3.5 w-3.5 text-amber-600" />
+                                    <span>{tier.hours} Hours Package</span>
+                                  </div>
+                                  <button
+                                    onClick={() => handleToggleMtpPriceActive(tier)}
+                                    className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border cursor-pointer transition-all ${
+                                      isTierActive 
+                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" 
+                                        : "bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200"
+                                    }`}
+                                    title="Click to toggle active status"
+                                  >
+                                    {isTierActive ? "● Active" : "○ Inactive"}
+                                  </button>
+                                </div>
+
+                                <div>
+                                  <h4 className="text-base font-extrabold text-[#1e2a5a] font-display">
+                                    {tier.label || `${tier.hours} Hours Package`}
+                                  </h4>
+                                  {tier.description && (
+                                    <p className="text-[11px] text-slate-500 mt-0.5 leading-snug line-clamp-2">
+                                      {tier.description}
+                                    </p>
+                                  )}
+                                </div>
+
+                                {/* Price Breakdown Card */}
+                                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-slate-50 to-amber-50/30 border border-slate-200/70 space-y-1.5 text-xs font-semibold">
+                                  <div className="flex items-center justify-between text-slate-600">
+                                    <span>Base Hourly Price:</span>
+                                    <span className="font-bold text-slate-900 font-mono">₹{base.toLocaleString()}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between text-slate-600">
+                                    <span>+ {gstRate}% GST:</span>
+                                    <span className="font-bold text-amber-800 font-mono">+₹{gstAmount.toLocaleString()}</span>
+                                  </div>
+                                  <div className="pt-1.5 border-t border-slate-200/70 flex items-center justify-between text-slate-900 font-extrabold">
+                                    <span>Total Shift Value:</span>
+                                    <span className="text-sm font-black text-[#1e2a5a] font-display">₹{total.toLocaleString()}</span>
+                                  </div>
+                                </div>
+
+                                {/* Advance vs Balance Split */}
+                                <div className="grid grid-cols-2 gap-2 text-center">
+                                  <div className="p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200/70">
+                                    <span className="text-[9px] font-extrabold text-emerald-700 uppercase tracking-wider block">
+                                      Advance ({advPercent}%)
+                                    </span>
+                                    <span className="text-xs font-black text-emerald-900 block mt-0.5 font-mono">
+                                      ₹{advanceAmount.toLocaleString()}
+                                    </span>
+                                    <span className="text-[8px] text-emerald-600 font-medium">Pay Online</span>
+                                  </div>
+
+                                  <div className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/70">
+                                    <span className="text-[9px] font-extrabold text-amber-800 uppercase tracking-wider block">
+                                      Balance ({100 - advPercent}%)
+                                    </span>
+                                    <span className="text-xs font-black text-amber-950 block mt-0.5 font-mono">
+                                      ₹{balanceAmount.toLocaleString()}
+                                    </span>
+                                    <span className="text-[8px] text-amber-700 font-medium">Post-Service</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Action Buttons */}
+                              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                                <button
+                                  onClick={() => handleOpenEditMtpPrice(tier)}
+                                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-[#1e2a5a] hover:text-white text-slate-700 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
+                                >
+                                  <Edit3 className="h-3.5 w-3.5" /> Edit Tier
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteMtpPrice(tier.id)}
+                                  className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-500 hover:text-white text-rose-600 text-xs font-bold flex items-center gap-1 transition-all border border-rose-200 cursor-pointer"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" /> Delete
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* MODAL: ADD / EDIT MTP TASK FIELD */}
                 {isMtpTaskModalOpen && (
                   <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-md p-3 sm:p-6 animate-in fade-in duration-200">
@@ -4679,6 +5125,232 @@ function AdminPage() {
                             className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#091438] to-[#1e2a5a] text-white border border-[#c9a24c]/40 text-xs font-bold shadow-md cursor-pointer flex items-center gap-1.5"
                           >
                             <Save className="h-3.5 w-3.5 text-[#f5d77f]" /> Save Task Category
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                )}
+
+                {/* MODAL: ADD / EDIT MTP PRICE TIER */}
+                {isMtpPriceModalOpen && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-md p-3 sm:p-6 animate-in fade-in duration-200">
+                    <div className="w-full max-w-lg rounded-3xl bg-white shadow-2xl border border-slate-200/90 overflow-hidden text-left flex flex-col">
+                      <div className="px-6 py-4 bg-gradient-to-r from-[#091438] via-[#112255] to-[#1e2a5a] border-b border-[#c9a24c]/30 flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-xl bg-white/10 border border-[#c9a24c]/40 flex items-center justify-center text-lg text-amber-300">
+                            💰
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-mono font-bold text-[#f5d77f] uppercase tracking-wider block">
+                              {mtpPriceModalMode === "add" ? "New Pricing Package" : `Edit Package #${editingMtpPriceId}`}
+                            </span>
+                            <h3 className="text-base sm:text-lg font-bold text-white font-display">
+                              {mtpPriceModalMode === "add" ? "Create MTP Hourly Price Tier" : "Edit MTP Hourly Price Tier"}
+                            </h3>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setIsMtpPriceModalOpen(false)}
+                          className="h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white flex items-center justify-center cursor-pointer transition-colors border border-white/10"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      <form onSubmit={handleSaveMtpPrice} className="p-6 space-y-4 text-xs">
+                        <div className="grid grid-cols-2 gap-3.5">
+                          {/* Hours */}
+                          <div>
+                            <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">
+                              Duration (Hours) <span className="text-rose-500">*</span>
+                            </label>
+                            <input
+                              type="number"
+                              required
+                              min={1}
+                              max={24}
+                              value={priceHours}
+                              onChange={(e) => {
+                                const val = Number(e.target.value);
+                                setPriceHours(val);
+                                if (!priceLabel || priceLabel.includes("Hours Package")) {
+                                  setPriceLabel(`${val} Hours Package`);
+                                }
+                              }}
+                              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-primary focus:bg-white focus:border-[#c9a24c] outline-none"
+                            />
+                          </div>
+
+                          {/* Base Price */}
+                          <div>
+                            <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">
+                              Base Price (₹) <span className="text-rose-500">*</span>
+                            </label>
+                            <input
+                              type="number"
+                              required
+                              min={0}
+                              step={10}
+                              value={priceBase}
+                              onChange={(e) => setPriceBase(Number(e.target.value))}
+                              placeholder="e.g. 300, 600, 800, 1000"
+                              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-primary focus:bg-white focus:border-[#c9a24c] outline-none font-mono"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Label */}
+                        <div>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">
+                            Display Label
+                          </label>
+                          <input
+                            type="text"
+                            value={priceLabel}
+                            onChange={(e) => setPriceLabel(e.target.value)}
+                            placeholder="e.g. 2 Hours Package"
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-primary focus:bg-white focus:border-[#c9a24c] outline-none"
+                          />
+                        </div>
+
+                        {/* Advance Percentage with Quick Chips */}
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+                              Advance Payment Required (%) <span className="text-rose-500">*</span>
+                            </label>
+                            <span className="text-xs font-black text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                              {priceAdvancePercentage}% Advance
+                            </span>
+                          </div>
+
+                          <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            step={5}
+                            value={priceAdvancePercentage}
+                            onChange={(e) => setPriceAdvancePercentage(Number(e.target.value))}
+                            className="w-full accent-indigo-600 cursor-pointer"
+                          />
+
+                          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                            <span className="text-[10px] text-slate-400 font-semibold mr-1">Quick Select:</span>
+                            {[10, 15, 20, 25, 30, 50, 100].map((pct) => (
+                              <button
+                                type="button"
+                                key={pct}
+                                onClick={() => setPriceAdvancePercentage(pct)}
+                                className={`px-2 py-1 rounded-lg text-[10px] font-extrabold cursor-pointer transition-all ${
+                                  priceAdvancePercentage === pct
+                                    ? "bg-indigo-600 text-white shadow-xs"
+                                    : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                                }`}
+                              >
+                                {pct}%
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* GST Rate */}
+                        <div>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">
+                            GST Tax Rate (%)
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              min={0}
+                              max={28}
+                              value={priceGstRate}
+                              onChange={(e) => setPriceGstRate(Number(e.target.value))}
+                              className="w-24 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-primary focus:bg-white focus:border-[#c9a24c] outline-none"
+                            />
+                            <span className="text-xs text-slate-500 font-semibold">Standard 18% GST (CGST 9% + SGST 9%)</span>
+                          </div>
+                        </div>
+
+                        {/* Description */}
+                        <div>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">
+                            Package Description / Scope
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={priceDescription}
+                            onChange={(e) => setPriceDescription(e.target.value)}
+                            placeholder="e.g. Safe patient transit, doctor appointment assistance & dropping"
+                            className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-primary focus:bg-white focus:border-[#c9a24c] outline-none resize-none"
+                          />
+                        </div>
+
+                        {/* Active Toggle */}
+                        <label className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={priceIsActive}
+                            onChange={(e) => setPriceIsActive(e.target.checked)}
+                            className="h-4 w-4 rounded border-slate-300 text-[#1e2a5a] focus:ring-[#c9a24c] cursor-pointer accent-[#1e2a5a]"
+                          />
+                          <span className="text-xs font-bold text-slate-700">
+                            Enable package (Visible on customer booking screen)
+                          </span>
+                        </label>
+
+                        {/* Live Calculation Preview */}
+                        {(() => {
+                          const base = Number(priceBase) || 0;
+                          const gstAmt = Math.round(base * ((Number(priceGstRate) || 18) / 100));
+                          const totalAmt = base + gstAmt;
+                          const advAmt = Math.round(totalAmt * ((Number(priceAdvancePercentage) || 0) / 100));
+                          const balAmt = totalAmt - advAmt;
+                          return (
+                            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-slate-800 space-y-1.5">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 block pb-1 border-b border-amber-300/40">
+                                📊 Live Price Breakdown Preview
+                              </span>
+                              <div className="flex justify-between text-xs font-semibold">
+                                <span>Base Service Amount:</span>
+                                <span className="font-mono font-bold">₹{base.toLocaleString()}</span>
+                              </div>
+                              <div className="flex justify-between text-xs font-semibold">
+                                <span>+ 18% GST:</span>
+                                <span className="font-mono font-bold text-amber-900">+₹{gstAmt.toLocaleString()}</span>
+                              </div>
+                              <div className="flex justify-between text-xs font-extrabold text-[#1e2a5a] pt-1 border-t border-amber-300/40">
+                                <span>Total Amount:</span>
+                                <span className="font-mono text-sm">₹{totalAmt.toLocaleString()}</span>
+                              </div>
+                              <div className="flex justify-between text-xs font-bold text-emerald-800">
+                                <span>Advance Required Now ({priceAdvancePercentage}%):</span>
+                                <span className="font-mono">₹{advAmt.toLocaleString()}</span>
+                              </div>
+                              <div className="flex justify-between text-xs font-bold text-amber-900">
+                                <span>Remaining Balance (After Service):</span>
+                                <span className="font-mono">₹{balAmt.toLocaleString()}</span>
+                              </div>
+                            </div>
+                          );
+                        })()}
+
+                        {/* Actions */}
+                        <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                          <button
+                            type="button"
+                            onClick={() => setIsMtpPriceModalOpen(false)}
+                            className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={isSavingMtpPrice}
+                            className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#091438] to-[#1e2a5a] text-white border border-[#c9a24c]/40 text-xs font-bold shadow-md cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                          >
+                            <Save className="h-3.5 w-3.5 text-[#f5d77f]" />
+                            {isSavingMtpPrice ? "Saving..." : "Save Pricing Package"}
                           </button>
                         </div>
                       </form>
@@ -6004,6 +6676,48 @@ function AdminPage() {
                         </div>
                       </div>
 
+                      {/* Advance Paid vs Balance Due Configuration */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <div>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 mb-1">
+                            ✓ Advance Paid Amount (₹)
+                          </label>
+                          <input
+                            type="number"
+                            value={bookingAdvancePaid}
+                            onChange={e => {
+                              const advVal = e.target.value;
+                              setBookingAdvancePaid(advVal);
+                              const totNum = Number(bookingAmount) || 0;
+                              const advNum = Number(advVal) || 0;
+                              const balNum = Math.max(0, totNum - advNum);
+                              setBookingBalanceAmount(balNum.toString());
+                              if (advNum >= totNum && totNum > 0) {
+                                setBookingPaymentStatus("Paid");
+                              } else if (advNum > 0) {
+                                setBookingPaymentStatus("Advance Paid");
+                              } else {
+                                setBookingPaymentStatus("Pay on Service");
+                              }
+                            }}
+                            placeholder="0"
+                            className="w-full px-3 py-1.5 border border-emerald-300 rounded-xl outline-none bg-white text-xs font-black text-emerald-900 focus:ring-1 focus:ring-emerald-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-amber-800 mb-1">
+                            ⏳ Remaining Balance Due (₹)
+                          </label>
+                          <input
+                            type="number"
+                            value={bookingBalanceAmount}
+                            onChange={e => setBookingBalanceAmount(e.target.value)}
+                            placeholder="0"
+                            className="w-full px-3 py-1.5 border border-amber-300 rounded-xl outline-none bg-white text-xs font-black text-amber-950 focus:ring-1 focus:ring-amber-500"
+                          />
+                        </div>
+                      </div>
+
                       {/* Caretaker Payout Box */}
                       <div className="bg-white p-3 rounded-xl border border-slate-200/80 space-y-2.5">
                         <div className="flex items-center justify-between">
@@ -7253,6 +7967,163 @@ function AdminPage() {
               </div>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* WHATSAPP PAY BALANCE LINK MODAL */}
+      {whatsAppModalBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-[#091438] via-[#10235b] to-[#091438] p-5 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-400">
+                  <MessageSquare className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-white">Send WhatsApp Pay Link</h3>
+                  <p className="text-xs text-slate-300">
+                    Booking #{whatsAppModalBooking.id} • {whatsAppModalBooking.name || "Customer"}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setWhatsAppModalBooking(null)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-4 text-xs">
+              {/* Financial Snapshot */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2">
+                <div className="flex justify-between text-slate-600">
+                  <span>Customer Mobile:</span>
+                  <span className="font-bold text-slate-900 font-mono">{whatsAppModalBooking.phone || "Not recorded"}</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Service:</span>
+                  <span className="font-semibold text-slate-900">{whatsAppModalBooking.service}</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Total Shift Value:</span>
+                  <span className="font-semibold text-slate-900">₹{Number(whatsAppModalBooking.amount).toLocaleString("en-IN")}</span>
+                </div>
+                <div className="flex justify-between text-emerald-700">
+                  <span>Advance Already Paid:</span>
+                  <span className="font-bold">₹{Number(whatsAppModalBooking.advancePaid || 0).toLocaleString("en-IN")}</span>
+                </div>
+                <div className="flex justify-between text-amber-800 bg-amber-100/60 p-2.5 rounded-xl border border-amber-200 font-bold text-sm">
+                  <span>Remaining Balance Due:</span>
+                  <span>₹{(Number(whatsAppModalBooking.balanceAmount) || Math.max(0, Number(whatsAppModalBooking.amount) - Number(whatsAppModalBooking.advancePaid || 0))).toLocaleString("en-IN")}</span>
+                </div>
+              </div>
+
+              {/* Direct Payment URL */}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                  Customer Public Pay Balance URL
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${typeof window !== "undefined" ? window.location.origin : "https://ammaseva.in"}/pay-balance?id=${whatsAppModalBooking.id}`}
+                    className="flex-1 px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl font-mono text-[11px] text-slate-700 select-all"
+                  />
+                  <button
+                    onClick={() => {
+                      const url = `${typeof window !== "undefined" ? window.location.origin : "https://ammaseva.in"}/pay-balance?id=${whatsAppModalBooking.id}`;
+                      navigator.clipboard.writeText(url);
+                      setIsCopiedLink(true);
+                      setTimeout(() => setIsCopiedLink(false), 2000);
+                    }}
+                    className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded-xl flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    {isCopiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    {isCopiedLink ? "Copied" : "Copy"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Pre-formatted WhatsApp Message Preview */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                    WhatsApp Message Preview
+                  </label>
+                  <button
+                    onClick={() => {
+                      const text = getWhatsAppPayText(whatsAppModalBooking);
+                      navigator.clipboard.writeText(text);
+                      setIsCopiedMessage(true);
+                      setTimeout(() => setIsCopiedMessage(false), 2000);
+                    }}
+                    className="text-[#0e2254] hover:underline font-bold text-[11px] flex items-center gap-1"
+                  >
+                    {isCopiedMessage ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                    {isCopiedMessage ? "Copied All" : "Copy Text"}
+                  </button>
+                </div>
+                <div className="bg-[#e7fedb] border border-[#b2e29e] rounded-2xl p-3.5 font-sans text-slate-800 whitespace-pre-wrap text-[11px] leading-relaxed shadow-inner">
+                  {getWhatsAppPayText(whatsAppModalBooking)}
+                </div>
+              </div>
+
+              {/* Status Notice if server reminder clicked */}
+              {whatsAppReminderStatus && (
+                <div className={`p-3 rounded-xl border text-xs font-semibold ${
+                  whatsAppReminderStatus.startsWith("✓")
+                    ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                    : "bg-rose-50 text-rose-800 border-rose-200"
+                }`}>
+                  {whatsAppReminderStatus}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="p-5 bg-slate-50 border-t border-slate-200 flex flex-wrap gap-2.5 justify-between items-center">
+              <button
+                type="button"
+                onClick={() => handleTriggerServerWhatsAppReminder(whatsAppModalBooking)}
+                disabled={isSendingWhatsAppReminder}
+                className="px-4 py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {isSendingWhatsAppReminder ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    Sending via Server...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-3.5 h-3.5" />
+                    Dispatch MSG91 API
+                  </>
+                )}
+              </button>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setWhatsAppModalBooking(null)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleOpenWhatsAppDirect(whatsAppModalBooking)}
+                  className="px-5 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  Open WhatsApp &amp; Send →
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

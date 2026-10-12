@@ -635,3 +635,35 @@ html.js-scroll-anim .dark-luxury-card.scroll-in-view:hover {
   }
 }
 
+/* ========================================================================= */
+/* Accessibility, Reduced Motion & Mobile Touch Interaction (Checklist 2, 11, 29, 34) */
+/* ========================================================================= */
+
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Touch manipulation optimization */
+button, a, input, select, textarea {
+  touch-action: manipulation;
+}
+
+/* Visible accessible focus indicators */
+:focus-visible {
+  outline: 2px solid #c9a24c;
+  outline-offset: 2px;
+}
+
+/* Respect user's motion preferences (Item 11 & 29) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+

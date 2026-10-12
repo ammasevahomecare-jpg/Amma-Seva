@@ -1290,6 +1290,16 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }))
 app.use(express.urlencoded({ limit: '50mb', extended: true }))
 
+// HTTP Security Headers (Checklist 20)
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff')
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN')
+  res.setHeader('X-XSS-Protection', '1; mode=block')
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)')
+  next()
+})
+
 // HTTP request logger
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`)
@@ -3539,6 +3549,73 @@ app.delete('/api/admin/mtp/tasks/:id', authenticateAdmin, async (req, res) => {
 })
 
 // ==========================================
+// MTP PRICING PACKAGES & ADVANCE PERCENTAGES
+// ==========================================
+
+// GET all MTP Pricing tiers (Public / Authenticated)
+app.get('/api/mtp/prices', async (req, res) => {
+  try {
+    const list = await db.getMTPPrices()
+    res.json(list)
+  } catch (err) {
+    console.error('Failed to retrieve MTP prices:', err)
+    res.status(500).json({ error: 'Failed to retrieve MTP pricing packages.' })
+  }
+})
+
+// POST create new MTP Price tier (Admin Panel)
+app.post('/api/admin/mtp/prices', authenticateAdmin, async (req, res) => {
+  const { hours, label, price, advancePercentage = 20, gstRate = 18, description, active = true } = req.body
+  if (!hours || !price) {
+    return res.status(400).json({ success: false, error: 'Hours and Base Price are required.' })
+  }
+  try {
+    const newPrice = await db.createMTPPrice({
+      hours: Number(hours),
+      label: label || `${hours} Hours`,
+      price: Number(price),
+      advancePercentage: advancePercentage !== undefined ? Number(advancePercentage) : 20,
+      gstRate: Number(gstRate) || 18,
+      description: description || '',
+      active: Boolean(active)
+    })
+    res.status(201).json({ success: true, message: 'MTP price tier created successfully!', data: newPrice })
+  } catch (err) {
+    console.error('Failed to create MTP price:', err)
+    res.status(500).json({ success: false, error: 'Failed to create MTP price tier.' })
+  }
+})
+
+// PUT update MTP Price tier (Admin Panel)
+app.put('/api/admin/mtp/prices/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const updated = await db.updateMTPPrice(req.params.id, req.body)
+    if (!updated) {
+      return res.status(404).json({ error: 'MTP price tier not found.' })
+    }
+    res.json({ success: true, message: 'MTP price tier updated successfully.', data: updated })
+  } catch (err) {
+    console.error('Failed to update MTP price:', err)
+    res.status(500).json({ error: 'Failed to update MTP price tier.' })
+  }
+})
+
+// DELETE MTP Price tier (Admin Panel)
+app.delete('/api/admin/mtp/prices/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const deleted = await db.deleteMTPPrice(req.params.id)
+    if (deleted) {
+      res.json({ success: true, message: 'MTP price tier deleted successfully.' })
+    } else {
+      res.status(404).json({ error: 'MTP price tier not found.' })
+    }
+  } catch (err) {
+    console.error('Failed to delete MTP price tier:', err)
+    res.status(500).json({ error: 'Failed to delete MTP price tier.' })
+  }
+})
+
+// ==========================================
 // RAPIDO-STYLE ON-DEMAND MTP GIG RADAR APIS
 // ==========================================
 
@@ -3735,10 +3812,31 @@ app.get('/api/payment/config', (req, res) => {
 
 // POST create Razorpay order
 app.post('/api/payment/order', async (req, res) => {
-  const { amount } = req.body
+  const { amount, bookingId } = req.body
   if (!amount) {
     return res.status(400).json({ error: 'Amount is required.' })
   }
+
+  // Dual Payment Prevention Check
+  if (bookingId) {
+    try {
+      const existing = await db.getBookingById(bookingId)
+      if (existing) {
+        const bal = Number(existing.balanceAmount) !== undefined && existing.balanceAmount !== null
+          ? Number(existing.balanceAmount)
+          : Math.max(0, Number(existing.amount) - Number(existing.advancePaid || 0))
+        if (bal <= 0 || existing.paymentStatus === 'Paid') {
+          return res.status(400).json({ 
+            error: `Dual payment prevented: Booking #${bookingId} has already been settled in full. No payment is required.`,
+            alreadyPaid: true 
+          })
+        }
+      }
+    } catch (e) {
+      console.warn('[Check Booking Dual Payment Error]:', e.message)
+    }
+  }
+
   const { key_id, key_secret, client } = getRazorpayConfig()
   
   if (client) {
@@ -3934,6 +4032,50 @@ app.post('/api/booking', async (req, res) => {
   }
 })
 
+// GET public payment summary for a booking (used by public Pay Balance page)
+app.get('/api/booking/:id/pay-info', async (req, res) => {
+  try {
+    const booking = await db.getBookingById(req.params.id)
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found.' })
+    }
+
+    const totalAmount = Number(booking.amount) || 0
+    const advancePaid = Number(booking.advancePaid) || 0
+    const balanceAmount = booking.balanceAmount !== undefined && booking.balanceAmount !== null
+      ? Number(booking.balanceAmount)
+      : Math.max(0, totalAmount - advancePaid)
+
+    // Mask phone for customer privacy
+    const phone = String(booking.phone || '')
+    const maskedPhone = phone.length >= 10 ? `${phone.slice(0, 2)}******${phone.slice(-4)}` : phone
+
+    res.json({
+      id: booking.id,
+      name: booking.name || booking.patientName || 'Valued Customer',
+      phone: booking.phone || '',
+      phoneMasked: maskedPhone,
+      email: booking.email || '',
+      service: booking.service || 'Home Healthcare Service',
+      duration: booking.duration || '1 Shift',
+      date: booking.date || '',
+      time: booking.time || '',
+      address: booking.address || '',
+      baseAmount: booking.baseAmount !== undefined ? Number(booking.baseAmount) : Math.round(totalAmount / 1.18),
+      gstAmount: booking.gstAmount !== undefined ? Number(booking.gstAmount) : (totalAmount - Math.round(totalAmount / 1.18)),
+      amount: totalAmount,
+      advancePaid,
+      balanceAmount,
+      paymentStatus: booking.paymentStatus || (balanceAmount <= 0 ? 'Paid' : (advancePaid > 0 ? 'Advance Paid' : 'Unpaid')),
+      status: booking.status || 'Confirmed',
+      isMtp: Boolean(booking.isMtp)
+    })
+  } catch (err) {
+    console.error('[Get Pay Info Error]:', err)
+    res.status(500).json({ error: 'Failed to retrieve booking payment information.' })
+  }
+})
+
 // POST pay booking balance
 app.post('/api/booking/:id/pay-balance', async (req, res) => {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body
@@ -3961,8 +4103,23 @@ app.post('/api/booking/:id/pay-balance', async (req, res) => {
   }
 
   try {
+    // Dual payment prevention check
+    const existing = await db.getBookingById(id)
+    if (!existing) {
+      return res.status(404).json({ error: 'Booking not found.' })
+    }
+    const currentBal = Number(existing.balanceAmount) !== undefined && existing.balanceAmount !== null
+      ? Number(existing.balanceAmount)
+      : Math.max(0, Number(existing.amount) - Number(existing.advancePaid || 0))
+    if (currentBal <= 0 || existing.paymentStatus === 'Paid') {
+      return res.status(400).json({ 
+        error: `Dual payment prevented: Booking #${id} is already paid in full. No duplicate charge will be processed.`,
+        alreadyPaid: true 
+      })
+    }
+
     const updated = await db.payBookingBalance(id, 'razorpay', razorpay_payment_id)
-    if (updated) {
+    if (updated === true || updated?.success) {
       const settledBooking = await db.getBookingById(id)
       let userEmail = ''
       if (settledBooking && settledBooking.userId) {
@@ -3977,6 +4134,10 @@ app.post('/api/booking/:id/pay-balance', async (req, res) => {
       if (userEmail && settledBooking) {
         sendBalancePaymentSettlementEmail(settledBooking, userEmail, razorpay_payment_id).catch(err => console.error('[Balance Email Error]:', err.message))
       }
+      // Trigger WhatsApp settlement alert
+      if (settledBooking) {
+        sendWhatsAppBookingConfirmation(settledBooking).catch(err => console.error('[WhatsApp Settlement Error]:', err.message))
+      }
       res.json({ success: true, message: 'Balance paid successfully!' })
     } else {
       res.status(404).json({ error: 'Booking not found.' })
@@ -3984,6 +4145,30 @@ app.post('/api/booking/:id/pay-balance', async (req, res) => {
   } catch (err) {
     console.error('Balance payment error:', err)
     res.status(500).json({ error: 'Failed to process balance payment.' })
+  }
+})
+
+// POST Admin trigger WhatsApp balance reminder
+app.post('/api/admin/booking/:id/send-balance-reminder', authenticateAdmin, async (req, res) => {
+  try {
+    const booking = await db.getBookingById(req.params.id)
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found.' })
+    }
+    const balance = Number(booking.balanceAmount) || Math.max(0, Number(booking.amount) - Number(booking.advancePaid || 0))
+    if (balance <= 0) {
+      return res.status(400).json({ error: 'This booking has no pending balance.' })
+    }
+
+    const result = await sendWhatsAppBookingConfirmation(booking)
+    res.json({ 
+      success: true, 
+      message: `WhatsApp reminder dispatched for Booking #${booking.id} with balance ₹${balance}`,
+      data: result 
+    })
+  } catch (err) {
+    console.error('[Send Balance Reminder Error]:', err)
+    res.status(500).json({ error: 'Failed to dispatch WhatsApp reminder.' })
   }
 })
 
@@ -4206,6 +4391,8 @@ app.post('/api/admin/booking', authenticateAdmin, async (req, res) => {
       paymentMethod: paymentMethod || '',
       transactionId: transactionId || '',
       paymentDate: paymentDate || '',
+      advancePaid: req.body.advancePaid !== undefined ? Number(req.body.advancePaid) : 0,
+      balanceAmount: req.body.balanceAmount !== undefined ? Number(req.body.balanceAmount) : Math.max(0, (Number(amount) || 1200) - (Number(req.body.advancePaid) || 0)),
       patientName: patientName || '',
       patientAge: patientAge || '',
       patientNeeds: patientNeeds || '',

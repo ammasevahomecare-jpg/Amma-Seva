@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Phone, MessageCircle, Mail, MapPin, Send, ArrowRight, Instagram } from "lucide-react";
+import { Phone, MessageCircle, Mail, MapPin, Send, ArrowRight, Instagram, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { SiteLayout, contact } from "@/components/SiteLayout";
 import { validateName, validatePhone, validateEmail, sanitizeIndianPhone, sanitizeName } from "@/lib/validation";
 
@@ -19,6 +19,101 @@ export const Route = createFileRoute("/contact")({
 });
 
 function Contact() {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [service, setService] = useState("General Inquiry");
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [formStatus, setFormStatus] = useState<{
+    type: "idle" | "success" | "error";
+    message: string;
+  }>({ type: "idle", message: "" });
+
+  const validateForm = () => {
+    const nameError = validateName(name, "Full name");
+    if (nameError) return nameError;
+
+    const phoneError = validatePhone(phone, "Phone number");
+    if (phoneError) return phoneError;
+
+    const emailError = validateEmail(email, false, "Email address");
+    if (emailError) return emailError;
+
+    if (!message.trim() || message.trim().length < 5) {
+      return "Please describe your care requirements (minimum 5 characters).";
+    }
+
+    return null;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const error = validateForm();
+    if (error) {
+      setFormStatus({ type: "error", message: error });
+      return;
+    }
+
+    setSubmitting(true);
+    setFormStatus({ type: "idle", message: "" });
+
+    try {
+      const res = await fetch("/api/enquiry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          phone: phone.replace(/\D/g, ""),
+          email: email.trim(),
+          service,
+          message: message.trim(),
+        }),
+      });
+      const resData = await res.json().catch(() => ({}));
+      if (res.ok && resData.success) {
+        setFormStatus({
+          type: "success",
+          message: resData.message || "Thank you! Your care enquiry has been submitted. Our team will contact you shortly.",
+        });
+        setName("");
+        setPhone("");
+        setEmail("");
+        setMessage("");
+      } else {
+        setFormStatus({
+          type: "error",
+          message: resData.error || "Failed to submit enquiry. Please check your inputs.",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      setFormStatus({
+        type: "error",
+        message: "Unable to submit enquiry at this time. Please call our 24/7 helpline at +91 94945 16543.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleWhatsAppSubmit = () => {
+    const error = validateForm();
+    if (error) {
+      setFormStatus({ type: "error", message: error });
+      return;
+    }
+
+    const waText = `Hello Amma Seva, I need home healthcare assistance.\n\n` +
+      `*Name:* ${name.trim()}\n` +
+      `*Phone:* +91 ${phone.trim()}\n` +
+      (email.trim() ? `*Email:* ${email.trim()}\n` : "") +
+      `*Service:* ${service}\n` +
+      `*Details:* ${message.trim()}`;
+
+    window.open(`https://wa.me/919494516543?text=${encodeURIComponent(waText)}`, "_blank");
+  };
+
   return (
     <SiteLayout>
       {/* Premium Hero Header Section */}
@@ -71,7 +166,7 @@ function Contact() {
               <ContactRow 
                 icon={Instagram} 
                 label="Official Instagram" 
-                value="@amma.seva" 
+                value="@ammaseva.in" 
                 subtext="Follow us for care tips, moments, and updates."
                 href={contact.INSTAGRAM} 
               />
@@ -101,58 +196,7 @@ function Contact() {
           <div className="lg:col-span-7">
             <form
               className="rounded-3xl premium-card bg-white p-6 sm:p-8 shadow-md text-left space-y-5"
-              onSubmit={async (e) => {
-                e.preventDefault();
-                const form = e.target as HTMLFormElement;
-                const formData = new FormData(form);
-                const name = (formData.get("name") as string) || "";
-                const phone = (formData.get("phone") as string) || "";
-                const email = (formData.get("email") as string) || "";
-
-                const nameError = validateName(name, "Full name");
-                if (nameError) {
-                  alert(nameError);
-                  return;
-                }
-
-                const phoneError = validatePhone(phone, "Phone number");
-                if (phoneError) {
-                  alert(phoneError);
-                  return;
-                }
-
-                const emailError = validateEmail(email, false, "Email address");
-                if (emailError) {
-                  alert(emailError);
-                  return;
-                }
-
-                const data = {
-                  name: name.trim(),
-                  phone: phone.replace(/\D/g, ""),
-                  email: email.trim(),
-                  service: formData.get("service") as string,
-                  message: formData.get("message") as string,
-                };
-
-                try {
-                  const res = await fetch("/api/enquiry", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(data),
-                  });
-                  const resData = await res.json().catch(() => ({}));
-                  if (res.ok && resData.success) {
-                    alert(resData.message || "Thanks! Our care team will reach you shortly.");
-                    form.reset();
-                  } else {
-                    alert("Error: " + (resData.error || "Failed to submit enquiry. Please check your inputs."));
-                  }
-                } catch (err) {
-                  console.error(err);
-                  alert("Unable to submit enquiry at this time. Please call our 24/7 helpline at +91 94945 16543.");
-                }
-              }}
+              onSubmit={handleSubmit}
             >
               <div>
                 <h3 className="text-xl font-bold text-primary">Send us a message</h3>
@@ -161,17 +205,55 @@ function Contact() {
                 </p>
               </div>
 
+              {/* Status Banner */}
+              {formStatus.type === "success" && (
+                <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-start gap-2.5">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span className="font-medium leading-relaxed">{formStatus.message}</span>
+                </div>
+              )}
+              {formStatus.type === "error" && (
+                <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2.5">
+                  <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+                  <span className="font-medium leading-relaxed">{formStatus.message}</span>
+                </div>
+              )}
+
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Full Name" name="name" required placeholder="John Doe" />
-                <Field label="Phone Number" name="phone" type="tel" required placeholder="98765 43210" />
+                <Field 
+                  label="Full Name" 
+                  name="name" 
+                  required 
+                  placeholder="John Doe" 
+                  value={name}
+                  onChange={setName}
+                />
+                <Field 
+                  label="Phone Number" 
+                  name="phone" 
+                  type="tel" 
+                  required 
+                  placeholder="98765 43210" 
+                  value={phone}
+                  onChange={setPhone}
+                />
               </div>
               
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Email Address" name="email" type="email" placeholder="john@example.com" />
+                <Field 
+                  label="Email Address" 
+                  name="email" 
+                  type="email" 
+                  placeholder="john@example.com" 
+                  value={email}
+                  onChange={setEmail}
+                />
                 <div>
                   <label className="text-xs font-semibold text-slate-500 block mb-1">Preferred Service</label>
                   <select
                     name="service"
+                    value={service}
+                    onChange={(e) => setService(e.target.value)}
                     required
                     className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-gold focus:border-gold text-slate-800"
                   >
@@ -186,20 +268,48 @@ function Contact() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-500 block mb-1">Your Message</label>
+                <label className="text-xs font-semibold text-slate-500 block mb-1">
+                  Your Message <span className="text-rose-500">*</span>
+                </label>
                 <textarea
                   name="message"
-                  rows={5}
+                  rows={4}
                   required
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
                   placeholder="Describe your patient requirements (e.g. medical conditions, required hours, start date)..."
                   className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-gold focus:border-gold text-slate-800"
                 />
               </div>
 
-              <button type="submit" className="btn-primary w-full py-3 mt-2 flex items-center justify-center gap-2 font-semibold text-sm">
-                <Send className="h-4 w-4" /> Send Enquiry Message <ArrowRight className="h-4 w-4" />
-              </button>
+              {/* Action Buttons: Standard Enquiry + Direct WhatsApp Submission */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-1">
+                <button 
+                  type="submit" 
+                  disabled={submitting}
+                  className="btn-primary flex-1 py-3 flex items-center justify-center gap-2 font-semibold text-sm disabled:opacity-60 cursor-pointer touch-manipulation"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" /> Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4" /> Send Enquiry Message <ArrowRight className="h-4 w-4" />
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleWhatsAppSubmit}
+                  className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full bg-[#25D366] hover:bg-[#20bd5a] text-white text-sm font-bold shadow-md shadow-emerald-600/20 transition-all hover:scale-102 active:scale-98 cursor-pointer touch-manipulation"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  <span>Send via WhatsApp</span>
+                </button>
+              </div>
             </form>
+
 
             {/* Office & Branch Locations */}
             <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -246,8 +356,26 @@ function ContactRow({ icon: Icon, label, value, subtext, href }: { icon: React.C
   );
 }
 
-function Field({ label, name, type = "text", required, placeholder }: { label: string; name: string; type?: string; required?: boolean; placeholder?: string }) {
-  const [val, setVal] = React.useState("");
+function Field({ 
+  label, 
+  name, 
+  type = "text", 
+  required, 
+  placeholder,
+  value,
+  onChange 
+}: { 
+  label: string; 
+  name: string; 
+  type?: string; 
+  required?: boolean; 
+  placeholder?: string;
+  value?: string;
+  onChange?: (val: string) => void;
+}) {
+  const [internalVal, setInternalVal] = React.useState("");
+  const isControlled = value !== undefined;
+  const currentVal = isControlled ? value : internalVal;
   const isTel = type === "tel";
 
   return (
@@ -268,15 +396,19 @@ function Field({ label, name, type = "text", required, placeholder }: { label: s
           inputMode={isTel ? "numeric" : undefined}
           maxLength={isTel ? 10 : undefined}
           required={required}
-          value={val}
+          value={currentVal}
           onChange={(e) => {
-            let value = e.target.value;
+            let val = e.target.value;
             if (isTel) {
-              value = sanitizeIndianPhone(value);
+              val = sanitizeIndianPhone(val);
             } else if (name === "name" || label.toLowerCase().includes("name")) {
-              value = sanitizeName(value);
+              val = sanitizeName(val);
             }
-            setVal(value);
+            if (isControlled) {
+              onChange?.(val);
+            } else {
+              setInternalVal(val);
+            }
           }}
           placeholder={placeholder}
           className={`w-full rounded-lg border border-slate-200 bg-slate-50/50 py-2 text-sm outline-none focus:ring-1 focus:ring-gold focus:border-gold text-slate-800 ${

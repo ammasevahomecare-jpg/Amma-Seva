@@ -37,6 +37,48 @@ const DEFAULT_MOCK_DATA = {
   caregivers: [],
   referrals: [],
   mtps: [],
+  mtpPrices: [
+    {
+      id: 1,
+      hours: 2,
+      label: "2 Hours",
+      price: 300,
+      advancePercentage: 20,
+      gstRate: 18,
+      description: "Short clinical visit, pharmacy run & patient escort",
+      active: true
+    },
+    {
+      id: 2,
+      hours: 4,
+      label: "4 Hours",
+      price: 600,
+      advancePercentage: 20,
+      gstRate: 18,
+      description: "Hospital OPD appointment, consultations & return trip",
+      active: true
+    },
+    {
+      id: 3,
+      hours: 6,
+      label: "6 Hours",
+      price: 800,
+      advancePercentage: 20,
+      gstRate: 18,
+      description: "Diagnostics, scan sessions, minor daycare & waiting",
+      active: true
+    },
+    {
+      id: 4,
+      hours: 8,
+      label: "8 Hours",
+      price: 1000,
+      advancePercentage: 20,
+      gstRate: 18,
+      description: "Full shift hospital supervision, chemotherapy / dialysis escort",
+      active: true
+    }
+  ],
   mtpTasks: [
     {
       id: 1,
@@ -654,6 +696,10 @@ const initJSONDb = () => {
         modified = true;
       }
       if (!data.faqs || data.faqs.length === 0) { data.faqs = DEFAULT_MOCK_DATA.faqs; modified = true }
+      if (!data.mtpPrices || !Array.isArray(data.mtpPrices) || data.mtpPrices.length === 0) {
+        data.mtpPrices = DEFAULT_MOCK_DATA.mtpPrices;
+        modified = true;
+      }
       if (modified) {
         fs.writeFileSync(JSON_DB_PATH, JSON.stringify(data, null, 2))
       }
@@ -668,6 +714,12 @@ const readJSONDb = async () => {
   initJSONDb()
   const raw = await fs.promises.readFile(JSON_DB_PATH, 'utf-8')
   const data = JSON.parse(raw)
+  if (!data.mtpPrices || !Array.isArray(data.mtpPrices) || data.mtpPrices.length === 0) {
+    data.mtpPrices = [...DEFAULT_MOCK_DATA.mtpPrices]
+    try {
+      await fs.promises.writeFile(JSON_DB_PATH, JSON.stringify(data, null, 2), 'utf-8')
+    } catch (e) {}
+  }
   if (!data.referrals) {
     data.referrals = []
   }
@@ -1002,6 +1054,20 @@ export const db = {
             icon VARCHAR(50) DEFAULT '🚗',
             title VARCHAR(255) NOT NULL,
             description TEXT NOT NULL,
+            active TINYINT DEFAULT 1,
+            createdAt VARCHAR(255) NOT NULL
+          )
+        `)
+
+        await connection.query(`
+          CREATE TABLE IF NOT EXISTS mtp_prices (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            hours INT NOT NULL,
+            label VARCHAR(100) NOT NULL,
+            price INT NOT NULL,
+            advancePercentage INT DEFAULT 20,
+            gstRate INT DEFAULT 18,
+            description VARCHAR(255) NULL,
             active TINYINT DEFAULT 1,
             createdAt VARCHAR(255) NOT NULL
           )
@@ -1547,8 +1613,11 @@ export const db = {
   payBookingBalance: async (id, paymentMethod, transactionId) => {
     const paymentDate = new Date().toISOString()
     if (useMySQL) {
-      const [rows] = await pool.query('SELECT amount, advancePaid FROM bookings WHERE id = ?', [id])
+      const [rows] = await pool.query('SELECT amount, advancePaid, paymentStatus, balanceAmount FROM bookings WHERE id = ?', [id])
       if (rows[0]) {
+        if (rows[0].paymentStatus === 'Paid' && (Number(rows[0].balanceAmount) === 0 || rows[0].balanceAmount === null)) {
+          return { alreadyPaid: true }
+        }
         await pool.query(
           'UPDATE bookings SET paymentStatus = "Paid", advancePaid = amount, balanceAmount = 0, paymentMethod = ?, transactionId = ?, paymentDate = ? WHERE id = ?',
           [paymentMethod, transactionId, paymentDate, id]
@@ -1561,6 +1630,9 @@ export const db = {
       const idx = data.bookings.findIndex(b => b.id === Number(id))
       if (idx > -1) {
         const b = data.bookings[idx]
+        if (b.paymentStatus === "Paid" && Number(b.balanceAmount) === 0) {
+          return { alreadyPaid: true }
+        }
         data.bookings[idx] = {
           ...b,
           paymentStatus: "Paid",
@@ -3554,6 +3626,148 @@ export const db = {
       const data = await readJSONDb()
       if (!data.mtpTasks) data.mtpTasks = [...DEFAULT_MOCK_DATA.mtpTasks]
       data.mtpTasks = data.mtpTasks.filter(t => t.id !== Number(id))
+      await writeJSONDb(data)
+      return true
+    }
+  },
+
+  // ==========================================
+  // MTP PRICING OPERATIONS (MySQL + JSON DB)
+  // ==========================================
+  getMTPPrices: async () => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM mtp_prices ORDER BY hours ASC')
+      if (rows.length === 0 && DEFAULT_MOCK_DATA.mtpPrices) {
+        for (const p of DEFAULT_MOCK_DATA.mtpPrices) {
+          await pool.query(
+            'INSERT INTO mtp_prices (hours, label, price, advancePercentage, gstRate, description, active, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [p.hours, p.label, p.price, p.advancePercentage || 20, p.gstRate || 18, p.description || '', p.active ? 1 : 0, new Date().toISOString()]
+          )
+        }
+        const [seeded] = await pool.query('SELECT * FROM mtp_prices ORDER BY hours ASC')
+        return seeded
+      }
+      return rows
+    } else {
+      const data = await readJSONDb()
+      if (!data.mtpPrices || !Array.isArray(data.mtpPrices) || data.mtpPrices.length === 0) {
+        data.mtpPrices = [...DEFAULT_MOCK_DATA.mtpPrices]
+        await writeJSONDb(data)
+      }
+      return data.mtpPrices.slice().sort((a, b) => (Number(a.hours) || 0) - (Number(b.hours) || 0))
+    }
+  },
+
+  getMTPPriceById: async (id) => {
+    if (useMySQL) {
+      const [rows] = await pool.query('SELECT * FROM mtp_prices WHERE id = ?', [Number(id)])
+      return rows[0] || null
+    } else {
+      const data = await readJSONDb()
+      if (!data.mtpPrices) data.mtpPrices = [...DEFAULT_MOCK_DATA.mtpPrices]
+      return data.mtpPrices.find(p => p.id === Number(id)) || null
+    }
+  },
+
+  createMTPPrice: async (priceData) => {
+    const createdAt = new Date().toISOString()
+    const {
+      hours,
+      label,
+      price,
+      advancePercentage = 20,
+      gstRate = 18,
+      description = '',
+      active = true
+    } = priceData
+
+    const cleanHours = Number(hours) || 2
+    const cleanPrice = Number(price) || 300
+    const cleanAdv = advancePercentage !== undefined ? Number(advancePercentage) : 20
+    const cleanLabel = (label || `${cleanHours} Hours`).trim()
+
+    if (useMySQL) {
+      const [result] = await pool.query(
+        `INSERT INTO mtp_prices (hours, label, price, advancePercentage, gstRate, description, active, createdAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [cleanHours, cleanLabel, cleanPrice, cleanAdv, Number(gstRate) || 18, description, active ? 1 : 0, createdAt]
+      )
+      return { id: result.insertId, hours: cleanHours, label: cleanLabel, price: cleanPrice, advancePercentage: cleanAdv, gstRate: Number(gstRate) || 18, description, active: Boolean(active), createdAt }
+    } else {
+      const data = await readJSONDb()
+      if (!data.mtpPrices) data.mtpPrices = [...DEFAULT_MOCK_DATA.mtpPrices]
+      const newPrice = {
+        id: data.mtpPrices.length > 0 ? Math.max(...data.mtpPrices.map(p => p.id)) + 1 : 1,
+        hours: cleanHours,
+        label: cleanLabel,
+        price: cleanPrice,
+        advancePercentage: cleanAdv,
+        gstRate: Number(gstRate) || 18,
+        description: description || '',
+        active: Boolean(active),
+        createdAt
+      }
+      data.mtpPrices.push(newPrice)
+      await writeJSONDb(data)
+      return newPrice
+    }
+  },
+
+  updateMTPPrice: async (id, priceData) => {
+    const { hours, label, price, advancePercentage, gstRate, description, active } = priceData
+    if (useMySQL) {
+      await pool.query(
+        `UPDATE mtp_prices 
+         SET hours = COALESCE(?, hours),
+             label = COALESCE(?, label),
+             price = COALESCE(?, price),
+             advancePercentage = COALESCE(?, advancePercentage),
+             gstRate = COALESCE(?, gstRate),
+             description = COALESCE(?, description),
+             active = COALESCE(?, active)
+         WHERE id = ?`,
+        [
+          hours !== undefined ? Number(hours) : null,
+          label !== undefined ? label : null,
+          price !== undefined ? Number(price) : null,
+          advancePercentage !== undefined ? Number(advancePercentage) : null,
+          gstRate !== undefined ? Number(gstRate) : null,
+          description !== undefined ? description : null,
+          active !== undefined ? (active ? 1 : 0) : null,
+          Number(id)
+        ]
+      )
+      const [rows] = await pool.query('SELECT * FROM mtp_prices WHERE id = ?', [Number(id)])
+      return rows[0] || null
+    } else {
+      const data = await readJSONDb()
+      if (!data.mtpPrices) data.mtpPrices = [...DEFAULT_MOCK_DATA.mtpPrices]
+      const index = data.mtpPrices.findIndex(p => p.id === Number(id))
+      if (index === -1) return null
+      data.mtpPrices[index] = {
+        ...data.mtpPrices[index],
+        ...(hours !== undefined ? { hours: Number(hours) } : {}),
+        ...(label !== undefined ? { label } : {}),
+        ...(price !== undefined ? { price: Number(price) } : {}),
+        ...(advancePercentage !== undefined ? { advancePercentage: Number(advancePercentage) } : {}),
+        ...(gstRate !== undefined ? { gstRate: Number(gstRate) } : {}),
+        ...(description !== undefined ? { description } : {}),
+        ...(active !== undefined ? { active: Boolean(active) } : {}),
+        id: Number(id)
+      }
+      await writeJSONDb(data)
+      return data.mtpPrices[index]
+    }
+  },
+
+  deleteMTPPrice: async (id) => {
+    if (useMySQL) {
+      await pool.query('DELETE FROM mtp_prices WHERE id = ?', [Number(id)])
+      return true
+    } else {
+      const data = await readJSONDb()
+      if (!data.mtpPrices) data.mtpPrices = [...DEFAULT_MOCK_DATA.mtpPrices]
+      data.mtpPrices = data.mtpPrices.filter(p => p.id !== Number(id))
       await writeJSONDb(data)
       return true
     }
