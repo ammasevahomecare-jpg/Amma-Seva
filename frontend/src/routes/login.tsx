@@ -76,6 +76,10 @@ function LoginPage() {
   const [experience, setExperience] = useState("3");
   const [servicesList, setServicesList] = useState<Service[]>([]);
   
+  // Nurse vs Caregiver Role & ID Card states
+  const [staffCategory, setStaffCategory] = useState<"NUR" | "CGV">("NUR");
+  const [designation, setDesignation] = useState("Registered GNM Staff Nurse");
+  
   // OTP flow states
   const [authStep, setAuthStep] = useState<"email" | "otp">("email");
   const [otp, setOtp] = useState("");
@@ -112,6 +116,9 @@ function LoginPage() {
     role: "customer" | "caretaker";
     specialty?: string;
     code?: string;
+    employeeId?: string;
+    staffCategory?: "NUR" | "CGV";
+    designation?: string;
   } | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setFileState: (val: string) => void) => {
@@ -341,6 +348,8 @@ function LoginPage() {
             phone: cleanPhoneDigits,
             specialty,
             experience: Number(experience),
+            staffCategory,
+            designation: designation.trim() || (staffCategory === "NUR" ? "Registered Staff Nurse" : "Certified Caregiver"),
             aadhaar: aadhaarFile,
             pan: panFile,
             certificates: certificateFile,
@@ -366,7 +375,7 @@ function LoginPage() {
             .then(async (res) => {
               const data = await res.json();
               if (!res.ok) {
-                throw new Error(data.error || "Caregiver registration failed.");
+                throw new Error(data.error || "Staff registration failed.");
               }
               return data;
             })
@@ -377,7 +386,10 @@ function LoginPage() {
                   email: email.toLowerCase().trim(),
                   role: "caretaker",
                   specialty,
-                  code: data.caretaker?.referCode || data.caretaker?.uniqueId || undefined
+                  code: data.caretaker?.referCode || data.caretaker?.uniqueId || undefined,
+                  employeeId: data.caretaker?.employeeId,
+                  staffCategory: data.caretaker?.staffCategory || staffCategory,
+                  designation: data.caretaker?.designation || designation
                 });
                 setError(null);
                 setSuccessMsg(null);
@@ -804,6 +816,93 @@ function LoginPage() {
                     </div>
                   )}
 
+                  {/* Professional Category Selection: Nurse vs Caregiver */}
+                  <div className="bg-gradient-to-r from-blue-50/80 via-slate-50 to-amber-50/80 border border-slate-200/90 rounded-2xl p-3.5 mb-3 shadow-xs">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-[11px] font-extrabold uppercase tracking-wider text-[#1e2a5a] flex items-center gap-1.5">
+                        <Award className="w-3.5 h-3.5 text-[#c9a24c]" />
+                        Select Staff Role Category <span className="text-rose-500">*</span>
+                      </label>
+                      <span className="text-[10px] font-semibold text-slate-500 bg-white px-2 py-0.5 rounded-full border border-slate-200">
+                        Official ID Prefix
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {/* Option 1: Registered Nurse */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStaffCategory("NUR");
+                          if (!designation || designation.includes("Caregiver") || designation.includes("Specialist")) {
+                            setDesignation("Registered GNM Staff Nurse");
+                          }
+                        }}
+                        className={`text-left p-3 rounded-xl border transition-all flex items-start gap-3 relative cursor-pointer ${
+                          staffCategory === "NUR"
+                            ? "border-blue-600 bg-white ring-2 ring-blue-500/20 shadow-sm"
+                            : "border-slate-200 bg-white/70 hover:bg-white hover:border-slate-300"
+                        }`}
+                      >
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                          staffCategory === "NUR" ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-600"
+                        }`}>
+                          <span className="text-base">🩺</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1">
+                            <p className="text-xs font-bold text-[#091438]">Registered Nurse</p>
+                            <span className="text-[9px] font-mono font-extrabold bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">
+                              AS - NUR - 26-xxx
+                            </span>
+                          </div>
+                          <p className="text-[10.5px] text-slate-500 mt-0.5 leading-tight">
+                            Hospital-grade nursing, GNM/B.Sc, vitals, post-op, ICU support & injections.
+                          </p>
+                        </div>
+                        {staffCategory === "NUR" && (
+                          <div className="w-2 h-2 rounded-full bg-blue-600 absolute top-2.5 right-2.5" />
+                        )}
+                      </button>
+
+                      {/* Option 2: Certified Caregiver */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStaffCategory("CGV");
+                          if (!designation || designation.includes("Nurse")) {
+                            setDesignation("Elderly Care Specialist");
+                          }
+                        }}
+                        className={`text-left p-3 rounded-xl border transition-all flex items-start gap-3 relative cursor-pointer ${
+                          staffCategory === "CGV"
+                            ? "border-amber-600 bg-white ring-2 ring-amber-500/20 shadow-sm"
+                            : "border-slate-200 bg-white/70 hover:bg-white hover:border-slate-300"
+                        }`}
+                      >
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                          staffCategory === "CGV" ? "bg-amber-600 text-white" : "bg-amber-50 text-amber-600"
+                        }`}>
+                          <span className="text-base">🤲</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1">
+                            <p className="text-xs font-bold text-[#091438]">Caregiver / Attendant</p>
+                            <span className="text-[9px] font-mono font-extrabold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">
+                              AS - CGV - 26-xxx
+                            </span>
+                          </div>
+                          <p className="text-[10.5px] text-slate-500 mt-0.5 leading-tight">
+                            Compassionate eldercare, mother & newborn care, bedside recovery & mobility.
+                          </p>
+                        </div>
+                        {staffCategory === "CGV" && (
+                          <div className="w-2 h-2 rounded-full bg-amber-600 absolute top-2.5 right-2.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Section 1: Basic & Professional Details (3 Columns on Desktop) */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     <div>
@@ -816,6 +915,20 @@ function LoginPage() {
                         value={name}
                         onChange={(e) => setName(sanitizeName(e.target.value))}
                         placeholder="e.g. Priya Sharma"
+                        className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/60 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 text-[#1e2a5a] font-medium"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10.5px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">
+                        Official Designation <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={designation}
+                        onChange={(e) => setDesignation(e.target.value)}
+                        placeholder={staffCategory === "NUR" ? "e.g. Registered GNM Staff Nurse" : "e.g. Elderly Care Specialist"}
                         className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/60 outline-none focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 text-[#1e2a5a] font-medium"
                       />
                     </div>
@@ -1033,27 +1146,30 @@ function LoginPage() {
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-                      {/* 1: Passport Photo */}
+                      {/* 1: Passport Photo (Official ID Card) */}
                       <div className={`rounded-xl border p-2.5 transition-all flex flex-col justify-between gap-2 ${
-                        profilePhotoFile ? "bg-emerald-50/60 border-emerald-300 ring-1 ring-emerald-200" : "bg-white border-slate-200 hover:border-slate-300"
+                        profilePhotoFile ? "bg-amber-50/60 border-[#c9a24c] ring-1 ring-[#c9a24c]/40" : "bg-white border-slate-200 hover:border-slate-300"
                       }`}>
                         <div className="flex items-center gap-2 min-w-0">
                           {profilePhotoFile ? (
-                            <img src={profilePhotoFile} alt="Profile" className="h-8 w-8 rounded-lg object-cover border border-emerald-300 shrink-0" />
+                            <img src={profilePhotoFile} alt="Profile" className="h-9 w-9 rounded-lg object-cover border border-[#c9a24c] shrink-0" />
                           ) : (
-                            <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                            <div className="h-9 w-9 rounded-lg bg-amber-50 text-[#c9a24c] flex items-center justify-center shrink-0 border border-amber-200">
                               <Camera className="h-4 w-4" />
                             </div>
                           )}
                           <div className="min-w-0">
-                            <div className="text-[11px] font-bold text-slate-800 truncate">Passport Photo <span className="text-rose-500">*</span></div>
+                            <div className="text-[11px] font-bold text-slate-800 truncate flex items-center gap-1">
+                              <span>Photo (ID Card)</span>
+                              <span className="text-rose-500">*</span>
+                            </div>
                             <div className="text-[10px] text-slate-400">
-                              {profilePhotoFile ? <span className="text-emerald-700 font-bold">✓ Attached</span> : "Clear portrait"}
+                              {profilePhotoFile ? <span className="text-emerald-700 font-bold">✓ Attached for ID Card</span> : "Formal badge portrait"}
                             </div>
                           </div>
                         </div>
                         <label className="text-[11px] font-bold text-[#1e2a5a] hover:text-[#c9a24c] bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer text-center border border-slate-200 w-full">
-                          <span>{profilePhotoFile ? "Change Photo" : "Upload Photo"}</span>
+                          <span>{profilePhotoFile ? "Change Photo" : "Upload ID Photo"}</span>
                           <input type="file" accept="image/*" required={!profilePhotoFile} onChange={(e) => handleFileChange(e, setProfilePhotoFile)} className="hidden" />
                         </label>
                       </div>
@@ -2140,15 +2256,31 @@ function LoginPage() {
                   <span className="text-slate-500 font-medium">Registered Email</span>
                   <span className="font-semibold text-slate-800 break-all">{registrationSuccessData.email}</span>
                 </div>
+                {registrationSuccessData.designation && (
+                  <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                    <span className="text-slate-500 font-medium">Designation</span>
+                    <span className="font-bold text-[#1e2a5a]">{registrationSuccessData.designation}</span>
+                  </div>
+                )}
                 {registrationSuccessData.specialty && (
                   <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
                     <span className="text-slate-500 font-medium">Specialty / Role</span>
                     <span className="font-bold text-teal-700">{registrationSuccessData.specialty}</span>
                   </div>
                 )}
+                {registrationSuccessData.employeeId && (
+                  <div className="flex justify-between items-center py-1 bg-amber-50/80 -mx-4 px-4 border-y border-amber-200/70">
+                    <span className="text-amber-900 font-bold flex items-center gap-1">
+                      <span>🪪</span> Official Staff ID
+                    </span>
+                    <span className="font-mono font-extrabold text-[#091438] bg-white px-2.5 py-1 rounded-lg border border-amber-300 shadow-xs tracking-wider text-xs">
+                      {registrationSuccessData.employeeId}
+                    </span>
+                  </div>
+                )}
                 {registrationSuccessData.code && (
                   <div className="flex justify-between items-center py-1">
-                    <span className="text-slate-500 font-medium">Staff Partner ID</span>
+                    <span className="text-slate-500 font-medium">Referral Code</span>
                     <span className="font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
                       {registrationSuccessData.code}
                     </span>

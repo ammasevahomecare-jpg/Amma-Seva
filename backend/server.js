@@ -2140,6 +2140,10 @@ app.get('/api/caretaker/profile', authenticateUser, async (req, res) => {
           drivingLicenseDoc: mtp.drivingLicenseDoc,
           tenthCertificateDoc: mtp.tenthCertificateDoc,
           policeVerificationDoc: mtp.policeVerificationDoc,
+          profilePhoto: mtp.profilePhoto || '',
+          employeeId: mtp.employeeId || 'AS - MTP - 26-001',
+          staffCategory: mtp.staffCategory || 'MTP',
+          designation: mtp.designation || 'Medical Transport Partner & Escort',
           reviews: [],
           rating: 5.0
         }
@@ -2172,6 +2176,10 @@ app.get('/api/caretaker/profile', authenticateUser, async (req, res) => {
             drivingLicenseDoc: mtp.drivingLicenseDoc,
             tenthCertificateDoc: mtp.tenthCertificateDoc,
             policeVerificationDoc: mtp.policeVerificationDoc,
+            profilePhoto: mtp.profilePhoto || '',
+            employeeId: mtp.employeeId || 'AS - MTP - 26-001',
+            staffCategory: mtp.staffCategory || 'MTP',
+            designation: mtp.designation || 'Medical Transport Partner & Escort',
             reviews: [],
             rating: 5.0
           }
@@ -2199,7 +2207,7 @@ app.get('/api/caretaker/profile', authenticateUser, async (req, res) => {
 
 // PUT update caretaker profile details (fill details)
 app.put('/api/caretaker/profile', authenticateUser, async (req, res) => {
-  if (req.role !== 'caretaker') {
+  if (req.role !== 'caretaker' && req.role !== 'mtp') {
     return res.status(403).json({ error: 'Access forbidden. Caretaker profile only.' })
   }
   try {
@@ -2212,6 +2220,17 @@ app.put('/api/caretaker/profile', authenticateUser, async (req, res) => {
     } = req.body
 
     const uploadedProfilePhoto = profilePhoto ? await uploadToCloudinary(profilePhoto) : undefined
+
+    if (req.isMtp || req.role === 'mtp') {
+      await db.updateStaffIdCard('mtps', req.userId, {
+        ...(name ? { name: name.trim() } : {}),
+        ...(phone ? { phone } : {}),
+        ...(uploadedProfilePhoto !== undefined ? { profilePhoto: uploadedProfilePhoto } : {})
+      })
+      const mtp = await db.getMTPById(req.userId)
+      return res.json({ success: true, message: 'Profile details successfully updated.', details: mtp })
+    }
+
     const uploadedAadhaar = aadhaar ? await uploadToCloudinary(aadhaar) : undefined
     const uploadedPan = pan ? await uploadToCloudinary(pan) : undefined
     const uploadedCertificates = certificates ? await uploadToCloudinary(certificates) : undefined
@@ -2240,6 +2259,33 @@ app.put('/api/caretaker/profile', authenticateUser, async (req, res) => {
     }
   } catch (err) {
     res.status(500).json({ error: 'Failed to update profile details.' })
+  }
+})
+
+// PUT update profile photo for Caregiver, Nurse, or MTP
+app.put('/api/caretaker/photo', authenticateUser, async (req, res) => {
+  if (req.role !== 'caretaker' && req.role !== 'mtp') {
+    return res.status(403).json({ error: 'Access forbidden. Caretaker or MTP only.' })
+  }
+  try {
+    const { profilePhoto } = req.body
+    if (!profilePhoto) {
+      return res.status(400).json({ error: 'Profile photo data is required.' })
+    }
+    const uploadedPhoto = await uploadToCloudinary(profilePhoto)
+    if (req.isMtp || req.role === 'mtp') {
+      await db.updateStaffIdCard('mtps', req.userId, { profilePhoto: uploadedPhoto })
+      const mtp = await db.getMTPById(req.userId)
+      return res.json({ success: true, message: 'Profile photo updated successfully.', profilePhoto: uploadedPhoto, details: mtp })
+    } else {
+      await db.updateCaregiverProfile(req.userId, { profilePhoto: uploadedPhoto })
+      const cgv = await db.getCaregiverById(req.userId)
+      const { password, ...details } = cgv || {}
+      return res.json({ success: true, message: 'Profile photo updated successfully.', profilePhoto: uploadedPhoto, details })
+    }
+  } catch (err) {
+    console.error('Photo update error:', err)
+    res.status(500).json({ error: 'Failed to update profile photo.' })
   }
 })
 
@@ -2787,6 +2833,7 @@ app.post('/api/user/login', async (req, res) => {
 app.post('/api/caretaker/register', async (req, res) => {
   const { 
     name, phone, email, specialty, experience,
+    staffCategory, designation,
     aadhaar, pan, certificates, profilePhoto, 
     experienceDetails, workingLocations, availableTimings,
     state, city, googleMapLocation,
@@ -2858,6 +2905,8 @@ app.post('/api/caretaker/register', async (req, res) => {
 
     const newCaregiver = await db.addCaregiverWithPassword({ 
       name, phone: cleanPhone, email: cleanEmail, specialty, experience, 
+      staffCategory: staffCategory || undefined,
+      designation: designation || undefined,
       aadhaar: uploadedAadhaar,
       pan: uploadedPan,
       certificates: uploadedCertificates,
@@ -2880,8 +2929,17 @@ app.post('/api/caretaker/register', async (req, res) => {
     res.status(201).json({
       success: true,
       pendingApproval: true,
-      message: 'Caregiver application submitted successfully! Your application and KYC documents are under administrative verification. Once approved by the administrator, you will receive confirmation and can log in to view shifts.',
-      caretaker: { id: newCaregiver.id, name: newCaregiver.name, status: 'Pending', referCode: newCaregiver.referCode, uniqueId: newCaregiver.uniqueId }
+      message: 'Staff application submitted successfully! Your application and KYC documents are under administrative verification. Once approved by the administrator, you will receive confirmation and can log in to view shifts.',
+      caretaker: { 
+        id: newCaregiver.id, 
+        name: newCaregiver.name, 
+        status: 'Pending', 
+        referCode: newCaregiver.referCode, 
+        uniqueId: newCaregiver.uniqueId,
+        staffCategory: newCaregiver.staffCategory,
+        designation: newCaregiver.designation,
+        employeeId: newCaregiver.employeeId
+      }
     })
   } catch (err) {
     res.status(500).json({ error: 'Failed to submit caretaker registration.' })
@@ -3270,6 +3328,7 @@ app.post('/api/mtp/register', async (req, res) => {
     skillsSummary = '',
     aadhaar = '',
     emergencyContact = '',
+    profilePhoto = '',
     aadhaarDoc = '',
     panDoc = '',
     drivingLicenseDoc = '',
@@ -3331,6 +3390,7 @@ app.post('/api/mtp/register', async (req, res) => {
   }
 
   try {
+    const uploadedProfilePhoto = profilePhoto ? await uploadToCloudinary(profilePhoto) : ''
     const uploadedAadhaar = await uploadToCloudinary(aadhaarDoc)
     const uploadedPan = await uploadToCloudinary(panDoc)
     const uploadedDrivingLicense = await uploadToCloudinary(drivingLicenseDoc)
@@ -3354,6 +3414,7 @@ app.post('/api/mtp/register', async (req, res) => {
       skillsSummary,
       aadhaar,
       emergencyContact,
+      profilePhoto: uploadedProfilePhoto,
       aadhaarDoc: uploadedAadhaar,
       panDoc: uploadedPan,
       drivingLicenseDoc: uploadedDrivingLicense,
@@ -3612,6 +3673,116 @@ app.delete('/api/admin/mtp/prices/:id', authenticateAdmin, async (req, res) => {
   } catch (err) {
     console.error('Failed to delete MTP price tier:', err)
     res.status(500).json({ error: 'Failed to delete MTP price tier.' })
+  }
+})
+
+// ==========================================
+// STAFF ID CARDS MANAGEMENT APIS (ADMIN PANEL)
+// ==========================================
+
+// GET all staff ID cards (with optional category and search query)
+app.get('/api/admin/id-cards', authenticateAdmin, async (req, res) => {
+  try {
+    const { category, search } = req.query
+    let cards = await db.getAllStaffIdCards()
+
+    if (category && category !== 'ALL') {
+      const cleanCat = String(category).toUpperCase().trim()
+      cards = cards.filter(c => c.staffCategory === cleanCat)
+    }
+
+    if (search && search.trim()) {
+      const q = String(search).toLowerCase().trim()
+      cards = cards.filter(c => 
+        (c.employeeId && c.employeeId.toLowerCase().includes(q)) ||
+        (c.name && c.name.toLowerCase().includes(q)) ||
+        (c.designation && c.designation.toLowerCase().includes(q)) ||
+        (c.phone && c.phone.includes(q)) ||
+        (c.email && c.email.toLowerCase().includes(q)) ||
+        (c.categoryLabel && c.categoryLabel.toLowerCase().includes(q))
+      )
+    }
+
+    res.json({
+      success: true,
+      count: cards.length,
+      data: cards
+    })
+  } catch (err) {
+    console.error('Failed to retrieve staff ID cards:', err)
+    res.status(500).json({ error: 'Failed to retrieve staff ID cards.' })
+  }
+})
+
+// POST create new Employee ID card (Admin Panel)
+app.post('/api/admin/id-cards/employee', authenticateAdmin, async (req, res) => {
+  const { name, phone, email, designation, profilePhoto, status } = req.body
+  if (!name || !designation) {
+    return res.status(400).json({ success: false, error: 'Name and Designation are required.' })
+  }
+  try {
+    let uploadedPhoto = profilePhoto || ''
+    if (profilePhoto && profilePhoto.startsWith('data:image')) {
+      uploadedPhoto = await uploadToCloudinary(profilePhoto)
+    }
+    const newEmp = await db.createEmployee({
+      name: name.trim(),
+      phone: (phone || '').trim(),
+      email: (email || '').trim().toLowerCase(),
+      designation: designation.trim(),
+      profilePhoto: uploadedPhoto,
+      status: status || 'Active'
+    })
+    res.status(201).json({ success: true, message: 'Employee ID card generated successfully!', data: newEmp })
+  } catch (err) {
+    console.error('Failed to create employee ID card:', err)
+    res.status(500).json({ success: false, error: 'Failed to create employee ID card.' })
+  }
+})
+
+// PUT update staff ID card details (Admin Panel)
+app.put('/api/admin/id-cards/:source/:id', authenticateAdmin, async (req, res) => {
+  const { source, id } = req.params
+  const { name, phone, email, designation, profilePhoto, status, employeeId } = req.body
+
+  try {
+    let uploadedPhoto = profilePhoto
+    if (profilePhoto && profilePhoto.startsWith('data:image')) {
+      uploadedPhoto = await uploadToCloudinary(profilePhoto)
+    }
+
+    const updatePayload = {}
+    if (name !== undefined) updatePayload.name = name.trim()
+    if (phone !== undefined) updatePayload.phone = phone.trim()
+    if (email !== undefined) updatePayload.email = email.trim().toLowerCase()
+    if (designation !== undefined) updatePayload.designation = designation.trim()
+    if (uploadedPhoto !== undefined) updatePayload.profilePhoto = uploadedPhoto
+    if (status !== undefined) updatePayload.status = status
+    if (employeeId !== undefined) updatePayload.employeeId = employeeId.trim()
+
+    const updated = await db.updateStaffIdCard(source, id, updatePayload)
+    if (!updated) {
+      return res.status(404).json({ error: 'Staff ID card record not found.' })
+    }
+    res.json({ success: true, message: 'Staff ID card updated successfully.', data: updated })
+  } catch (err) {
+    console.error('Failed to update staff ID card:', err)
+    res.status(500).json({ success: false, error: 'Failed to update staff ID card.' })
+  }
+})
+
+// DELETE employee ID card (Admin Panel)
+app.delete('/api/admin/id-cards/employee/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const deleted = await db.deleteEmployee(req.params.id)
+    if (deleted) {
+      res.json({ success: true, message: 'Employee record deleted successfully.' })
+    } else {
+      res.status(404).json({ error: 'Employee record not found.' })
+    }
+  } catch (err) {
+    console.error('Failed to delete employee record:', err)
+    res.status(500).json({ success: false, error: 'Failed to delete employee record.' })
   }
 })
 

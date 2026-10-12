@@ -178,6 +178,9 @@ function MTPPage() {
   const [policeVerificationDoc, setPoliceVerificationDoc] = useState("");
   const [policeVerificationDocName, setPoliceVerificationDocName] = useState("");
 
+  const [profilePhoto, setProfilePhoto] = useState("");
+  const [profilePhotoName, setProfilePhotoName] = useState("");
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedData, setSubmittedData] = useState<any | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -293,6 +296,8 @@ function MTPPage() {
     setTenthCertificateDocName("");
     setPoliceVerificationDoc("");
     setPoliceVerificationDocName("");
+    setProfilePhoto("");
+    setProfilePhotoName("");
     setRegistrationOtp("");
     setShowOtpModal(false);
     setPendingPayload(null);
@@ -449,6 +454,7 @@ function MTPPage() {
       drivingLicenseDoc,
       tenthCertificateDoc,
       policeVerificationDoc,
+      profilePhoto,
     };
 
     setPendingPayload(payload);
@@ -1193,6 +1199,46 @@ function MTPPage() {
                   </p>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                    {/* 0. Passport / Profile Photo (For Official ID Card) */}
+                    <div className={`rounded-2xl border p-4 transition-all flex flex-col justify-between ${profilePhoto ? 'border-[#c9a24c] bg-amber-50/40 shadow-xs ring-1 ring-[#c9a24c]/40' : 'border-slate-200 bg-slate-50/50'}`}>
+                      <div className="flex items-start gap-3">
+                        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl overflow-hidden border ${profilePhoto ? 'border-[#c9a24c] bg-white shadow-xs' : 'border-slate-200 bg-white text-gold shadow-xs'}`}>
+                          {profilePhoto ? (
+                            <img src={profilePhoto} alt="Profile preview" className="h-full w-full object-cover" />
+                          ) : (
+                            <Sparkles className="h-6 w-6 text-gold" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-primary truncate">Profile Photo</span>
+                            <span className="rounded-md bg-amber-100 text-[#091438] px-1.5 py-0.5 text-[10px] font-black shrink-0 border border-[#c9a24c]/30">ID Card Badge</span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-0.5">Formal portrait for Amma Seva ID Card</p>
+                        </div>
+                      </div>
+                      <div className="mt-3 pt-3 border-t border-slate-200/60">
+                        {profilePhoto ? (
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5 text-xs text-emerald-800 font-medium truncate">
+                              <FileCheck className="h-4 w-4 shrink-0 text-emerald-600" />
+                              <span className="truncate max-w-[130px] font-bold text-emerald-700">{profilePhotoName || "Photo Attached"}</span>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <label htmlFor="mtp-photo-input" className="text-[10px] font-bold text-primary hover:underline cursor-pointer bg-white px-2 py-0.5 rounded-lg border border-slate-200 shadow-2xs">Change</label>
+                              <button type="button" onClick={() => { setProfilePhoto(""); setProfilePhotoName(""); }} className="text-rose-600 hover:bg-rose-50 p-1 rounded-lg cursor-pointer" title="Remove"><Trash2 className="h-3 w-3" /></button>
+                            </div>
+                          </div>
+                        ) : (
+                          <label htmlFor="mtp-photo-input" className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-[#c9a24c]/70 bg-white py-2 text-xs font-bold text-[#091438] hover:border-[#c9a24c] hover:bg-amber-50/50 transition-all cursor-pointer">
+                            <Upload className="h-3.5 w-3.5 text-gold" />
+                            <span>Upload Profile Photo</span>
+                          </label>
+                        )}
+                        <input id="mtp-photo-input" type="file" accept="image/*" onChange={(e) => handleFileUpload(e, setProfilePhoto, setProfilePhotoName)} className="hidden" />
+                      </div>
+                    </div>
+
                     {/* 1. Aadhaar Card (Required) */}
                     <div className={`rounded-2xl border p-4 transition-all flex flex-col justify-between ${aadhaarDoc ? 'border-emerald-300 bg-emerald-50/40 shadow-xs' : 'border-slate-200 bg-slate-50/50'}`}>
                       <div className="flex items-start gap-3">

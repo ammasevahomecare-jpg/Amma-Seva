@@ -37,6 +37,44 @@ const DEFAULT_MOCK_DATA = {
   caregivers: [],
   referrals: [],
   mtps: [],
+  employees: [
+    {
+      id: 1,
+      name: "Sandeep Nanduri, IAS (Retd)",
+      phone: "9848012345",
+      email: "director@ammaseva.in",
+      designation: "Executive Director & Founder",
+      staffCategory: "EMP",
+      employeeId: "AS - EMP - 26-001",
+      profilePhoto: "/assets/sandeep-nanduri-ias.jpg",
+      status: "Active",
+      joinedAt: "2026-01-01T09:00:00.000Z"
+    },
+    {
+      id: 2,
+      name: "Dr. Ramesh V., MD",
+      phone: "9490587576",
+      email: "dr.ramesh@ammaseva.in",
+      designation: "Chief Medical Officer & Advisory Board",
+      staffCategory: "EMP",
+      employeeId: "AS - EMP - 26-002",
+      profilePhoto: "/assets/service-doctor.jpg",
+      status: "Active",
+      joinedAt: "2026-01-10T09:00:00.000Z"
+    },
+    {
+      id: 3,
+      name: "S. Rajesh Kumar",
+      phone: "9490587575",
+      email: "operations@ammaseva.in",
+      designation: "Senior Operations Coordinator & Dispatch",
+      staffCategory: "EMP",
+      employeeId: "AS - EMP - 26-003",
+      profilePhoto: "",
+      status: "Active",
+      joinedAt: "2026-01-15T09:00:00.000Z"
+    }
+  ],
   mtpPrices: [
     {
       id: 1,
@@ -696,6 +734,10 @@ const initJSONDb = () => {
         modified = true;
       }
       if (!data.faqs || data.faqs.length === 0) { data.faqs = DEFAULT_MOCK_DATA.faqs; modified = true }
+      if (!data.employees || !Array.isArray(data.employees) || data.employees.length === 0) {
+        data.employees = JSON.parse(JSON.stringify(DEFAULT_MOCK_DATA.employees));
+        modified = true;
+      }
       if (!data.mtpPrices || !Array.isArray(data.mtpPrices) || data.mtpPrices.length === 0) {
         data.mtpPrices = DEFAULT_MOCK_DATA.mtpPrices;
         modified = true;
@@ -714,15 +756,123 @@ const readJSONDb = async () => {
   initJSONDb()
   const raw = await fs.promises.readFile(JSON_DB_PATH, 'utf-8')
   const data = JSON.parse(raw)
+  let dbChanged = false
+
   if (!data.mtpPrices || !Array.isArray(data.mtpPrices) || data.mtpPrices.length === 0) {
     data.mtpPrices = [...DEFAULT_MOCK_DATA.mtpPrices]
-    try {
-      await fs.promises.writeFile(JSON_DB_PATH, JSON.stringify(data, null, 2), 'utf-8')
-    } catch (e) {}
+    dbChanged = true
   }
   if (!data.referrals) {
     data.referrals = []
+    dbChanged = true
   }
+
+  // Ensure employees array is initialized
+  if (!data.employees || !Array.isArray(data.employees) || data.employees.length === 0) {
+    data.employees = JSON.parse(JSON.stringify(DEFAULT_MOCK_DATA.employees || []))
+    dbChanged = true
+  }
+
+  // Auto-backfill staffCategory, designation, and persistent sequential employeeId for Caregivers & Nurses
+  if (Array.isArray(data.caregivers)) {
+    const nurIds = []
+    const cgvIds = []
+
+    // Pass 1: Gather existing employeeIds
+    data.caregivers.forEach(c => {
+      if (c.employeeId) {
+        if (c.employeeId.includes('NUR')) nurIds.push(c.employeeId)
+        else if (c.employeeId.includes('CGV')) cgvIds.push(c.employeeId)
+      }
+    })
+
+    let nurCount = 1
+    let cgvCount = 1
+
+    // Pass 2: Fill missing attributes & IDs
+    data.caregivers.forEach(c => {
+      // 1. Staff Category
+      if (!c.staffCategory) {
+        const spec = String(c.specialty || '').toLowerCase()
+        const nm = String(c.name || '').toLowerCase()
+        if (
+          spec.includes('nurse') || spec.includes('nursing') || spec.includes('icu') || 
+          spec.includes('gnm') || spec.includes('clinical') || nm.includes('sister') || 
+          nm.includes('nurse') || nm.includes('dr.')
+        ) {
+          c.staffCategory = 'NUR'
+        } else {
+          c.staffCategory = 'CGV'
+        }
+        dbChanged = true
+      }
+
+      // 2. Designation
+      if (!c.designation) {
+        if (c.staffCategory === 'NUR') {
+          const spec = String(c.specialty || '').toLowerCase()
+          if (spec.includes('icu')) c.designation = 'Critical Care ICU Nurse'
+          else if (spec.includes('gnm')) c.designation = 'Registered GNM Staff Nurse'
+          else if (spec.includes('doctor') || spec.includes('physician')) c.designation = 'Consulting Physician & Clinical Lead'
+          else c.designation = 'Registered Staff Nurse'
+        } else {
+          const spec = String(c.specialty || '').toLowerCase()
+          if (spec.includes('elderly')) c.designation = 'Elderly Care Specialist'
+          else if (spec.includes('baby') || spec.includes('mother')) c.designation = 'Mother & Newborn Care Attendant'
+          else if (spec.includes('bedside')) c.designation = 'Bedside & Patient Attendant'
+          else c.designation = 'Certified Senior Caregiver'
+        }
+        dbChanged = true
+      }
+
+      // 3. Employee ID (Sequential 001, 002, 003...)
+      if (!c.employeeId) {
+        if (c.staffCategory === 'NUR') {
+          while (nurIds.some(id => id.replace(/\s+/g, '').endsWith(`26-${String(nurCount).padStart(3, '0')}`))) {
+            nurCount++
+          }
+          c.employeeId = `AS - NUR - 26-${String(nurCount).padStart(3, '0')}`
+          nurIds.push(c.employeeId)
+          nurCount++
+        } else {
+          while (cgvIds.some(id => id.replace(/\s+/g, '').endsWith(`26-${String(cgvCount).padStart(3, '0')}`))) {
+            cgvCount++
+          }
+          c.employeeId = `AS - CGV - 26-${String(cgvCount).padStart(3, '0')}`
+          cgvIds.push(c.employeeId)
+          cgvCount++
+        }
+        dbChanged = true
+      }
+    })
+  }
+
+  // Auto-backfill staffCategory, designation, and persistent sequential employeeId for MTPs
+  if (Array.isArray(data.mtps)) {
+    const mtpIds = data.mtps.map(m => m.employeeId).filter(Boolean)
+    let mtpCount = 1
+
+    data.mtps.forEach(m => {
+      if (!m.staffCategory) {
+        m.staffCategory = 'MTP'
+        dbChanged = true
+      }
+      if (!m.designation) {
+        m.designation = 'Medical Transport Partner & Escort'
+        dbChanged = true
+      }
+      if (!m.employeeId) {
+        while (mtpIds.some(id => id.replace(/\s+/g, '').endsWith(`26-${String(mtpCount).padStart(3, '0')}`))) {
+          mtpCount++
+        }
+        m.employeeId = `AS - MTP - 26-${String(mtpCount).padStart(3, '0')}`
+        mtpIds.push(m.employeeId)
+        mtpCount++
+        dbChanged = true
+      }
+    })
+  }
+
   // Auto-sync any registered caregivers who joined via referral code into referrals table
   if (Array.isArray(data.caregivers)) {
     let synced = false
@@ -765,9 +915,13 @@ const readJSONDb = async () => {
         synced = true
       }
     })
-    if (synced) {
+    if (synced) dbChanged = true
+  }
+
+  if (dbChanged) {
+    try {
       await fs.promises.writeFile(JSON_DB_PATH, JSON.stringify(data, null, 2), 'utf-8')
-    }
+    } catch (e) {}
   }
   return data
 }
@@ -792,6 +946,31 @@ export const isMTPService = (service, isMtpFlag) => {
          s.includes('walking') ||
          s.includes('task helper') ||
          s.includes('task force')
+}
+
+// Helper to generate next sequential Employee ID: AS - [CATEGORY] - 26-[NUM]
+export const generateNextStaffEmployeeId = (category = 'CGV', existingIds = []) => {
+  const cat = String(category || 'CGV').toUpperCase().trim()
+  const year = '26' // Year 2026
+  const targetPrefix = `AS - ${cat} - ${year}-`
+
+  const numbers = (existingIds || [])
+    .filter(id => id && typeof id === 'string')
+    .map(id => {
+      const clean = id.replace(/\s+/g, '')
+      const cleanPrefix = targetPrefix.replace(/\s+/g, '')
+      if (clean.startsWith(cleanPrefix)) {
+        const parts = clean.split('-')
+        const lastPart = parts[parts.length - 1]
+        const n = parseInt(lastPart, 10)
+        return isNaN(n) ? 0 : n
+      }
+      return 0
+    })
+    .filter(n => n > 0)
+
+  const nextNum = numbers.length > 0 ? Math.max(...numbers) + 1 : 1
+  return `${targetPrefix}${String(nextNum).padStart(3, '0')}`
 }
 
 export const db = {
@@ -1349,6 +1528,41 @@ export const db = {
         } catch (e) {}
         try {
           await connection.query(`ALTER TABLE blogs ADD COLUMN createdAt VARCHAR(255)`)
+        } catch (e) {}
+
+        // Auto migration for employees table and ID Card columns
+        try {
+          await connection.query(`
+            CREATE TABLE IF NOT EXISTS employees (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              name VARCHAR(255) NOT NULL,
+              phone VARCHAR(50) DEFAULT '',
+              email VARCHAR(255) DEFAULT '',
+              designation VARCHAR(255) NOT NULL,
+              employeeId VARCHAR(100) NOT NULL UNIQUE,
+              profilePhoto LONGTEXT,
+              status VARCHAR(50) DEFAULT 'Active',
+              joinedAt VARCHAR(255) NOT NULL
+            )
+          `)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE caregivers ADD COLUMN staffCategory VARCHAR(50) DEFAULT 'CGV'`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE caregivers ADD COLUMN designation VARCHAR(255) DEFAULT 'Elderly Care Specialist'`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE caregivers ADD COLUMN employeeId VARCHAR(100)`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE mtps ADD COLUMN staffCategory VARCHAR(50) DEFAULT 'MTP'`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE mtps ADD COLUMN designation VARCHAR(255) DEFAULT 'Medical Transport Partner & Escort'`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE mtps ADD COLUMN employeeId VARCHAR(100)`)
         } catch (e) {}
 
         // Clean up dummy test data in MySQL
@@ -2103,12 +2317,48 @@ export const db = {
   addCaregiverWithPassword: async (caregiverData) => {
     const { 
       name, phone, email, specialty, experience, 
+      staffCategory: inputCategory, designation: inputDesignation, employeeId: inputEmployeeId,
       aadhaar = '', pan = '', certificates = '', profilePhoto = '', 
       experienceDetails = '', workingLocations = '', availableTimings = '',
       state = '', city = '', googleMapLocation = '',
       experienceCertificate = '', policeVerification = '', additionalCertificates = '',
       referredBy = ''
     } = caregiverData
+
+    // Infer staffCategory if not explicitly specified
+    let staffCategory = inputCategory === 'NUR' || inputCategory === 'CGV' ? inputCategory : null
+    if (!staffCategory) {
+      const spec = String(specialty || '').toLowerCase()
+      const nm = String(name || '').toLowerCase()
+      if (
+        spec.includes('nurse') || spec.includes('nursing') || spec.includes('icu') || 
+        spec.includes('gnm') || spec.includes('clinical') || nm.includes('sister') || 
+        nm.includes('nurse') || nm.includes('dr.')
+      ) {
+        staffCategory = 'NUR'
+      } else {
+        staffCategory = 'CGV'
+      }
+    }
+
+    // Infer designation if not explicitly specified
+    let designation = (inputDesignation || '').trim()
+    if (!designation) {
+      if (staffCategory === 'NUR') {
+        const spec = String(specialty || '').toLowerCase()
+        if (spec.includes('icu')) designation = 'Critical Care ICU Nurse'
+        else if (spec.includes('gnm')) designation = 'Registered GNM Staff Nurse'
+        else if (spec.includes('doctor') || spec.includes('physician')) designation = 'Consulting Physician & Clinical Lead'
+        else designation = 'Registered Staff Nurse'
+      } else {
+        const spec = String(specialty || '').toLowerCase()
+        if (spec.includes('elderly')) designation = 'Elderly Care Specialist'
+        else if (spec.includes('baby') || spec.includes('mother')) designation = 'Mother & Newborn Care Attendant'
+        else if (spec.includes('bedside')) designation = 'Bedside & Patient Attendant'
+        else designation = 'Certified Senior Caregiver'
+      }
+    }
+
     const joinedAt = new Date().toISOString()
     const dummyPassword = ''
     const rawName = (name || 'STAFF').trim()
@@ -2120,9 +2370,13 @@ export const db = {
     const cleanReferredBy = (referredBy || '').trim().toUpperCase()
 
     if (useMySQL) {
+      const [idRows] = await pool.query('SELECT employeeId FROM caregivers WHERE employeeId IS NOT NULL')
+      const existingIds = (idRows || []).map(r => r.employeeId)
+      const employeeId = inputEmployeeId || generateNextStaffEmployeeId(staffCategory, existingIds)
+
       const [result] = await pool.query(
-        'INSERT INTO caregivers (name, phone, email, specialty, experience, password, joinedAt, aadhaar, pan, certificates, profilePhoto, experienceDetails, workingLocations, availableTimings, state, city, googleMapLocation, experienceCertificate, policeVerification, additionalCertificates) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [name, phone, email, specialty, experience, dummyPassword, joinedAt, aadhaar, pan, certificates, profilePhoto, experienceDetails, workingLocations, availableTimings, state, city, googleMapLocation, experienceCertificate, policeVerification, additionalCertificates]
+        'INSERT INTO caregivers (name, phone, email, specialty, experience, password, joinedAt, aadhaar, pan, certificates, profilePhoto, experienceDetails, workingLocations, availableTimings, state, city, googleMapLocation, experienceCertificate, policeVerification, additionalCertificates, staffCategory, designation, employeeId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [name, phone, email, specialty, experience, dummyPassword, joinedAt, aadhaar, pan, certificates, profilePhoto, experienceDetails, workingLocations, availableTimings, state, city, googleMapLocation, experienceCertificate, policeVerification, additionalCertificates, staffCategory, designation, employeeId]
       )
       const candidateId = result.insertId
       if (cleanReferredBy) {
@@ -2160,9 +2414,12 @@ export const db = {
           console.error('Failed to insert MySQL referral row:', err)
         }
       }
-      return { id: candidateId, name, phone, email, specialty, experience, status: 'Pending', joinedAt, state, city, googleMapLocation, experienceCertificate, policeVerification, additionalCertificates, uniqueId: code, referCode: code, referralCode: code, referredBy: cleanReferredBy }
+      return { id: candidateId, name, phone, email, specialty, experience, status: 'Pending', joinedAt, state, city, googleMapLocation, experienceCertificate, policeVerification, additionalCertificates, uniqueId: code, referCode: code, referralCode: code, referredBy: cleanReferredBy, staffCategory, designation, employeeId }
     } else {
       const data = await readJSONDb()
+      const existingIds = (data.caregivers || []).map(c => c.employeeId).filter(Boolean)
+      const employeeId = inputEmployeeId || generateNextStaffEmployeeId(staffCategory, existingIds)
+
       const newCaregiver = {
         id: data.caregivers.length > 0 ? Math.max(...data.caregivers.map(c => c.id)) + 1 : 1,
         name,
@@ -2170,6 +2427,9 @@ export const db = {
         email,
         specialty,
         experience,
+        staffCategory,
+        designation,
+        employeeId,
         password: dummyPassword,
         status: 'Pending',
         joinedAt,
@@ -3298,6 +3558,7 @@ export const db = {
       skillsSummary = '',
       aadhaar = '',
       emergencyContact = '',
+      profilePhoto = '',
       aadhaarDoc = '',
       panDoc = '',
       drivingLicenseDoc = '',
@@ -3309,16 +3570,26 @@ export const db = {
 
     const rolesString = Array.isArray(roles) ? roles.join(', ') : (roles || '')
 
+    const staffCategory = 'MTP'
+    const designation = (mtpData.designation || 'Medical Transport Partner & Escort').trim()
+
     if (useMySQL) {
+      const [idRows] = await pool.query('SELECT employeeId FROM mtps WHERE employeeId IS NOT NULL')
+      const existingIds = (idRows || []).map(r => r.employeeId)
+      const employeeId = mtpData.employeeId || generateNextStaffEmployeeId('MTP', existingIds)
+
       const [result] = await pool.query(
-        `INSERT INTO mtps (name, phone, email, gender, age, city, locality, roles, availability, vehicle, drivingLicense, experience, skillsSummary, aadhaar, emergencyContact, aadhaarDoc, panDoc, drivingLicenseDoc, tenthCertificateDoc, policeVerificationDoc, status, adminNotes, createdAt)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [name, phone, email, gender, age, city, locality, rolesString, availability, vehicle, drivingLicense, experience, skillsSummary, aadhaar, emergencyContact, aadhaarDoc, panDoc, drivingLicenseDoc, tenthCertificateDoc, policeVerificationDoc, status, adminNotes, createdAt]
+        `INSERT INTO mtps (name, phone, email, gender, age, city, locality, roles, availability, vehicle, drivingLicense, experience, skillsSummary, aadhaar, emergencyContact, profilePhoto, aadhaarDoc, panDoc, drivingLicenseDoc, tenthCertificateDoc, policeVerificationDoc, status, adminNotes, staffCategory, designation, employeeId, createdAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [name, phone, email, gender, age, city, locality, rolesString, availability, vehicle, drivingLicense, experience, skillsSummary, aadhaar, emergencyContact, profilePhoto, aadhaarDoc, panDoc, drivingLicenseDoc, tenthCertificateDoc, policeVerificationDoc, status, adminNotes, staffCategory, designation, employeeId, createdAt]
       )
-      return { id: result.insertId, ...mtpData, roles: rolesString, createdAt, status }
+      return { id: result.insertId, ...mtpData, roles: rolesString, createdAt, status, staffCategory, designation, employeeId, profilePhoto }
     } else {
       const data = await readJSONDb()
       if (!data.mtps) data.mtps = []
+      const existingIds = data.mtps.map(m => m.employeeId).filter(Boolean)
+      const employeeId = mtpData.employeeId || generateNextStaffEmployeeId('MTP', existingIds)
+
       const newMTP = {
         id: data.mtps.length > 0 ? Math.max(...data.mtps.map(m => m.id)) + 1 : 1,
         name,
@@ -3337,6 +3608,7 @@ export const db = {
         skillsSummary,
         aadhaar,
         emergencyContact,
+        profilePhoto,
         aadhaarDoc,
         panDoc,
         drivingLicenseDoc,
@@ -3344,6 +3616,9 @@ export const db = {
         policeVerificationDoc,
         status,
         adminNotes,
+        staffCategory,
+        designation,
+        employeeId,
         createdAt
       }
       data.mtps.push(newMTP)
@@ -4213,6 +4488,167 @@ export const db = {
         await writeJSONDb(data)
         return true
       }
+    }
+    return false
+  },
+
+  // ==========================================
+  // STAFF ID CARDS OPERATIONS (EMP, MTP, NUR, CGV)
+  // ==========================================
+  getAllStaffIdCards: async () => {
+    const data = await readJSONDb()
+    const all = []
+
+    // 1. Employees (AS - EMP - 26-xxx)
+    if (Array.isArray(data.employees)) {
+      data.employees.forEach(e => {
+        all.push({
+          id: `emp_${e.id}`,
+          originalId: e.id,
+          type: 'employee',
+          source: 'employees',
+          staffCategory: 'EMP',
+          categoryLabel: 'Office Employee',
+          employeeId: e.employeeId || `AS - EMP - 26-${String(e.id).padStart(3, '0')}`,
+          name: e.name,
+          phone: e.phone || '',
+          email: e.email || '',
+          designation: e.designation || 'Operations Staff',
+          specialty: e.designation || 'Operations Staff',
+          profilePhoto: e.profilePhoto || '',
+          status: e.status || 'Active',
+          joinedAt: e.joinedAt || '2026-01-01T00:00:00.000Z'
+        })
+      })
+    }
+
+    // 2. MTPs (AS - MTP - 26-xxx)
+    if (Array.isArray(data.mtps)) {
+      data.mtps.forEach(m => {
+        all.push({
+          id: `mtp_${m.id}`,
+          originalId: m.id,
+          type: 'mtp',
+          source: 'mtps',
+          staffCategory: 'MTP',
+          categoryLabel: 'Medical Transport Partner',
+          employeeId: m.employeeId || `AS - MTP - 26-${String(m.id).padStart(3, '0')}`,
+          name: m.name,
+          phone: m.phone || '',
+          email: m.email || '',
+          designation: m.designation || 'Medical Transport & Escort Partner',
+          specialty: m.roles || 'Medical Transit Specialist',
+          profilePhoto: m.profilePhoto || '',
+          status: m.status || 'Pending',
+          joinedAt: m.createdAt || m.joinedAt || '2026-01-01T00:00:00.000Z'
+        })
+      })
+    }
+
+    // 3. Nurses & Caregivers (AS - NUR - 26-xxx / AS - CGV - 26-xxx)
+    if (Array.isArray(data.caregivers)) {
+      data.caregivers.forEach(c => {
+        const cat = c.staffCategory === 'NUR' ? 'NUR' : 'CGV'
+        const catLabel = cat === 'NUR' ? 'Registered Nurse' : 'Caregiver / Attendant'
+        all.push({
+          id: `cgv_${c.id}`,
+          originalId: c.id,
+          type: 'caregiver',
+          source: 'caregivers',
+          staffCategory: cat,
+          categoryLabel: catLabel,
+          employeeId: c.employeeId || `AS - ${cat} - 26-${String(c.id).padStart(3, '0')}`,
+          name: c.name,
+          phone: c.phone || '',
+          email: c.email || '',
+          designation: c.designation || (cat === 'NUR' ? 'Registered Staff Nurse' : 'Certified Caregiver'),
+          specialty: c.specialty || '',
+          profilePhoto: c.profilePhoto || '',
+          status: c.status || 'Pending',
+          joinedAt: c.joinedAt || '2026-01-01T00:00:00.000Z'
+        })
+      })
+    }
+
+    return all
+  },
+
+  createEmployee: async (empData) => {
+    const data = await readJSONDb()
+    if (!data.employees) data.employees = []
+
+    const existingEmpIds = data.employees.map(e => e.employeeId).filter(Boolean)
+    const employeeId = empData.employeeId || generateNextStaffEmployeeId('EMP', existingEmpIds)
+    const newEmp = {
+      id: data.employees.length > 0 ? Math.max(...data.employees.map(e => e.id)) + 1 : 1,
+      name: (empData.name || '').trim(),
+      phone: (empData.phone || '').trim(),
+      email: (empData.email || '').trim().toLowerCase(),
+      designation: (empData.designation || 'Operations Coordinator').trim(),
+      staffCategory: 'EMP',
+      employeeId,
+      profilePhoto: empData.profilePhoto || '',
+      status: empData.status || 'Active',
+      joinedAt: empData.joinedAt || new Date().toISOString()
+    }
+    data.employees.push(newEmp)
+    await writeJSONDb(data)
+    return newEmp
+  },
+
+  updateStaffIdCard: async (source, id, updateData) => {
+    const data = await readJSONDb()
+    const numId = Number(id)
+    const src = String(source).toLowerCase()
+
+    if (src === 'employees' || src === 'employee' || src === 'emp') {
+      if (!data.employees) data.employees = []
+      const idx = data.employees.findIndex(e => e.id === numId)
+      if (idx !== -1) {
+        data.employees[idx] = {
+          ...data.employees[idx],
+          ...updateData,
+          id: numId
+        }
+        await writeJSONDb(data)
+        return data.employees[idx]
+      }
+    } else if (src === 'caregivers' || src === 'caregiver' || src === 'nur' || src === 'cgv') {
+      if (!data.caregivers) data.caregivers = []
+      const idx = data.caregivers.findIndex(c => c.id === numId)
+      if (idx !== -1) {
+        data.caregivers[idx] = {
+          ...data.caregivers[idx],
+          ...updateData,
+          id: numId
+        }
+        await writeJSONDb(data)
+        return data.caregivers[idx]
+      }
+    } else if (src === 'mtps' || src === 'mtp') {
+      if (!data.mtps) data.mtps = []
+      const idx = data.mtps.findIndex(m => m.id === numId)
+      if (idx !== -1) {
+        data.mtps[idx] = {
+          ...data.mtps[idx],
+          ...updateData,
+          id: numId
+        }
+        await writeJSONDb(data)
+        return data.mtps[idx]
+      }
+    }
+    return null
+  },
+
+  deleteEmployee: async (id) => {
+    const data = await readJSONDb()
+    if (!data.employees) data.employees = []
+    const prevLen = data.employees.length
+    data.employees = data.employees.filter(e => e.id !== Number(id))
+    if (data.employees.length < prevLen) {
+      await writeJSONDb(data)
+      return true
     }
     return false
   }

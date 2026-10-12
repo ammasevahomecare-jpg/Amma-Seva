@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { DocumentViewerModal } from "@/components/DocumentViewerModal";
 import { validateName, validatePhone, validateEmail, validateAddress, validateAadhaar, validatePAN, sanitizeIndianPhone, sanitizeName } from "@/lib/validation";
+import { downloadIdCardImage } from "@/lib/idCardDownload";
 import { 
   Trash2, RefreshCw, Mail, Phone, MapPin, ClipboardList, 
   Users, Calendar, DollarSign, ShieldAlert, LogOut, CheckCircle2, 
@@ -11,7 +12,7 @@ import {
   ArrowUpRight, Star, BookOpen, HelpCircle, Menu, X, Image, Coins, Clock,
   Briefcase, Car, Eye, MessageCircle, FileText, Sparkles,
   GraduationCap, CreditCard, ShieldCheck, FileCheck, User, ExternalLink,
-  Gift, Copy, Share2, Heart, AlertTriangle, Zap, Navigation
+  Gift, Copy, Share2, Heart, AlertTriangle, Zap, Navigation, Printer, Download, BadgeCheck
 } from "lucide-react";
 
 const INDIAN_STATES = [
@@ -237,7 +238,7 @@ function AdminPage() {
   };
 
   const VALID_ADMIN_TABS = [
-    "overview", "bookings", "caregivers", "referrals", "mtps", 
+    "overview", "bookings", "caregivers", "referrals", "mtps", "id-cards",
     "users", "services", "payments", "salaries", "notifications", 
     "enquiries", "blogs", "faqs", "gallery"
   ] as const;
@@ -332,6 +333,51 @@ function AdminPage() {
   const [priceDescription, setPriceDescription] = useState("");
   const [priceIsActive, setPriceIsActive] = useState(true);
   const [isSavingMtpPrice, setIsSavingMtpPrice] = useState(false);
+
+  // Staff ID Cards & Credentials State
+  interface StaffIdCard {
+    id: string;
+    originalId: number;
+    type: "employee" | "caregiver" | "mtp";
+    source: "employees" | "caregivers" | "mtps";
+    staffCategory: "EMP" | "MTP" | "NUR" | "CGV";
+    categoryLabel: string;
+    employeeId: string;
+    name: string;
+    phone: string;
+    email: string;
+    designation: string;
+    specialty?: string;
+    profilePhoto?: string;
+    status: string;
+    joinedAt: string;
+    state?: string;
+    city?: string;
+  }
+
+  const [idCards, setIdCards] = useState<StaffIdCard[]>([]);
+  const [idCardCategoryTab, setIdCardCategoryTab] = useState<"ALL" | "EMP" | "MTP" | "NUR" | "CGV">("ALL");
+  const [idCardSearch, setIdCardSearch] = useState("");
+  const [selectedCardForView, setSelectedCardForView] = useState<StaffIdCard | null>(null);
+
+  // Issue New Employee Modal State
+  const [isIssueEmployeeModalOpen, setIsIssueEmployeeModalOpen] = useState(false);
+  const [newEmpName, setNewEmpName] = useState("");
+  const [newEmpPhone, setNewEmpPhone] = useState("");
+  const [newEmpEmail, setNewEmpEmail] = useState("");
+  const [newEmpDesignation, setNewEmpDesignation] = useState("Operations Coordinator");
+  const [newEmpPhoto, setNewEmpPhoto] = useState("");
+  const [isSubmittingEmployee, setIsSubmittingEmployee] = useState(false);
+
+  // Edit Staff ID Card Modal State
+  const [isEditIdCardModalOpen, setIsEditIdCardModalOpen] = useState(false);
+  const [editingCardData, setEditingCardData] = useState<StaffIdCard | null>(null);
+  const [editCardName, setEditCardName] = useState("");
+  const [editCardDesignation, setEditCardDesignation] = useState("");
+  const [editCardCategory, setEditCardCategory] = useState<"EMP" | "MTP" | "NUR" | "CGV">("NUR");
+  const [editCardPhoto, setEditCardPhoto] = useState("");
+  const [editCardStatus, setEditCardStatus] = useState("Verified");
+  const [isSavingCardEdit, setIsSavingCardEdit] = useState(false);
 
   // WhatsApp Pay Balance Modal State
   const [whatsAppModalBooking, setWhatsAppModalBooking] = useState<any | null>(null);
@@ -713,7 +759,7 @@ function AdminPage() {
     };
 
     try {
-      const [bookingsRes, caregiversRes, enquiriesRes, usersRes, servicesRes, notificationsRes, blogsRes, faqsRes, galleryRes, mtpsRes, mtpTasksRes, mtpPricesRes, referralsRes] = await Promise.all([
+      const [bookingsRes, caregiversRes, enquiriesRes, usersRes, servicesRes, notificationsRes, blogsRes, faqsRes, galleryRes, mtpsRes, mtpTasksRes, mtpPricesRes, referralsRes, idCardsRes] = await Promise.all([
         fetchWithAuth("/api/bookings"),
         fetchWithAuth("/api/caregivers"),
         fetchWithAuth("/api/enquiries"),
@@ -726,7 +772,8 @@ function AdminPage() {
         fetchWithAuth("/api/admin/mtps").catch(() => []),
         fetch("/api/mtp/tasks").then(res => res.json()).catch(() => []),
         fetch("/api/mtp/prices").then(res => res.json()).catch(() => []),
-        fetchWithAuth("/api/admin/referrals").catch(() => null)
+        fetchWithAuth("/api/admin/referrals").catch(() => null),
+        fetchWithAuth("/api/admin/id-cards").then(res => (res && res.data) ? res.data : []).catch(() => [])
       ]);
       setBookings(Array.isArray(bookingsRes) ? bookingsRes : []);
       setCaregivers(Array.isArray(caregiversRes) ? caregiversRes : []);
@@ -740,6 +787,9 @@ function AdminPage() {
       setMTPs(Array.isArray(mtpsRes) ? mtpsRes : []);
       setMtpTasks(Array.isArray(mtpTasksRes) ? mtpTasksRes : []);
       setMtpPrices(Array.isArray(mtpPricesRes) ? mtpPricesRes : []);
+      if (Array.isArray(idCardsRes)) {
+        setIdCards(idCardsRes);
+      }
       if (referralsRes && referralsRes.success) {
         setReferralsData(referralsRes);
       }
@@ -793,6 +843,118 @@ function AdminPage() {
         console.error(err);
         alert("Failed to update status due to network error.");
       });
+  };
+
+  // Staff ID Card Actions
+  const handleOpenIssueEmployeeModal = () => {
+    setNewEmpName("");
+    setNewEmpPhone("");
+    setNewEmpEmail("");
+    setNewEmpDesignation("Operations Coordinator");
+    setNewEmpPhoto("");
+    setIsIssueEmployeeModalOpen(true);
+  };
+
+  const handleIssueEmployee = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEmpName.trim()) {
+      alert("Please enter the employee full name.");
+      return;
+    }
+    const token = localStorage.getItem("ammaseva_admin_token");
+    setIsSubmittingEmployee(true);
+    try {
+      const res = await fetch("/api/admin/id-cards/employee", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: newEmpName.trim(),
+          phone: newEmpPhone.trim(),
+          email: newEmpEmail.trim(),
+          designation: newEmpDesignation.trim() || "Operations Coordinator",
+          profilePhoto: newEmpPhoto.trim()
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create employee.");
+      alert(`✅ Official Employee ID Created!\nAssigned ID: ${data.data?.employeeId}\nRole: ${data.data?.designation}`);
+      setIsIssueEmployeeModalOpen(false);
+      fetchDashboardData();
+    } catch (err: any) {
+      alert(err.message || "Failed to create employee ID.");
+    } finally {
+      setIsSubmittingEmployee(false);
+    }
+  };
+
+  const handleOpenEditIdCardModal = (card: StaffIdCard) => {
+    setEditingCardData(card);
+    setEditCardName(card.name || "");
+    setEditCardDesignation(card.designation || card.specialty || "");
+    setEditCardCategory(card.staffCategory || "NUR");
+    setEditCardPhoto(card.profilePhoto || "");
+    setEditCardStatus(card.status || "Verified");
+    setIsEditIdCardModalOpen(true);
+  };
+
+  const handleSaveCardEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCardData) return;
+    const token = localStorage.getItem("ammaseva_admin_token");
+    setIsSavingCardEdit(true);
+    try {
+      const res = await fetch(`/api/admin/id-cards/${editingCardData.source}/${editingCardData.originalId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: editCardName.trim(),
+          designation: editCardDesignation.trim(),
+          staffCategory: editCardCategory,
+          profilePhoto: editCardPhoto.trim(),
+          status: editCardStatus
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update ID card details.");
+      alert("✅ Staff credentials updated successfully!");
+      setIsEditIdCardModalOpen(false);
+      setEditingCardData(null);
+      fetchDashboardData();
+    } catch (err: any) {
+      alert(err.message || "Failed to update staff credentials.");
+    } finally {
+      setIsSavingCardEdit(false);
+    }
+  };
+
+  const handleDeleteEmployee = async (empId: number, name: string) => {
+    if (!confirm(`Are you sure you want to delete employee record "${name}"? This action cannot be undone.`)) return;
+    const token = localStorage.getItem("ammaseva_admin_token");
+    try {
+      const res = await fetch(`/api/admin/id-cards/employee/${empId}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete employee.");
+      alert("Employee record deleted.");
+      fetchDashboardData();
+    } catch (err: any) {
+      alert(err.message || "Failed to delete employee.");
+    }
+  };
+
+  const handlePrintIdCard = (card: StaffIdCard) => {
+    setSelectedCardForView(card);
+    setTimeout(() => {
+      window.print();
+    }, 400);
   };
 
   // DELETE actions
@@ -1887,6 +2049,7 @@ function AdminPage() {
               { id: "overview", label: "Dashboard", icon: LayoutDashboard },
               { id: "bookings", label: "Manage Bookings", icon: CalendarDays },
               { id: "caregivers", label: "Employees & Staff", icon: UserCheck },
+              { id: "id-cards", label: "Staff ID Cards", icon: CreditCard, badge: idCards.length },
               { id: "referrals", label: "Referral Network", icon: Gift, badge: referralsData?.summary?.totalPending || 0 },
               { id: "mtps", label: "MTP Registrations", icon: Briefcase, badge: mtps.filter(m => m.status === "Pending").length },
               { id: "users", label: "All Users", icon: Users },
@@ -5620,6 +5783,419 @@ function AdminPage() {
             );
           })()}
 
+          {/* Staff ID Cards Management Panel */}
+          {activeTab === "id-cards" && (() => {
+            const countAll = idCards.length;
+            const countEmp = idCards.filter(c => c.staffCategory === "EMP").length;
+            const countMtp = idCards.filter(c => c.staffCategory === "MTP").length;
+            const countNur = idCards.filter(c => c.staffCategory === "NUR").length;
+            const countCgv = idCards.filter(c => c.staffCategory === "CGV").length;
+
+            const filteredIdCards = idCards.filter(card => {
+              if (idCardCategoryTab !== "ALL" && card.staffCategory !== idCardCategoryTab) return false;
+              if (!idCardSearch.trim()) return true;
+              const q = idCardSearch.toLowerCase().trim();
+              return (
+                (card.employeeId && card.employeeId.toLowerCase().includes(q)) ||
+                (card.name && card.name.toLowerCase().includes(q)) ||
+                (card.designation && card.designation.toLowerCase().includes(q)) ||
+                (card.phone && card.phone.toLowerCase().includes(q)) ||
+                (card.email && card.email.toLowerCase().includes(q)) ||
+                (card.specialty && card.specialty.toLowerCase().includes(q))
+              );
+            });
+
+            return (
+              <div className="space-y-6 text-left animate-in fade-in duration-200">
+                {/* Header with Title and Actions */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="p-2 rounded-xl bg-[#091438] text-[#c9a24c] shadow-xs">
+                        <CreditCard className="w-5 h-5" />
+                      </span>
+                      <h2 className="text-xl font-black text-slate-900 font-display">
+                        Staff ID Cards &amp; Official Credentials
+                      </h2>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1 max-w-2xl font-medium">
+                      Official Amma Seva PVC biometric badges with verified serial numbering starting from 001 per staff category. Preview, customize, issue, and print high-resolution CR80 cards.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => fetchDashboardData()}
+                      className="px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
+                      Sync
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleOpenIssueEmployeeModal}
+                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#091438] to-[#1e2a5a] text-white hover:from-[#172147] hover:to-[#26356b] border border-[#c9a24c]/40 font-bold text-xs flex items-center gap-1.5 shadow-md shadow-[#091438]/10 transition-all cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4 text-[#c9a24c]" />
+                      + Issue New Employee ID
+                    </button>
+                  </div>
+                </div>
+
+                {/* Metric Summary Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* EMP */}
+                  <div 
+                    onClick={() => setIdCardCategoryTab("EMP")}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                      idCardCategoryTab === "EMP" 
+                        ? "bg-indigo-50/70 border-indigo-400 shadow-sm" 
+                        : "bg-white border-slate-200/80 hover:border-indigo-200"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200/60">
+                        Employees
+                      </span>
+                      <span className="text-xs font-mono font-bold text-slate-400">AS - EMP - 26-xxx</span>
+                    </div>
+                    <div className="mt-2.5 flex items-baseline justify-between">
+                      <span className="text-2xl font-black text-slate-900">{countEmp}</span>
+                      <span className="text-[11px] text-slate-500 font-semibold">Office Staff</span>
+                    </div>
+                  </div>
+
+                  {/* MTP */}
+                  <div 
+                    onClick={() => setIdCardCategoryTab("MTP")}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                      idCardCategoryTab === "MTP" 
+                        ? "bg-amber-50/70 border-amber-400 shadow-sm" 
+                        : "bg-white border-slate-200/80 hover:border-amber-200"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
+                        MTP Partners
+                      </span>
+                      <span className="text-xs font-mono font-bold text-slate-400">AS - MTP - 26-xxx</span>
+                    </div>
+                    <div className="mt-2.5 flex items-baseline justify-between">
+                      <span className="text-2xl font-black text-slate-900">{countMtp}</span>
+                      <span className="text-[11px] text-slate-500 font-semibold">Transport Escorts</span>
+                    </div>
+                  </div>
+
+                  {/* NUR */}
+                  <div 
+                    onClick={() => setIdCardCategoryTab("NUR")}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                      idCardCategoryTab === "NUR" 
+                        ? "bg-teal-50/70 border-teal-400 shadow-sm" 
+                        : "bg-white border-slate-200/80 hover:border-teal-200"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200/60">
+                        Registered Nurses
+                      </span>
+                      <span className="text-xs font-mono font-bold text-slate-400">AS - NUR - 26-xxx</span>
+                    </div>
+                    <div className="mt-2.5 flex items-baseline justify-between">
+                      <span className="text-2xl font-black text-slate-900">{countNur}</span>
+                      <span className="text-[11px] text-slate-500 font-semibold">Clinical Staff</span>
+                    </div>
+                  </div>
+
+                  {/* CGV */}
+                  <div 
+                    onClick={() => setIdCardCategoryTab("CGV")}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                      idCardCategoryTab === "CGV" 
+                        ? "bg-blue-50/70 border-blue-400 shadow-sm" 
+                        : "bg-white border-slate-200/80 hover:border-blue-200"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/60">
+                        Care Givers
+                      </span>
+                      <span className="text-xs font-mono font-bold text-slate-400">AS - CGV - 26-xxx</span>
+                    </div>
+                    <div className="mt-2.5 flex items-baseline justify-between">
+                      <span className="text-2xl font-black text-slate-900">{countCgv}</span>
+                      <span className="text-[11px] text-slate-500 font-semibold">Attendants</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Filter Tabs & Search Controls */}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+                  {/* Category Filter Tabs */}
+                  <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100/80 rounded-xl border border-slate-200/60">
+                    <button
+                      type="button"
+                      onClick={() => setIdCardCategoryTab("ALL")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        idCardCategoryTab === "ALL"
+                          ? "bg-white text-[#1e2a5a] shadow-xs font-extrabold"
+                          : "text-slate-600 hover:text-slate-900"
+                      }`}
+                    >
+                      🌟 All Staff
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-200/70 font-mono">
+                        {countAll}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setIdCardCategoryTab("EMP")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        idCardCategoryTab === "EMP"
+                          ? "bg-indigo-600 text-white shadow-xs font-extrabold"
+                          : "text-slate-600 hover:text-slate-900"
+                      }`}
+                    >
+                      💼 Employees (AS - EMP - 26-xxx)
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${idCardCategoryTab === "EMP" ? "bg-indigo-700 text-white" : "bg-slate-200/70"}`}>
+                        {countEmp}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setIdCardCategoryTab("MTP")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        idCardCategoryTab === "MTP"
+                          ? "bg-amber-600 text-white shadow-xs font-extrabold"
+                          : "text-slate-600 hover:text-slate-900"
+                      }`}
+                    >
+                      🚗 MTPs (AS - MTP - 26-xxx)
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${idCardCategoryTab === "MTP" ? "bg-amber-700 text-white" : "bg-slate-200/70"}`}>
+                        {countMtp}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setIdCardCategoryTab("NUR")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        idCardCategoryTab === "NUR"
+                          ? "bg-teal-600 text-white shadow-xs font-extrabold"
+                          : "text-slate-600 hover:text-slate-900"
+                      }`}
+                    >
+                      🩺 Nurses (AS - NUR - 26-xxx)
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${idCardCategoryTab === "NUR" ? "bg-teal-700 text-white" : "bg-slate-200/70"}`}>
+                        {countNur}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setIdCardCategoryTab("CGV")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        idCardCategoryTab === "CGV"
+                          ? "bg-blue-600 text-white shadow-xs font-extrabold"
+                          : "text-slate-600 hover:text-slate-900"
+                      }`}
+                    >
+                      🤲 Care Givers (AS - CGV - 26-xxx)
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${idCardCategoryTab === "CGV" ? "bg-blue-700 text-white" : "bg-slate-200/70"}`}>
+                        {countCgv}
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Real-time Search Box */}
+                  <div className="relative min-w-[280px] sm:min-w-[320px]">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Search ID, name, designation, phone..."
+                      value={idCardSearch}
+                      onChange={(e) => setIdCardSearch(e.target.value)}
+                      className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200 bg-slate-50/50 text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-[#1e2a5a] focus:bg-white transition-all"
+                    />
+                    {idCardSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setIdCardSearch("")}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Results count text */}
+                <div className="flex items-center justify-between text-xs text-slate-500 px-1">
+                  <span>
+                    Showing <strong className="text-slate-800">{filteredIdCards.length}</strong> of{" "}
+                    <strong className="text-slate-800">{idCards.length}</strong> total credential records
+                    {idCardCategoryTab !== "ALL" && (
+                      <span className="ml-1 text-[#1e2a5a] font-bold">({idCardCategoryTab} tab)</span>
+                    )}
+                  </span>
+                  {idCardSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setIdCardSearch("")}
+                      className="text-indigo-600 font-bold hover:underline cursor-pointer"
+                    >
+                      Clear search filter
+                    </button>
+                  )}
+                </div>
+
+                {/* Cards Grid */}
+                {filteredIdCards.length === 0 ? (
+                  <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center">
+                    <CreditCard className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                    <h3 className="text-base font-bold text-slate-700">No staff credentials found</h3>
+                    <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                      {idCardSearch 
+                        ? `No results match your search "${idCardSearch}". Try searching by another keyword or reset the category filter.`
+                        : "No records found in this category. You can register staff or issue new office employee credentials."}
+                    </p>
+                    <div className="mt-4 flex items-center justify-center gap-3">
+                      {idCardSearch && (
+                        <button
+                          type="button"
+                          onClick={() => setIdCardSearch("")}
+                          className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold hover:bg-slate-50 cursor-pointer"
+                        >
+                          Clear Search
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleOpenIssueEmployeeModal}
+                        className="px-4 py-2 rounded-xl bg-[#091438] text-white text-xs font-bold hover:bg-[#172147] cursor-pointer"
+                      >
+                        + Issue Employee ID
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                    {filteredIdCards.map((card) => {
+                      const catBadgeColors = {
+                        EMP: "bg-indigo-50 text-indigo-700 border-indigo-200",
+                        MTP: "bg-amber-50 text-amber-700 border-amber-200",
+                        NUR: "bg-teal-50 text-teal-700 border-teal-200",
+                        CGV: "bg-blue-50 text-blue-700 border-blue-200"
+                      }[card.staffCategory] || "bg-slate-50 text-slate-700 border-slate-200";
+
+                      return (
+                        <div
+                          key={card.id}
+                          className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs hover:shadow-md hover:border-[#c9a24c]/40 transition-all flex flex-col justify-between group"
+                        >
+                          {/* Card Top */}
+                          <div>
+                            <div className="flex items-start justify-between gap-3">
+                              <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${catBadgeColors}`}>
+                                {card.categoryLabel || card.staffCategory}
+                              </span>
+                              <span className="text-xs font-mono font-black text-[#091438] bg-slate-100/80 px-2 py-0.5 rounded-md border border-slate-200">
+                                {card.employeeId}
+                              </span>
+                            </div>
+
+                            {/* Staff Info block */}
+                            <div className="flex items-center gap-3.5 mt-4">
+                              <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-slate-100 border-2 border-[#d4af37]/60 shrink-0 shadow-xs">
+                                {card.profilePhoto ? (
+                                  <img
+                                    src={card.profilePhoto}
+                                    alt={card.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-gradient-to-b from-slate-50 to-slate-200">
+                                    <User className="w-6 h-6 text-slate-400" />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <h4 className="text-sm font-extrabold text-slate-900 truncate">
+                                  {card.name}
+                                </h4>
+                                <p className="text-[11px] font-bold text-[#c9a24c] truncate mt-0.5">
+                                  {card.designation || card.specialty || "Amma Seva Staff"}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
+                                    card.status === "Verified" 
+                                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200" 
+                                      : "bg-amber-50 text-amber-700 border border-amber-200"
+                                  }`}>
+                                    {card.status === "Verified" ? "● Verified" : "● Pending"}
+                                  </span>
+                                  {card.phone && (
+                                    <span className="text-[10px] text-slate-400 font-mono">
+                                      {card.phone}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedCardForView(card)}
+                              className="px-3 py-1.5 rounded-xl bg-[#091438] hover:bg-[#172147] text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                            >
+                              <CreditCard className="w-3.5 h-3.5 text-[#c9a24c]" />
+                              View ID Card
+                            </button>
+
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                title="Print Badge"
+                                onClick={() => handlePrintIdCard(card)}
+                                className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer"
+                              >
+                                <Printer className="w-4 h-4 text-slate-600" />
+                              </button>
+                              <button
+                                type="button"
+                                title="Edit Details"
+                                onClick={() => handleOpenEditIdCardModal(card)}
+                                className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer"
+                              >
+                                <Edit3 className="w-4 h-4 text-slate-600" />
+                              </button>
+                              {card.source === "employees" && (
+                                <button
+                                  type="button"
+                                  title="Delete Employee"
+                                  onClick={() => handleDeleteEmployee(card.originalId, card.name)}
+                                  className="p-1.5 rounded-lg border border-rose-200 hover:bg-rose-50 text-rose-600 transition-colors cursor-pointer"
+                                >
+                                  <Trash2 className="w-4 h-4 text-rose-500" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Enquiries Leads panel */}
           {activeTab === "enquiries" && (
             <div className="grid gap-6">
@@ -8137,6 +8713,503 @@ function AdminPage() {
         applicantName={docViewerState.applicantName}
         category={docViewerState.category}
       />
+
+      {/* STAFF ID CARD PREVIEW & PRINT MODAL */}
+      {selectedCardForView && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden flex flex-col my-auto max-h-[95vh]">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-[#091438] via-[#10235b] to-[#091438] p-5 text-white flex items-center justify-between border-b border-[#c9a24c]/30">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/10 border border-[#c9a24c]/40 flex items-center justify-center text-[#c9a24c]">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#c9a24c] text-[#091438]">
+                      {selectedCardForView.staffCategory} • {selectedCardForView.categoryLabel}
+                    </span>
+                    <span className="text-xs font-mono font-bold text-slate-300">
+                      {selectedCardForView.employeeId}
+                    </span>
+                  </div>
+                  <h3 className="font-extrabold text-base text-white mt-0.5">
+                    Official Staff ID Badge
+                  </h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedCardForView(null)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-slate-300 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body: High Resolution ID Badge Preview */}
+            <div className="p-6 bg-slate-100/70 overflow-y-auto flex flex-col items-center">
+              {/* Exact Card Component matching uploaded template */}
+              <div
+                id="printable-id-card"
+                className="relative rounded-3xl overflow-hidden shadow-2xl bg-white select-none border border-slate-300/80 shrink-0"
+                style={{
+                  width: "340px",
+                  height: "510.6px",
+                  aspectRatio: "682 / 1024"
+                }}
+              >
+                {/* Blank Template Artwork */}
+                <img
+                  src="/assets/id-card-template.png"
+                  alt="Amma Seva ID Card Template"
+                  className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                />
+
+                {/* Staff Photo Box */}
+                <div
+                  className="absolute overflow-hidden flex items-center justify-center bg-slate-100 rounded-xl"
+                  style={{
+                    top: "28.3%",
+                    left: "29.7%",
+                    width: "40.6%",
+                    height: "29.8%",
+                    border: "2px solid #d4af37",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
+                  }}
+                >
+                  {selectedCardForView.profilePhoto ? (
+                    <img
+                      src={selectedCardForView.profilePhoto}
+                      alt={selectedCardForView.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-slate-400">
+                      <User className="w-12 h-12 text-slate-300 mb-1" />
+                      <span className="text-[9px] font-bold tracking-widest text-slate-400 uppercase">PHOTO HERE</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Employee ID text */}
+                <div
+                  className="absolute flex items-center"
+                  style={{
+                    top: "62.2%",
+                    left: "45.5%",
+                    width: "44%",
+                    height: "3.5%"
+                  }}
+                >
+                  <span className="text-[12px] sm:text-[13px] font-black text-[#091438] tracking-wider truncate font-mono">
+                    {selectedCardForView.employeeId}
+                  </span>
+                </div>
+
+                {/* Name text */}
+                <div
+                  className="absolute flex items-center"
+                  style={{
+                    top: "69.2%",
+                    left: "45.5%",
+                    width: "44%",
+                    height: "3.5%"
+                  }}
+                >
+                  <span className="text-[12px] sm:text-[13px] font-black text-[#091438] tracking-wide truncate">
+                    {selectedCardForView.name}
+                  </span>
+                </div>
+
+                {/* Designation text */}
+                <div
+                  className="absolute flex items-center"
+                  style={{
+                    top: "76.2%",
+                    left: "45.5%",
+                    width: "44%",
+                    height: "3.8%"
+                  }}
+                >
+                  <span className="text-[10px] sm:text-[11px] font-extrabold text-[#091438] leading-tight line-clamp-2">
+                    {selectedCardForView.designation || selectedCardForView.specialty || "Amma Seva Staff"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Card Specs Callout */}
+              <div className="mt-4 text-center max-w-xs">
+                <span className="text-[11px] font-bold text-slate-500 flex items-center justify-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  CR80 PVC Standard • 54mm × 85.6mm Printable Badge
+                </span>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  Compatible with standard card printers, thermal dye-sublimation, and laser badge holders.
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="p-4 bg-white border-t border-slate-200 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  const card = selectedCardForView;
+                  setSelectedCardForView(null);
+                  handleOpenEditIdCardModal(card);
+                }}
+                className="px-4 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                Edit Details
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedCardForView(null)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-600 font-bold text-xs transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await downloadIdCardImage({
+                        employeeId: selectedCardForView.employeeId,
+                        name: selectedCardForView.name,
+                        designation: selectedCardForView.designation || selectedCardForView.specialty || "Amma Seva Staff",
+                        profilePhoto: selectedCardForView.profilePhoto
+                      });
+                    } catch (err) {
+                      console.error("ID card download error:", err);
+                      alert("Failed to download ID card image. Please try again.");
+                    }
+                  }}
+                  className="px-4 sm:px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+                  title="Download 682x1024 high resolution PNG card image"
+                >
+                  <Download className="w-4 h-4 text-emerald-200" />
+                  <span>Download ID Card</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handlePrintIdCard(selectedCardForView)}
+                  className="px-4 sm:px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#091438] to-[#1e2a5a] hover:from-[#172147] hover:to-[#26356b] text-white font-black text-xs flex items-center gap-2 shadow-md shadow-[#091438]/20 border border-[#c9a24c]/40 transition-all cursor-pointer"
+                >
+                  <Printer className="w-4 h-4 text-[#c9a24c]" />
+                  Print ID Card
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ISSUE NEW EMPLOYEE MODAL */}
+      {isIssueEmployeeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden flex flex-col">
+            <div className="bg-gradient-to-r from-[#091438] to-[#1e2a5a] p-5 text-white flex items-center justify-between border-b border-[#c9a24c]/30">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-[#c9a24c]">
+                  <Plus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-white">Issue Employee ID Card</h3>
+                  <p className="text-[11px] text-slate-300">Internal Office Staff Credential (AS - EMP - 26-xxx)</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsIssueEmployeeModalOpen(false)}
+                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-slate-300 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleIssueEmployee} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Full Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Ramesh Varma"
+                  value={newEmpName}
+                  onChange={(e) => setNewEmpName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-[#1e2a5a] focus:outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Official Designation <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Operations Coordinator, HR Lead, Admin Supervisor"
+                  value={newEmpDesignation}
+                  onChange={(e) => setNewEmpDesignation(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-[#1e2a5a] focus:outline-hidden"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Phone Number</label>
+                  <input
+                    type="tel"
+                    placeholder="10-digit mobile"
+                    value={newEmpPhone}
+                    onChange={(e) => setNewEmpPhone(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-[#1e2a5a] focus:outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    placeholder="staff@ammaseva.in"
+                    value={newEmpEmail}
+                    onChange={(e) => setNewEmpEmail(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-[#1e2a5a] focus:outline-hidden"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Profile Photo (Optional)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="Image URL or upload file"
+                    value={newEmpPhoto}
+                    onChange={(e) => setNewEmpPhoto(e.target.value)}
+                    className="flex-1 px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-[#1e2a5a] focus:outline-hidden"
+                  />
+                  <label className="px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-700 cursor-pointer">
+                    Browse
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleFileChange(e, setNewEmpPhoto)}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200/80 text-[11px] text-amber-800 flex items-start gap-2">
+                <CreditCard className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <span>
+                  The employee ID will be automatically generated with the code prefix <strong>AS - EMP - 26-xxx</strong> starting sequentially from 001.
+                </span>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsIssueEmployeeModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingEmployee}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#091438] to-[#1e2a5a] text-white font-extrabold text-xs shadow-md shadow-[#091438]/20 border border-[#c9a24c]/40 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {isSubmittingEmployee ? "Creating ID..." : "Issue Employee ID"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT STAFF ID CARD DETAILS MODAL */}
+      {isEditIdCardModalOpen && editingCardData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden flex flex-col">
+            <div className="bg-gradient-to-r from-[#091438] to-[#1e2a5a] p-5 text-white flex items-center justify-between border-b border-[#c9a24c]/30">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-white/10 border border-[#c9a24c]/40 flex items-center justify-center text-[#c9a24c]">
+                  <Edit3 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-white">Edit ID Card Details</h3>
+                  <p className="text-[11px] text-slate-300 font-mono">{editingCardData.employeeId}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditIdCardModalOpen(false)}
+                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-slate-300 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCardEdit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={editCardName}
+                  onChange={(e) => setEditCardName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-[#1e2a5a] focus:outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Official Designation</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Senior Critical Care Nurse, Elderly Care Attendant"
+                  value={editCardDesignation}
+                  onChange={(e) => setEditCardDesignation(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-[#1e2a5a] focus:outline-hidden"
+                />
+              </div>
+
+              {editingCardData.source === "caregivers" && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Staff Role Category
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditCardCategory("NUR")}
+                      className={`p-2.5 rounded-xl border text-xs font-bold text-left transition-all cursor-pointer ${
+                        editCardCategory === "NUR" 
+                          ? "bg-teal-50 border-teal-500 text-teal-900 shadow-xs ring-1 ring-teal-500" 
+                          : "border-slate-200 hover:bg-slate-50 text-slate-600"
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>🩺</span>
+                        <span>Registered Nurse</span>
+                      </div>
+                      <span className="text-[10px] text-teal-600 block mt-0.5 font-mono">AS - NUR - 26-xxx</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setEditCardCategory("CGV")}
+                      className={`p-2.5 rounded-xl border text-xs font-bold text-left transition-all cursor-pointer ${
+                        editCardCategory === "CGV" 
+                          ? "bg-blue-50 border-blue-500 text-blue-900 shadow-xs ring-1 ring-blue-500" 
+                          : "border-slate-200 hover:bg-slate-50 text-slate-600"
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>🤲</span>
+                        <span>Caregiver / Attendant</span>
+                      </div>
+                      <span className="text-[10px] text-blue-600 block mt-0.5 font-mono">AS - CGV - 26-xxx</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Profile Photo</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="Image URL or upload"
+                    value={editCardPhoto}
+                    onChange={(e) => setEditCardPhoto(e.target.value)}
+                    className="flex-1 px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-[#1e2a5a] focus:outline-hidden"
+                  />
+                  <label className="px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-700 cursor-pointer">
+                    Browse
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleFileChange(e, setEditCardPhoto)}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Verification Status</label>
+                <select
+                  value={editCardStatus}
+                  onChange={(e) => setEditCardStatus(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-[#1e2a5a] focus:outline-hidden"
+                >
+                  <option value="Verified">Verified (Active Badge)</option>
+                  <option value="Pending">Pending Verification</option>
+                  <option value="Rejected">Suspended / Rejected</option>
+                </select>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsEditIdCardModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingCardEdit}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#091438] to-[#1e2a5a] text-white font-extrabold text-xs shadow-md shadow-[#091438]/20 border border-[#c9a24c]/40 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {isSavingCardEdit ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* PRINT STYLESHEET FOR CR80 BIOMETRIC ID BADGE PRINTING */}
+      <style>{`
+        @media print {
+          @page {
+            size: 54mm 85.6mm;
+            margin: 0;
+          }
+          body * {
+            visibility: hidden !important;
+          }
+          #printable-id-card, #printable-id-card * {
+            visibility: visible !important;
+          }
+          #printable-id-card {
+            position: fixed !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 54mm !important;
+            height: 85.6mm !important;
+            margin: 0 !important;
+            border: none !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            transform: none !important;
+            z-index: 9999999 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+        }
+      `}</style>
+
 
     </div>
   );

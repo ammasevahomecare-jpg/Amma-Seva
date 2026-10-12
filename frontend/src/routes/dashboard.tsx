@@ -4,13 +4,14 @@ import { SiteLayout } from "@/components/SiteLayout";
 import { DocumentViewerModal } from "@/components/DocumentViewerModal";
 import { validateName, validatePhone, validateEmail, validateAddress, sanitizeIndianPhone, sanitizeName } from "@/lib/validation";
 import { fetchServices, type Service } from "../lib/services";
+import { downloadIdCardImage } from "@/lib/idCardDownload";
 import { 
   Calendar, Clock, MapPin, User, Users, FileText, CheckCircle2, 
   AlertTriangle, RefreshCw, XCircle, Download, CreditCard, 
   Phone, Briefcase, ChevronRight, Check, DollarSign, QrCode, Upload,
   Star, MessageSquare, Eye, Gift, Copy, Send, Share2, ExternalLink, Sparkles,
   Shield, ArrowRight, ShieldCheck, Filter, Search, RotateCcw, MessageCircle, Heart, Lock, ShieldAlert,
-  Zap, Car, Navigation
+  Zap, Car, Navigation, Printer, Camera
 } from "lucide-react";
 
 // Helper to compute / format Referral Code (FIRSTNAME + LAST 4 DIGITS OF PHONE)
@@ -231,6 +232,40 @@ function CustomerDashboard() {
         setFileState(reader.result as string);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  // Dedicated photo update helper for instant ID Card and profile persistence
+  const [isUpdatingPhoto, setIsUpdatingPhoto] = useState(false);
+  const [photoUpdateMessage, setPhotoUpdateMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleUpdatePhotoOnly = async (base64Photo: string) => {
+    const token = localStorage.getItem("ammaseva_caretaker_token");
+    if (!token) return;
+    setIsUpdatingPhoto(true);
+    setPhotoUpdateMessage(null);
+    try {
+      const res = await fetch("/api/caretaker/photo", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ profilePhoto: base64Photo })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update profile photo.");
+      }
+      const updatedPhoto = data.profilePhoto || base64Photo;
+      setCaretakerProfilePhoto(updatedPhoto);
+      setCaretaker((prev: any) => (prev ? { ...prev, profilePhoto: updatedPhoto } : prev));
+      setPhotoUpdateMessage({ type: 'success', text: "Official ID Card photo updated and badge refreshed!" });
+      setTimeout(() => setPhotoUpdateMessage(null), 4500);
+    } catch (err: any) {
+      setPhotoUpdateMessage({ type: 'error', text: err.message || "Failed to update profile photo." });
+    } finally {
+      setIsUpdatingPhoto(false);
     }
   };
 
@@ -1807,6 +1842,22 @@ function CustomerDashboard() {
                       <span className="text-left flex-1">{caretaker?.isMtp ? "Application & KYC Details" : "Profile Details"}</span>
                     </button>
 
+                    <button
+                      type="button"
+                      onClick={() => setActiveCaregiverTab("idcard")}
+                      className={`w-full py-3 px-4 rounded-2xl text-xs font-bold uppercase tracking-wider flex items-center gap-3 cursor-pointer transition-all ${
+                        activeCaregiverTab === "idcard"
+                          ? "bg-gradient-to-r from-[#091438] to-[#1e2a5a] text-white shadow-md shadow-[#091438]/25 border border-[#c9a24c]/40 ring-2 ring-[#c9a24c]/40"
+                          : "text-slate-600 hover:text-[#1e2a5a] hover:bg-slate-50 border border-transparent hover:border-slate-200/50"
+                      }`}
+                    >
+                      <CreditCard className={`h-4 w-4 shrink-0 ${activeCaregiverTab === "idcard" ? "text-[#c9a24c]" : "text-slate-400"}`} />
+                      <span className="text-left flex-1 font-bold">Official ID Card (ఐడీ కార్డు)</span>
+                      <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-[#c9a24c]/20 text-[#c9a24c]">
+                        BADGE
+                      </span>
+                    </button>
+
                     {(caretaker?.status === "Verified" || caretaker?.status === "Approved" || caretaker?.status === "Active") && (
                       <button
                         type="button"
@@ -2923,22 +2974,65 @@ function CustomerDashboard() {
                 
                 {/* Profile Photo Upload and Preview */}
                 <div className="flex flex-col sm:flex-row items-center gap-6 bg-gradient-to-br from-slate-50 to-white p-6 rounded-3xl border border-slate-200/60 shadow-sm">
-                  <div className="h-24 w-24 rounded-full border-2 border-dashed border-slate-300 bg-white flex items-center justify-center text-slate-400 overflow-hidden relative group shrink-0 shadow-inner">
+                  <div className="h-24 w-24 rounded-full border-2 border-dashed border-[#c9a24c] bg-white flex items-center justify-center text-slate-400 overflow-hidden relative group shrink-0 shadow-md">
                     {caretakerProfilePhoto ? (
                       <img src={caretakerProfilePhoto} alt="Profile preview" className="h-full w-full object-cover animate-in fade-in duration-300" />
                     ) : (
                       <User className="h-10 w-10 text-slate-300" />
                     )}
+                    {isUpdatingPhoto && (
+                      <div className="absolute inset-0 bg-slate-900/60 flex items-center justify-center text-white">
+                        <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-2 text-center sm:text-left flex-1">
-                    <span className="block text-xs font-bold text-[#1e2a5a] uppercase tracking-wider">Profile Picture</span>
-                    <p className="text-[11px] text-slate-400">Upload a professional face photo for patient trust and security.</p>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleCaretakerFileChange(e, setCaretakerProfilePhoto)}
-                      className="text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#1e2a5a]/5 file:text-[#1e2a5a] hover:file:bg-[#1e2a5a]/10 cursor-pointer transition-colors"
-                    />
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                      <span className="block text-xs font-bold text-[#1e2a5a] uppercase tracking-wider">Profile &amp; Official ID Card Photo</span>
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded bg-[#c9a24c]/20 text-[#091438] border border-[#c9a24c]/30">ID Card Badge</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500">Upload a formal portrait. Any change updates your official staff badge immediately.</p>
+                    
+                    {photoUpdateMessage && (
+                      <div className={`text-xs font-bold py-1 px-3 rounded-lg flex items-center gap-1.5 w-max ${photoUpdateMessage.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'}`}>
+                        {photoUpdateMessage.type === 'success' ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />}
+                        <span>{photoUpdateMessage.text}</span>
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 pt-1">
+                      <label className="text-xs font-bold text-[#091438] bg-white hover:bg-slate-50 px-4 py-2 rounded-xl cursor-pointer border border-slate-300 shadow-xs transition-all inline-flex items-center gap-1.5 hover:border-[#c9a24c]">
+                        <Camera className="w-3.5 h-3.5 text-gold" />
+                        <span>{isUpdatingPhoto ? "Saving Photo..." : "Change ID Photo"}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          disabled={isUpdatingPhoto}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                const b64 = reader.result as string;
+                                setCaretakerProfilePhoto(b64);
+                                handleUpdatePhotoOnly(b64);
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveCaregiverTab("idcard")}
+                        className="text-xs font-bold text-[#091438] bg-[#c9a24c]/15 hover:bg-[#c9a24c]/25 border border-[#c9a24c]/40 px-3.5 py-2 rounded-xl transition-all inline-flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <CreditCard className="w-3.5 h-3.5 text-[#091438]" />
+                        <span>View ID Card Badge →</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -3330,6 +3424,361 @@ function CustomerDashboard() {
                 </div>
 
               </form>
+            </div>
+          )}
+
+          {/* OFFICIAL ID CARD BADGE TAB */}
+          {activeCaregiverTab === "idcard" && (
+            <div className="space-y-8 text-left animate-in fade-in duration-300">
+              {/* Top Banner Card */}
+              <div className="bg-gradient-to-r from-[#091438] via-[#10235b] to-[#091438] p-6 sm:p-8 rounded-3xl border border-[#c9a24c]/40 shadow-xl text-white relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-80 h-80 bg-[#c9a24c]/10 rounded-full blur-3xl pointer-events-none" />
+                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md bg-[#c9a24c] text-[#091438] font-mono shadow-xs">
+                        {caretaker?.staffCategory || (caretaker?.isMtp ? "MTP" : "STAFF")} OFFICIAL BADGE
+                      </span>
+                      <span className="text-xs font-mono font-bold text-slate-300 bg-white/10 px-2.5 py-1 rounded-md border border-white/10">
+                        ID: {caretaker?.employeeId || "PENDING ISSUANCE"}
+                      </span>
+                      <span className="text-[11px] font-bold text-emerald-300 bg-emerald-500/20 px-2.5 py-1 rounded-md border border-emerald-500/30 flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        CR80 Standard Verified
+                      </span>
+                    </div>
+                    <h2 className="text-2xl sm:text-3xl font-extrabold text-white font-display">
+                      Amma Seva Staff Identification Card
+                    </h2>
+                    <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
+                      Official credentials authorized for homecare shifts, hospital escort duties, and patient care visits across Hyderabad &amp; Telangana.
+                    </p>
+                  </div>
+
+                  {/* Quick Action Buttons */}
+                  <div className="flex flex-wrap items-center gap-3 shrink-0">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await downloadIdCardImage({
+                            employeeId: caretaker?.employeeId,
+                            name: caretaker?.name || caretakerName,
+                            designation: caretaker?.designation || (caretaker?.isMtp ? "Medical Transport Partner & Escort" : caretaker?.specialty),
+                            profilePhoto: caretaker?.profilePhoto || caretakerProfilePhoto
+                          });
+                        } catch (err) {
+                          console.error("Failed to download ID card image:", err);
+                          alert("Failed to download ID Card. Please try again.");
+                        }
+                      }}
+                      className="px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/30 border border-emerald-400/30 transition-all cursor-pointer hover:scale-102"
+                      title="Download 682x1024 high resolution PNG image"
+                    >
+                      <Download className="w-4 h-4 text-emerald-100" />
+                      <span>Download ID Card (PNG)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => window.print()}
+                      className="px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center gap-2 border border-white/20 transition-all cursor-pointer"
+                    >
+                      <Printer className="w-4 h-4 text-[#c9a24c]" />
+                      <span>Print Card</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {photoUpdateMessage && (
+                <div className={`p-4 rounded-2xl text-xs font-bold flex items-center gap-2 animate-in fade-in duration-200 ${
+                  photoUpdateMessage.type === "success" 
+                    ? "bg-emerald-50 border border-emerald-300 text-emerald-900" 
+                    : "bg-rose-50 border border-rose-300 text-rose-900"
+                }`}>
+                  {photoUpdateMessage.type === "success" ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <AlertTriangle className="w-4 h-4 text-rose-600" />}
+                  <span>{photoUpdateMessage.text}</span>
+                </div>
+              )}
+
+              {/* Main ID Card Display Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                {/* Left / Center Column: Exact Template Card View */}
+                <div className="lg:col-span-6 flex flex-col items-center">
+                  <div className="bg-slate-50/80 p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-inner flex flex-col items-center w-full">
+                    {/* The Printable ID Card (Exact Template Artwork Matching User Design) */}
+                    <div
+                      id="printable-id-card"
+                      className="relative rounded-3xl overflow-hidden shadow-2xl bg-white select-none border border-slate-300/80 shrink-0"
+                      style={{
+                        width: "340px",
+                        height: "510.6px",
+                        aspectRatio: "682 / 1024"
+                      }}
+                    >
+                      {/* Blank Template Artwork */}
+                      <img
+                        src="/assets/id-card-template.png"
+                        alt="Amma Seva ID Card Template"
+                        className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                      />
+
+                      {/* Staff Photo Box */}
+                      <div
+                        className="absolute overflow-hidden flex items-center justify-center bg-slate-100 rounded-xl"
+                        style={{
+                          top: "28.3%",
+                          left: "29.7%",
+                          width: "40.6%",
+                          height: "29.8%",
+                          border: "2px solid #d4af37",
+                          boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
+                        }}
+                      >
+                        {caretaker?.profilePhoto || caretakerProfilePhoto ? (
+                          <img
+                            src={caretaker?.profilePhoto || caretakerProfilePhoto}
+                            alt={caretaker?.name || caretakerName}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex flex-col items-center justify-center text-slate-400">
+                            <User className="w-12 h-12 text-slate-300 mb-1" />
+                            <span className="text-[9px] font-bold tracking-widest text-slate-400 uppercase">PHOTO HERE</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Employee ID text */}
+                      <div
+                        className="absolute flex items-center"
+                        style={{
+                          top: "62.2%",
+                          left: "45.5%",
+                          width: "44%",
+                          height: "3.5%"
+                        }}
+                      >
+                        <span className="text-[12px] sm:text-[13px] font-black text-[#091438] tracking-wider truncate font-mono">
+                          {caretaker?.employeeId || "PENDING"}
+                        </span>
+                      </div>
+
+                      {/* Name text */}
+                      <div
+                        className="absolute flex items-center"
+                        style={{
+                          top: "69.2%",
+                          left: "45.5%",
+                          width: "44%",
+                          height: "3.5%"
+                        }}
+                      >
+                        <span className="text-[12px] sm:text-[13px] font-black text-[#091438] tracking-wide truncate">
+                          {caretaker?.name || caretakerName}
+                        </span>
+                      </div>
+
+                      {/* Designation text */}
+                      <div
+                        className="absolute flex items-center"
+                        style={{
+                          top: "76.2%",
+                          left: "45.5%",
+                          width: "44%",
+                          height: "3.8%"
+                        }}
+                      >
+                        <span className="text-[10px] sm:text-[11px] font-extrabold text-[#091438] leading-tight line-clamp-2">
+                          {caretaker?.designation || (caretaker?.isMtp ? "Medical Transport Partner & Escort" : (caretaker?.specialty || "Amma Seva Staff"))}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Card Undertext */}
+                    <div className="mt-4 text-center max-w-xs space-y-1">
+                      <span className="text-[11px] font-bold text-slate-600 flex items-center justify-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        CR80 Standard PVC Biometric Badge
+                      </span>
+                      <p className="text-[10px] text-slate-400">
+                        Exact 54mm × 85.6mm proportion. Carry during every homecare duty.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column: Actions, Photo Change & Staff Credentials */}
+                <div className="lg:col-span-6 space-y-6">
+                  {/* Photo Update Card */}
+                  <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div className="flex items-center gap-2">
+                        <Camera className="w-4 h-4 text-[#c9a24c]" />
+                        <h3 className="font-extrabold text-sm text-[#091438]">Update ID Card Photo</h3>
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Instant Sync</span>
+                    </div>
+
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Upload a formal, high-resolution portrait photograph. Changing your photo updates your official ID badge and database record immediately.
+                    </p>
+
+                    <div className="flex flex-col sm:flex-row items-center gap-4 pt-2">
+                      <div className="h-20 w-20 rounded-2xl border-2 border-dashed border-[#c9a24c] bg-amber-50/30 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
+                        {caretaker?.profilePhoto || caretakerProfilePhoto ? (
+                          <img
+                            src={caretaker?.profilePhoto || caretakerProfilePhoto}
+                            alt="Preview"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <User className="w-8 h-8 text-slate-300" />
+                        )}
+                      </div>
+
+                      <div className="space-y-2 flex-1 text-center sm:text-left">
+                        <label className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#091438] to-[#1e2a5a] hover:from-[#172147] hover:to-[#26356b] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-[#091438]/20 border border-[#c9a24c]/40 cursor-pointer transition-all w-full sm:w-max">
+                          <Camera className="w-3.5 h-3.5 text-[#c9a24c]" />
+                          <span>{isUpdatingPhoto ? "Saving & Syncing Photo..." : "Choose New Photo"}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            disabled={isUpdatingPhoto}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                  const b64 = reader.result as string;
+                                  setCaretakerProfilePhoto(b64);
+                                  handleUpdatePhotoOnly(b64);
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                            className="hidden"
+                          />
+                        </label>
+                        <p className="text-[10px] text-slate-400">Accepted: JPG, PNG, WEBP (Max 10MB)</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ID Card Specifications & Staff Details */}
+                  <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-4">
+                    <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                      <CreditCard className="w-4 h-4 text-[#c9a24c]" />
+                      <h3 className="font-extrabold text-sm text-[#091438]">Staff Credential Details</h3>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                        <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Employee ID</span>
+                        <span className="font-mono font-black text-sm text-[#091438] mt-0.5 block truncate">
+                          {caretaker?.employeeId || "PENDING"}
+                        </span>
+                      </div>
+
+                      <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                        <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Staff Category</span>
+                        <span className="font-extrabold text-xs text-amber-900 mt-0.5 block truncate">
+                          {caretaker?.staffCategory || (caretaker?.isMtp ? "MTP Companion" : "Caregiver / Nurse")}
+                        </span>
+                      </div>
+
+                      <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                        <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Official Name</span>
+                        <span className="font-extrabold text-xs text-[#091438] mt-0.5 block truncate">
+                          {caretaker?.name || caretakerName}
+                        </span>
+                      </div>
+
+                      <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                        <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Designation</span>
+                        <span className="font-bold text-xs text-[#091438] mt-0.5 block truncate">
+                          {caretaker?.designation || (caretaker?.isMtp ? "Medical Transport Partner & Escort" : caretaker?.specialty)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Operational Protocols */}
+                    <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/60 space-y-1.5 text-xs text-amber-950">
+                      <span className="font-bold flex items-center gap-1.5 text-amber-900">
+                        <ShieldAlert className="w-3.5 h-3.5 text-amber-700" />
+                        Official ID Card Duty Protocols
+                      </span>
+                      <ul className="list-disc list-inside space-y-1 text-[11px] text-amber-900/80">
+                        <li>Always wear your Amma Seva badge with a lanyard during on-duty patient shifts.</li>
+                        <li>Show this digital or printed card to client families upon doorstep arrival.</li>
+                        <li>For card replacement or designation updates, contact the operations desk.</li>
+                      </ul>
+                    </div>
+
+                    {/* Download & Print Bar */}
+                    <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await downloadIdCardImage({
+                              employeeId: caretaker?.employeeId,
+                              name: caretaker?.name || caretakerName,
+                              designation: caretaker?.designation || (caretaker?.isMtp ? "Medical Transport Partner & Escort" : caretaker?.specialty),
+                              profilePhoto: caretaker?.profilePhoto || caretakerProfilePhoto
+                            });
+                          } catch (err) {
+                            console.error("Failed to download ID card image:", err);
+                            alert("Failed to download ID Card. Please try again.");
+                          }
+                        }}
+                        className="w-full sm:flex-1 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+                      >
+                        <Download className="w-4 h-4" />
+                        <span>Download PNG Card (682x1024)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => window.print()}
+                        className="w-full sm:w-auto py-3 px-5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+                      >
+                        <Printer className="w-4 h-4 text-slate-500" />
+                        <span>Print CR80 Badge</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* CR80 BIOMETRIC ID BADGE PRINTING STYLESHEET */}
+              <style>{`
+                @media print {
+                  @page {
+                    size: 54mm 85.6mm;
+                    margin: 0;
+                  }
+                  body * {
+                    visibility: hidden !important;
+                  }
+                  #printable-id-card, #printable-id-card * {
+                    visibility: visible !important;
+                  }
+                  #printable-id-card {
+                    position: fixed !important;
+                    left: 0 !important;
+                    top: 0 !important;
+                    width: 100vw !important;
+                    height: 100vh !important;
+                    margin: 0 !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                    border-radius: 0 !important;
+                    z-index: 999999 !important;
+                  }
+                }
+              `}</style>
             </div>
           )}
 
