@@ -582,23 +582,29 @@ html.js-scroll-anim .dark-luxury-card.scroll-in-view:hover {
     overflow: visible !important;
   }
 
-  /* Hide everything on page during invoice printing except the invoice modal root or admin invoice root */
-  body > *:not(#invoice-modal-root):not(#admin-invoice-print-root) {
+  /* Hide interactive UI during print */
+  .no-print,
+  .no-print *,
+  header,
+  nav,
+  aside {
     display: none !important;
   }
 
   #invoice-modal-root,
   #admin-invoice-print-root {
     display: block !important;
-    position: static !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
-    padding: 0 !important;
+    padding: 4mm 6mm !important;
     background: #ffffff !important;
     box-shadow: none !important;
     border: none !important;
-    z-index: 999999 !important;
+    z-index: 9999999 !important;
     overflow: visible !important;
   }
 

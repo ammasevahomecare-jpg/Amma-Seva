@@ -4,6 +4,7 @@ import { SiteLayout } from "@/components/SiteLayout";
 import { DocumentViewerModal } from "@/components/DocumentViewerModal";
 import { validateName, validatePhone, validateEmail, validateAddress, validateAadhaar, validatePAN, sanitizeIndianPhone, sanitizeName } from "@/lib/validation";
 import { downloadIdCardImage } from "@/lib/idCardDownload";
+import logoAsset from "@/assets/amma-seva-logo.png";
 import { 
   Trash2, RefreshCw, Mail, Phone, MapPin, ClipboardList, 
   Users, Calendar, DollarSign, ShieldAlert, LogOut, CheckCircle2, 
@@ -466,16 +467,79 @@ function AdminPage() {
   const [invoiceTime, setInvoiceTime] = useState<string>("08:00 AM");
   const [invoiceDuration, setInvoiceDuration] = useState<string>("24 Hours Shift");
   const [invoiceAddress, setInvoiceAddress] = useState<string>("Hyderabad, Telangana");
-  const [invoiceTotalAmount, setInvoiceTotalAmount] = useState<number | string>(2500);
-  const [invoiceAdvancePaid, setInvoiceAdvancePaid] = useState<number | string>(2500);
-  const [invoiceBalanceAmount, setInvoiceBalanceAmount] = useState<number | string>(0);
+  const [invoiceTotalAmount, setInvoiceTotalAmount] = useState<number | string>(600);
+  const [invoiceAdvancePaid, setInvoiceAdvancePaid] = useState<number | string>(100);
+  const [invoiceBalanceAmount, setInvoiceBalanceAmount] = useState<number | string>(608);
+  // GST Tax Mode: "exclusive" (Base + 18% GST Extra - Amma Seva standard) | "inclusive" (18% included) | "exempt" (0% GST)
+  const [invoiceTaxMode, setInvoiceTaxMode] = useState<"inclusive" | "exclusive" | "exempt">("exclusive");
   const [invoicePaymentMethod, setInvoicePaymentMethod] = useState<"cash" | "bank_account" | "upi" | "razorpay" | "pay_on_service">("cash");
-  const [invoicePaymentStatus, setInvoicePaymentStatus] = useState<"Paid" | "Advance Paid" | "Unpaid">("Paid");
+  const [invoicePaymentStatus, setInvoicePaymentStatus] = useState<"Paid" | "Advance Paid" | "Unpaid">("Advance Paid");
   const [invoiceTransactionId, setInvoiceTransactionId] = useState<string>(() => `CASH-REC-${Date.now().toString().slice(-4)}`);
   const [invoiceNotes, setInvoiceNotes] = useState<string>("Healthcare shift service executed and payment received.");
   const [isSavingInvoice, setIsSavingInvoice] = useState<boolean>(false);
   const [invoiceStatusMsg, setInvoiceStatusMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [invoiceSearchQuery, setInvoiceSearchQuery] = useState<string>("");
+
+  // Helper to compute tax and totals based on selected mode
+  const getInvoiceTaxDetails = (amountVal: number | string, taxMode: "inclusive" | "exclusive" | "exempt") => {
+    const num = Math.max(0, Number(amountVal) || 0);
+    if (taxMode === "exempt") {
+      return {
+        baseAmount: num,
+        cgstAmount: 0,
+        sgstAmount: 0,
+        gstAmount: 0,
+        totalAmount: num,
+        rateLabel: "0% GST Exempt (పన్ను రహిత)",
+        cgstRateText: "0%",
+        sgstRateText: "0%",
+        isExempt: true,
+        isInclusive: false,
+        isExclusive: false
+      };
+    }
+    if (taxMode === "inclusive") {
+      // Amount entered is gross total with 18% GST included inside it
+      const baseAmount = Math.round(num / 1.18);
+      const gstAmount = Math.max(0, num - baseAmount);
+      const cgstAmount = Math.round(gstAmount / 2);
+      const sgstAmount = gstAmount - cgstAmount;
+      return {
+        baseAmount,
+        cgstAmount,
+        sgstAmount,
+        gstAmount,
+        totalAmount: num,
+        rateLabel: "18% GST Included (మొత్తంలో పన్ను ఉంది)",
+        cgstRateText: "9.0%",
+        sgstRateText: "9.0%",
+        isExempt: false,
+        isInclusive: true,
+        isExclusive: false
+      };
+    }
+    // DEFAULT (taxMode === "exclusive"):
+    // In Amma Seva, user pays: Base Service Rate + 18% GST!
+    // Total payable by user = Base + 18% GST
+    const baseAmount = num;
+    const cgstAmount = Math.round(baseAmount * 0.09);
+    const sgstAmount = Math.round(baseAmount * 0.09);
+    const gstAmount = cgstAmount + sgstAmount;
+    const totalAmount = baseAmount + gstAmount;
+    return {
+      baseAmount,
+      cgstAmount,
+      sgstAmount,
+      gstAmount,
+      totalAmount,
+      rateLabel: "Base + 18% GST (బేస్ రేట్ + 18% పన్ను)",
+      cgstRateText: "9.0%",
+      sgstRateText: "9.0%",
+      isExempt: false,
+      isInclusive: false,
+      isExclusive: true
+    };
+  };
 
   const handleSelectBookingForInvoice = (bookingIdStr: string) => {
     setSelectedInvoiceBookingId(bookingIdStr);
@@ -491,11 +555,12 @@ function AdminPage() {
       setInvoiceTime("08:00 AM");
       setInvoiceDuration("1 Shift");
       setInvoiceAddress("");
-      setInvoiceTotalAmount(1500);
-      setInvoiceAdvancePaid(1500);
-      setInvoiceBalanceAmount(0);
+      setInvoiceTaxMode("exclusive");
+      setInvoiceTotalAmount(600);
+      setInvoiceAdvancePaid(100);
+      setInvoiceBalanceAmount(608); // 600 + 108 - 100 = 608
       setInvoicePaymentMethod("cash");
-      setInvoicePaymentStatus("Paid");
+      setInvoicePaymentStatus("Advance Paid");
       setInvoiceTransactionId(`CASH-REC-${Date.now().toString().slice(-4)}`);
       return;
     }
@@ -513,11 +578,30 @@ function AdminPage() {
     setInvoiceDuration(b.duration || "1 Shift");
     setInvoiceAddress(b.address || "");
     
-    const tot = Number(b.amount) || 0;
-    const adv = Number(b.advancePaid) || (b.paymentStatus === "Paid" ? tot : 0);
-    const bal = b.balanceAmount !== undefined && b.balanceAmount !== null ? Number(b.balanceAmount) : Math.max(0, tot - adv);
+    const rawAmt = Number(b.amount) || 0;
+    const rawBase = b.baseAmount !== undefined && b.baseAmount !== null ? Number(b.baseAmount) : 0;
+    const rawGst = b.gstAmount !== undefined && b.gstAmount !== null ? Number(b.gstAmount) : 0;
     
-    setInvoiceTotalAmount(tot);
+    // In Amma Seva: User pays Base + 18% GST
+    let base = 0;
+    if (rawBase > 0) {
+      base = rawBase;
+    } else if (rawGst > 0 && rawAmt > rawGst) {
+      base = rawAmt - rawGst;
+    } else {
+      // The booking amount in Amma Seva represents the Base Service Rate (e.g. ₹600)
+      base = rawAmt;
+    }
+
+    const gst = Math.round(base * 0.18);
+    const tot = base + gst;
+    
+    const isPaid = b.paymentStatus === "Paid" || (b.advancePaid !== undefined && Number(b.advancePaid) >= tot && tot > 0);
+    const adv = isPaid ? tot : (Number(b.advancePaid) || 0);
+    const bal = isPaid ? 0 : Math.max(0, tot - adv);
+
+    setInvoiceTaxMode("exclusive");
+    setInvoiceTotalAmount(base);
     setInvoiceAdvancePaid(adv);
     setInvoiceBalanceAmount(bal);
     
@@ -534,22 +618,46 @@ function AdminPage() {
       setInvoicePaymentMethod(bal === 0 ? "cash" : "pay_on_service");
     }
     
-    setInvoicePaymentStatus(b.paymentStatus === "Paid" ? "Paid" : b.paymentStatus === "Advance Paid" ? "Advance Paid" : "Unpaid");
+    setInvoicePaymentStatus(isPaid ? "Paid" : adv > 0 ? "Advance Paid" : "Unpaid");
     setInvoiceTransactionId(b.transactionId || (b.paymentMethod === "cash" ? `CASH-REC-${b.id}` : `TXN-${b.id}`));
   };
 
-  const handleUpdateInvoiceAmounts = (newTotal: number | string, newAdv: number | string, newStatus?: "Paid" | "Advance Paid" | "Unpaid") => {
-    const totNum = Math.max(0, Number(newTotal) || 0);
+  const handleTaxModeChange = (newMode: "inclusive" | "exclusive" | "exempt") => {
+    setInvoiceTaxMode(newMode);
+    const taxDetails = getInvoiceTaxDetails(invoiceTotalAmount, newMode);
+    const effectiveTotal = taxDetails.totalAmount;
+    const adv = Number(invoiceAdvancePaid) || 0;
+    const bal = Math.max(0, effectiveTotal - adv);
+    setInvoiceBalanceAmount(bal);
+    if (adv >= effectiveTotal && effectiveTotal > 0) {
+      setInvoicePaymentStatus("Paid");
+    } else if (adv > 0) {
+      setInvoicePaymentStatus("Advance Paid");
+    } else {
+      setInvoicePaymentStatus("Unpaid");
+    }
+  };
+
+  const handleUpdateInvoiceAmounts = (
+    newTotal: number | string, 
+    newAdv: number | string, 
+    newStatus?: "Paid" | "Advance Paid" | "Unpaid",
+    forcedTaxMode?: "inclusive" | "exclusive" | "exempt"
+  ) => {
+    const rawNum = Math.max(0, Number(newTotal) || 0);
+    const mode = forcedTaxMode || invoiceTaxMode;
+    const taxDetails = getInvoiceTaxDetails(rawNum, mode);
+    const effectiveTotal = taxDetails.totalAmount;
     const advNum = Math.max(0, Number(newAdv) || 0);
-    const balNum = Math.max(0, totNum - advNum);
+    const balNum = Math.max(0, effectiveTotal - advNum);
     
-    setInvoiceTotalAmount(totNum);
+    setInvoiceTotalAmount(rawNum);
     setInvoiceAdvancePaid(advNum);
     setInvoiceBalanceAmount(balNum);
     
     if (newStatus) {
       setInvoicePaymentStatus(newStatus);
-    } else if (advNum >= totNum && totNum > 0) {
+    } else if (advNum >= effectiveTotal && effectiveTotal > 0) {
       setInvoicePaymentStatus("Paid");
     } else if (advNum > 0) {
       setInvoicePaymentStatus("Advance Paid");
@@ -577,6 +685,7 @@ function AdminPage() {
         invoicePaymentMethod === "upi" ? "UPI (PhonePe/GPay)" :
         invoicePaymentMethod === "razorpay" ? "Razorpay Online" : "Pay on Service";
 
+      const taxDetails = getInvoiceTaxDetails(invoiceTotalAmount, invoiceTaxMode);
       const payload = {
         name: invoiceCustomerName.trim(),
         phone: invoiceCustomerPhone.replace(/\D/g, ""),
@@ -585,7 +694,9 @@ function AdminPage() {
         time: invoiceTime,
         duration: invoiceDuration,
         address: invoiceAddress.trim(),
-        amount: Number(invoiceTotalAmount) || 0,
+        amount: taxDetails.totalAmount,
+        baseAmount: taxDetails.baseAmount,
+        gstAmount: taxDetails.gstAmount,
         advancePaid: Number(invoiceAdvancePaid) || 0,
         balanceAmount: Number(invoiceBalanceAmount) || 0,
         paymentStatus: invoicePaymentStatus,
@@ -622,7 +733,7 @@ function AdminPage() {
 
       setInvoiceStatusMsg({
         type: "success",
-        text: `✓ Booking #${selectedInvoiceBookingId} invoice & payment record (${methodLabel} - ₹${Number(invoiceTotalAmount).toLocaleString()}) updated and verified everywhere!`
+        text: `✓ Booking #${selectedInvoiceBookingId} invoice & payment record (${methodLabel} - ₹${Number(taxDetails.totalAmount).toLocaleString()}) updated and verified everywhere!`
       });
     } catch (err: any) {
       setInvoiceStatusMsg({
@@ -648,6 +759,8 @@ function AdminPage() {
       ? `${origin}/pay-balance?id=${selectedInvoiceBookingId}` 
       : `${origin}/dashboard`;
     
+    const taxDetails = getInvoiceTaxDetails(invoiceTotalAmount, invoiceTaxMode);
+    
     const msg = `🙏 *AMMA SEVA HOME HEALTHCARE SERVICES*\n📄 *OFFICIAL GST TAX INVOICE & RECEIPT*\n\n` +
       `📋 *INVOICE DETAILS:*\n` +
       `• *Invoice No:* #INV-2026-${selectedInvoiceBookingId === "custom" ? "CUST" : selectedInvoiceBookingId}\n` +
@@ -659,7 +772,12 @@ function AdminPage() {
       `• *Schedule:* ${invoiceDate} at ${invoiceTime} (${invoiceDuration})\n` +
       `• *Location:* ${invoiceAddress || "Hyderabad / Vijayawada"}\n\n` +
       `━━━━━━━━━━━━━━━━━━━━\n` +
-      `💰 *Total Shift Value:* ₹${Number(invoiceTotalAmount).toLocaleString("en-IN")}\n` +
+      `🧾 *TAX BREAKDOWN (${taxDetails.rateLabel}):*\n` +
+      `• *Taxable Base:* ₹${taxDetails.baseAmount.toLocaleString("en-IN")}\n` +
+      `• *CGST (Central Tax 9%):* ₹${taxDetails.cgstAmount.toLocaleString("en-IN")}\n` +
+      `• *SGST (State Tax 9%):* ₹${taxDetails.sgstAmount.toLocaleString("en-IN")}\n` +
+      `• *Total GST Tax:* ₹${taxDetails.gstAmount.toLocaleString("en-IN")}\n` +
+      `💰 *Total Shift Value (Gross):* ₹${taxDetails.totalAmount.toLocaleString("en-IN")}\n` +
       `✅ *Paid / Advance:* ₹${Number(invoiceAdvancePaid).toLocaleString("en-IN")}\n` +
       `⏳ *Balance Due:* ₹${Number(invoiceBalanceAmount).toLocaleString("en-IN")}\n` +
       `💳 *Payment Mode:* *${paymentModeLabel}*\n` +
@@ -3360,10 +3478,11 @@ function AdminPage() {
                           key={status}
                           type="button"
                           onClick={() => {
+                            const details = getInvoiceTaxDetails(invoiceTotalAmount, invoiceTaxMode);
                             if (status === "Paid") {
-                              handleUpdateInvoiceAmounts(invoiceTotalAmount, invoiceTotalAmount, "Paid");
+                              handleUpdateInvoiceAmounts(invoiceTotalAmount, details.totalAmount, "Paid");
                             } else if (status === "Advance Paid") {
-                              const adv = Math.round(Number(invoiceTotalAmount) * 0.2);
+                              const adv = Math.round(Number(details.totalAmount) * 0.2);
                               handleUpdateInvoiceAmounts(invoiceTotalAmount, adv, "Advance Paid");
                             } else {
                               handleUpdateInvoiceAmounts(invoiceTotalAmount, 0, "Unpaid");
@@ -3385,41 +3504,146 @@ function AdminPage() {
                     </div>
                   </div>
 
+                  {/* GST Tax Calculation Mode (Include vs Exclude vs Exempt) */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-700">
+                        GST Calculation Mode (జీఎస్టీ పన్ను లెక్కింపు):
+                      </label>
+                      <span className="text-[10px] font-mono font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                        SAC 999312
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleTaxModeChange("exclusive")}
+                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                          invoiceTaxMode === "exclusive"
+                            ? "bg-blue-50 border-blue-500 ring-2 ring-blue-500/20 text-blue-950 font-bold shadow-xs"
+                            : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between text-xs font-black">
+                          <span>➕ Base + 18% GST</span>
+                          {invoiceTaxMode === "exclusive" && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                        </div>
+                        <div className="text-[9px] text-slate-500 font-normal mt-0.5 leading-tight">
+                          బేస్ రేట్ + 18% GST (డిఫాల్ట్)
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleTaxModeChange("inclusive")}
+                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                          invoiceTaxMode === "inclusive"
+                            ? "bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/20 text-emerald-950 font-bold shadow-xs"
+                            : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between text-xs font-black">
+                          <span>🏷️ 18% Included</span>
+                          {invoiceTaxMode === "inclusive" && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                        </div>
+                        <div className="text-[9px] text-slate-500 font-normal mt-0.5 leading-tight">
+                          మొత్తంలో పన్ను ఉంది (Inclusive)
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleTaxModeChange("exempt")}
+                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                          invoiceTaxMode === "exempt"
+                            ? "bg-purple-50 border-purple-500 ring-2 ring-purple-500/20 text-purple-950 font-bold shadow-xs"
+                            : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between text-xs font-black">
+                          <span>⚪ 0% Exempt</span>
+                          {invoiceTaxMode === "exempt" && <Check className="w-3.5 h-3.5 text-purple-600" />}
+                        </div>
+                        <div className="text-[9px] text-slate-500 font-normal mt-0.5 leading-tight">
+                          పన్ను మినహాయింపు (Zero GST)
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Amount Breakdown Inputs */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 bg-slate-50/90 p-3.5 rounded-xl border border-slate-200">
-                    <div>
-                      <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-slate-700 mb-1">
-                        Total Amount (₹)
-                      </label>
-                      <input
-                        type="number"
-                        value={invoiceTotalAmount}
-                        onChange={(e) => handleUpdateInvoiceAmounts(e.target.value, invoiceAdvancePaid)}
-                        className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-black text-slate-900 outline-none focus:ring-1 focus:ring-[#c9a24c]"
-                      />
+                  <div className="space-y-2.5 bg-slate-50/90 p-3.5 rounded-xl border border-slate-200">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      <div>
+                        <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-slate-700 mb-1">
+                          {invoiceTaxMode === "exclusive" ? "Base Service Fee (బేస్ రేట్ ₹)" : "Total Amount (మొత్తం ₹)"}
+                        </label>
+                        <input
+                          type="number"
+                          value={invoiceTotalAmount}
+                          onChange={(e) => handleUpdateInvoiceAmounts(e.target.value, invoiceAdvancePaid)}
+                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-black text-slate-900 outline-none focus:ring-1 focus:ring-[#c9a24c]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-emerald-800 mb-1">
+                          Advance Paid (అడ్వాన్స్ ₹)
+                        </label>
+                        <input
+                          type="number"
+                          value={invoiceAdvancePaid}
+                          onChange={(e) => handleUpdateInvoiceAmounts(invoiceTotalAmount, e.target.value)}
+                          className="w-full px-2.5 py-1.5 bg-white border border-emerald-300 rounded-lg text-xs font-black text-emerald-900 outline-none focus:ring-1 focus:ring-emerald-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-amber-800 mb-1">
+                          Balance Due (మిగిలిన బ్యాలెన్స్ ₹)
+                        </label>
+                        <input
+                          type="number"
+                          readOnly
+                          value={invoiceBalanceAmount}
+                          className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-black outline-none select-all border ${
+                            Number(invoiceBalanceAmount) > 0 
+                              ? "bg-amber-50 border-amber-300 text-amber-950 font-black" 
+                              : "bg-slate-100 border-slate-300 text-slate-700"
+                          }`}
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-emerald-800 mb-1">
-                        Paid / Advance (₹)
-                      </label>
-                      <input
-                        type="number"
-                        value={invoiceAdvancePaid}
-                        onChange={(e) => handleUpdateInvoiceAmounts(invoiceTotalAmount, e.target.value)}
-                        className="w-full px-2.5 py-1.5 bg-white border border-emerald-300 rounded-lg text-xs font-black text-emerald-900 outline-none focus:ring-1 focus:ring-emerald-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-amber-800 mb-1">
-                        Balance Due (₹)
-                      </label>
-                      <input
-                        type="number"
-                        readOnly
-                        value={invoiceBalanceAmount}
-                        className="w-full px-2.5 py-1.5 bg-slate-100 border border-amber-300 rounded-lg text-xs font-black text-amber-950 outline-none select-all"
-                      />
-                    </div>
+
+                    {/* Dynamic Real-Time Math Strip */}
+                    {(() => {
+                      const curTax = getInvoiceTaxDetails(invoiceTotalAmount, invoiceTaxMode);
+                      return (
+                        <div className="pt-2 border-t border-slate-200 space-y-1.5 text-[10px]">
+                          <div className="flex flex-wrap items-center justify-between gap-1 text-slate-600">
+                            <div>
+                              Base: <strong className="text-slate-900 font-mono">₹{curTax.baseAmount.toLocaleString("en-IN")}</strong>
+                            </div>
+                            <div>
+                              CGST (9%): <strong className="text-slate-900 font-mono">₹{curTax.cgstAmount.toLocaleString("en-IN")}</strong>
+                            </div>
+                            <div>
+                              SGST (9%): <strong className="text-slate-900 font-mono">₹{curTax.sgstAmount.toLocaleString("en-IN")}</strong>
+                            </div>
+                            <div>
+                              Total GST (18%): <strong className="text-amber-800 font-mono font-bold">+₹{curTax.gstAmount.toLocaleString("en-IN")}</strong>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-center justify-between gap-1 bg-blue-50/90 px-2.5 py-1.5 rounded-lg border border-blue-200">
+                            <span className="font-extrabold text-[#1e2a5a]">
+                              Gross Payable Value (వినియోగదారు చెల్లించాల్సిన మొత్తం):
+                            </span>
+                            <span className="font-mono font-black text-xs text-[#1e2a5a]">
+                              ₹{curTax.totalAmount.toLocaleString("en-IN")}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Transaction Ref Input */}
@@ -3591,200 +3815,232 @@ function AdminPage() {
 
                 {/* RIGHT COLUMN: Official Real-Time Live Tax Invoice Preview (7 cols on lg) */}
                 <div className="lg:col-span-7 space-y-3">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-500 px-1">
-                    <span className="flex items-center gap-1 text-[#1e2a5a] font-extrabold">
-                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                      Live Tax Invoice Preview (రియల్ టైమ్ ప్రివ్యూ)
-                    </span>
-                    <span className="text-[10px] bg-slate-200/80 text-slate-700 px-2 py-0.5 rounded font-mono">
-                      A4 Single Page Format
-                    </span>
-                  </div>
-
-                  {/* The Official Printable Invoice Document */}
-                  <div
-                    id="admin-invoice-print-root"
-                    className="bg-white rounded-2xl border border-slate-300 shadow-xl p-5 sm:p-7 space-y-4 text-slate-800"
-                  >
-                    {/* Header: Company & Invoice Info */}
-                    <div className="flex justify-between items-start gap-4 border-b-2 border-[#1e2a5a] pb-3.5">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl sm:text-2xl font-black font-display text-[#1e2a5a] tracking-tight">AMMA SEVA</span>
-                          <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-300">
-                            TAX INVOICE / RECEIPT
+                  {(() => {
+                    const currentTax = getInvoiceTaxDetails(invoiceTotalAmount, invoiceTaxMode);
+                    return (
+                      <>
+                        <div className="flex items-center justify-between text-xs font-bold text-slate-500 px-1">
+                          <span className="flex items-center gap-1 text-[#1e2a5a] font-extrabold">
+                            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                            Live Tax Invoice Preview (రియల్ టైమ్ ప్రివ్యూ)
+                          </span>
+                          <span className="text-[10px] bg-slate-200/80 text-slate-700 px-2 py-0.5 rounded font-mono font-bold">
+                            A4 Single Page Format
                           </span>
                         </div>
-                        <p className="text-[11px] font-extrabold text-slate-800">LUXDHANA GLOBAL PRIVATE LIMITED</p>
-                        <p className="text-[9.5px] text-slate-500 leading-tight">
-                          GSTIN: <strong className="font-mono text-slate-900">36AAACL8921M1ZT</strong> &nbsp;|&nbsp; State Code: <strong>36 (Telangana)</strong><br />
-                          8-2-630/B/B/1, Mount Banjara complex, Rd #12, Banjara Hills, Hyderabad - 500034<br />
-                          Branch: Door No. 40-1-140, MG Road, Vijayawada - 520010<br />
-                          24/7 Helpline: +91 94945 16543 &nbsp;|&nbsp; support@ammaseva.in &nbsp;|&nbsp; www.ammaseva.in
-                        </p>
-                      </div>
 
-                      <div className="text-right shrink-0">
-                        <div className="inline-block bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-300 mb-1.5">
-                          <span className="text-[8px] font-extrabold text-slate-500 uppercase tracking-widest block">Original for Recipient</span>
-                          <span className="text-base font-black text-[#1e2a5a] font-mono block">
-                            #INV-2026-{selectedInvoiceBookingId === "custom" ? "CUST" : selectedInvoiceBookingId}
-                          </span>
-                        </div>
-                        <div className="text-[10px] text-slate-600 font-medium">
-                          Date: <strong className="text-slate-900">{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</strong>
-                        </div>
-                        <div className="mt-1.5">
-                          <span className={`inline-block text-[9px] font-extrabold px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${
-                            invoicePaymentStatus === "Paid"
-                              ? "bg-emerald-50 text-emerald-800 border-emerald-300"
-                              : invoicePaymentStatus === "Advance Paid"
-                                ? "bg-blue-50 text-blue-800 border-blue-300"
-                                : "bg-amber-50 text-amber-800 border-amber-300"
-                          }`}>
-                            ● {invoicePaymentStatus}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                        {/* The Official Printable Invoice Document */}
+                        <div
+                          id="admin-invoice-print-root"
+                          className="bg-white rounded-2xl border border-slate-300 shadow-xl p-5 sm:p-7 space-y-4 text-slate-800"
+                        >
+                          {/* Header: Company & Invoice Info */}
+                          <div className="flex justify-between items-start gap-4 border-b-2 border-[#1e2a5a] pb-3.5">
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={logoAsset}
+                                alt="Amma Seva Healthcare Logo"
+                                className="h-12 sm:h-14 w-auto object-contain shrink-0"
+                              />
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xl sm:text-2xl font-black font-display text-[#1e2a5a] tracking-tight">AMMA SEVA</span>
+                                  <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-300">
+                                    TAX INVOICE / RECEIPT
+                                  </span>
+                                </div>
+                                <p className="text-[11px] font-extrabold text-slate-800">LUXDHANA GLOBAL PRIVATE LIMITED</p>
+                                <p className="text-[9.5px] text-slate-500 leading-tight">
+                                  GSTIN: <strong className="font-mono text-slate-900">36AAACL8921M1ZT</strong> &nbsp;|&nbsp; State Code: <strong>36 (Telangana)</strong><br />
+                                  8-2-630/B/B/1, Mount Banjara complex, Rd #12, Banjara Hills, Hyderabad - 500034<br />
+                                  Branch: Door No. 40-1-140, MG Road, Vijayawada - 520010<br />
+                                  24/7 Helpline: +91 94945 16543 &nbsp;|&nbsp; support@ammaseva.in &nbsp;|&nbsp; www.ammaseva.in
+                                </p>
+                              </div>
+                            </div>
 
-                    {/* Client & Service Delivery Details */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
-                      <div className="p-3 rounded-xl bg-slate-50/80 border border-slate-200 space-y-0.5">
-                        <span className="block text-slate-400 font-extrabold text-[8.5px] uppercase tracking-wider mb-1">Billed To (Client / Patient)</span>
-                        <span className="block font-black text-slate-900 text-xs sm:text-sm">{invoiceCustomerName || "Valued Client"}</span>
-                        <span className="block text-slate-600 font-mono text-xs">📞 {invoiceCustomerPhone || "—"}</span>
-                        {invoiceCustomerEmail && <span className="block text-slate-600 text-[10px]">✉️ {invoiceCustomerEmail}</span>}
-                        {invoicePatientName && (
-                          <div className="mt-1.5 pt-1.5 border-t border-slate-200 text-[10.5px] text-slate-700">
-                            Patient: <strong className="text-slate-900">{invoicePatientName}</strong> {invoicePatientAge ? `(${invoicePatientAge} yrs)` : ""}
+                            <div className="text-right shrink-0">
+                              <div className="inline-block bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-300 mb-1.5">
+                                <span className="text-[8px] font-extrabold text-slate-500 uppercase tracking-widest block">Original for Recipient</span>
+                                <span className="text-base font-black text-[#1e2a5a] font-mono block">
+                                  #INV-2026-{selectedInvoiceBookingId === "custom" ? "CUST" : selectedInvoiceBookingId}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-slate-600 font-medium">
+                                Date: <strong className="text-slate-900">{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</strong>
+                              </div>
+                              <div className="mt-1.5">
+                                <span className={`inline-block text-[9px] font-extrabold px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${
+                                  invoicePaymentStatus === "Paid"
+                                    ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                                    : invoicePaymentStatus === "Advance Paid"
+                                      ? "bg-blue-50 text-blue-800 border-blue-300"
+                                      : "bg-amber-50 text-amber-800 border-amber-300"
+                                }`}>
+                                  ● {invoicePaymentStatus}
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                        )}
-                      </div>
 
-                      <div className="p-3 rounded-xl bg-slate-50/80 border border-slate-200 space-y-0.5">
-                        <span className="block text-slate-400 font-extrabold text-[8.5px] uppercase tracking-wider mb-1">Service &amp; Delivery Details</span>
-                        <span className="block font-black text-[#1e2a5a] text-xs sm:text-sm">{invoiceService}</span>
-                        <span className="block text-slate-700 text-[10.5px]">
-                          Schedule: <strong className="text-slate-900">{invoiceDate}</strong> at <strong className="text-slate-900">{invoiceTime}</strong> ({invoiceDuration})
-                        </span>
-                        <span className="block text-slate-600 truncate text-[10px]" title={invoiceAddress}>
-                          Location: {invoiceAddress || "Customer Residence"}
-                        </span>
-                        <span className="block text-[9px] text-slate-500 pt-1">
-                          Place of Supply: <strong>Telangana (36) / Andhra Pradesh (37)</strong>
-                        </span>
-                      </div>
-                    </div>
+                          {/* Client & Service Delivery Details */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
+                            <div className="p-3 rounded-xl bg-slate-50/80 border border-slate-200 space-y-0.5">
+                              <span className="block text-slate-400 font-extrabold text-[8.5px] uppercase tracking-wider mb-1">Billed To (Client / Patient)</span>
+                              <span className="block font-black text-slate-900 text-xs sm:text-sm">{invoiceCustomerName || "Valued Client"}</span>
+                              <span className="block text-slate-600 font-mono text-xs">📞 {invoiceCustomerPhone || "—"}</span>
+                              {invoiceCustomerEmail && <span className="block text-slate-600 text-[10px]">✉️ {invoiceCustomerEmail}</span>}
+                              {invoicePatientName && (
+                                <div className="mt-1.5 pt-1.5 border-t border-slate-200 text-[10.5px] text-slate-700">
+                                  Patient: <strong className="text-slate-900">{invoicePatientName}</strong> {invoicePatientAge ? `(${invoicePatientAge} yrs)` : ""}
+                                </div>
+                              )}
+                            </div>
 
-                    {/* Itemized Table */}
-                    <div className="overflow-hidden rounded-xl border border-slate-300 text-[11px]">
-                      <table className="w-full text-left border-collapse">
-                        <thead>
-                          <tr className="bg-slate-100 border-b border-slate-300 font-bold text-slate-800 text-[9px] uppercase tracking-wider">
-                            <th className="py-2 px-3">Service &amp; Scope Description</th>
-                            <th className="py-2 px-2 text-center">SAC Code</th>
-                            <th className="py-2 px-2 text-center">Duration</th>
-                            <th className="py-2 px-3 text-right">Taxable Subtotal (₹)</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200">
-                          <tr>
-                            <td className="py-2.5 px-3 font-bold text-[#1e2a5a]">
-                              {invoiceService}
-                              <span className="block text-[9px] font-normal text-slate-500">Verified Healthcare Attendant &amp; Nursing Care Support</span>
-                            </td>
-                            <td className="py-2.5 px-2 text-center font-mono text-slate-600">999312</td>
-                            <td className="py-2.5 px-2 text-center text-slate-700">{invoiceDuration}</td>
-                            <td className="py-2.5 px-3 text-right font-black text-slate-900 font-mono">
-                              ₹{Math.round(Number(invoiceTotalAmount || 0) / 1.18).toLocaleString("en-IN")}
-                            </td>
-                          </tr>
-                        </tbody>
-                        <tfoot className="bg-slate-50/90 divide-y divide-slate-200 font-semibold text-[10.5px]">
-                          <tr>
-                            <td colSpan={3} className="py-1 px-3 text-right text-slate-600">Taxable Value:</td>
-                            <td className="py-1 px-3 text-right font-mono font-bold text-slate-800">
-                              ₹{Math.round(Number(invoiceTotalAmount || 0) / 1.18).toLocaleString("en-IN")}
-                            </td>
-                          </tr>
-                          <tr className="text-slate-600 text-[10px]">
-                            <td colSpan={3} className="py-1 px-3 text-right">CGST (Central Tax @ 9.0%):</td>
-                            <td className="py-1 px-3 text-right font-mono font-bold text-slate-800">
-                              ₹{Math.round((Number(invoiceTotalAmount || 0) - Math.round(Number(invoiceTotalAmount || 0) / 1.18)) / 2).toLocaleString("en-IN")}
-                            </td>
-                          </tr>
-                          <tr className="text-slate-600 text-[10px]">
-                            <td colSpan={3} className="py-1 px-3 text-right">SGST (State Tax @ 9.0%):</td>
-                            <td className="py-1 px-3 text-right font-mono font-bold text-slate-800">
-                              ₹{( (Number(invoiceTotalAmount || 0) - Math.round(Number(invoiceTotalAmount || 0) / 1.18)) - Math.round((Number(invoiceTotalAmount || 0) - Math.round(Number(invoiceTotalAmount || 0) / 1.18)) / 2) ).toLocaleString("en-IN")}
-                            </td>
-                          </tr>
-                          <tr className="bg-slate-100/90 font-black text-xs text-slate-900">
-                            <td colSpan={3} className="py-2 px-3 text-right text-[#1e2a5a] uppercase tracking-wider">
-                              Total Shift Value (Gross):
-                            </td>
-                            <td className="py-2 px-3 text-right font-mono text-[#1e2a5a] text-sm">
-                              ₹{Number(invoiceTotalAmount || 0).toLocaleString("en-IN")}
-                            </td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                    </div>
-
-                    {/* Settlement & Payment Mode Details */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-slate-50/80 p-3.5 rounded-xl border border-slate-200">
-                      <div className="space-y-1.5">
-                        <div className="text-[10px] uppercase font-bold text-slate-400">Payment Reconciliation</div>
-                        <div className="flex justify-between text-emerald-800 font-bold">
-                          <span>Advance / Paid Amount:</span>
-                          <span className="font-mono">₹{Number(invoiceAdvancePaid || 0).toLocaleString("en-IN")}</span>
-                        </div>
-                        <div className="flex justify-between text-amber-900 font-bold">
-                          <span>Balance Due:</span>
-                          <span className="font-mono">₹{Number(invoiceBalanceAmount || 0).toLocaleString("en-IN")}</span>
-                        </div>
-                      </div>
-
-                      <div className="space-y-1.5 sm:border-l sm:border-slate-200 sm:pl-3">
-                        <div className="text-[10px] uppercase font-bold text-slate-400">Payment Mode &amp; Receipt Status</div>
-                        <div className="flex items-center gap-1.5 font-bold text-slate-900">
-                          <span>Mode:</span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border ${
-                            invoicePaymentMethod === "cash"
-                              ? "bg-emerald-100 text-emerald-900 border-emerald-300"
-                              : invoicePaymentMethod === "bank_account"
-                                ? "bg-blue-100 text-blue-900 border-blue-300"
-                                : invoicePaymentMethod === "upi"
-                                  ? "bg-purple-100 text-purple-900 border-purple-300"
-                                  : "bg-slate-200 text-slate-900 border-slate-300"
-                          }`}>
-                            {invoicePaymentMethod === "cash" ? "💵 CASH PAYMENT" :
-                             invoicePaymentMethod === "bank_account" ? "🏦 BANK ACCOUNT TRANSFER" :
-                             invoicePaymentMethod === "upi" ? "📱 UPI (PHONEPE / GPAY)" :
-                             invoicePaymentMethod === "razorpay" ? "💳 RAZORPAY GATEWAY" : "⏳ POST-SERVICE ESCROW"}
-                          </span>
-                        </div>
-                        {invoiceTransactionId && (
-                          <div className="text-[10px] text-slate-600 font-mono">
-                            Ref / UTR No: <strong className="text-slate-900">{invoiceTransactionId}</strong>
+                            <div className="p-3 rounded-xl bg-slate-50/80 border border-slate-200 space-y-0.5">
+                              <span className="block text-slate-400 font-extrabold text-[8.5px] uppercase tracking-wider mb-1">Service &amp; Delivery Details</span>
+                              <span className="block font-black text-[#1e2a5a] text-xs sm:text-sm">{invoiceService}</span>
+                              <span className="block text-slate-700 text-[10.5px]">
+                                Schedule: <strong className="text-slate-900">{invoiceDate}</strong> at <strong className="text-slate-900">{invoiceTime}</strong> ({invoiceDuration})
+                              </span>
+                              <span className="block text-slate-600 truncate text-[10px]" title={invoiceAddress}>
+                                Location: {invoiceAddress || "Customer Residence"}
+                              </span>
+                              <span className="block text-[9px] text-slate-500 pt-1">
+                                Place of Supply: <strong>Telangana (36) / Andhra Pradesh (37)</strong>
+                              </span>
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    </div>
 
-                    {/* Footer notes & Signatory */}
-                    <div className="flex justify-between items-end pt-2 text-[9.5px] text-slate-500 border-t border-slate-200">
-                      <div className="space-y-0.5 max-w-sm">
-                        <p className="font-bold text-slate-700">Thank you for trusting Amma Seva Home Healthcare.</p>
-                        <p className="leading-tight">All caregiver &amp; nursing attendants are background-verified. Computer-generated tax document; no physical stamp required.</p>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-bold text-[#1e2a5a] text-[10.5px]">LUXDHANA GLOBAL PRIVATE LIMITED</div>
-                        <div className="text-[8.5px] text-slate-400 mt-5 uppercase tracking-wider">Authorized Signatory / Accounts Desk</div>
-                      </div>
-                    </div>
-                  </div>
+                          {/* Itemized Table */}
+                          <div className="overflow-hidden rounded-xl border border-slate-300 text-[11px]">
+                            <table className="w-full table-fixed border-collapse">
+                              <thead>
+                                <tr className="bg-slate-100 border-b border-slate-300 font-bold text-slate-800 text-[9px] uppercase tracking-wider">
+                                  <th className="py-2.5 px-3 text-left w-[46%]">Service &amp; Scope Description</th>
+                                  <th className="py-2.5 px-2 text-center w-[14%]">SAC Code</th>
+                                  <th className="py-2.5 px-2 text-center w-[16%]">Duration</th>
+                                  <th className="py-2.5 px-3 text-right w-[24%]">Taxable Subtotal (₹)</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-200">
+                                <tr>
+                                  <td className="py-2.5 px-3 font-bold text-[#1e2a5a]">
+                                    <div className="font-extrabold text-xs">{invoiceService}</div>
+                                    <span className="block text-[9px] font-normal text-slate-500 mt-0.5">Verified Healthcare Attendant &amp; Nursing Care Support</span>
+                                  </td>
+                                  <td className="py-2.5 px-2 text-center font-mono text-slate-600 font-medium">999312</td>
+                                  <td className="py-2.5 px-2 text-center text-slate-700 font-medium">{invoiceDuration}</td>
+                                  <td className="py-2.5 px-3 text-right font-black text-slate-900 font-mono text-xs whitespace-nowrap">
+                                    ₹{currentTax.baseAmount.toLocaleString("en-IN")}
+                                  </td>
+                                </tr>
+                              </tbody>
+                              <tfoot className="bg-slate-50/90 divide-y divide-slate-200 font-semibold text-[10.5px]">
+                                <tr>
+                                  <td colSpan={3} className="py-1.5 px-3 text-right text-slate-600">Taxable Subtotal (Base Rate):</td>
+                                  <td className="py-1.5 px-3 text-right font-mono font-bold text-slate-800 whitespace-nowrap">
+                                    ₹{currentTax.baseAmount.toLocaleString("en-IN")}
+                                  </td>
+                                </tr>
+                                <tr className="text-slate-600 text-[10px]">
+                                  <td colSpan={3} className="py-1.5 px-3 text-right">CGST (Central Tax @ {currentTax.cgstRateText}):</td>
+                                  <td className="py-1.5 px-3 text-right font-mono font-bold text-slate-800 whitespace-nowrap">
+                                    ₹{currentTax.cgstAmount.toLocaleString("en-IN")}
+                                  </td>
+                                </tr>
+                                <tr className="text-slate-600 text-[10px]">
+                                  <td colSpan={3} className="py-1.5 px-3 text-right">SGST (State Tax @ {currentTax.sgstRateText}):</td>
+                                  <td className="py-1.5 px-3 text-right font-mono font-bold text-slate-800 whitespace-nowrap">
+                                    ₹{currentTax.sgstAmount.toLocaleString("en-IN")}
+                                  </td>
+                                </tr>
+                                <tr className="bg-slate-100/90 font-black text-xs text-slate-900">
+                                  <td colSpan={3} className="py-2 px-3 text-right text-[#1e2a5a] uppercase tracking-wider">
+                                    <div className="flex items-center justify-end gap-1.5">
+                                      <span>Total Shift Value (Gross Payable):</span>
+                                      <span className="text-[8.5px] px-1.5 py-0.2 rounded font-bold uppercase tracking-tight bg-blue-100 text-blue-900 border border-blue-200">
+                                        {invoiceTaxMode === "inclusive" ? "GST Included" : invoiceTaxMode === "exclusive" ? "Base + 18% GST" : "GST Exempt"}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="py-2 px-3 text-right font-mono text-[#1e2a5a] text-sm whitespace-nowrap font-black">
+                                    ₹{currentTax.totalAmount.toLocaleString("en-IN")}
+                                  </td>
+                                </tr>
+                              </tfoot>
+                            </table>
+                          </div>
+
+                          {/* Settlement & Payment Mode Details */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-slate-50/80 p-3.5 rounded-xl border border-slate-200">
+                            <div className="space-y-1.5">
+                              <div className="text-[10px] uppercase font-bold text-slate-400">Payment Reconciliation</div>
+                              <div className="flex justify-between items-center text-emerald-800 font-bold">
+                                <span>Advance / Paid Amount:</span>
+                                <span className="font-mono bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                  ₹{Number(invoiceAdvancePaid || 0).toLocaleString("en-IN")}
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-center font-bold">
+                                <span className={Number(invoiceBalanceAmount) > 0 ? "text-amber-900" : "text-slate-600"}>
+                                  Balance Due:
+                                </span>
+                                <span className={`font-mono px-2 py-0.5 rounded border ${
+                                  Number(invoiceBalanceAmount) > 0
+                                    ? "bg-amber-100 text-amber-950 border-amber-300 font-black"
+                                    : "bg-emerald-100 text-emerald-900 border-emerald-300"
+                                }`}>
+                                  ₹{Number(invoiceBalanceAmount || 0).toLocaleString("en-IN")}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1.5 sm:border-l sm:border-slate-200 sm:pl-3">
+                              <div className="text-[10px] uppercase font-bold text-slate-400">Payment Mode &amp; Receipt Status</div>
+                              <div className="flex items-center gap-1.5 font-bold text-slate-900">
+                                <span className="shrink-0 text-slate-600 text-[11px]">Mode:</span>
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border truncate ${
+                                  invoicePaymentMethod === "cash"
+                                    ? "bg-emerald-100 text-emerald-900 border-emerald-300"
+                                    : invoicePaymentMethod === "bank_account"
+                                      ? "bg-blue-100 text-blue-900 border-blue-300"
+                                      : invoicePaymentMethod === "upi"
+                                        ? "bg-purple-100 text-purple-900 border-purple-300"
+                                        : "bg-indigo-100 text-indigo-900 border-indigo-300"
+                                }`}>
+                                  {invoicePaymentMethod === "cash" ? "💵 CASH PAYMENT" :
+                                   invoicePaymentMethod === "bank_account" ? "🏦 BANK ACCOUNT / NEFT" :
+                                   invoicePaymentMethod === "upi" ? "📱 UPI (PHONEPE / GPAY)" :
+                                   invoicePaymentMethod === "razorpay" ? "💳 RAZORPAY GATEWAY" : "⏳ POST-SERVICE ESCROW"}
+                                </span>
+                              </div>
+                              {invoiceTransactionId && (
+                                <div className="text-[9.5px] text-slate-600 font-mono flex items-start gap-1 pt-0.5">
+                                  <span className="shrink-0 font-sans text-slate-500 font-semibold">Ref / UTR:</span>
+                                  <span className="font-bold text-slate-900 break-all bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                                    {invoiceTransactionId}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Footer notes & Signatory */}
+                          <div className="flex justify-between items-end pt-2 text-[9.5px] text-slate-500 border-t border-slate-200">
+                            <div className="space-y-0.5 max-w-sm">
+                              <p className="font-bold text-slate-700">Thank you for trusting Amma Seva Home Healthcare.</p>
+                              <p className="leading-tight">All caregiver &amp; nursing attendants are background-verified. Computer-generated tax document; no physical stamp required.</p>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-bold text-[#1e2a5a] text-[10.5px]">LUXDHANA GLOBAL PRIVATE LIMITED</div>
+                              <div className="text-[8.5px] text-slate-400 mt-5 uppercase tracking-wider">Authorized Signatory / Accounts Desk</div>
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
 
               </div>
