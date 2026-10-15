@@ -74,6 +74,9 @@ const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 465,
   secure: true,
+  connectionTimeout: 8000,
+  greetingTimeout: 8000,
+  socketTimeout: 10000,
   auth: {
     user: cleanSmtpEmail,
     pass: cleanSmtpPass
@@ -1396,6 +1399,7 @@ const sendMsg91SmsOtp = async (rawMobile, otp) => {
         'authkey': authKey,
         'Content-Type': 'application/json'
       },
+      signal: AbortSignal.timeout(6000),
       body: JSON.stringify({
         template_id: templateId,
         sender: senderId,
@@ -1421,23 +1425,26 @@ const sendMsg91SmsOtp = async (rawMobile, otp) => {
     console.error(`[MSG91 Flow Error] Failed to send SMS via flow to +${formattedMobile}:`, err.message)
   }
 
-  // 2. Dispatch via MSG91 OTP v5 API Engine
-  try {
-    const otpUrl = `https://control.msg91.com/api/v5/otp?template_id=${encodeURIComponent(templateId)}&mobile=${encodeURIComponent(formattedMobile)}&authkey=${encodeURIComponent(authKey)}&sender=${encodeURIComponent(senderId)}&${encodeURIComponent(otpVar)}=${encodeURIComponent(otp)}&otp=${encodeURIComponent(otp)}`
-    const otpResponse = await fetch(otpUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'authkey': authKey
+  // 2. Dispatch via MSG91 OTP v5 API Engine (Fallback only if Flow didn't succeed)
+  if (!sent) {
+    try {
+      const otpUrl = `https://control.msg91.com/api/v5/otp?template_id=${encodeURIComponent(templateId)}&mobile=${encodeURIComponent(formattedMobile)}&authkey=${encodeURIComponent(authKey)}&sender=${encodeURIComponent(senderId)}&${encodeURIComponent(otpVar)}=${encodeURIComponent(otp)}&otp=${encodeURIComponent(otp)}`
+      const otpResponse = await fetch(otpUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'authkey': authKey
+        },
+        signal: AbortSignal.timeout(6000)
+      })
+      const otpData = await otpResponse.json().catch(() => ({}))
+      console.log(`[MSG91 OTP API] Dispatched to +${formattedMobile}:`, otpData)
+      if (otpData.type === 'success' || otpResponse.ok) {
+        sent = true
       }
-    })
-    const otpData = await otpResponse.json().catch(() => ({}))
-    console.log(`[MSG91 OTP API] Dispatched to +${formattedMobile}:`, otpData)
-    if (otpData.type === 'success' || otpResponse.ok) {
-      sent = true
+    } catch (err) {
+      console.error(`[MSG91 OTP Error] Failed to send SMS via OTP endpoint to +${formattedMobile}:`, err.message)
     }
-  } catch (err) {
-    console.error(`[MSG91 OTP Error] Failed to send SMS via OTP endpoint to +${formattedMobile}:`, err.message)
   }
 
   return sent
@@ -1692,44 +1699,45 @@ app.post('/api/auth/send-registration-otp', async (req, res) => {
   await db.saveOTP(cleanEmail, otp, role, expiresAt)
   await db.saveOTP(cleanPhone, otp, role, expiresAt)
 
-  // Send SMS via MSG91
-  let smsSent = await sendMsg91SmsOtp(cleanPhone, otp)
-
   const roleTitle = role === 'caretaker' || role === 'caregiver'
     ? 'Certified Caregiver'
     : role === 'mtp'
     ? 'MTP Multi Tasking Professional'
     : 'Patient & Family Account'
 
-  // Send Email OTP
-  let emailSent = false
-  if (cleanEmail && cleanEmail.includes('@')) {
-    const mailOptions = {
-      from: `"Amma Seva Registration" <${cleanSmtpEmail}>`,
-      to: cleanEmail,
-      subject: `Amma Seva - ${roleTitle} Registration Verification Code`,
-      html: `
-        <div style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 16px; background-color: #ffffff;">
-          <div style="text-align: center; margin-bottom: 20px;">
-            <h2 style="color: #1e2a5a; margin: 0 0 4px 0; font-size: 20px; font-weight: 800;">AMMA SEVA HOMECARE</h2>
-            <p style="color: #c9a24c; margin: 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Account Verification</p>
-          </div>
-          <h3 style="color: #0b183b; margin-bottom: 8px; font-size: 16px;">Registration Verification Code</h3>
-          <p style="color: #64748b; font-size: 14px; margin-top: 0; line-height: 1.5;">Hi <strong>${cleanName}</strong>, use the following One-Time Password (OTP) to verify your contact details and complete your ${roleTitle} registration:</p>
-          <div style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #1e2a5a; text-align: center; padding: 18px; margin: 20px 0; background-color: #f8fafc; border-radius: 12px; border: 1px dashed #cbd5e1;">
-            ${otp}
-          </div>
-          <p style="color: #94a3b8; font-size: 12px; text-align: center; margin: 0;">This code is valid for 10 minutes. For your security, do not share this OTP with anyone.</p>
+  const mailOptions = cleanEmail && cleanEmail.includes('@') ? {
+    from: `"Amma Seva Registration" <${cleanSmtpEmail}>`,
+    to: cleanEmail,
+    subject: `Amma Seva - ${roleTitle} Registration Verification Code`,
+    html: `
+      <div style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 16px; background-color: #ffffff;">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <h2 style="color: #1e2a5a; margin: 0 0 4px 0; font-size: 20px; font-weight: 800;">AMMA SEVA HOMECARE</h2>
+          <p style="color: #c9a24c; margin: 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Account Verification</p>
         </div>
-      `
-    }
-    try {
-      await transporter.sendMail(mailOptions)
-      emailSent = true
-    } catch (e) {
-      console.error('[Registration OTP Email Error]:', e.message)
-    }
-  }
+        <h3 style="color: #0b183b; margin-bottom: 8px; font-size: 16px;">Registration Verification Code</h3>
+        <p style="color: #64748b; font-size: 14px; margin-top: 0; line-height: 1.5;">Hi <strong>${cleanName}</strong>, use the following One-Time Password (OTP) to verify your contact details and complete your ${roleTitle} registration:</p>
+        <div style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #1e2a5a; text-align: center; padding: 18px; margin: 20px 0; background-color: #f8fafc; border-radius: 12px; border: 1px dashed #cbd5e1;">
+          ${otp}
+        </div>
+        <p style="color: #94a3b8; font-size: 12px; text-align: center; margin: 0;">This code is valid for 10 minutes. For your security, do not share this OTP with anyone.</p>
+      </div>
+    `
+  } : null
+
+  // Dispatch SMS and Email in parallel for rapid response
+  const [smsResult, emailResult] = await Promise.allSettled([
+    sendMsg91SmsOtp(cleanPhone, otp),
+    mailOptions
+      ? transporter.sendMail(mailOptions).then(() => true).catch((e) => {
+          console.error('[Registration OTP Email Error]:', e.message)
+          return false
+        })
+      : Promise.resolve(false)
+  ])
+
+  const smsSent = smsResult.status === 'fulfilled' ? smsResult.value : false
+  const emailSent = emailResult.status === 'fulfilled' ? emailResult.value : false
 
   const maskedPhone = `+91 ${cleanPhone.slice(0, 2)}*****${cleanPhone.slice(-3)}`
   res.json({

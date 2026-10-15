@@ -303,6 +303,16 @@ function MTPPage() {
     setPendingPayload(null);
   };
 
+  const focusField = (id: string) => {
+    setTimeout(() => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.focus();
+      }
+    }, 60);
+  };
+
   // Step 1: Validate inputs and trigger Registration OTP to Mobile & Email
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -311,6 +321,7 @@ function MTPPage() {
     const nameErr = validateName(name, "Full name");
     if (nameErr) {
       toast.error(nameErr);
+      focusField("mtp-name-input");
       return;
     }
     const cleanName = name.trim();
@@ -319,14 +330,17 @@ function MTPPage() {
     const cleanPhone = phone.replace(/[^0-9]/g, "");
     if (!cleanPhone) {
       toast.error("Please enter your mobile / WhatsApp number.");
+      focusField("mtp-phone-input");
       return;
     }
     if (cleanPhone.length !== 10) {
       toast.error("Mobile number must be exactly 10 digits.");
+      focusField("mtp-phone-input");
       return;
     }
     if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
       toast.error("Please enter a valid Indian mobile number starting with 6, 7, 8, or 9.");
+      focusField("mtp-phone-input");
       return;
     }
 
@@ -334,11 +348,13 @@ function MTPPage() {
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail) {
       toast.error("Please enter your email address for account alerts.");
+      focusField("mtp-email-input");
       return;
     }
     const emailErr = validateEmail(cleanEmail, true, "Email address");
     if (emailErr) {
       toast.error(emailErr);
+      focusField("mtp-email-input");
       return;
     }
 
@@ -347,6 +363,7 @@ function MTPPage() {
       const numAge = Number(age);
       if (isNaN(numAge) || numAge < 18 || numAge > 70) {
         toast.error("Applicant age must be between 18 and 70 years.");
+        focusField("mtp-age-input");
         return;
       }
     }
@@ -355,12 +372,14 @@ function MTPPage() {
     const cleanAadhaar = aadhaar.replace(/[^0-9]/g, "");
     if (cleanAadhaar && cleanAadhaar.length !== 12) {
       toast.error("Aadhaar Number must be exactly 12 digits.");
+      focusField("mtp-aadhaar-input-number");
       return;
     }
 
     // 6. Selected Roles Validation
     if (selectedRoles.length === 0) {
       toast.error("Please select at least one preferred task or role.");
+      focusField("mtp-roles-section");
       return;
     }
 
@@ -368,24 +387,29 @@ function MTPPage() {
     const emergencyNameErr = validateName(emergencyContactName, "Emergency Contact Person");
     if (emergencyNameErr) {
       toast.error(emergencyNameErr);
+      focusField("mtp-emergency-name-input");
       return;
     }
     const cleanEmergencyName = emergencyContactName.trim();
     const cleanEmergencyPhone = emergencyContactPhone.replace(/[^0-9]/g, "");
     if (!cleanEmergencyPhone) {
       toast.error("Please enter the Emergency Contact mobile number.");
+      focusField("mtp-emergency-phone-input");
       return;
     }
     if (cleanEmergencyPhone.length !== 10) {
       toast.error("Emergency Contact mobile number must be exactly 10 digits.");
+      focusField("mtp-emergency-phone-input");
       return;
     }
     if (!/^[6-9]\d{9}$/.test(cleanEmergencyPhone)) {
       toast.error("Please enter a valid 10-digit Indian Emergency mobile number starting with 6, 7, 8, or 9.");
+      focusField("mtp-emergency-phone-input");
       return;
     }
     if (cleanEmergencyPhone === cleanPhone) {
       toast.error("Emergency Contact number cannot be identical to your own mobile number.");
+      focusField("mtp-emergency-phone-input");
       return;
     }
 
@@ -397,20 +421,24 @@ function MTPPage() {
     if (selectedState === "Other") {
       if (!customStateName.trim()) {
         toast.error("Please specify your State name.");
+        focusField("mtp-custom-state-input");
         return;
       }
       if (!customCityName.trim()) {
         toast.error("Please specify your City name.");
+        focusField("mtp-custom-city-input");
         return;
       }
       if (!customAddress.trim()) {
         toast.error("Please enter your exact locality or full address.");
+        focusField("mtp-custom-address-input");
         return;
       }
       finalLocality = customAddress.trim();
     } else if (isOtherLocality) {
       if (!customAddress.trim()) {
         toast.error("Please enter your exact area / colony or full address.");
+        focusField("mtp-custom-address-input");
         return;
       }
       finalLocality = customAddress.trim();
@@ -419,16 +447,19 @@ function MTPPage() {
     // 9. Required KYC Documents Validation
     if (!aadhaarDoc) {
       toast.error("Please upload your Aadhaar Card document for identity verification.");
+      focusField("mtp-docs-section");
       return;
     }
 
     if (!panDoc) {
       toast.error("Please upload your PAN Card document for payout & tax verification.");
+      focusField("mtp-docs-section");
       return;
     }
 
     if (!policeVerificationDoc) {
       toast.error("Please upload your Police Verification Certificate or acknowledgment copy.");
+      focusField("mtp-docs-section");
       return;
     }
 
@@ -793,13 +824,9 @@ function MTPPage() {
                   Fill in your accurate details below. No application fees. Safe, transparent and flexible.
                 </p>
               </div>
-              <div className="shrink-0 hidden sm:flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full">
-                <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                <span>Free KYC Verification</span>
-              </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-8">
+            <form onSubmit={handleSubmit} noValidate className="space-y-8">
                 
                 {/* 1. Basic Personal Info (3 in a Row) */}
                 <div className="space-y-4">
@@ -816,6 +843,7 @@ function MTPPage() {
                         Full Name <span className="text-rose-500">*</span>
                       </label>
                       <input
+                        id="mtp-name-input"
                         type="text"
                         required
                         value={name}
@@ -835,6 +863,7 @@ function MTPPage() {
                           <span>+91</span>
                         </div>
                         <input
+                          id="mtp-phone-input"
                           type="tel"
                           inputMode="numeric"
                           required
@@ -852,6 +881,7 @@ function MTPPage() {
                         Email Address <span className="text-rose-500">*</span>
                       </label>
                       <input
+                        id="mtp-email-input"
                         type="email"
                         required
                         value={email}
@@ -881,6 +911,7 @@ function MTPPage() {
                         Age (Years)
                       </label>
                       <input
+                        id="mtp-age-input"
                         type="text"
                         inputMode="numeric"
                         maxLength={2}
@@ -899,6 +930,7 @@ function MTPPage() {
                         Aadhaar Number <span className="text-slate-400 font-normal">(12 Digits)</span>
                       </label>
                       <input
+                        id="mtp-aadhaar-input-number"
                         type="text"
                         inputMode="numeric"
                         maxLength={12}
@@ -965,6 +997,7 @@ function MTPPage() {
                             State Name <span className="text-rose-500">*</span>
                           </label>
                           <input
+                            id="mtp-custom-state-input"
                             type="text"
                             required
                             value={customStateName}
@@ -979,6 +1012,7 @@ function MTPPage() {
                             City / District <span className="text-rose-500">*</span>
                           </label>
                           <input
+                            id="mtp-custom-city-input"
                             type="text"
                             required
                             value={customCityName}
@@ -1002,6 +1036,7 @@ function MTPPage() {
                           </span>
                         </label>
                         <input
+                          id="mtp-custom-address-input"
                           type="text"
                           required
                           value={customAddress}
@@ -1099,6 +1134,7 @@ function MTPPage() {
                         Emergency Contact Person <span className="text-rose-500">*</span>
                       </label>
                       <input
+                        id="mtp-emergency-name-input"
                         type="text"
                         required
                         value={emergencyContactName}
@@ -1118,6 +1154,7 @@ function MTPPage() {
                           <span>+91</span>
                         </div>
                         <input
+                          id="mtp-emergency-phone-input"
                           type="tel"
                           inputMode="numeric"
                           required
@@ -1147,7 +1184,7 @@ function MTPPage() {
                 </div>
 
                 {/* 3. Preferred Tasks / Roles (3 in a Row Grid) */}
-                <div className="space-y-3.5 pt-6 border-t border-slate-100">
+                <div id="mtp-roles-section" className="space-y-3.5 pt-6 border-t border-slate-100">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                     <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-primary flex items-center gap-2">
                       <span className="h-2.5 w-2.5 rounded-full bg-gold" /> 3. Select Tasks You Can Perform
@@ -1186,7 +1223,7 @@ function MTPPage() {
                 </div>
 
                 {/* 4. Document Uploads & KYC Verification (3 in a Row on Desktop) */}
-                <div className="space-y-4 pt-6 border-t border-slate-100">
+                <div id="mtp-docs-section" className="space-y-4 pt-6 border-t border-slate-100">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                     <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-primary flex items-center gap-2">
                       <span className="h-2.5 w-2.5 rounded-full bg-gold" /> 4. Document Uploads &amp; KYC Verification
@@ -1429,11 +1466,13 @@ function MTPPage() {
 
                   <button
                     type="submit"
-                    disabled={isSubmitting}
+                    disabled={isSendingOtp}
                     className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 btn-gold px-9 py-3.5 text-sm font-bold shadow-lg shadow-gold/25 cursor-pointer disabled:opacity-50 hover:scale-[1.02] active:scale-[0.98] transition-all"
                   >
-                    {isSubmitting ? (
-                      <>Processing Registration...</>
+                    {isSendingOtp ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" /> Sending Verification Code...
+                      </>
                     ) : (
                       <>
                         <Send className="h-4 w-4" /> Submit MTP Registration
