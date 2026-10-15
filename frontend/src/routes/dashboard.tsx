@@ -1847,7 +1847,7 @@ function CustomerDashboard() {
                         }`}
                       >
                         <Zap className={`h-4 w-4 shrink-0 ${activeCaregiverTab === "availableGigs" ? "text-amber-200 animate-pulse" : "text-amber-600"}`} />
-                        <span className="text-left flex-1 font-bold">⚡ Available Gigs (ఓపెన్ టాస్క్‌లు)</span>
+                        <span className="text-left flex-1 font-bold">⚡ Available Gigs</span>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
                           activeCaregiverTab === "availableGigs" ? "bg-white text-amber-950" : "bg-amber-600 text-white"
                         }`}>
@@ -1866,7 +1866,7 @@ function CustomerDashboard() {
                       }`}
                     >
                       <Calendar className="h-4 w-4 shrink-0" />
-                      <span className="text-left flex-1">{caretaker?.isMtp ? "My Accepted Gigs (నా టాస్క్‌లు)" : "Assigned Shifts"}</span>
+                      <span className="text-left flex-1">{caretaker?.isMtp ? "My Accepted Gigs" : "Assigned Shifts"}</span>
                       {caretakerBookings.length > 0 && (caretaker?.status === "Verified" || caretaker?.status === "Approved" || caretaker?.status === "Active") && (
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                           activeCaregiverTab === "shifts" ? "bg-white text-[#1e2a5a]" : "bg-[#1e2a5a] text-white"
@@ -1899,7 +1899,7 @@ function CustomerDashboard() {
                       }`}
                     >
                       <CreditCard className={`h-4 w-4 shrink-0 ${activeCaregiverTab === "idcard" ? "text-[#c9a24c]" : "text-slate-400"}`} />
-                      <span className="text-left flex-1 font-bold">Official ID Card (ఐడీ కార్డు)</span>
+                      <span className="text-left flex-1 font-bold">Official ID Card</span>
                       <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-[#c9a24c]/20 text-[#c9a24c]">
                         BADGE
                       </span>
@@ -2189,7 +2189,7 @@ function CustomerDashboard() {
                       <CheckCircle2 className="h-6 w-6" />
                     </div>
                     <div className="space-y-0.5 flex-1">
-                      <h4 className="text-base font-bold font-display text-emerald-950">Gig Successfully Accepted! (టాస్క్ లాక్ చేయబడింది)</h4>
+                      <h4 className="text-base font-bold font-display text-emerald-950">Gig Successfully Accepted!</h4>
                       <p className="text-xs text-emerald-800 leading-relaxed font-medium">{gigClaimSuccess}</p>
                     </div>
                   </div>
@@ -2410,7 +2410,7 @@ function CustomerDashboard() {
                                 ) : (
                                   <>
                                     <Zap className="h-4 w-4 text-amber-300" />
-                                    <span>Accept Task (స్వీకరించు — Claim Gig)</span>
+                                    <span>Accept Task (Claim Gig)</span>
                                     <ArrowRight className="h-4 w-4 ml-1 opacity-70 group-hover:translate-x-1 transition-transform" />
                                   </>
                                 )}
@@ -2435,7 +2435,7 @@ function CustomerDashboard() {
                   <div className="bg-white p-8 sm:p-10 rounded-3xl border border-slate-200/60 shadow-sm space-y-6">
                     <div>
                       <h2 className="text-xl font-bold text-primary font-display flex items-center gap-2">
-                        <Calendar className="h-5 w-5 text-indigo-600" /> {caretaker?.isMtp ? "My Accepted Tasks & Gigs (నా టాస్క్‌లు)" : "My Assigned Patient Shifts"}
+                        <Calendar className="h-5 w-5 text-indigo-600" /> {caretaker?.isMtp ? "My Accepted Tasks & Gigs" : "My Assigned Patient Shifts"}
                       </h2>
                       <p className="text-xs text-slate-400 mt-0.5">
                         {caretaker?.isMtp 

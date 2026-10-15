@@ -490,7 +490,7 @@ function AdminPage() {
         sgstAmount: 0,
         gstAmount: 0,
         totalAmount: num,
-        rateLabel: "0% GST Exempt (పన్ను రహిత)",
+        rateLabel: "0% GST Exempt",
         cgstRateText: "0%",
         sgstRateText: "0%",
         isExempt: true,
@@ -510,7 +510,7 @@ function AdminPage() {
         sgstAmount,
         gstAmount,
         totalAmount: num,
-        rateLabel: "18% GST Included (మొత్తంలో పన్ను ఉంది)",
+        rateLabel: "18% GST Included",
         cgstRateText: "9.0%",
         sgstRateText: "9.0%",
         isExempt: false,
@@ -532,7 +532,7 @@ function AdminPage() {
       sgstAmount,
       gstAmount,
       totalAmount,
-      rateLabel: "Base + 18% GST (బేస్ రేట్ + 18% పన్ను)",
+      rateLabel: "Base + 18% GST (Tax Extra)",
       cgstRateText: "9.0%",
       sgstRateText: "9.0%",
       isExempt: false,
@@ -749,8 +749,8 @@ function AdminPage() {
     const rawPhone = String(invoiceCustomerPhone || "").replace(/\D/g, "").slice(-10);
     const targetPhone = rawPhone.length === 10 ? `91${rawPhone}` : "919490587575";
     const paymentModeLabel = 
-      invoicePaymentMethod === "cash" ? "Cash (నగదు రసీదు)" :
-      invoicePaymentMethod === "bank_account" ? "Bank Account Transfer (బ్యాంక్ ఖాతా)" :
+      invoicePaymentMethod === "cash" ? "Cash Receipt" :
+      invoicePaymentMethod === "bank_account" ? "Bank Account Transfer" :
       invoicePaymentMethod === "upi" ? "UPI (PhonePe / GPay)" :
       invoicePaymentMethod === "razorpay" ? "Razorpay Online Gateway" : "Pay on Service / Escrow";
 
@@ -3108,7 +3108,7 @@ function AdminPage() {
                                   <div className="flex items-center justify-between text-[9px]">
                                     <span className="font-extrabold text-amber-900 flex items-center gap-1">
                                       <CreditCard className="w-3 h-3 text-amber-700" />
-                                      Payment Link (లింక్)
+                                      Payment Link
                                     </span>
                                     <span className="text-[9px] font-black text-rose-700 bg-rose-100/90 px-1.5 py-0.2 rounded border border-rose-200">
                                       Due: ₹{Number(b.balanceAmount).toLocaleString("en-IN")}
@@ -3373,7 +3373,7 @@ function AdminPage() {
                   {/* Payment Mode Selector ("Cash iste Cash, Account ayite Account") */}
                   <div>
                     <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-2">
-                      Payment Mode (చెల్లింపు విధానం):
+                      Payment Mode:
                     </label>
                     <div className="grid grid-cols-2 gap-2">
                       <button
@@ -3391,7 +3391,7 @@ function AdminPage() {
                         }`}
                       >
                         <div className="flex items-center gap-1.5 font-black text-xs">
-                          <span>💵 Cash (నగదు)</span>
+                          <span>💵 Cash</span>
                           {invoicePaymentMethod === "cash" && <Check className="w-3.5 h-3.5 text-emerald-600 ml-auto" />}
                         </div>
                         <div className="text-[9.5px] text-slate-500 font-normal mt-0.5">
@@ -3508,7 +3508,7 @@ function AdminPage() {
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-700">
-                        GST Calculation Mode (జీఎస్టీ పన్ను లెక్కింపు):
+                        GST Calculation Mode:
                       </label>
                       <span className="text-[10px] font-mono font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
                         SAC 999312
@@ -3530,7 +3530,7 @@ function AdminPage() {
                           {invoiceTaxMode === "exclusive" && <Check className="w-3.5 h-3.5 text-blue-600" />}
                         </div>
                         <div className="text-[9px] text-slate-500 font-normal mt-0.5 leading-tight">
-                          బేస్ రేట్ + 18% GST (డిఫాల్ట్)
+                          Base Rate + 18% GST (Default)
                         </div>
                       </button>
 
@@ -3548,7 +3548,7 @@ function AdminPage() {
                           {invoiceTaxMode === "inclusive" && <Check className="w-3.5 h-3.5 text-emerald-600" />}
                         </div>
                         <div className="text-[9px] text-slate-500 font-normal mt-0.5 leading-tight">
-                          మొత్తంలో పన్ను ఉంది (Inclusive)
+                          GST Included in Rate (Inclusive)
                         </div>
                       </button>
 
@@ -3566,7 +3566,7 @@ function AdminPage() {
                           {invoiceTaxMode === "exempt" && <Check className="w-3.5 h-3.5 text-purple-600" />}
                         </div>
                         <div className="text-[9px] text-slate-500 font-normal mt-0.5 leading-tight">
-                          పన్ను మినహాయింపు (Zero GST)
+                          Tax Exemption (Zero GST)
                         </div>
                       </button>
                     </div>
@@ -3577,7 +3577,7 @@ function AdminPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                       <div>
                         <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-slate-700 mb-1">
-                          {invoiceTaxMode === "exclusive" ? "Base Service Fee (బేస్ రేట్ ₹)" : "Total Amount (మొత్తం ₹)"}
+                          {invoiceTaxMode === "exclusive" ? "Base Service Fee (₹)" : "Total Amount (₹)"}
                         </label>
                         <input
                           type="number"
@@ -3588,7 +3588,7 @@ function AdminPage() {
                       </div>
                       <div>
                         <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-emerald-800 mb-1">
-                          Advance Paid (అడ్వాన్స్ ₹)
+                          Advance Paid (₹)
                         </label>
                         <input
                           type="number"
@@ -3599,7 +3599,7 @@ function AdminPage() {
                       </div>
                       <div>
                         <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-amber-800 mb-1">
-                          Balance Due (మిగిలిన బ్యాలెన్స్ ₹)
+                          Balance Due (₹)
                         </label>
                         <input
                           type="number"
@@ -3635,7 +3635,7 @@ function AdminPage() {
                           </div>
                           <div className="flex flex-wrap items-center justify-between gap-1 bg-blue-50/90 px-2.5 py-1.5 rounded-lg border border-blue-200">
                             <span className="font-extrabold text-[#1e2a5a]">
-                              Gross Payable Value (వినియోగదారు చెల్లించాల్సిన మొత్తం):
+                              Gross Payable Value:
                             </span>
                             <span className="font-mono font-black text-xs text-[#1e2a5a]">
                               ₹{curTax.totalAmount.toLocaleString("en-IN")}
@@ -3783,7 +3783,7 @@ function AdminPage() {
                         ) : (
                           <>
                             <Save className="w-4 h-4" />
-                            Save &amp; Update in Database (బుకింగ్‌లో సేవ్ చేయి)
+                            Save &amp; Update in Database
                           </>
                         )}
                       </button>
@@ -3822,7 +3822,7 @@ function AdminPage() {
                         <div className="flex items-center justify-between text-xs font-bold text-slate-500 px-1">
                           <span className="flex items-center gap-1 text-[#1e2a5a] font-extrabold">
                             <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                            Live Tax Invoice Preview (రియల్ టైమ్ ప్రివ్యూ)
+                            Live Tax Invoice Preview
                           </span>
                           <span className="text-[10px] bg-slate-200/80 text-slate-700 px-2 py-0.5 rounded font-mono font-bold">
                             A4 Single Page Format
@@ -8684,7 +8684,7 @@ function AdminPage() {
                           <div className="flex items-center justify-between">
                             <label className="text-[10px] font-extrabold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
                               <CreditCard className="w-3.5 h-3.5 text-amber-700" />
-                              Customer Online Due Payment Link (డ్యూ చెల్లింపు లింక్)
+                              Customer Online Due Payment Link
                             </label>
                             <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
                               Number(bookingBalanceAmount) > 0 
