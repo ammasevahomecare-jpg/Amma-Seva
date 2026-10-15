@@ -1004,6 +1004,7 @@ function AdminPage() {
 
   // Local Page Search & Date Range Filters
   const [bookingSearch, setBookingSearch] = useState("");
+  const [bookingStatusFilter, setBookingStatusFilter] = useState<string>("all");
   const [bookingStartDate, setBookingStartDate] = useState("");
   const [bookingEndDate, setBookingEndDate] = useState("");
   const [selectedUserForDetails, setSelectedUserForDetails] = useState<any | null>(null);
@@ -2373,7 +2374,7 @@ function AdminPage() {
     <div className="lg:h-screen lg:overflow-hidden bg-[#fafafc] text-slate-800 font-sans flex flex-col lg:flex-row">
       
       {/* LEFT SIDEBAR Layout */}
-      <aside className="w-full lg:w-72 bg-[#1e2a5a] text-slate-100 border-b lg:border-b-0 lg:border-r border-[#1e2a5a]/10 flex flex-col shrink-0 lg:h-full lg:overflow-y-auto z-30 shadow-xl shadow-black/10">
+      <aside className="w-full lg:w-64 xl:w-72 bg-[#1e2a5a] text-slate-100 border-b lg:border-b-0 lg:border-r border-[#1e2a5a]/10 flex flex-col shrink-0 lg:h-full lg:overflow-y-auto z-30 shadow-xl shadow-black/10">
         
         {/* Brand Header */}
         <div className="px-6 py-4 lg:py-6 border-b border-white/10 flex items-center justify-between gap-3 bg-[#172147]">
@@ -2478,7 +2479,7 @@ function AdminPage() {
       <div className="flex-1 flex flex-col min-w-0 lg:h-full lg:overflow-hidden">
         
         {/* Top Header Bar */}
-        <header className="sticky top-0 z-20 h-20 bg-white/80 backdrop-blur-md border-b border-slate-200/80 px-6 sm:px-8 flex items-center justify-between gap-4 shrink-0">
+        <header className="sticky top-0 z-20 h-16 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 shrink-0">
           
           {/* Search box */}
           <div className="relative max-w-md w-full">
@@ -2513,7 +2514,7 @@ function AdminPage() {
         </header>
 
         {/* Dashboard Main Content Area */}
-        <main className="p-6 sm:p-8 flex-1 overflow-y-auto">
+        <main className="p-4 sm:p-6 lg:p-7 flex-1 overflow-y-auto">
           
           {activeTab === "overview" && (() => {
             // Helper to draw circular stats
@@ -2542,7 +2543,7 @@ function AdminPage() {
             return (
               <div className="space-y-6 text-left animate-in fade-in duration-200">
                 {/* Row 1: Five Premium Metric Cards */}
-                <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+                <div className="grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                   {/* Revenue Card */}
                   <div 
                     onClick={() => setActiveTab("payments")}
@@ -2764,469 +2765,662 @@ function AdminPage() {
 
           {/* Bookings View panel */}
           {activeTab === "bookings" && (
-            <div className="space-y-6">
-              <div className="flex justify-between items-center bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/40 premium-card">
+            <div className="space-y-6 animate-in fade-in duration-200">
+              
+              {/* Top Title & Action Header */}
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center bg-white border border-slate-200/80 rounded-2xl p-5 sm:p-6 shadow-sm premium-card gap-4">
                 <div>
-                  <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display">Manage Bookings</h3>
-                  <p className="text-xs text-slate-400 mt-0.5 font-medium">Total: {filteredBookings.length} booking records</p>
+                  <div className="flex items-center gap-2">
+                    <div className="h-9 w-9 rounded-xl bg-[#1e2a5a]/10 text-[#1e2a5a] flex items-center justify-center font-bold">
+                      <CalendarDays className="h-5 w-5" />
+                    </div>
+                    <h3 className="text-xl font-extrabold text-[#1e2a5a] font-display">Manage Bookings</h3>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1 font-medium">
+                    Monitor real-time patient requests, assign caregivers, track shift statuses, and collect payments.
+                  </p>
                 </div>
-                <button
-                  onClick={() => openAddModal("booking")}
-                  className="btn-primary py-2 px-4 text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md"
-                >
-                  <Plus className="h-4 w-4" /> Add New Booking
-                </button>
+                <div className="flex items-center gap-2.5">
+                  <button
+                    onClick={fetchDashboardData}
+                    className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
+                    title="Refresh Bookings"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+                  </button>
+                  <button
+                    onClick={() => openAddModal("booking")}
+                    className="btn-primary py-2.5 px-4 text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md"
+                  >
+                    <Plus className="h-4 w-4" /> Add New Booking
+                  </button>
+                </div>
               </div>
 
               {/* Quick Bookings Stats Grid */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-left">
-                <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm flex items-center gap-3">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-left">
+                <div 
+                  onClick={() => setBookingStatusFilter("all")}
+                  className={`bg-white border rounded-2xl p-4 shadow-sm flex items-center gap-3.5 cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${
+                    bookingStatusFilter === "all" ? "border-[#1e2a5a] ring-2 ring-[#1e2a5a]/20" : "border-slate-200/80 hover:border-slate-300"
+                  }`}
+                >
                   <div className="p-3 bg-indigo-50 text-[#1e2a5a] rounded-xl shrink-0">
                     <Calendar className="h-5 w-5" />
                   </div>
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Bookings</span>
-                    <span className="text-base font-extrabold text-[#1e2a5a] font-display">{bookings.length}</span>
+                  <div className="min-w-0">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block truncate">Total Bookings</span>
+                    <span className="text-xl font-extrabold text-[#1e2a5a] font-display">{bookings.length}</span>
                   </div>
                 </div>
 
-                <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm flex items-center gap-3">
-                  <div className="p-3 bg-amber-50 text-amber-800 rounded-xl shrink-0">
+                <div 
+                  onClick={() => setBookingStatusFilter("unassigned")}
+                  className={`bg-white border rounded-2xl p-4 shadow-sm flex items-center gap-3.5 cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${
+                    bookingStatusFilter === "unassigned" ? "border-amber-500 ring-2 ring-amber-500/20" : "border-slate-200/80 hover:border-amber-300"
+                  }`}
+                >
+                  <div className="p-3 bg-amber-50 text-amber-700 rounded-xl shrink-0">
                     <Clock className="h-5 w-5 animate-pulse" />
                   </div>
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Unassigned Shifts</span>
-                    <span className="text-base font-extrabold text-amber-800 font-display">
+                  <div className="min-w-0">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block truncate">Unassigned Shifts</span>
+                    <span className="text-xl font-extrabold text-amber-800 font-display">
                       {bookings.filter(b => !b.assignedStaff && b.status !== "Cancelled").length}
                     </span>
                   </div>
                 </div>
 
-                <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm flex items-center gap-3">
-                  <div className="p-3 bg-emerald-50 text-emerald-750 rounded-xl shrink-0">
+                <div 
+                  onClick={() => setBookingStatusFilter("active")}
+                  className={`bg-white border rounded-2xl p-4 shadow-sm flex items-center gap-3.5 cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${
+                    bookingStatusFilter === "active" ? "border-emerald-500 ring-2 ring-emerald-500/20" : "border-slate-200/80 hover:border-emerald-300"
+                  }`}
+                >
+                  <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl shrink-0">
                     <CheckCircle2 className="h-5 w-5" />
                   </div>
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Active Shifts</span>
-                    <span className="text-base font-extrabold text-emerald-700 font-display">
+                  <div className="min-w-0">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block truncate">Active Shifts</span>
+                    <span className="text-xl font-extrabold text-emerald-700 font-display">
                       {bookings.filter(b => b.status === "Confirmed" || b.status === "Active").length}
                     </span>
                   </div>
                 </div>
 
-                <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm flex items-center gap-3">
-                  <div className="p-3 bg-emerald-50 text-emerald-705 rounded-xl shrink-0">
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm flex items-center gap-3.5">
+                  <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl shrink-0">
                     <DollarSign className="h-5 w-5" />
                   </div>
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Advance Revenue</span>
-                    <span className="text-base font-extrabold text-emerald-800 font-display">
+                  <div className="min-w-0">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block truncate">Advance Revenue</span>
+                    <span className="text-xl font-extrabold text-emerald-800 font-display truncate">
                       ₹{bookings.reduce((sum, b) => sum + Number(b.advancePaid || 0), 0).toLocaleString()}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Local Filter Bar */}
-              <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm premium-card grid gap-4 grid-cols-1 sm:grid-cols-4 items-center">
-                <div className="relative col-span-1 sm:col-span-2">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Search by Patient, Phone, Service, or Staff..."
-                    value={bookingSearch}
-                    onChange={(e) => setBookingSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-semibold text-slate-800"
-                  />
-                </div>
-                <div>
-                  <input
-                    type="date"
-                    value={bookingStartDate}
-                    onChange={(e) => setBookingStartDate(e.target.value)}
-                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-bold text-slate-500"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="date"
-                    value={bookingEndDate}
-                    onChange={(e) => setBookingEndDate(e.target.value)}
-                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-bold text-slate-500"
-                  />
-                  {(bookingSearch || bookingStartDate || bookingEndDate) && (
+              {/* Status Filter Tabs & Search / Date Range Controls */}
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-sm space-y-3.5 premium-card">
+                
+                {/* Horizontal Quick Filter Pills */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                  {[
+                    { id: "all", label: "All Bookings", count: bookings.length },
+                    { id: "Pending", label: "Pending", count: bookings.filter(b => b.status === "Pending").length },
+                    { id: "active", label: "Active / Confirmed", count: bookings.filter(b => b.status === "Confirmed" || b.status === "Active").length },
+                    { id: "unassigned", label: "Unassigned Shifts", count: bookings.filter(b => !b.assignedStaff && b.status !== "Cancelled").length },
+                    { id: "Completed", label: "Completed", count: bookings.filter(b => b.status === "Completed").length },
+                    { id: "Cancelled", label: "Cancelled", count: bookings.filter(b => b.status === "Cancelled").length },
+                  ].map((pill) => (
                     <button
-                      onClick={() => {
-                        setBookingSearch("");
-                        setBookingStartDate("");
-                        setBookingEndDate("");
-                      }}
-                      className="px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-black transition-all cursor-pointer"
+                      key={pill.id}
+                      type="button"
+                      onClick={() => setBookingStatusFilter(pill.id)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
+                        bookingStatusFilter === pill.id
+                          ? "bg-[#1e2a5a] text-white shadow-xs"
+                          : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+                      }`}
                     >
-                      Clear
+                      <span>{pill.label}</span>
+                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                        bookingStatusFilter === pill.id ? "bg-white/20 text-white" : "bg-white text-slate-700 border border-slate-200"
+                      }`}>
+                        {pill.count}
+                      </span>
                     </button>
-                  )}
+                  ))}
                 </div>
+
+                {/* Search & Date Filter Inputs */}
+                <div className="grid gap-3 grid-cols-1 md:grid-cols-12 items-center">
+                  <div className="relative md:col-span-6">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Search by Patient, Phone, Service, or Staff..."
+                      value={bookingSearch}
+                      onChange={(e) => setBookingSearch(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-semibold text-slate-800"
+                    />
+                  </div>
+
+                  <div className="md:col-span-3 flex items-center gap-2 bg-slate-50/80 border border-slate-200 rounded-xl px-3 py-1.5">
+                    <span className="text-[10px] font-extrabold uppercase text-slate-400 shrink-0">From</span>
+                    <input
+                      type="date"
+                      value={bookingStartDate}
+                      onChange={(e) => setBookingStartDate(e.target.value)}
+                      className="w-full bg-transparent outline-none text-xs font-bold text-slate-700"
+                    />
+                  </div>
+
+                  <div className="md:col-span-3 flex items-center gap-2">
+                    <div className="flex-1 flex items-center gap-2 bg-slate-50/80 border border-slate-200 rounded-xl px-3 py-1.5">
+                      <span className="text-[10px] font-extrabold uppercase text-slate-400 shrink-0">To</span>
+                      <input
+                        type="date"
+                        value={bookingEndDate}
+                        onChange={(e) => setBookingEndDate(e.target.value)}
+                        className="w-full bg-transparent outline-none text-xs font-bold text-slate-700"
+                      />
+                    </div>
+                    {(bookingSearch || bookingStartDate || bookingEndDate || bookingStatusFilter !== "all") && (
+                      <button
+                        onClick={() => {
+                          setBookingSearch("");
+                          setBookingStartDate("");
+                          setBookingEndDate("");
+                          setBookingStatusFilter("all");
+                        }}
+                        className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black transition-all cursor-pointer shrink-0"
+                        title="Reset all filters"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                </div>
+
               </div>
 
+              {/* Bookings Modular Cards List */}
               <div className="space-y-4">
                 {(() => {
                   const filtered = bookings.filter((b) => {
+                    // Status filter
+                    if (bookingStatusFilter === "unassigned") {
+                      if (b.assignedStaff || b.status === "Cancelled") return false;
+                    } else if (bookingStatusFilter === "active") {
+                      if (b.status !== "Confirmed" && b.status !== "Active") return false;
+                    } else if (bookingStatusFilter !== "all") {
+                      if (b.status?.toLowerCase() !== bookingStatusFilter.toLowerCase()) return false;
+                    }
+
                     // Search query filter
-                    const q = bookingSearch.toLowerCase();
-                    const matchesSearch = !bookingSearch || 
-                      b.name.toLowerCase().includes(q) ||
-                      b.phone.includes(q) ||
-                      b.service.toLowerCase().includes(q) ||
-                      (b.assignedStaff && b.assignedStaff.toLowerCase().includes(q));
+                    if (bookingSearch.trim()) {
+                      const q = bookingSearch.toLowerCase();
+                      const matchesSearch =
+                        b.name?.toLowerCase().includes(q) ||
+                        b.phone?.includes(q) ||
+                        b.service?.toLowerCase().includes(q) ||
+                        (b.assignedStaff && b.assignedStaff.toLowerCase().includes(q)) ||
+                        (b.patientName && b.patientName.toLowerCase().includes(q));
+                      if (!matchesSearch) return false;
+                    }
 
                     // Date range filter
-                    let matchesDate = true;
                     if (bookingStartDate || bookingEndDate) {
                       const bDate = new Date(b.date);
                       if (bookingStartDate) {
                         const start = new Date(bookingStartDate);
-                        if (bDate < start) matchesDate = false;
+                        if (bDate < start) return false;
                       }
                       if (bookingEndDate) {
                         const end = new Date(bookingEndDate);
-                        if (bDate > end) matchesDate = false;
+                        if (bDate > end) return false;
                       }
                     }
 
-                    return matchesSearch && matchesDate;
+                    return true;
                   });
 
                   if (filtered.length === 0) {
                     return (
-                      <div className="bg-white border border-slate-200/80 rounded-2xl p-8 text-center text-slate-400 text-sm font-semibold premium-card">
-                        No booking records matched your search and date filters.
+                      <div className="bg-white border border-slate-200/80 rounded-2xl p-12 text-center text-slate-400 text-sm font-semibold premium-card space-y-2">
+                        <Calendar className="h-10 w-10 mx-auto text-slate-300" />
+                        <div className="text-slate-700 font-bold">No booking records matched your search or status filter.</div>
+                        <p className="text-xs text-slate-400">Try adjusting your keyword, resetting date filters, or selecting "All Bookings".</p>
+                        {(bookingSearch || bookingStartDate || bookingEndDate || bookingStatusFilter !== "all") && (
+                          <button
+                            onClick={() => {
+                              setBookingSearch("");
+                              setBookingStartDate("");
+                              setBookingEndDate("");
+                              setBookingStatusFilter("all");
+                            }}
+                            className="mt-3 px-4 py-2 bg-[#1e2a5a] text-white text-xs font-bold rounded-xl cursor-pointer"
+                          >
+                            Reset Filters
+                          </button>
+                        )}
                       </div>
                     );
                   }
 
                   return (
-                    <div className="grid gap-4 grid-cols-1">
+                    <div className="space-y-4">
+                      <div className="text-xs font-bold text-slate-500 px-1">
+                        Showing <strong className="text-slate-800">{filtered.length}</strong> of{" "}
+                        <strong className="text-slate-800">{bookings.length}</strong> booking records
+                      </div>
+
                       {filtered.map((b) => (
-                        <div key={b.id} className="bg-white border border-slate-200/70 hover:border-[#c9a24c]/45 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col lg:flex-row gap-5 justify-between items-start lg:items-center premium-card text-left">
-                          
-                          {/* Patient profile details */}
-                          <div className="flex items-start gap-4 min-w-[260px] max-w-sm">
-                            <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-[#1e2a5a] to-[#0f1530] text-white flex items-center justify-center font-black text-base shadow-md shadow-[#1e2a5a]/10 shrink-0 select-none">
-                              {b.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="space-y-1.5 flex-1 min-w-[200px]">
-                              <div className="flex items-center gap-2">
-                                <h4 className="font-extrabold text-[#1e2a5a] text-sm sm:text-base leading-tight">{b.name}</h4>
-                                <span className="text-[8px] font-bold text-slate-450 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/50">
-                                  #{b.id}
-                                </span>
+                        <div
+                          key={b.id}
+                          className="bg-white border border-slate-200/80 hover:border-[#c9a24c]/60 rounded-2xl p-5 shadow-xs hover:shadow-md transition-all text-left space-y-4 premium-card"
+                        >
+                          {/* TOP BAR: Client Header, ID, Contact, Date & Status */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                            <div className="flex items-center gap-3">
+                              <div className="h-11 w-11 rounded-xl bg-gradient-to-tr from-[#1e2a5a] to-[#2d3e7d] text-white flex items-center justify-center font-black text-base shadow-sm shrink-0 select-none">
+                                {b.name.charAt(0).toUpperCase()}
                               </div>
-                              <div className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
-                                <Phone className="h-3 w-3 text-slate-400 shrink-0" /> {b.phone}
-                              </div>
-                              
-                              {/* Address */}
-                              <div className="text-[10px] text-slate-500 font-semibold italic truncate max-w-[200px]" title={b.address}>
-                                {b.address}
-                              </div>
-                              
-                              {/* Metadata Mini Card */}
-                              {(b.patientName || b.patientNeeds) && (
-                                <div className="mt-2.5 p-3 rounded-xl bg-slate-50/50 border border-slate-200/40 text-left space-y-1.5 max-w-xs">
-                                  {b.patientName && (
-                                    <div className="text-[10px] text-[#1e2a5a] font-extrabold flex items-center gap-1">
-                                      👤 {b.patientName} ({b.patientAge} yrs)
-                                    </div>
-                                  )}
-                                  {b.patientNeeds && (
-                                    <div className="text-[9px] text-slate-500 leading-relaxed font-semibold italic">
-                                      &ldquo;{b.patientNeeds}&rdquo;
-                                    </div>
+                              <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className="font-extrabold text-[#1e2a5a] text-base leading-tight">
+                                    {b.name}
+                                  </h4>
+                                  <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/60">
+                                    #{b.id}
+                                  </span>
+                                  {(b.isMtp || (b.service && b.service.toLowerCase().includes("mtp"))) && (
+                                    <span className="text-[9px] font-black text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md border border-amber-300 flex items-center gap-1">
+                                      🚗 MTP
+                                    </span>
                                   )}
                                 </div>
+                                <div className="flex items-center gap-3 mt-1 flex-wrap text-xs text-slate-500 font-medium">
+                                  <a
+                                    href={`tel:${b.phone}`}
+                                    className="flex items-center gap-1 hover:text-[#1e2a5a] font-semibold text-slate-600"
+                                  >
+                                    <Phone className="h-3.5 w-3.5 text-slate-400" />
+                                    {b.phone}
+                                  </a>
+                                  <span className="text-slate-300">•</span>
+                                  <span className="flex items-center gap-1 text-slate-600 font-semibold">
+                                    <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                                    {b.date}
+                                  </span>
+                                  {b.time && (
+                                    <>
+                                      <span className="text-slate-300">•</span>
+                                      <span className="flex items-center gap-1 text-slate-600 font-semibold">
+                                        <Clock className="h-3.5 w-3.5 text-slate-400" />
+                                        {b.time}
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Right: Booking Status Pill */}
+                            <div className="flex items-center gap-2 self-start sm:self-center">
+                              <span
+                                className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider border shadow-2xs ${
+                                  b.status === "Confirmed" || b.status === "Active"
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                    : b.status === "Completed"
+                                    ? "bg-blue-50 text-blue-700 border-blue-200"
+                                    : b.status === "Cancelled"
+                                    ? "bg-rose-50 text-rose-700 border-rose-200"
+                                    : "bg-amber-50 text-amber-700 border-amber-200"
+                                }`}
+                              >
+                                {b.status}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* MAIN CONTENT GRID: 3 Columns on Tablet/Desktop */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            
+                            {/* COL 1: Service & Patient Details */}
+                            <div className="bg-slate-50/70 border border-slate-200/60 rounded-xl p-3.5 space-y-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                                  Service &amp; Patient
+                                </span>
+                                <span className="text-[10px] font-black uppercase text-[#c9a24c] bg-[#c9a24c]/10 px-2 py-0.5 rounded-full border border-[#c9a24c]/20">
+                                  {b.duration || "Standard Shift"}
+                                </span>
+                              </div>
+
+                              <div className="font-extrabold text-[#1e2a5a] text-sm leading-snug">
+                                {b.service}
+                              </div>
+
+                              {(b.patientName || b.patientAge) && (
+                                <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                                  <span className="text-slate-400">👤 Patient:</span>
+                                  <span>{b.patientName || "Client"} {b.patientAge ? `(${b.patientAge} yrs)` : ""}</span>
+                                </div>
                               )}
-                              
-                              <div className="flex gap-3 pt-1">
+
+                              {b.address && (
+                                <div className="text-xs text-slate-500 font-medium truncate" title={b.address}>
+                                  📍 {b.address}
+                                </div>
+                              )}
+
+                              {b.patientNeeds && (
+                                <div className="text-[11px] text-slate-600 bg-white/80 p-2 rounded-lg border border-slate-200/60 italic">
+                                  &ldquo;{b.patientNeeds}&rdquo;
+                                </div>
+                              )}
+
+                              <div className="flex items-center gap-2 pt-1 flex-wrap">
                                 {b.googleMapLocation && (
-                                  <a href={b.googleMapLocation} target="_blank" rel="noopener noreferrer" className="text-[9px] text-[#c9a24c] font-black hover:underline flex items-center gap-0.5">
-                                    🗺️ Map Location
+                                  <a
+                                    href={b.googleMapLocation}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[10px] font-bold text-[#c9a24c] hover:underline flex items-center gap-1 bg-[#c9a24c]/10 px-2 py-0.5 rounded-md border border-[#c9a24c]/20"
+                                  >
+                                    🗺️ Open Map
                                   </a>
                                 )}
                                 {b.prescription && (
                                   <button
                                     type="button"
-                                    onClick={() => openDocViewer(b.prescription, "Doctor Prescription / Case File", `${b.patientName || b.name} (Booking #${b.id})`, "Patient Medical Record")}
-                                    className="text-[9px] text-teal-700 font-black hover:underline flex items-center gap-1 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200 shadow-2xs cursor-pointer"
-                                    title="Click to view full prescription / case file"
+                                    onClick={() =>
+                                      openDocViewer(
+                                        b.prescription,
+                                        "Doctor Prescription / Case File",
+                                        `${b.patientName || b.name} (Booking #${b.id})`,
+                                        "Patient Medical Record"
+                                      )
+                                    }
+                                    className="text-[10px] text-teal-700 font-bold hover:underline flex items-center gap-1 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200 shadow-2xs cursor-pointer"
                                   >
-                                    <Eye className="h-2.5 w-2.5 text-teal-600" />
-                                    <span>Case File</span>
+                                    <Eye className="h-3 w-3 text-teal-600" />
+                                    Case File
                                   </button>
                                 )}
                               </div>
                             </div>
-                          </div>
 
-                          {/* Service Details */}
-                          <div className="space-y-1 min-w-[130px]">
-                            <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">Service Category</span>
-                            <div className="font-extrabold text-slate-800 text-xs sm:text-sm leading-snug">{b.service}</div>
-                            <span className="inline-block text-[9px] text-[#c9a24c] bg-[#c9a24c]/10 border border-[#c9a24c]/20 font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full mt-1.5">{b.duration}</span>
-                          </div>
+                            {/* COL 2: Caregiver / Staff Assignment */}
+                            <div className="bg-slate-50/70 border border-slate-200/60 rounded-xl p-3.5 space-y-2 flex flex-col justify-between">
+                              <div>
+                                <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">
+                                  {b.isMtp || (b.service && (b.service.toLowerCase().includes("mtp") || b.service.toLowerCase().includes("escort") || b.service.toLowerCase().includes("companion")))
+                                    ? "MTP Companion Assignment"
+                                    : "Assigned Caregiver / Staff"}
+                                </div>
 
-                          {/* Date & Time */}
-                          <div className="space-y-1 min-w-[120px]">
-                            <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">Shift Date &amp; Time</span>
-                            <div className="font-extrabold text-slate-700 text-xs flex items-center gap-1.5">
-                              <Calendar className="h-3.5 w-3.5 text-slate-400" /> {b.date}
-                            </div>
-                            <div className="text-[10px] text-slate-400 font-bold flex items-center gap-1.5">
-                              <Clock className="h-3.5 w-3.5 text-slate-400 animate-pulse" /> {b.time}
-                            </div>
-                          </div>
-
-                          {/* Assigned Nurse/Staff or MTP Companion */}
-                          <div className="space-y-1.5 min-w-[150px]">
-                            <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">
-                              {b.isMtp || (b.service && (b.service.toLowerCase().includes("mtp") || b.service.toLowerCase().includes("escort") || b.service.toLowerCase().includes("companion")))
-                                ? "MTP Companion (Self-Claim)"
-                                : "Assigned Nurse/Staff"}
-                            </span>
-                            {b.isMtp || (b.service && (b.service.toLowerCase().includes("mtp") || b.service.toLowerCase().includes("escort") || b.service.toLowerCase().includes("companion"))) ? (
-                              b.assignedStaff || b.mtpAcceptedBy ? (
-                                <div className="space-y-0.5">
-                                  <div className="flex items-center gap-1.5">
-                                    <div className="h-6 w-6 rounded-full bg-emerald-600 text-white font-black text-[10px] flex items-center justify-center shadow-xs shrink-0">
-                                      🚗
+                                {b.isMtp || (b.service && (b.service.toLowerCase().includes("mtp") || b.service.toLowerCase().includes("escort") || b.service.toLowerCase().includes("companion"))) ? (
+                                  b.assignedStaff || b.mtpAcceptedBy ? (
+                                    <div className="bg-white p-2.5 rounded-xl border border-emerald-200 space-y-1.5">
+                                      <div className="flex items-center gap-2">
+                                        <div className="h-8 w-8 rounded-full bg-emerald-600 text-white font-black text-xs flex items-center justify-center shrink-0">
+                                          🚗
+                                        </div>
+                                        <div>
+                                          <div className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+                                            {b.assignedStaff || b.mtpAcceptedBy}
+                                            <span className="text-[9px] bg-emerald-100 text-emerald-700 font-extrabold px-1.5 py-0.2 rounded">Accepted</span>
+                                          </div>
+                                          {(b.mtpAcceptedPhone || b.assignedStaffPhone) && (
+                                            <div className="text-[10px] text-slate-500 font-medium">📞 {b.mtpAcceptedPhone || b.assignedStaffPhone}</div>
+                                          )}
+                                        </div>
+                                      </div>
+                                      {b.mtpAcceptedAt && (
+                                        <div className="text-[9px] text-slate-400 pl-10">⏱️ {b.mtpAcceptedAt}</div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className="bg-amber-50/80 p-2.5 rounded-xl border border-amber-200 space-y-1">
+                                      <span className="inline-flex items-center gap-1.5 text-xs font-black text-amber-800">
+                                        <span className="relative flex h-2 w-2">
+                                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                          <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                                        </span>
+                                        ⚡ Open Gig Radar (MTP Network)
+                                      </span>
+                                      <p className="text-[10px] text-amber-700">Awaiting MTP partner pickup</p>
+                                    </div>
+                                  )
+                                ) : b.assignedStaff ? (
+                                  <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 flex items-center gap-2.5">
+                                    <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-[#1e2a5a] to-[#2d3e7d] text-white flex items-center justify-center font-bold text-xs shrink-0">
+                                      {b.assignedStaff.charAt(0).toUpperCase()}
                                     </div>
                                     <div>
-                                      <div className="text-xs font-black text-emerald-900 flex items-center gap-1">
-                                        {b.assignedStaff || b.mtpAcceptedBy}
-                                        <span className="text-[8px] bg-emerald-100 text-emerald-700 font-extrabold px-1.5 py-0.2 rounded">Accepted</span>
+                                      <div className="text-xs font-extrabold text-[#1e2a5a]">
+                                        {b.assignedStaff}
                                       </div>
-                                      {(b.mtpAcceptedPhone || b.assignedStaffPhone) && (
-                                        <div className="text-[9px] text-slate-500 font-semibold">📞 {b.mtpAcceptedPhone || b.assignedStaffPhone}</div>
+                                      {b.assignedStaffPhone ? (
+                                        <div className="text-[10px] text-slate-500 font-medium">
+                                          📞 {b.assignedStaffPhone}
+                                        </div>
+                                      ) : (
+                                        <div className="text-[10px] text-emerald-600 font-bold">
+                                          ✓ Active Caregiver
+                                        </div>
                                       )}
                                     </div>
                                   </div>
-                                  {b.mtpAcceptedAt && (
-                                    <div className="text-[8px] text-slate-400 font-medium pl-7">⏱️ {b.mtpAcceptedAt}</div>
-                                  )}
-                                </div>
-                              ) : (
-                                <div className="space-y-1">
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg shadow-2xs">
-                                    <span className="relative flex h-2 w-2 mr-0.5">
-                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                                    </span>
-                                    ⚡ Open Gig Radar
-                                  </span>
-                                  <div className="text-[8px] text-slate-400 font-medium">Awaiting MTP accept</div>
-                                </div>
-                              )
-                            ) : b.assignedStaff ? (
-                              <div className="flex items-center gap-2">
-                                <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-[#1e2a5a] to-[#0f1530] border border-slate-200/50 flex items-center justify-center font-bold text-xs text-white shadow-sm shrink-0">
-                                  {b.assignedStaff.charAt(0).toUpperCase()}
-                                </div>
-                                <span className="text-xs font-extrabold text-[#1e2a5a]">{b.assignedStaff}</span>
-                              </div>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-[9px] font-extrabold text-rose-600 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-lg">
-                                🚫 Unassigned
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Status and Payouts */}
-                          <div className="flex flex-row lg:flex-col items-center lg:items-start gap-4 min-w-[130px]">
-                            <div className="space-y-1 text-left">
-                              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Booking Status</span>
-                              <span className={`inline-block text-[9px] uppercase font-black tracking-wider px-2.5 py-0.5 rounded-full border ${
-                                b.status === "Confirmed" ? "bg-emerald-50 text-emerald-700 border-emerald-200/60" :
-                                b.status === "Completed" ? "bg-blue-50 text-blue-700 border-blue-200/60" :
-                                b.status === "Cancelled" ? "bg-rose-50 text-rose-700 border-rose-200/60" :
-                                "bg-amber-50 text-amber-700 border-amber-200/60"
-                              }`}>
-                                {b.status}
-                              </span>
-                            </div>
-                            <div className="space-y-1 text-left min-w-[140px]">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs font-black text-slate-900">Total: ₹{b.amount.toLocaleString()}</span>
-                                {(b.isMtp || (b.service && b.service.toLowerCase().includes("mtp"))) && (
-                                  <span className="text-[8px] font-black text-amber-900 bg-amber-100 px-1.5 py-0.2 rounded border border-amber-300">
-                                    🚗 MTP
-                                  </span>
+                                ) : (
+                                  <div className="bg-rose-50/80 p-2.5 rounded-xl border border-rose-200 space-y-2">
+                                    <div className="flex items-center gap-1.5 text-xs font-extrabold text-rose-700">
+                                      🚫 Caregiver Unassigned
+                                    </div>
+                                    <p className="text-[10px] text-rose-600 leading-tight">
+                                      No staff member has been allocated for this shift yet.
+                                    </p>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setIsRecordCaretakerPaymentMode(false);
+                                        openEditModal("booking", b);
+                                      }}
+                                      className="w-full py-1.5 px-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
+                                    >
+                                      <UserCheck className="w-3.5 h-3.5" /> Assign Staff Now
+                                    </button>
+                                  </div>
                                 )}
                               </div>
 
-                              {(b.baseAmount !== undefined && b.gstAmount !== undefined && Number(b.gstAmount) > 0) && (
-                                <div className="text-[9px] text-slate-400 font-semibold">
-                                  Base: ₹{b.baseAmount.toLocaleString()} + 18% GST: ₹{b.gstAmount.toLocaleString()}
-                                </div>
-                              )}
-                              
-                              {/* Custom Advance vs Balance badge */}
-                              {b.advancePaid !== undefined && Number(b.advancePaid) > 0 ? (
-                                <div className="space-y-0.5 mt-1">
-                                  <span className="inline-block text-[8px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100">
-                                    ✓ Adv Paid: ₹{b.advancePaid.toLocaleString()}
-                                  </span>
-                                  {Number(b.balanceAmount) > 0 ? (
-                                    <span className="block text-[8px] font-extrabold uppercase tracking-wider text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
-                                      ⏳ Bal Due: ₹{b.balanceAmount?.toLocaleString()}
-                                    </span>
-                                  ) : (
-                                    <span className="block text-[8px] font-extrabold uppercase tracking-wider text-emerald-700 bg-emerald-100/70 rounded px-1.5 py-0.5">
-                                      ✓ Fully Paid
-                                    </span>
-                                  )}
-                                </div>
-                              ) : (
-                                <div className="mt-1">
-                                  <span className={`inline-block text-[8px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded border ${
-                                    b.paymentStatus === "Paid" 
-                                      ? "bg-emerald-50 text-emerald-700 border-emerald-200/60" 
-                                      : "bg-amber-50 text-amber-700 border-amber-200/60"
-                                  }`}>
-                                    {b.paymentStatus || "Pay on Service"}
-                                  </span>
-                                  {b.balanceAmount !== undefined && Number(b.balanceAmount) > 0 && (
-                                    <span className="block text-[8px] font-bold text-slate-500 mt-0.5">
-                                      Due: ₹{b.balanceAmount.toLocaleString()}
-                                    </span>
-                                  )}
-                                </div>
-                              )}
+                              <div className="text-[10px] text-slate-400 font-medium">
+                                {b.notes ? `Note: ${b.notes}` : "Shift scheduled & monitored"}
+                              </div>
+                            </div>
 
-                              {/* Customer Payment Link Bar */}
-                              {Number(b.balanceAmount) > 0 ? (
-                                <div className="mt-2.5 p-2 rounded-xl bg-amber-50/90 border border-amber-200/90 space-y-1.5 shadow-2xs">
-                                  <div className="flex items-center justify-between text-[9px]">
-                                    <span className="font-extrabold text-amber-900 flex items-center gap-1">
-                                      <CreditCard className="w-3 h-3 text-amber-700" />
-                                      Payment Link
-                                    </span>
-                                    <span className="text-[9px] font-black text-rose-700 bg-rose-100/90 px-1.5 py-0.2 rounded border border-rose-200">
-                                      Due: ₹{Number(b.balanceAmount).toLocaleString("en-IN")}
-                                    </span>
+                            {/* COL 3: Billing & Financial Breakdown */}
+                            <div className="bg-slate-50/70 border border-slate-200/60 rounded-xl p-3.5 space-y-2.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                                  Financial Summary
+                                </span>
+                                <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${
+                                  b.paymentStatus === "Paid" || Number(b.balanceAmount) === 0
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                    : "bg-amber-50 text-amber-700 border-amber-200"
+                                }`}>
+                                  {b.paymentStatus === "Paid" || Number(b.balanceAmount) === 0 ? "Paid in Full" : (b.paymentStatus || "Balance Pending")}
+                                </span>
+                              </div>
+
+                              <div>
+                                <div className="text-lg font-black text-slate-900 font-display">
+                                  ₹{Number(b.amount || 0).toLocaleString()}
+                                  <span className="text-[10px] font-semibold text-slate-400 ml-1">Total Shift Value</span>
+                                </div>
+                                {(b.baseAmount !== undefined && b.gstAmount !== undefined && Number(b.gstAmount) > 0) ? (
+                                  <div className="text-[10px] text-slate-500 font-medium mt-0.5">
+                                    Base: ₹{Number(b.baseAmount).toLocaleString()} + 18% GST: ₹{Number(b.gstAmount).toLocaleString()}
                                   </div>
-                                  <div className="flex items-center gap-1">
-                                    <div 
-                                      className="flex-1 bg-white px-2 py-1 rounded-lg border border-amber-200 text-[9px] font-mono text-slate-700 truncate select-all" 
-                                      title={`${typeof window !== "undefined" ? window.location.origin : "https://ammaseva.in"}/pay-balance?id=${b.id}`}
-                                    >
-                                      /pay-balance?id={b.id}
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleCopyBookingPayLink(b.id)}
-                                      className={`px-2 py-1 rounded-lg text-[9px] font-bold flex items-center gap-1 transition-all shadow-xs cursor-pointer shrink-0 ${
-                                        copiedBookingLinkId === b.id
-                                          ? "bg-emerald-600 text-white border border-emerald-600 shadow-emerald-200"
-                                          : "bg-amber-600 hover:bg-amber-700 text-white border border-amber-700"
-                                      }`}
-                                      title="1-Click Copy Link"
-                                    >
-                                      {copiedBookingLinkId === b.id ? (
-                                        <>
-                                          <Check className="w-2.5 h-2.5 text-white" />
-                                          <span>Copied!</span>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <Copy className="w-2.5 h-2.5" />
-                                          <span>Copy</span>
-                                        </>
-                                      )}
-                                    </button>
-                                    <a
-                                      href={`/pay-balance?id=${b.id}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="p-1 px-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-[9px] font-bold flex items-center gap-0.5 transition-all shadow-xs shrink-0"
-                                      title="Open Due Payment Page in New Tab"
-                                    >
-                                      <ExternalLink className="w-3 h-3 text-slate-600" />
-                                    </a>
+                                ) : null}
+                              </div>
+
+                              {/* Advance Paid vs Balance Due Badges */}
+                              <div className="grid grid-cols-2 gap-2 pt-1">
+                                <div className="bg-white p-2 rounded-lg border border-slate-200/70">
+                                  <div className="text-[9px] uppercase font-bold text-slate-400">Advance Paid</div>
+                                  <div className="text-xs font-black text-emerald-700 mt-0.5">
+                                    ₹{Number(b.advancePaid || 0).toLocaleString()}
                                   </div>
                                 </div>
-                              ) : (
-                                <div className="mt-2 p-1.5 px-2 rounded-xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-between text-[9px]">
-                                  <span className="font-extrabold text-emerald-800 flex items-center gap-1">
-                                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                    ✓ Due Cleared • Fully Paid
+                                <div className={`p-2 rounded-lg border ${
+                                  Number(b.balanceAmount) > 0 
+                                    ? "bg-amber-50 border-amber-200 text-amber-900" 
+                                    : "bg-emerald-50 border-emerald-200 text-emerald-900"
+                                }`}>
+                                  <div className="text-[9px] uppercase font-bold text-slate-500">
+                                    {Number(b.balanceAmount) > 0 ? "Balance Due" : "Settlement"}
+                                  </div>
+                                  <div className="text-xs font-black mt-0.5">
+                                    {Number(b.balanceAmount) > 0 
+                                      ? `₹${Number(b.balanceAmount).toLocaleString()}` 
+                                      : "Cleared ✓"}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* BOTTOM BAR: Due Payment Link & Action Controls */}
+                          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-3 border-t border-slate-100">
+                            
+                            {/* Left: Payment Link or Cleared Receipt */}
+                            <div className="flex-1 max-w-xl">
+                              {Number(b.balanceAmount) > 0 ? (
+                                <div className="flex items-center gap-2 bg-amber-50/90 border border-amber-200 p-2 rounded-xl text-xs">
+                                  <span className="text-[10px] font-black uppercase text-amber-900 shrink-0 flex items-center gap-1">
+                                    <CreditCard className="w-3.5 h-3.5 text-amber-700" />
+                                    Due Pay Link:
                                   </span>
+                                  <div
+                                    className="flex-1 bg-white px-2 py-1 rounded-lg border border-amber-200 text-[10px] font-mono text-slate-700 truncate select-all"
+                                    title={`${typeof window !== "undefined" ? window.location.origin : "https://ammaseva.in"}/pay-balance?id=${b.id}`}
+                                  >
+                                    /pay-balance?id={b.id}
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyBookingPayLink(b.id)}
+                                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all shadow-xs cursor-pointer shrink-0 ${
+                                      copiedBookingLinkId === b.id
+                                        ? "bg-emerald-600 text-white"
+                                        : "bg-amber-600 hover:bg-amber-700 text-white"
+                                    }`}
+                                  >
+                                    {copiedBookingLinkId === b.id ? (
+                                      <>
+                                        <Check className="w-3 h-3" />
+                                        <span>Copied</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Copy className="w-3 h-3" />
+                                        <span>Copy</span>
+                                      </>
+                                    )}
+                                  </button>
                                   <a
                                     href={`/pay-balance?id=${b.id}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-[8px] font-bold text-emerald-700 hover:underline flex items-center gap-0.5 shrink-0"
-                                    title="View Settlement Receipt"
+                                    className="p-1 px-2 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold flex items-center gap-1 transition-all shadow-xs shrink-0"
+                                    title="Open Due Payment Page"
                                   >
-                                    Receipt <ExternalLink className="w-2.5 h-2.5" />
+                                    <ExternalLink className="w-3 h-3 text-slate-600" />
+                                  </a>
+                                </div>
+                              ) : (
+                                <div className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200/80 px-3 py-1.5 rounded-xl text-xs">
+                                  <span className="font-extrabold text-emerald-800 flex items-center gap-1.5">
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                    Payment Cleared in Full
+                                  </span>
+                                  <span className="text-slate-300">•</span>
+                                  <a
+                                    href={`/pay-balance?id=${b.id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[11px] font-bold text-emerald-700 hover:underline flex items-center gap-1"
+                                  >
+                                    Settlement Receipt <ExternalLink className="w-3 h-3" />
                                   </a>
                                 </div>
                               )}
                             </div>
-                          </div>
 
-                          {/* Action Controls */}
-                          <div className="flex gap-2 self-stretch lg:self-auto justify-end border-t lg:border-t-0 border-slate-100 pt-3 lg:pt-0 shrink-0">
-                            {Number(b.balanceAmount) > 0 ? (
+                            {/* Right: Action Buttons */}
+                            <div className="flex items-center gap-2 flex-wrap justify-end">
+                              {Number(b.balanceAmount) > 0 ? (
+                                <button
+                                  onClick={() => handleOpenWhatsAppPayModal(b)}
+                                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-xs"
+                                  title="Send Payment Link via WhatsApp to Customer"
+                                >
+                                  <MessageSquare className="h-3.5 w-3.5" />
+                                  <span>Send Pay Link</span>
+                                </button>
+                              ) : (
+                                <a
+                                  href={`/pay-balance?id=${b.id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-xs"
+                                >
+                                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                                  <span>Receipt</span>
+                                </a>
+                              )}
+
                               <button
-                                onClick={() => handleOpenWhatsAppPayModal(b)}
-                                className="px-3 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all hover:translate-y-[-1px] shadow-sm"
-                                title="Send Payment Link via WhatsApp to Customer"
+                                type="button"
+                                onClick={() => {
+                                  handleSelectBookingForInvoice(String(b.id));
+                                  setActiveTab("invoices");
+                                  window.scrollTo({ top: 0, behavior: "smooth" });
+                                }}
+                                className="px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-xs"
+                                title="Generate Official Tax Invoice"
                               >
-                                <MessageSquare className="h-3.5 w-3.5" />
-                                <span className="hidden sm:inline">Send Pay Link</span>
+                                <Receipt className="h-3.5 w-3.5" />
+                                <span>Invoice</span>
                               </button>
-                            ) : (
-                              <a
-                                href={`/pay-balance?id=${b.id}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="px-3 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all hover:translate-y-[-1px] shadow-xs"
-                                title="View Paid Invoice / Settlement Summary"
-                              >
-                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                                <span className="hidden sm:inline">Paid Receipt</span>
-                              </a>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                handleSelectBookingForInvoice(String(b.id));
-                                setActiveTab("invoices");
-                                window.scrollTo({ top: 0, behavior: "smooth" });
-                              }}
-                              className="px-3 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-600 hover:text-white border border-amber-200/80 text-amber-800 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all hover:translate-y-[-1px] shadow-sm"
-                              title="Generate & Print Official Tax Invoice"
-                            >
-                              <Receipt className="h-3.5 w-3.5" />
-                              <span className="hidden sm:inline">Invoice</span>
-                            </button>
-                            <button
-                              onClick={() => {
-                                setIsRecordCaretakerPaymentMode(false);
-                                openEditModal("booking", b);
-                              }}
-                              className="px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-[#c9a24c]/10 text-[#c9a24c] border border-slate-200 hover:border-[#c9a24c]/30 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all hover:translate-y-[-1px] shadow-sm"
-                            >
-                              <Edit3 className="h-3.5 w-3.5" /> Edit
-                            </button>
-                            <button
-                              onClick={() => handleDeleteBooking(b.id)}
-                              className="p-2.5 rounded-xl bg-rose-50 hover:bg-rose-500 hover:text-white border border-rose-100 hover:border-rose-500 text-rose-500 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all hover:translate-y-[-1px] shadow-sm"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
 
+                              <button
+                                onClick={() => {
+                                  setIsRecordCaretakerPaymentMode(false);
+                                  openEditModal("booking", b);
+                                }}
+                                className="px-3 py-2 rounded-xl bg-slate-50 hover:bg-[#c9a24c]/10 text-[#c9a24c] border border-slate-200 hover:border-[#c9a24c]/30 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-xs"
+                              >
+                                <Edit3 className="h-3.5 w-3.5" />
+                                <span>Edit</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleDeleteBooking(b.id)}
+                                className="p-2 rounded-xl bg-rose-50 hover:bg-rose-500 hover:text-white border border-rose-100 text-rose-600 text-xs font-bold transition-all cursor-pointer shadow-xs"
+                                title="Delete Booking"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -4174,7 +4368,7 @@ function AdminPage() {
 
               <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-md shadow-slate-100/30 premium-card">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm text-slate-700">
+                  <table className="w-full text-left text-sm text-slate-700 min-w-[750px]">
                     <thead>
                       <tr className="border-b border-slate-200/80 bg-[#1e2a5a]/5 text-xs text-[#1e2a5a] uppercase font-bold tracking-wider">
                         <th className="py-4 px-6">Staff details</th>
@@ -4733,7 +4927,7 @@ function AdminPage() {
                 {/* Unified Accounts Table */}
                 <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-md shadow-slate-100/30 premium-card">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm text-slate-700">
+                    <table className="w-full text-left text-sm text-slate-700 min-w-[850px]">
                       <thead>
                         <tr className="border-b border-slate-200/80 bg-[#1e2a5a]/5 text-xs text-[#1e2a5a] uppercase font-bold tracking-wider">
                           <th className="py-4 px-6">User & Profile</th>
@@ -5147,11 +5341,14 @@ function AdminPage() {
                 <div className="flex gap-1.5 bg-slate-100 p-1 rounded-xl w-fit self-start sm:self-auto border border-slate-200/50">
                   {["all", "Paid", "Unpaid"].map((filter) => {
                     const count = bookings.filter(b => filter === "all" ? true : b.paymentStatus === filter).length;
+                    const isActive = filter === "all" ? !paymentSearch : paymentSearch.toLowerCase() === filter.toLowerCase();
                     return (
                       <button
                         key={filter}
-                        onClick={() => setSearchQuery(filter === "all" ? "" : filter)}
-                        className="px-3.5 py-1.5 rounded-lg text-xs font-bold hover:bg-white hover:shadow-sm text-slate-600 hover:text-[#1e2a5a] transition-all cursor-pointer capitalize"
+                        onClick={() => setPaymentSearch(filter === "all" ? "" : filter)}
+                        className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer capitalize ${
+                          isActive ? "bg-white shadow-xs text-[#1e2a5a] font-extrabold" : "text-slate-600 hover:text-[#1e2a5a]"
+                        }`}
                       >
                         {filter} ({count})
                       </button>
@@ -5183,8 +5380,8 @@ function AdminPage() {
               </div>
 
               {/* Local Filter Bar */}
-              <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm premium-card grid gap-4 grid-cols-1 sm:grid-cols-4 items-center">
-                <div className="relative col-span-1 sm:col-span-2">
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-sm premium-card grid gap-3 grid-cols-1 md:grid-cols-12 items-center">
+                <div className="relative md:col-span-6">
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <input
                     type="text"
@@ -5194,21 +5391,25 @@ function AdminPage() {
                     className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-semibold text-slate-800"
                   />
                 </div>
-                <div>
+                <div className="md:col-span-3 flex items-center gap-2 bg-slate-50/80 border border-slate-200 rounded-xl px-3 py-1.5">
+                  <span className="text-[10px] font-extrabold uppercase text-slate-400 shrink-0">From</span>
                   <input
                     type="date"
                     value={paymentStartDate}
                     onChange={(e) => setPaymentStartDate(e.target.value)}
-                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-bold text-slate-500"
+                    className="w-full bg-transparent outline-none text-xs font-bold text-slate-700"
                   />
                 </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="date"
-                    value={paymentEndDate}
-                    onChange={(e) => setPaymentEndDate(e.target.value)}
-                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-bold text-slate-500"
-                  />
+                <div className="md:col-span-3 flex items-center gap-2">
+                  <div className="flex-1 flex items-center gap-2 bg-slate-50/80 border border-slate-200 rounded-xl px-3 py-1.5">
+                    <span className="text-[10px] font-extrabold uppercase text-slate-400 shrink-0">To</span>
+                    <input
+                      type="date"
+                      value={paymentEndDate}
+                      onChange={(e) => setPaymentEndDate(e.target.value)}
+                      className="w-full bg-transparent outline-none text-xs font-bold text-slate-700"
+                    />
+                  </div>
                   {(paymentSearch || paymentStartDate || paymentEndDate) && (
                     <button
                       onClick={() => {
@@ -5216,7 +5417,7 @@ function AdminPage() {
                         setPaymentStartDate("");
                         setPaymentEndDate("");
                       }}
-                      className="px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-black transition-all cursor-pointer"
+                      className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black transition-all cursor-pointer shrink-0"
                     >
                       Clear
                     </button>
@@ -5227,7 +5428,7 @@ function AdminPage() {
               {/* Payments Table */}
               <div className="bg-white border border-slate-200/80 rounded-2xl shadow-md shadow-slate-100/30 overflow-hidden premium-card">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-sm">
+                  <table className="w-full text-left border-collapse text-sm min-w-[750px]">
                     <thead>
                       <tr className="bg-[#1e2a5a]/5 border-b border-slate-200/80 text-[#1e2a5a] text-xs font-bold uppercase tracking-wider">
                         <th className="py-4 px-6">Customer Details</th>
@@ -5533,7 +5734,7 @@ function AdminPage() {
 
                       <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm premium-card">
                         <div className="overflow-x-auto">
-                          <table className="w-full text-left text-sm text-slate-700">
+                          <table className="w-full text-left text-sm text-slate-700 min-w-[750px]">
                             <thead>
                               <tr className="border-b border-slate-200/80 bg-[#1e2a5a]/5 text-xs text-[#1e2a5a] uppercase font-black tracking-wider">
                                 <th className="py-4 px-6">Patient Name</th>
@@ -7908,7 +8109,7 @@ function AdminPage() {
                 </div>
 
                 {/* KPI Metrics Ribbon */}
-                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                   <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm space-y-1">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Registered Staff</span>
                     <span className="text-2xl font-black text-[#1e2a5a] font-display">{summary.totalCaregivers}</span>
@@ -8135,7 +8336,7 @@ function AdminPage() {
                 {referralsViewMode === "all-candidates" && (
                   <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-md shadow-slate-100/30 premium-card">
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left text-sm text-slate-700">
+                      <table className="w-full text-left text-sm text-slate-700 min-w-[750px]">
                         <thead>
                           <tr className="border-b border-slate-200/80 bg-[#1e2a5a]/5 text-xs text-[#1e2a5a] uppercase font-bold tracking-wider">
                             <th className="py-4 px-6">Referred Candidate</th>
