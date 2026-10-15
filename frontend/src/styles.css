@@ -582,12 +582,13 @@ html.js-scroll-anim .dark-luxury-card.scroll-in-view:hover {
     overflow: visible !important;
   }
 
-  /* Hide everything on page during invoice printing except the invoice modal root */
-  body > *:not(#invoice-modal-root) {
+  /* Hide everything on page during invoice printing except the invoice modal root or admin invoice root */
+  body > *:not(#invoice-modal-root):not(#admin-invoice-print-root) {
     display: none !important;
   }
 
-  #invoice-modal-root {
+  #invoice-modal-root,
+  #admin-invoice-print-root {
     display: block !important;
     position: static !important;
     width: 100% !important;

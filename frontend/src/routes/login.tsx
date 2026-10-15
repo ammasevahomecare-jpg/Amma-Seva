@@ -499,11 +499,11 @@ function LoginPage() {
             if (data.success) {
               if (data.role === "admin") {
                 localStorage.setItem("ammaseva_admin_token", data.token);
-                navigate({ to: "/admin" });
+                window.location.href = "/admin";
               } else if (data.role === "caretaker") {
                 localStorage.setItem("ammaseva_caretaker_token", data.token);
                 localStorage.setItem("ammaseva_caretaker_details", JSON.stringify(data.caretaker));
-                setSuccessMsg(`Welcome, caregiver ${data.caretaker.name}!`);
+                setSuccessMsg(`Welcome, ${data.caretaker?.isMtp ? "MTP Partner" : "Caregiver"} ${data.caretaker?.name || ""}!`);
                 const urlParams = new URLSearchParams(window.location.search);
                 const redirect = urlParams.get("redirect") || "/dashboard";
                 window.location.href = redirect;
@@ -555,6 +555,7 @@ function LoginPage() {
           if (data.success) {
             setSuccessMsg(data.message || "A new verification code has been dispatched.");
             setCountdown(30);
+            setOtp("");
           }
         })
         .catch((err) => {
@@ -585,6 +586,7 @@ function LoginPage() {
           if (data.success) {
             setSuccessMsg(data.message || "A new verification code has been dispatched.");
             setCountdown(30);
+            setOtp("");
           }
         })
         .catch((err) => {

@@ -58,14 +58,25 @@ export async function generateIdCardBlob(data: IdCardData): Promise<Blob> {
         }
         ctx.fillText(nameText, 312, 727);
 
-        // 3. Designation
-        const rawDesig = data.designation || data.specialty || "Amma Seva Staff";
-        const designationText = String(rawDesig).trim();
-        let desigFontSize = 19;
-        ctx.font = `800 ${desigFontSize}px Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
-        while (ctx.measureText(designationText).width > 320 && desigFontSize > 12) {
+        // 3. Designation - Standardized Clean Role (MTP, Caregiver, Nurse)
+        const empIdUpper = String(data.employeeId || "").toUpperCase().replace(/\s+/g, "");
+        const rawDesig = String(data.designation || data.specialty || "").trim();
+        let designationText = rawDesig;
+        if (empIdUpper.includes("MTP") || rawDesig.toLowerCase().includes("medical transport") || rawDesig.toUpperCase() === "MTP") {
+          designationText = "MTP";
+        } else if (empIdUpper.includes("NUR") || rawDesig.toLowerCase().includes("nurse")) {
+          designationText = "Nurse";
+        } else if (empIdUpper.includes("CGV") || rawDesig.toLowerCase().includes("caregiver") || rawDesig.toLowerCase().includes("attendant") || rawDesig.toLowerCase().includes("specialist")) {
+          designationText = "Caregiver";
+        } else if (!designationText) {
+          designationText = "Caregiver";
+        }
+
+        let desigFontSize = 21;
+        ctx.font = `900 ${desigFontSize}px Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+        while (ctx.measureText(designationText).width > 320 && desigFontSize > 14) {
           desigFontSize -= 1;
-          ctx.font = `800 ${desigFontSize}px Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+          ctx.font = `900 ${desigFontSize}px Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
         }
         ctx.fillText(designationText, 312, 799);
 

@@ -1600,7 +1600,7 @@ function MTPPage() {
       {/* OTP Verification Modal for Registration */}
       {showOtpModal && pendingPayload && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 overflow-y-auto animate-in fade-in duration-200">
-          <div className="relative w-full max-w-md rounded-3xl bg-white p-6 sm:p-8 shadow-2xl border-2 border-gold/40 text-center animate-in zoom-in-95 duration-200 space-y-6 my-auto">
+          <div className="relative w-full max-w-lg rounded-3xl bg-white p-6 sm:p-7 shadow-2xl border-2 border-gold/40 text-center animate-in zoom-in-95 duration-200 space-y-4 my-auto">
             
             {/* Close Button */}
             <button
@@ -1608,16 +1608,16 @@ function MTPPage() {
               onClick={() => {
                 if (!isVerifyingOtp) setShowOtpModal(false);
               }}
-              className="absolute top-4 right-4 h-9 w-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+              className="absolute top-4 right-4 h-8 w-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
               aria-label="Close"
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4" />
             </button>
 
             {/* Lock / Key Icon */}
-            <div className="space-y-2">
-              <div className="mx-auto h-16 w-16 rounded-2xl bg-gradient-to-tr from-[#091438] via-[#1e2a5a] to-[#091438] text-gold flex items-center justify-center shadow-lg border border-gold/30">
-                <Lock className="h-8 w-8 text-gold" />
+            <div className="space-y-1.5 pt-1">
+              <div className="mx-auto h-12 w-12 rounded-2xl bg-gradient-to-tr from-[#091438] via-[#1e2a5a] to-[#091438] text-gold flex items-center justify-center shadow-md border border-gold/30">
+                <Lock className="h-6 w-6 text-gold" />
               </div>
               <h2 className="text-xl sm:text-2xl font-extrabold text-primary font-display tracking-tight">
                 Verify OTP to Complete
@@ -1628,21 +1628,21 @@ function MTPPage() {
             </div>
 
             {/* Destination Badges */}
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs space-y-1 text-slate-700 text-left">
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500">📱 Mobile:</span>
-                <span className="font-bold text-primary font-mono">+91 {pendingPayload.phone}</span>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-700 text-left">
+              <div className="flex items-center gap-1.5 truncate">
+                <span className="text-slate-500 shrink-0">📱 Mobile:</span>
+                <span className="font-bold text-primary font-mono truncate">+91 {pendingPayload.phone}</span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500">✉️ Email:</span>
-                <span className="font-bold text-primary truncate max-w-[200px]">{pendingPayload.email}</span>
+              <div className="flex items-center gap-1.5 truncate">
+                <span className="text-slate-500 shrink-0">✉️ Email:</span>
+                <span className="font-bold text-primary truncate">{pendingPayload.email}</span>
               </div>
             </div>
 
             {/* OTP Input Form */}
-            <form onSubmit={handleVerifyAndRegister} className="space-y-4">
+            <form onSubmit={handleVerifyAndRegister} className="space-y-3.5">
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5 text-left">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1 text-left">
                   Enter 6-Digit OTP Code
                 </label>
                 <input
@@ -1653,12 +1653,12 @@ function MTPPage() {
                   value={registrationOtp}
                   onChange={(e) => setRegistrationOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   placeholder="• • • • • •"
-                  className="w-full h-13 rounded-xl border-2 border-gold/50 bg-slate-50 text-center text-2xl font-mono font-extrabold tracking-[8px] text-primary focus:border-gold focus:bg-white focus:ring-4 focus:ring-gold/15 outline-none transition-all placeholder:tracking-normal placeholder:font-sans placeholder:text-sm placeholder:font-normal"
+                  className="w-full h-12 rounded-xl border-2 border-gold/50 bg-slate-50 text-center text-2xl font-mono font-extrabold tracking-[8px] text-primary focus:border-gold focus:bg-white focus:ring-4 focus:ring-gold/15 outline-none transition-all placeholder:tracking-normal placeholder:font-sans placeholder:text-sm placeholder:font-normal"
                 />
               </div>
 
               {/* Resend Countdown */}
-              <div className="flex items-center justify-between text-xs pt-1">
+              <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-500">Didn&apos;t receive the code?</span>
                 {otpCountdown > 0 ? (
                   <span className="font-bold text-gold font-mono">
@@ -1681,7 +1681,7 @@ function MTPPage() {
               <button
                 type="submit"
                 disabled={isVerifyingOtp || registrationOtp.length < 4}
-                className="w-full h-12 rounded-xl bg-gradient-to-r from-gold via-[#d8b458] to-gold text-[#091438] font-extrabold text-sm shadow-lg hover:shadow-xl hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full h-11 rounded-xl bg-gradient-to-r from-gold via-[#d8b458] to-gold text-[#091438] font-extrabold text-sm shadow-md hover:shadow-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
               >
                 {isVerifyingOtp ? (
                   <>
@@ -1695,141 +1695,173 @@ function MTPPage() {
               </button>
             </form>
 
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[10px] text-slate-400">
               🔒 Safe &amp; verified via Amma Seva Care Network
             </p>
           </div>
         </div>
       )}
 
-      {/* High-Converting Success / Congratulations Modal */}
+      {/* High-Converting Success / Congratulations Modal (Wider & Compact) */}
       {showSuccessModal && submittedData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg rounded-3xl bg-white p-6 sm:p-8 shadow-2xl border-2 border-gold/40 text-center animate-in zoom-in-95 duration-200 space-y-6 my-auto max-h-[92vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="relative w-full max-w-4xl rounded-3xl bg-white p-5 sm:p-7 shadow-2xl border-2 border-gold/40 text-left animate-in zoom-in-95 duration-200 my-auto max-h-[92vh] overflow-y-auto space-y-4">
             
             {/* Close Button */}
             <button
               type="button"
               onClick={handleCloseModal}
-              className="absolute top-4 right-4 h-9 w-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+              className="absolute top-4 right-4 h-8 w-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 transition-colors cursor-pointer z-10"
               aria-label="Close"
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4" />
             </button>
 
-            {/* Top Celebration Icon & Badge */}
-            <div className="space-y-3">
-              <div className="mx-auto h-20 w-20 rounded-full bg-gradient-to-tr from-emerald-600 to-emerald-400 text-white flex items-center justify-center shadow-lg shadow-emerald-500/30">
-                <CheckCircle2 className="h-10 w-10" />
+            {/* Top Compact Celebration Banner */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3.5 pr-8">
+              <div className="flex items-center gap-3">
+                <div className="h-11 w-11 rounded-2xl bg-gradient-to-tr from-emerald-600 to-emerald-400 text-white flex items-center justify-center shadow-md shadow-emerald-500/20 shrink-0">
+                  <CheckCircle2 className="h-6 w-6" />
+                </div>
+                <div>
+                  <div className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold text-emerald-800 tracking-wider uppercase">
+                    <Sparkles className="h-3 w-3 text-emerald-600" /> Registration Confirmed
+                  </div>
+                  <h2 className="text-lg sm:text-2xl font-extrabold text-primary font-display tracking-tight leading-snug">
+                    Congratulations, {submittedData.name}! 🎉
+                  </h2>
+                </div>
               </div>
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3.5 py-1 text-xs font-bold text-emerald-800 tracking-wider uppercase">
-                <Sparkles className="h-3.5 w-3.5 text-emerald-600" /> Registration Confirmed
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-primary font-display tracking-tight">
-                Congratulations, {submittedData.name}! 🎉
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
-                You have successfully registered as a <strong>Multi Tasking Professional (MTP)</strong> with Amma Seva Hyderabad.
-              </p>
-            </div>
-
-            {/* Reference ID Card */}
-            <div className="rounded-2xl bg-gradient-to-r from-[#091438] via-[#1e2a5a] to-[#091438] p-4 sm:p-5 text-white shadow-md border border-gold/40 space-y-1">
-              <div className="text-[11px] font-bold uppercase tracking-widest text-gold">Official MTP Reference ID</div>
-              <div className="text-2xl sm:text-3xl font-extrabold tracking-wider font-mono text-white">
-                #{submittedData.id || "MTP-PENDING"}
-              </div>
-              <div className="text-[10px] text-slate-300">
-                Please save this ID for all coordination and payout inquiries.
+              <div className="text-xs text-slate-500 sm:text-right hidden sm:block">
+                <div className="font-semibold text-slate-700">Amma Seva Healthcare</div>
+                <div className="text-[11px] text-slate-400">Hyderabad Care Network</div>
               </div>
             </div>
 
-            {/* Details Summary Table */}
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-left text-xs space-y-2.5 text-slate-700">
-              <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
-                <span className="text-slate-500">Applicant:</span>
-                <span className="font-bold text-primary">{submittedData.name}</span>
+            {/* Main 2-Column Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+              
+              {/* Left Column (5 Cols): ID Card & Next Steps */}
+              <div className="md:col-span-5 flex flex-col justify-between gap-3">
+                
+                {/* Official Reference ID Card */}
+                <div className="rounded-2xl bg-gradient-to-br from-[#091438] via-[#102050] to-[#091438] p-4 text-white shadow-md border border-gold/40 text-center relative overflow-hidden">
+                  <div className="text-[10px] font-extrabold uppercase tracking-widest text-gold mb-0.5">
+                    Official MTP Reference ID
+                  </div>
+                  <div className="text-3xl sm:text-4xl font-extrabold tracking-wider font-mono text-white py-0.5">
+                    #{submittedData.id || "MTP-PENDING"}
+                  </div>
+                  <div className="text-[10px] text-slate-300">
+                    Save this ID for gig assignments &amp; payouts.
+                  </div>
+                </div>
+
+                {/* What Happens Next Card */}
+                <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/60 p-3.5 text-xs text-emerald-950 space-y-1.5 flex-1">
+                  <div className="font-bold flex items-center gap-1.5 text-emerald-900 text-xs">
+                    <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>What Happens Next?</span>
+                  </div>
+                  <ul className="space-y-1 text-[11px] text-emerald-800/90 leading-normal">
+                    <li className="flex items-start gap-1.5">
+                      <span className="font-bold text-emerald-700">1.</span>
+                      <span>Admin verifies Aadhaar &amp; records (4–12 hours).</span>
+                    </li>
+                    <li className="flex items-start gap-1.5">
+                      <span className="font-bold text-emerald-700">2.</span>
+                      <span>Log in anytime with your registered Mobile + OTP.</span>
+                    </li>
+                    <li className="flex items-start gap-1.5">
+                      <span className="font-bold text-emerald-700">3.</span>
+                      <span>Once verified, your live companion gigs dashboard unlocks!</span>
+                    </li>
+                  </ul>
+                </div>
               </div>
-              <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
-                <span className="text-slate-500">Registered Mobile:</span>
-                <span className="font-bold text-primary font-mono">{submittedData.phone}</span>
-              </div>
-              {submittedData.email && (
-                <div className="flex justify-between border-b border-slate-200/60 pb-1.5 items-center">
-                  <span className="text-slate-500">Email Address:</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-medium text-slate-800">{submittedData.email}</span>
-                    <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-800 shrink-0">
-                      ✉️ Email Sent
+
+              {/* Right Column (7 Cols): Application Summary Table */}
+              <div className="md:col-span-7 rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 sm:p-4 text-xs space-y-2 text-slate-700 flex flex-col justify-between">
+                <div className="font-bold uppercase tracking-wider text-slate-500 text-[10px] pb-1 border-b border-slate-200/80 flex justify-between items-center">
+                  <span>Application Summary</span>
+                  <span className="inline-flex items-center gap-1 font-bold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-full text-[10px]">
+                    ⏳ Under Review (4–12h)
+                  </span>
+                </div>
+                
+                <div className="space-y-1.5 divide-y divide-slate-200/50">
+                  <div className="flex justify-between pt-1">
+                    <span className="text-slate-500">Applicant:</span>
+                    <span className="font-bold text-primary">{submittedData.name}</span>
+                  </div>
+                  <div className="flex justify-between pt-1">
+                    <span className="text-slate-500">Registered Mobile:</span>
+                    <span className="font-bold text-primary font-mono">{submittedData.phone}</span>
+                  </div>
+                  {submittedData.email && (
+                    <div className="flex justify-between pt-1 items-center">
+                      <span className="text-slate-500">Email Address:</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium text-slate-800 truncate max-w-[170px] sm:max-w-[220px]">{submittedData.email}</span>
+                        <span className="rounded bg-emerald-100 px-1.5 py-0.2 text-[9px] font-bold text-emerald-800 shrink-0">
+                          ✉️ Sent
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex justify-between pt-1">
+                    <span className="text-slate-500">State &amp; City:</span>
+                    <span className="font-bold text-primary">
+                      {submittedData.city ? `${submittedData.city}, ` : ""}{submittedData.state || "Telangana"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between pt-1">
+                    <span className="text-slate-500">Preferred Zone:</span>
+                    <span className="font-bold text-primary max-w-[200px] text-right truncate" title={submittedData.locality}>
+                      {submittedData.locality}
+                    </span>
+                  </div>
+                  <div className="flex justify-between pt-1">
+                    <span className="text-slate-500">Assigned Tasks:</span>
+                    <span className="font-bold text-emerald-700 max-w-[200px] text-right truncate">
+                      {Array.isArray(submittedData.roles) ? submittedData.roles.join(', ') : submittedData.roles}
                     </span>
                   </div>
                 </div>
-              )}
-              <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
-                <span className="text-slate-500">State &amp; City:</span>
-                <span className="font-bold text-primary">
-                  {submittedData.city ? `${submittedData.city}, ` : ""}{submittedData.state || "Telangana"}
-                </span>
               </div>
-              <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
-                <span className="text-slate-500">Preferred Zone / Area:</span>
-                <span className="font-bold text-primary max-w-[240px] text-right truncate" title={submittedData.locality}>
-                  {submittedData.locality}
-                </span>
-              </div>
-              <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
-                <span className="text-slate-500">Assigned Tasks:</span>
-                <span className="font-bold text-emerald-700 max-w-[240px] text-right truncate">
-                  {Array.isArray(submittedData.roles) ? submittedData.roles.join(', ') : submittedData.roles}
-                </span>
-              </div>
-              <div className="flex justify-between items-center pt-0.5">
-                <span className="text-slate-500">KYC Status:</span>
-                <span className="inline-flex items-center gap-1 font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 text-[10px]">
-                  ⏳ Under Review (4–12 Hours)
-                </span>
-              </div>
+
             </div>
 
-            {/* What Happens Next Steps */}
-            <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/50 p-4 text-left space-y-1.5 text-xs text-emerald-900">
-              <div className="font-bold text-emerald-950 flex items-center gap-1.5">
-                <ShieldCheck className="h-4 w-4 text-emerald-600" /> What Happens Next?
+            {/* Bottom Action Buttons Row */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-100">
+              <div className="text-[11px] text-slate-400 hidden md:block">
+                🔒 Safe &amp; verified via Amma Seva Care Network
               </div>
-              <p className="text-[11px] text-emerald-800/90 leading-relaxed">
-                1. Our Hyderabad coordination desk will verify your Aadhaar, PAN &amp; Police verification records.<br />
-                2. You can log in using your registered Mobile / Email + OTP anytime to check your real-time approval status.<br />
-                3. Once approved, your live task assignment dashboard opens with available companion gigs!
-              </p>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex flex-col gap-2.5 pt-1">
-              <button
-                type="button"
-                onClick={() => {
-                  window.location.href = "/login";
-                }}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-gold via-[#d8b458] to-gold text-[#091438] hover:brightness-105 px-5 py-3.5 text-sm font-extrabold shadow-lg hover:shadow-xl transition-all cursor-pointer border border-gold/40"
-              >
-                <Clock className="h-4 w-4" /> Go to Login / Check Verification →
-              </button>
-              <div className="flex flex-col sm:flex-row gap-2.5">
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
                 <a
                   href={`https://wa.me/${contact.WHATSAPP}?text=Hi%20Amma%20Seva%20Team,%20I%20registered%20as%20an%20MTP%20(${encodeURIComponent(submittedData.name)}%20-%20${encodeURIComponent(submittedData.phone)}).%20My%20MTP%20Reference%20ID%20is%20%23${submittedData.id || "PENDING"}.%20Please%20verify%20my%20profile.`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md hover:bg-emerald-600 transition-all cursor-pointer"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#25D366] px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-600 transition-all cursor-pointer"
                 >
-                  <MessageCircle className="h-4 w-4" /> WhatsApp Coordinator
+                  <MessageCircle className="h-3.5 w-3.5" /> WhatsApp Coordinator
                 </a>
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.location.href = "/login";
+                  }}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-gold via-[#d8b458] to-gold text-[#091438] hover:brightness-105 px-4 py-2 text-xs font-extrabold shadow-sm transition-all cursor-pointer border border-gold/40"
+                >
+                  <Clock className="h-3.5 w-3.5" /> Go to Login →
+                </button>
                 <button
                   type="button"
                   onClick={() => {
                     handleCloseModal();
                     window.location.href = "/dashboard";
                   }}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-xs sm:text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all cursor-pointer"
                 >
                   Done &amp; Close
                 </button>

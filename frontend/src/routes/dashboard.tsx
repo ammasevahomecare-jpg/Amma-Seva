@@ -235,9 +235,50 @@ function CustomerDashboard() {
     }
   };
 
-  // Dedicated photo update helper for instant ID Card and profile persistence
-  const [isUpdatingPhoto, setIsUpdatingPhoto] = useState(false);
   const [photoUpdateMessage, setPhotoUpdateMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Helper to resolve official staff designation based on registered ID / Category (MTP, Caregiver, Nurse)
+  const resolveOfficialDesignation = (staff: any): string => {
+    if (!staff) return "Staff";
+    const empId = String(staff.employeeId || "").toUpperCase().replace(/\s+/g, "");
+    const cat = String(staff.staffCategory || "").toUpperCase().trim();
+    const specialty = String(staff.specialty || "").toLowerCase();
+    const desig = String(staff.designation || "").trim().toLowerCase();
+
+    // 1. MTP
+    if (empId.includes("MTP") || cat === "MTP" || staff.isMtp || staff.type === "mtp" || desig.includes("medical transport") || desig === "mtp") {
+      return "MTP";
+    }
+
+    // 2. Nurse
+    if (
+      empId.includes("NUR") ||
+      cat === "NUR" ||
+      cat === "NURSE" ||
+      specialty.includes("nurse") ||
+      specialty.includes("nursing") ||
+      desig === "nurse" ||
+      desig.includes("registered staff nurse")
+    ) {
+      return "Nurse";
+    }
+
+    // 3. Office Employee
+    if (empId.includes("EMP") || cat === "EMP" || staff.type === "employee") {
+      return staff.designation || "Operations Staff";
+    }
+
+    // 4. Default: Caregiver
+    return "Caregiver";
+  };
+
+  const resolveOfficialCategory = (staff: any): string => {
+    const d = resolveOfficialDesignation(staff);
+    if (d === "MTP") return "MTP";
+    if (d === "Nurse") return "Nurse";
+    if (d === "Caregiver") return "Caregiver";
+    return staff?.staffCategory || "Staff";
+  };
 
   const handleUpdatePhotoOnly = async (base64Photo: string) => {
     const token = localStorage.getItem("ammaseva_caretaker_token");
@@ -722,7 +763,13 @@ function CustomerDashboard() {
       }
       if (res.ok) {
         const data = await res.json();
-        setAvailableGigs(Array.isArray(data) ? data : []);
+        const todayStr = new Date().toISOString().split("T")[0];
+        const validGigs = (Array.isArray(data) ? data : []).filter((gig: any) => {
+          if (!gig.date) return true;
+          const d = String(gig.date).trim().slice(0, 10);
+          return d >= todayStr;
+        });
+        setAvailableGigs(validGigs);
       }
     } catch (e) {
       console.error("Failed to fetch available gigs", e);
@@ -2492,6 +2539,7 @@ function CustomerDashboard() {
                                       shift.status === "Confirmed" ? "bg-emerald-50 text-emerald-800 border-emerald-100" :
                                       shift.status === "Active" ? "bg-indigo-50 text-indigo-850 border-indigo-100 animate-pulse" :
                                       shift.status === "Completed" ? "bg-slate-50 text-slate-650 border-slate-200" :
+                                      shift.status === "Expired" ? "bg-amber-50 text-amber-800 border-amber-200" :
                                       "bg-rose-50 text-rose-800 border-rose-100"
                                     }`}>
                                       {shift.status}
@@ -3464,7 +3512,7 @@ function CustomerDashboard() {
                           await downloadIdCardImage({
                             employeeId: caretaker?.employeeId,
                             name: caretaker?.name || caretakerName,
-                            designation: caretaker?.designation || (caretaker?.isMtp ? "Medical Transport Partner & Escort" : caretaker?.specialty),
+                            designation: resolveOfficialDesignation(caretaker),
                             profilePhoto: caretaker?.profilePhoto || caretakerProfilePhoto
                           });
                         } catch (err) {
@@ -3590,8 +3638,8 @@ function CustomerDashboard() {
                           height: "3.8%"
                         }}
                       >
-                        <span className="text-[10px] sm:text-[11px] font-extrabold text-[#091438] leading-tight line-clamp-2">
-                          {caretaker?.designation || (caretaker?.isMtp ? "Medical Transport Partner & Escort" : (caretaker?.specialty || "Amma Seva Staff"))}
+                        <span className="text-[12px] sm:text-[13px] font-black text-[#091438] tracking-wider truncate font-mono">
+                          {resolveOfficialDesignation(caretaker)}
                         </span>
                       </div>
                     </div>
@@ -3684,7 +3732,7 @@ function CustomerDashboard() {
                       <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
                         <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Staff Category</span>
                         <span className="font-extrabold text-xs text-amber-900 mt-0.5 block truncate">
-                          {caretaker?.staffCategory || (caretaker?.isMtp ? "MTP Companion" : "Caregiver / Nurse")}
+                          {resolveOfficialCategory(caretaker)}
                         </span>
                       </div>
 
@@ -3697,8 +3745,8 @@ function CustomerDashboard() {
 
                       <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
                         <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Designation</span>
-                        <span className="font-bold text-xs text-[#091438] mt-0.5 block truncate">
-                          {caretaker?.designation || (caretaker?.isMtp ? "Medical Transport Partner & Escort" : caretaker?.specialty)}
+                        <span className="font-extrabold text-xs text-[#091438] mt-0.5 block truncate">
+                          {resolveOfficialDesignation(caretaker)}
                         </span>
                       </div>
                     </div>
@@ -3725,7 +3773,7 @@ function CustomerDashboard() {
                             await downloadIdCardImage({
                               employeeId: caretaker?.employeeId,
                               name: caretaker?.name || caretakerName,
-                              designation: caretaker?.designation || (caretaker?.isMtp ? "Medical Transport Partner & Escort" : caretaker?.specialty),
+                              designation: resolveOfficialDesignation(caretaker),
                               profilePhoto: caretaker?.profilePhoto || caretakerProfilePhoto
                             });
                           } catch (err) {

@@ -1968,13 +1968,6 @@ app.post('/api/auth/login', async (req, res) => {
           error: 'Your MTP application was reviewed and not approved by the administrator. Please contact Amma Seva support for further assistance.'
         })
       }
-      if (mtpStatus === 'Pending' || mtpStatus === 'Contacted') {
-        return res.status(403).json({
-          success: false,
-          pendingApproval: true,
-          error: 'Your MTP application is currently under administrative verification. Once verified and approved by the admin team, you will receive an approval notification and will be able to log in.'
-        })
-      }
 
       const token = jwt.sign({ id: mtp.id, role: 'caretaker', isMtp: true, email: mtp.email, phone: mtp.phone }, JWT_SECRET, { expiresIn: '7d' })
       return res.json({
@@ -1987,7 +1980,7 @@ app.post('/api/auth/login', async (req, res) => {
           name: mtp.name,
           email: mtp.email,
           phone: mtp.phone,
-          status: mtp.status || 'Verified',
+          status: mtp.status || 'Pending',
           isMtp: true,
           specialty: 'MTP Companion & Tasks',
           experience: mtp.experience || 'Fresher',
@@ -2002,6 +1995,10 @@ app.post('/api/auth/login', async (req, res) => {
           drivingLicenseDoc: mtp.drivingLicenseDoc,
           tenthCertificateDoc: mtp.tenthCertificateDoc,
           policeVerificationDoc: mtp.policeVerificationDoc,
+          profilePhoto: mtp.profilePhoto || '',
+          employeeId: mtp.employeeId || 'AS - MTP - 26-001',
+          staffCategory: 'MTP',
+          designation: 'MTP',
           referCode: `MTP${String(mtp.phone || '').slice(-4)}`,
           uniqueId: `MTP${String(mtp.phone || '').slice(-4)}`
         }
@@ -2016,13 +2013,13 @@ app.post('/api/auth/login', async (req, res) => {
         error: 'Your Caregiver application was reviewed and not approved by the administrator. Please contact Amma Seva support for further details.'
       })
     }
-    if (caregiverStatus === 'Pending') {
-      return res.status(403).json({
-        success: false,
-        pendingApproval: true,
-        error: 'Your Caregiver registration is currently under administrative verification. Once approved by the admin team, you will receive an approval notification and can log in to access your shifts.'
-      })
-    }
+
+    const isNurse = (caretaker.staffCategory === 'NUR') || 
+                    (caretaker.employeeId && caretaker.employeeId.includes('NUR')) || 
+                    String(caretaker.specialty || '').toLowerCase().includes('nurse')
+    const staffCategory = isNurse ? 'Nurse' : 'Caregiver'
+    const designation = isNurse ? 'Nurse' : 'Caregiver'
+    const employeeId = caretaker.employeeId || `AS - ${isNurse ? 'NUR' : 'CGV'} - 26-${String(caretaker.id).padStart(3, '0')}`
 
     const token = jwt.sign({ id: caretaker.id, role: 'caretaker', isMtp: false, email: caretaker.email, phone: caretaker.phone }, JWT_SECRET, { expiresIn: '7d' })
     return res.json({
@@ -2035,8 +2032,11 @@ app.post('/api/auth/login', async (req, res) => {
         name: caretaker.name, 
         email: caretaker.email, 
         phone: caretaker.phone,
-        status: caretaker.status || 'Verified',
+        status: caretaker.status || 'Pending',
         isMtp: false,
+        staffCategory,
+        designation,
+        employeeId,
         specialty: caretaker.specialty,
         experience: caretaker.experience,
         aadhaar: caretaker.aadhaar,
@@ -2150,8 +2150,8 @@ app.get('/api/caretaker/profile', authenticateUser, async (req, res) => {
           policeVerificationDoc: mtp.policeVerificationDoc,
           profilePhoto: mtp.profilePhoto || '',
           employeeId: mtp.employeeId || 'AS - MTP - 26-001',
-          staffCategory: mtp.staffCategory || 'MTP',
-          designation: mtp.designation || 'Medical Transport Partner & Escort',
+          staffCategory: 'MTP',
+          designation: 'MTP',
           reviews: [],
           rating: 5.0
         }
@@ -2186,8 +2186,8 @@ app.get('/api/caretaker/profile', authenticateUser, async (req, res) => {
             policeVerificationDoc: mtp.policeVerificationDoc,
             profilePhoto: mtp.profilePhoto || '',
             employeeId: mtp.employeeId || 'AS - MTP - 26-001',
-            staffCategory: mtp.staffCategory || 'MTP',
-            designation: mtp.designation || 'Medical Transport Partner & Escort',
+            staffCategory: 'MTP',
+            designation: 'MTP',
             reviews: [],
             rating: 5.0
           }
@@ -2196,6 +2196,13 @@ app.get('/api/caretaker/profile', authenticateUser, async (req, res) => {
       return res.status(404).json({ error: 'Caretaker profile not found.' })
     }
     const { password, ...details } = caretaker
+    const isNurse = (caretaker.staffCategory === 'NUR') || 
+                    (caretaker.employeeId && caretaker.employeeId.includes('NUR')) || 
+                    String(caretaker.specialty || '').toLowerCase().includes('nurse')
+    const staffCategory = isNurse ? 'Nurse' : 'Caregiver'
+    const designation = isNurse ? 'Nurse' : 'Caregiver'
+    const employeeId = caretaker.employeeId || `AS - ${isNurse ? 'NUR' : 'CGV'} - 26-${String(caretaker.id).padStart(3, '0')}`
+
     const reviews = await db.getReviewsForCaregiver(caretaker.name)
     const avgRating = reviews.length > 0 
       ? Number((reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)) 
@@ -2204,6 +2211,9 @@ app.get('/api/caretaker/profile', authenticateUser, async (req, res) => {
       success: true, 
       details: {
         ...details,
+        staffCategory,
+        designation,
+        employeeId,
         reviews,
         rating: avgRating
       }
@@ -3395,22 +3405,6 @@ app.post('/api/mtp/register', async (req, res) => {
   }
 
   try {
-    const [
-      uploadedProfilePhoto,
-      uploadedAadhaar,
-      uploadedPan,
-      uploadedDrivingLicense,
-      uploadedTenthCert,
-      uploadedPoliceVerification
-    ] = await Promise.all([
-      profilePhoto ? uploadToCloudinary(profilePhoto) : Promise.resolve(''),
-      uploadToCloudinary(aadhaarDoc),
-      uploadToCloudinary(panDoc),
-      uploadToCloudinary(drivingLicenseDoc),
-      uploadToCloudinary(tenthCertificateDoc),
-      uploadToCloudinary(policeVerificationDoc)
-    ])
-
     const newMTP = await db.createMTP({
       name: name.trim(),
       phone: cleanPhone,
@@ -3428,12 +3422,12 @@ app.post('/api/mtp/register', async (req, res) => {
       skillsSummary,
       aadhaar,
       emergencyContact,
-      profilePhoto: uploadedProfilePhoto,
-      aadhaarDoc: uploadedAadhaar,
-      panDoc: uploadedPan,
-      drivingLicenseDoc: uploadedDrivingLicense,
-      tenthCertificateDoc: uploadedTenthCert,
-      policeVerificationDoc: uploadedPoliceVerification,
+      profilePhoto: profilePhoto || '',
+      aadhaarDoc: aadhaarDoc || '',
+      panDoc: panDoc || '',
+      drivingLicenseDoc: drivingLicenseDoc || '',
+      tenthCertificateDoc: tenthCertificateDoc || '',
+      policeVerificationDoc: policeVerificationDoc || '',
       status: 'Pending'
     })
 
@@ -3474,6 +3468,7 @@ app.post('/api/mtp/register', async (req, res) => {
       uniqueId: `MTP${String(newMTP.phone || '').slice(-4)}`
     }
 
+    // Respond immediately so verification completes in < 100ms
     res.status(201).json({
       success: true,
       pendingApproval: true,
@@ -3481,6 +3476,39 @@ app.post('/api/mtp/register', async (req, res) => {
       caretaker: caretakerData,
       data: newMTP
     })
+
+    // Background asynchronous Cloudinary upload & database sync
+    ;(async () => {
+      try {
+        const [
+          uploadedProfilePhoto,
+          uploadedAadhaar,
+          uploadedPan,
+          uploadedDrivingLicense,
+          uploadedTenthCert,
+          uploadedPoliceVerification
+        ] = await Promise.all([
+          profilePhoto ? uploadToCloudinary(profilePhoto) : Promise.resolve(''),
+          aadhaarDoc ? uploadToCloudinary(aadhaarDoc) : Promise.resolve(''),
+          panDoc ? uploadToCloudinary(panDoc) : Promise.resolve(''),
+          drivingLicenseDoc ? uploadToCloudinary(drivingLicenseDoc) : Promise.resolve(''),
+          tenthCertificateDoc ? uploadToCloudinary(tenthCertificateDoc) : Promise.resolve(''),
+          policeVerificationDoc ? uploadToCloudinary(policeVerificationDoc) : Promise.resolve('')
+        ])
+
+        await db.updateMTPDocs(newMTP.id, {
+          profilePhoto: uploadedProfilePhoto,
+          aadhaarDoc: uploadedAadhaar,
+          panDoc: uploadedPan,
+          drivingLicenseDoc: uploadedDrivingLicense,
+          tenthCertificateDoc: uploadedTenthCert,
+          policeVerificationDoc: uploadedPoliceVerification
+        })
+        console.log(`[MTP Cloudinary Background Sync]: Uploaded documents for MTP #${newMTP.id}`)
+      } catch (uploadErr) {
+        console.warn(`[MTP Cloudinary Background Warning]:`, uploadErr.message)
+      }
+    })()
   } catch (err) {
     console.error('Failed to register MTP:', err)
     res.status(500).json({ success: false, error: err.message || 'Failed to submit MTP registration. Please try again.' })
@@ -3821,7 +3849,13 @@ app.get('/api/mtp/available-gigs', authenticateUser, async (req, res) => {
       return res.status(403).json({ error: 'Only verified MTP companions can access the on-demand gig pool.' })
     }
     const gigs = await db.getAvailableMTPGigs()
-    res.json(gigs)
+    const todayStr = new Date().toISOString().split('T')[0]
+    const activeGigs = (Array.isArray(gigs) ? gigs : []).filter(g => {
+      if (!g.date) return true
+      const d = String(g.date).trim().slice(0, 10)
+      return d >= todayStr
+    })
+    res.json(activeGigs)
   } catch (err) {
     console.error('Failed to get available MTP gigs:', err)
     res.status(500).json({ error: 'Failed to retrieve available gigs.' })
@@ -4115,6 +4149,10 @@ app.post('/api/booking', async (req, res) => {
   const effectiveEmail = String(email || (authUser && authUser.email) || '').trim()
   const effectiveService = String(service || 'Home Healthcare Support').trim()
   const effectiveDate = String(date || new Date().toISOString().split('T')[0]).trim()
+  const todayStr = new Date().toISOString().split('T')[0]
+  if (effectiveDate && effectiveDate < todayStr) {
+    return res.status(400).json({ error: 'Selected booking date cannot be in the past. Please select today or a future date.' })
+  }
   const effectiveTime = String(time || '09:00 AM').trim()
   const effectiveDuration = String(duration || '1 Day').trim()
   const effectiveAddress = String(address || (authUser && authUser.address) || 'Hyderabad, Telangana').trim()

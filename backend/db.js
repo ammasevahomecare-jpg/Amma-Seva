@@ -857,8 +857,8 @@ const readJSONDb = async () => {
         m.staffCategory = 'MTP'
         dbChanged = true
       }
-      if (!m.designation) {
-        m.designation = 'Medical Transport Partner & Escort'
+      if (!m.designation || m.designation === 'Medical Transport Partner & Escort' || m.designation === 'Medical Transport & Escort Partner') {
+        m.designation = 'MTP'
         dbChanged = true
       }
       if (!m.employeeId) {
@@ -869,6 +869,22 @@ const readJSONDb = async () => {
         mtpIds.push(m.employeeId)
         mtpCount++
         dbChanged = true
+      }
+    })
+  }
+
+  // Auto-backfill staffCategory & designation for Caregivers & Nurses
+  if (Array.isArray(data.caregivers)) {
+    data.caregivers.forEach(c => {
+      const isNurse = (c.staffCategory === 'NUR') || 
+                      (c.employeeId && c.employeeId.includes('NUR')) || 
+                      String(c.specialty || '').toLowerCase().includes('nurse')
+      if (isNurse) {
+        if (c.staffCategory !== 'NUR') { c.staffCategory = 'NUR'; dbChanged = true; }
+        if (!c.designation || c.designation === 'Registered Staff Nurse') { c.designation = 'Nurse'; dbChanged = true; }
+      } else {
+        if (!c.staffCategory) { c.staffCategory = 'CGV'; dbChanged = true; }
+        if (!c.designation || c.designation === 'Certified Caregiver' || c.designation === 'Elderly Care Specialist') { c.designation = 'Caregiver'; dbChanged = true; }
       }
     })
   }
@@ -1847,13 +1863,13 @@ export const db = {
   payBookingBalance: async (id, paymentMethod, transactionId) => {
     const paymentDate = new Date().toISOString()
     if (useMySQL) {
-      const [rows] = await pool.query('SELECT amount, advancePaid, paymentStatus, balanceAmount FROM bookings WHERE id = ?', [id])
+      const [rows] = await pool.query('SELECT amount, advancePaid, paymentStatus, balanceAmount, status FROM bookings WHERE id = ?', [id])
       if (rows[0]) {
         if (rows[0].paymentStatus === 'Paid' && (Number(rows[0].balanceAmount) === 0 || rows[0].balanceAmount === null)) {
           return { alreadyPaid: true }
         }
         await pool.query(
-          'UPDATE bookings SET paymentStatus = "Paid", advancePaid = amount, balanceAmount = 0, paymentMethod = ?, transactionId = ?, paymentDate = ? WHERE id = ?',
+          'UPDATE bookings SET paymentStatus = "Paid", advancePaid = amount, balanceAmount = 0, paymentMethod = ?, transactionId = ?, paymentDate = ?, status = CASE WHEN status = "Pending" THEN "Confirmed" ELSE status END WHERE id = ?',
           [paymentMethod, transactionId, paymentDate, id]
         )
         return true
@@ -1874,7 +1890,8 @@ export const db = {
           balanceAmount: 0,
           paymentMethod,
           transactionId,
-          paymentDate
+          paymentDate,
+          status: b.status === "Pending" ? "Confirmed" : b.status
         }
         await writeJSONDb(data)
         return true
@@ -3591,14 +3608,14 @@ export const db = {
     const rolesString = Array.isArray(roles) ? roles.join(', ') : (roles || '')
 
     const staffCategory = 'MTP'
-    const designation = (mtpData.designation || 'Medical Transport Partner & Escort').trim()
+    const designation = (mtpData.designation && mtpData.designation !== 'Medical Transport Partner & Escort' && mtpData.designation !== 'Medical Transport & Escort Partner' ? mtpData.designation : 'MTP').trim()
 
     if (useMySQL) {
       // Ensure all required columns exist in MySQL table
       try { await pool.query(`ALTER TABLE mtps ADD COLUMN state VARCHAR(100) DEFAULT 'Telangana'`) } catch (e) {}
       try { await pool.query(`ALTER TABLE mtps ADD COLUMN profilePhoto LONGTEXT`) } catch (e) {}
       try { await pool.query(`ALTER TABLE mtps ADD COLUMN staffCategory VARCHAR(50) DEFAULT 'MTP'`) } catch (e) {}
-      try { await pool.query(`ALTER TABLE mtps ADD COLUMN designation VARCHAR(255) DEFAULT 'Medical Transport Partner & Escort'`) } catch (e) {}
+      try { await pool.query(`ALTER TABLE mtps ADD COLUMN designation VARCHAR(255) DEFAULT 'MTP'`) } catch (e) {}
       try { await pool.query(`ALTER TABLE mtps ADD COLUMN employeeId VARCHAR(100)`) } catch (e) {}
       try { await pool.query(`ALTER TABLE mtps ADD COLUMN aadhaarDoc LONGTEXT`) } catch (e) {}
       try { await pool.query(`ALTER TABLE mtps ADD COLUMN panDoc LONGTEXT`) } catch (e) {}
@@ -3687,6 +3704,34 @@ export const db = {
     }
   },
 
+  updateMTPDocs: async (id, docs = {}) => {
+    if (useMySQL) {
+      const allowed = ['profilePhoto', 'aadhaarDoc', 'panDoc', 'drivingLicenseDoc', 'tenthCertificateDoc', 'policeVerificationDoc']
+      const setClauses = []
+      const values = []
+      for (const key of allowed) {
+        if (docs[key] !== undefined && docs[key] !== null) {
+          setClauses.push(`${key} = ?`)
+          values.push(docs[key])
+        }
+      }
+      if (setClauses.length > 0) {
+        values.push(Number(id))
+        await pool.query(`UPDATE mtps SET ${setClauses.join(', ')} WHERE id = ?`, values)
+      }
+      const [rows] = await pool.query('SELECT * FROM mtps WHERE id = ?', [Number(id)])
+      return rows[0] || null
+    } else {
+      const data = await readJSONDb()
+      if (!data.mtps) return null
+      const idx = data.mtps.findIndex(m => m.id === Number(id))
+      if (idx === -1) return null
+      Object.assign(data.mtps[idx], docs)
+      await writeJSONDb(data)
+      return data.mtps[idx]
+    }
+  },
+
   deleteMTP: async (id) => {
     if (useMySQL) {
       try {
@@ -3717,24 +3762,71 @@ export const db = {
 
   // Rapido-Style MTP On-Demand Gig Operations
   getAvailableMTPGigs: async () => {
+    const today = new Date().toISOString().split('T')[0]
     if (useMySQL) {
+      try {
+        // Auto-expire unassigned MTP bookings from past dates
+        await pool.query(
+          `UPDATE bookings 
+           SET status = 'Expired' 
+           WHERE (isMtp = 1 OR LOWER(service) LIKE '%mtp%' OR LOWER(service) LIKE '%escort%' OR LOWER(service) LIKE '%errand%' OR LOWER(service) LIKE '%walking%' OR LOWER(service) LIKE '%companion%') 
+             AND status = 'Pending' 
+             AND (assignedStaffId IS NULL OR assignedStaffId = 0) 
+             AND (assignedStaff IS NULL OR TRIM(assignedStaff) = '') 
+             AND date IS NOT NULL 
+             AND TRIM(date) != '' 
+             AND (
+               (date REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}' AND SUBSTRING(date, 1, 10) < DATE_FORMAT(NOW(), '%Y-%m-%d'))
+               OR (STR_TO_DATE(date, '%Y-%m-%d') < CURDATE())
+             )`
+        )
+      } catch (expErr) {
+        console.warn('[MySQL Auto-Expire Warning]:', expErr.message)
+      }
+
       const [rows] = await pool.query(
         `SELECT * FROM bookings 
          WHERE (isMtp = 1 OR LOWER(service) LIKE '%mtp%' OR LOWER(service) LIKE '%escort%' OR LOWER(service) LIKE '%errand%' OR LOWER(service) LIKE '%walking%' OR LOWER(service) LIKE '%companion%') 
-           AND status != 'Cancelled' 
+           AND status NOT IN ('Cancelled', 'Completed', 'Expired', 'Rejected') 
            AND (assignedStaffId IS NULL OR assignedStaffId = 0) 
            AND (assignedStaff IS NULL OR TRIM(assignedStaff) = '') 
+           AND (
+             (date REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}' AND SUBSTRING(date, 1, 10) >= DATE_FORMAT(NOW(), '%Y-%m-%d'))
+             OR (date IS NULL OR TRIM(date) = '')
+           )
          ORDER BY id DESC`
       )
-      return rows
+
+      // Strict secondary JS filter to guarantee no past dates ever slip through
+      return rows.filter(b => {
+        if (!b.date) return true
+        const d = String(b.date).trim().slice(0, 10)
+        return d >= today
+      })
     } else {
       const data = await readJSONDb()
       if (!data.bookings) return []
+      let hasMod = false
+      data.bookings.forEach(b => {
+        const isMtpTask = b.isMtp === 1 || b.isMtp === true || isMTPService(b.service, b.isMtp)
+        const hasStaff = (b.assignedStaffId && Number(b.assignedStaffId) > 0) || (b.assignedStaff && b.assignedStaff.trim() !== '')
+        const bDate = String(b.date || '').trim().slice(0, 10)
+        if (isMtpTask && !hasStaff && b.status === 'Pending' && bDate && bDate < today) {
+          b.status = 'Expired'
+          hasMod = true
+        }
+      })
+      if (hasMod) {
+        await writeJSONDb(data)
+      }
+
       return data.bookings.filter(b => {
         const isMtpTask = b.isMtp === 1 || b.isMtp === true || isMTPService(b.service, b.isMtp)
-        const isCancelled = b.status === 'Cancelled'
+        const isClosed = ['Cancelled', 'Completed', 'Expired', 'Rejected'].includes(b.status)
         const hasStaff = (b.assignedStaffId && Number(b.assignedStaffId) > 0) || (b.assignedStaff && b.assignedStaff.trim() !== '')
-        return isMtpTask && !isCancelled && !hasStaff
+        const bDate = String(b.date || '').trim().slice(0, 10)
+        const isFutureOrToday = !bDate || bDate >= today
+        return isMtpTask && !isClosed && !hasStaff && isFutureOrToday
       }).reverse()
     }
   },
@@ -3742,17 +3834,36 @@ export const db = {
   claimMTPGig: async (bookingId, mtp) => {
     const id = Number(bookingId)
     const now = new Date().toISOString()
+    const today = now.split('T')[0]
     const mtpId = Number(mtp.id)
     const mtpName = String(mtp.name || 'MTP Companion').trim()
     const mtpPhone = String(mtp.phone || '').trim()
 
     if (useMySQL) {
+      // 1. Verify booking existence & status before updating
+      const [check] = await pool.query('SELECT * FROM bookings WHERE id = ?', [id])
+      if (!check[0]) return { success: false, reason: 'not_found', message: 'Gig booking not found.' }
+      const b = check[0]
+      if (b.status === 'Cancelled') return { success: false, reason: 'cancelled', message: 'This booking has been cancelled.' }
+      if (b.status === 'Completed') return { success: false, reason: 'completed', message: 'This booking has already been completed.' }
+      if (b.status === 'Expired') return { success: false, reason: 'expired', message: 'This gig has expired as the scheduled date has passed.' }
+
+      const bDate = String(b.date || '').trim().slice(0, 10)
+      if (bDate && bDate < today) {
+        await pool.query('UPDATE bookings SET status = "Expired" WHERE id = ?', [id])
+        return { success: false, reason: 'expired', message: 'This gig has expired as the scheduled date has passed.' }
+      }
+
+      if ((b.assignedStaffId && Number(b.assignedStaffId) > 0) || (b.assignedStaff && b.assignedStaff.trim() !== '')) {
+        return { success: false, reason: 'already_claimed', message: 'This task was already accepted by another companion.', claimedBy: b.assignedStaff }
+      }
+
       const [result] = await pool.query(
         `UPDATE bookings 
          SET assignedStaff = ?, assignedStaffId = ?, assignedStaffRole = 'mtp', assignedStaffPhone = ?,
              status = 'Confirmed', isMtp = 1, mtpAcceptedAt = ?, mtpAcceptedBy = ?, mtpAcceptedById = ?, mtpAcceptedPhone = ?
          WHERE id = ? 
-           AND status != 'Cancelled' 
+           AND status NOT IN ('Cancelled', 'Completed', 'Expired', 'Rejected') 
            AND (assignedStaffId IS NULL OR assignedStaffId = 0) 
            AND (assignedStaff IS NULL OR TRIM(assignedStaff) = '')`,
         [mtpName, mtpId, mtpPhone, now, mtpName, mtpId, mtpPhone, id]
@@ -3761,10 +3872,7 @@ export const db = {
         const [rows] = await pool.query('SELECT * FROM bookings WHERE id = ?', [id])
         return { success: true, booking: rows[0] }
       } else {
-        const [check] = await pool.query('SELECT * FROM bookings WHERE id = ?', [id])
-        if (!check[0]) return { success: false, reason: 'not_found', message: 'Gig booking not found.' }
-        if (check[0].status === 'Cancelled') return { success: false, reason: 'cancelled', message: 'This booking has been cancelled.' }
-        return { success: false, reason: 'already_claimed', message: 'This task was already accepted by another companion.', claimedBy: check[0].assignedStaff }
+        return { success: false, reason: 'already_claimed', message: 'This task was already accepted by another companion.' }
       }
     } else {
       const data = await readJSONDb()
@@ -3773,6 +3881,14 @@ export const db = {
       if (idx === -1) return { success: false, reason: 'not_found', message: 'Gig booking not found.' }
       const b = data.bookings[idx]
       if (b.status === 'Cancelled') return { success: false, reason: 'cancelled', message: 'This booking has been cancelled.' }
+      if (b.status === 'Completed') return { success: false, reason: 'completed', message: 'This booking has already been completed.' }
+      if (b.status === 'Expired') return { success: false, reason: 'expired', message: 'This gig has expired as the scheduled date has passed.' }
+      const bDate = String(b.date || '').trim().slice(0, 10)
+      if (bDate && bDate < today) {
+        b.status = 'Expired'
+        await writeJSONDb(data)
+        return { success: false, reason: 'expired', message: 'This gig has expired as the scheduled date has passed.' }
+      }
       if ((b.assignedStaffId && Number(b.assignedStaffId) > 0) || (b.assignedStaff && b.assignedStaff.trim() !== '')) {
         return { success: false, reason: 'already_claimed', message: 'This task was already accepted by another companion.', claimedBy: b.assignedStaff }
       }
@@ -4568,13 +4684,13 @@ export const db = {
           type: 'mtp',
           source: 'mtps',
           staffCategory: 'MTP',
-          categoryLabel: 'Medical Transport Partner',
+          categoryLabel: 'MTP',
           employeeId: m.employeeId || `AS - MTP - 26-${String(m.id).padStart(3, '0')}`,
           name: m.name,
           phone: m.phone || '',
           email: m.email || '',
-          designation: m.designation || 'Medical Transport & Escort Partner',
-          specialty: m.roles || 'Medical Transit Specialist',
+          designation: 'MTP',
+          specialty: m.roles || 'MTP Companion & Tasks',
           profilePhoto: m.profilePhoto || '',
           status: m.status || 'Pending',
           joinedAt: m.createdAt || m.joinedAt || '2026-01-01T00:00:00.000Z'
@@ -4585,8 +4701,12 @@ export const db = {
     // 3. Nurses & Caregivers (AS - NUR - 26-xxx / AS - CGV - 26-xxx)
     if (Array.isArray(data.caregivers)) {
       data.caregivers.forEach(c => {
-        const cat = c.staffCategory === 'NUR' ? 'NUR' : 'CGV'
-        const catLabel = cat === 'NUR' ? 'Registered Nurse' : 'Caregiver / Attendant'
+        const isNurse = (c.staffCategory === 'NUR') || 
+                        (c.employeeId && c.employeeId.includes('NUR')) || 
+                        String(c.specialty || '').toLowerCase().includes('nurse')
+        const cat = isNurse ? 'NUR' : 'CGV'
+        const catLabel = isNurse ? 'Nurse' : 'Caregiver'
+        const desig = isNurse ? 'Nurse' : 'Caregiver'
         all.push({
           id: `cgv_${c.id}`,
           originalId: c.id,
@@ -4598,7 +4718,7 @@ export const db = {
           name: c.name,
           phone: c.phone || '',
           email: c.email || '',
-          designation: c.designation || (cat === 'NUR' ? 'Registered Staff Nurse' : 'Certified Caregiver'),
+          designation: desig,
           specialty: c.specialty || '',
           profilePhoto: c.profilePhoto || '',
           status: c.status || 'Pending',

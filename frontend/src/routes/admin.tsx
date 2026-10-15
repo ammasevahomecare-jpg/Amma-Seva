@@ -12,7 +12,8 @@ import {
   ArrowUpRight, Star, BookOpen, HelpCircle, Menu, X, Image, Coins, Clock,
   Briefcase, Car, Eye, MessageCircle, FileText, Sparkles,
   GraduationCap, CreditCard, ShieldCheck, FileCheck, User, ExternalLink,
-  Gift, Copy, Share2, Heart, AlertTriangle, Zap, Navigation, Printer, Download, BadgeCheck
+  Gift, Copy, Share2, Heart, AlertTriangle, Zap, Navigation, Printer, Download, BadgeCheck,
+  Receipt, Landmark
 } from "lucide-react";
 
 const INDIAN_STATES = [
@@ -238,7 +239,7 @@ function AdminPage() {
   };
 
   const VALID_ADMIN_TABS = [
-    "overview", "bookings", "caregivers", "referrals", "mtps", "id-cards",
+    "overview", "bookings", "invoices", "caregivers", "referrals", "mtps", "id-cards",
     "users", "services", "payments", "salaries", "notifications", 
     "enquiries", "blogs", "faqs", "gallery"
   ] as const;
@@ -385,6 +386,19 @@ function AdminPage() {
   const [whatsAppReminderStatus, setWhatsAppReminderStatus] = useState<string | null>(null);
   const [isCopiedLink, setIsCopiedLink] = useState(false);
   const [isCopiedMessage, setIsCopiedMessage] = useState(false);
+  const [copiedBookingLinkId, setCopiedBookingLinkId] = useState<number | string | null>(null);
+
+  const handleCopyBookingPayLink = (bookingId: number | string) => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://ammaseva.in";
+    const payUrl = `${origin}/pay-balance?id=${bookingId}`;
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(payUrl);
+      setCopiedBookingLinkId(bookingId);
+      setTimeout(() => {
+        setCopiedBookingLinkId(prev => (prev === bookingId ? null : prev));
+      }, 2500);
+    }
+  };
 
   const handleOpenWhatsAppPayModal = (b: any) => {
     setWhatsAppModalBooking(b);
@@ -436,6 +450,229 @@ function AdminPage() {
     } finally {
       setIsSendingWhatsAppReminder(false);
     }
+  };
+
+  // ==========================================
+  // REAL-TIME INVOICE & BILLING GENERATOR STATE
+  // ==========================================
+  const [selectedInvoiceBookingId, setSelectedInvoiceBookingId] = useState<string>("custom");
+  const [invoiceCustomerName, setInvoiceCustomerName] = useState<string>("");
+  const [invoiceCustomerPhone, setInvoiceCustomerPhone] = useState<string>("");
+  const [invoiceCustomerEmail, setInvoiceCustomerEmail] = useState<string>("");
+  const [invoicePatientName, setInvoicePatientName] = useState<string>("");
+  const [invoicePatientAge, setInvoicePatientAge] = useState<string>("");
+  const [invoiceService, setInvoiceService] = useState<string>("Elder Care Assistant (24 Hours)");
+  const [invoiceDate, setInvoiceDate] = useState<string>(() => new Date().toISOString().split("T")[0]);
+  const [invoiceTime, setInvoiceTime] = useState<string>("08:00 AM");
+  const [invoiceDuration, setInvoiceDuration] = useState<string>("24 Hours Shift");
+  const [invoiceAddress, setInvoiceAddress] = useState<string>("Hyderabad, Telangana");
+  const [invoiceTotalAmount, setInvoiceTotalAmount] = useState<number | string>(2500);
+  const [invoiceAdvancePaid, setInvoiceAdvancePaid] = useState<number | string>(2500);
+  const [invoiceBalanceAmount, setInvoiceBalanceAmount] = useState<number | string>(0);
+  const [invoicePaymentMethod, setInvoicePaymentMethod] = useState<"cash" | "bank_account" | "upi" | "razorpay" | "pay_on_service">("cash");
+  const [invoicePaymentStatus, setInvoicePaymentStatus] = useState<"Paid" | "Advance Paid" | "Unpaid">("Paid");
+  const [invoiceTransactionId, setInvoiceTransactionId] = useState<string>(() => `CASH-REC-${Date.now().toString().slice(-4)}`);
+  const [invoiceNotes, setInvoiceNotes] = useState<string>("Healthcare shift service executed and payment received.");
+  const [isSavingInvoice, setIsSavingInvoice] = useState<boolean>(false);
+  const [invoiceStatusMsg, setInvoiceStatusMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [invoiceSearchQuery, setInvoiceSearchQuery] = useState<string>("");
+
+  const handleSelectBookingForInvoice = (bookingIdStr: string) => {
+    setSelectedInvoiceBookingId(bookingIdStr);
+    setInvoiceStatusMsg(null);
+    if (bookingIdStr === "custom") {
+      setInvoiceCustomerName("");
+      setInvoiceCustomerPhone("");
+      setInvoiceCustomerEmail("");
+      setInvoicePatientName("");
+      setInvoicePatientAge("");
+      setInvoiceService("Elder Care Assistant (24 Hours)");
+      setInvoiceDate(new Date().toISOString().split("T")[0]);
+      setInvoiceTime("08:00 AM");
+      setInvoiceDuration("1 Shift");
+      setInvoiceAddress("");
+      setInvoiceTotalAmount(1500);
+      setInvoiceAdvancePaid(1500);
+      setInvoiceBalanceAmount(0);
+      setInvoicePaymentMethod("cash");
+      setInvoicePaymentStatus("Paid");
+      setInvoiceTransactionId(`CASH-REC-${Date.now().toString().slice(-4)}`);
+      return;
+    }
+    const b = bookings.find(item => String(item.id) === String(bookingIdStr));
+    if (!b) return;
+
+    setInvoiceCustomerName(b.name || "");
+    setInvoiceCustomerPhone(b.phone || "");
+    setInvoiceCustomerEmail(b.email || "");
+    setInvoicePatientName(b.patientName || b.name || "");
+    setInvoicePatientAge(b.patientAge ? String(b.patientAge) : "");
+    setInvoiceService(b.service || "Healthcare Service");
+    setInvoiceDate(b.date || new Date().toISOString().split("T")[0]);
+    setInvoiceTime(b.time || "08:00 AM");
+    setInvoiceDuration(b.duration || "1 Shift");
+    setInvoiceAddress(b.address || "");
+    
+    const tot = Number(b.amount) || 0;
+    const adv = Number(b.advancePaid) || (b.paymentStatus === "Paid" ? tot : 0);
+    const bal = b.balanceAmount !== undefined && b.balanceAmount !== null ? Number(b.balanceAmount) : Math.max(0, tot - adv);
+    
+    setInvoiceTotalAmount(tot);
+    setInvoiceAdvancePaid(adv);
+    setInvoiceBalanceAmount(bal);
+    
+    const method = String(b.paymentMethod || "").toLowerCase();
+    if (method.includes("cash")) {
+      setInvoicePaymentMethod("cash");
+    } else if (method.includes("bank") || method.includes("account") || method.includes("neft") || method.includes("imps")) {
+      setInvoicePaymentMethod("bank_account");
+    } else if (method.includes("upi") || method.includes("phonepe") || method.includes("gpay")) {
+      setInvoicePaymentMethod("upi");
+    } else if (method.includes("razorpay") || method.includes("card") || method.includes("online")) {
+      setInvoicePaymentMethod("razorpay");
+    } else {
+      setInvoicePaymentMethod(bal === 0 ? "cash" : "pay_on_service");
+    }
+    
+    setInvoicePaymentStatus(b.paymentStatus === "Paid" ? "Paid" : b.paymentStatus === "Advance Paid" ? "Advance Paid" : "Unpaid");
+    setInvoiceTransactionId(b.transactionId || (b.paymentMethod === "cash" ? `CASH-REC-${b.id}` : `TXN-${b.id}`));
+  };
+
+  const handleUpdateInvoiceAmounts = (newTotal: number | string, newAdv: number | string, newStatus?: "Paid" | "Advance Paid" | "Unpaid") => {
+    const totNum = Math.max(0, Number(newTotal) || 0);
+    const advNum = Math.max(0, Number(newAdv) || 0);
+    const balNum = Math.max(0, totNum - advNum);
+    
+    setInvoiceTotalAmount(totNum);
+    setInvoiceAdvancePaid(advNum);
+    setInvoiceBalanceAmount(balNum);
+    
+    if (newStatus) {
+      setInvoicePaymentStatus(newStatus);
+    } else if (advNum >= totNum && totNum > 0) {
+      setInvoicePaymentStatus("Paid");
+    } else if (advNum > 0) {
+      setInvoicePaymentStatus("Advance Paid");
+    } else {
+      setInvoicePaymentStatus("Unpaid");
+    }
+  };
+
+  const handleSaveInvoiceToDatabase = async () => {
+    if (!selectedInvoiceBookingId || selectedInvoiceBookingId === "custom") {
+      setInvoiceStatusMsg({
+        type: "success",
+        text: "✓ Custom Tax Invoice is ready! You can now Print directly or Share via WhatsApp."
+      });
+      return;
+    }
+
+    setIsSavingInvoice(true);
+    setInvoiceStatusMsg(null);
+    try {
+      const token = localStorage.getItem("ammaseva_token") || localStorage.getItem("token");
+      const methodLabel = 
+        invoicePaymentMethod === "cash" ? "Cash" :
+        invoicePaymentMethod === "bank_account" ? "Bank Account Transfer" :
+        invoicePaymentMethod === "upi" ? "UPI (PhonePe/GPay)" :
+        invoicePaymentMethod === "razorpay" ? "Razorpay Online" : "Pay on Service";
+
+      const payload = {
+        name: invoiceCustomerName.trim(),
+        phone: invoiceCustomerPhone.replace(/\D/g, ""),
+        service: invoiceService,
+        date: invoiceDate,
+        time: invoiceTime,
+        duration: invoiceDuration,
+        address: invoiceAddress.trim(),
+        amount: Number(invoiceTotalAmount) || 0,
+        advancePaid: Number(invoiceAdvancePaid) || 0,
+        balanceAmount: Number(invoiceBalanceAmount) || 0,
+        paymentStatus: invoicePaymentStatus,
+        paymentMethod: methodLabel,
+        transactionId: invoiceTransactionId || `REC-${Date.now().toString().slice(-6)}`,
+        paymentDate: new Date().toISOString(),
+        patientName: invoicePatientName,
+        patientAge: invoicePatientAge
+      };
+
+      const res = await fetch(`/api/admin/booking/${selectedInvoiceBookingId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update booking invoice in database");
+      }
+
+      setBookings(prev => prev.map(b => {
+        if (String(b.id) === String(selectedInvoiceBookingId)) {
+          return {
+            ...b,
+            ...payload
+          };
+        }
+        return b;
+      }));
+
+      setInvoiceStatusMsg({
+        type: "success",
+        text: `✓ Booking #${selectedInvoiceBookingId} invoice & payment record (${methodLabel} - ₹${Number(invoiceTotalAmount).toLocaleString()}) updated and verified everywhere!`
+      });
+    } catch (err: any) {
+      setInvoiceStatusMsg({
+        type: "error",
+        text: `❌ Error saving invoice: ${err.message}`
+      });
+    } finally {
+      setIsSavingInvoice(false);
+    }
+  };
+
+  const handleSendInvoiceWhatsApp = () => {
+    const rawPhone = String(invoiceCustomerPhone || "").replace(/\D/g, "").slice(-10);
+    const targetPhone = rawPhone.length === 10 ? `91${rawPhone}` : "919490587575";
+    const paymentModeLabel = 
+      invoicePaymentMethod === "cash" ? "Cash (నగదు రసీదు)" :
+      invoicePaymentMethod === "bank_account" ? "Bank Account Transfer (బ్యాంక్ ఖాతా)" :
+      invoicePaymentMethod === "upi" ? "UPI (PhonePe / GPay)" :
+      invoicePaymentMethod === "razorpay" ? "Razorpay Online Gateway" : "Pay on Service / Escrow";
+
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://ammaseva.in";
+    const viewUrl = selectedInvoiceBookingId && selectedInvoiceBookingId !== "custom" 
+      ? `${origin}/pay-balance?id=${selectedInvoiceBookingId}` 
+      : `${origin}/dashboard`;
+    
+    const msg = `🙏 *AMMA SEVA HOME HEALTHCARE SERVICES*\n📄 *OFFICIAL GST TAX INVOICE & RECEIPT*\n\n` +
+      `📋 *INVOICE DETAILS:*\n` +
+      `• *Invoice No:* #INV-2026-${selectedInvoiceBookingId === "custom" ? "CUST" : selectedInvoiceBookingId}\n` +
+      `• *Date:* ${invoiceDate}\n` +
+      `• *Client Name:* ${invoiceCustomerName || "Valued Customer"}\n` +
+      `• *Mobile:* ${invoiceCustomerPhone || "-"}\n` +
+      (invoicePatientName ? `• *Patient:* ${invoicePatientName} ${invoicePatientAge ? `(${invoicePatientAge} yrs)` : ""}\n` : "") +
+      `• *Service:* ${invoiceService}\n` +
+      `• *Schedule:* ${invoiceDate} at ${invoiceTime} (${invoiceDuration})\n` +
+      `• *Location:* ${invoiceAddress || "Hyderabad / Vijayawada"}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `💰 *Total Shift Value:* ₹${Number(invoiceTotalAmount).toLocaleString("en-IN")}\n` +
+      `✅ *Paid / Advance:* ₹${Number(invoiceAdvancePaid).toLocaleString("en-IN")}\n` +
+      `⏳ *Balance Due:* ₹${Number(invoiceBalanceAmount).toLocaleString("en-IN")}\n` +
+      `💳 *Payment Mode:* *${paymentModeLabel}*\n` +
+      `📊 *Payment Status:* *${invoicePaymentStatus.toUpperCase()}*\n` +
+      (invoiceTransactionId ? `🔖 *Receipt/UTR Ref:* ${invoiceTransactionId}\n` : "") +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `🔗 *Online Invoice & Ledger:* ${viewUrl}\n\n` +
+      `🏢 *LUXDHANA GLOBAL PRIVATE LIMITED*\n` +
+      `GSTIN: 36AAACL8921M1ZT | SAC: 999312\n` +
+      `24/7 Helpline: +91 94945 16543 | www.ammaseva.in\n\n` +
+      `Thank you for trusting Amma Seva! 🙏`;
+
+    window.open(`https://wa.me/${targetPhone}?text=${encodeURIComponent(msg)}`, "_blank");
   };
 
   // Document Viewer Modal State
@@ -2048,6 +2285,7 @@ function AdminPage() {
             {[
               { id: "overview", label: "Dashboard", icon: LayoutDashboard },
               { id: "bookings", label: "Manage Bookings", icon: CalendarDays },
+              { id: "invoices", label: "Invoices & Billing", icon: Receipt },
               { id: "caregivers", label: "Employees & Staff", icon: UserCheck },
               { id: "id-cards", label: "Staff ID Cards", icon: CreditCard, badge: idCards.length },
               { id: "referrals", label: "Referral Network", icon: Gift, badge: referralsData?.summary?.totalPending || 0 },
@@ -2745,21 +2983,115 @@ function AdminPage() {
                                   )}
                                 </div>
                               )}
+
+                              {/* Customer Payment Link Bar */}
+                              {Number(b.balanceAmount) > 0 ? (
+                                <div className="mt-2.5 p-2 rounded-xl bg-amber-50/90 border border-amber-200/90 space-y-1.5 shadow-2xs">
+                                  <div className="flex items-center justify-between text-[9px]">
+                                    <span className="font-extrabold text-amber-900 flex items-center gap-1">
+                                      <CreditCard className="w-3 h-3 text-amber-700" />
+                                      Payment Link (లింక్)
+                                    </span>
+                                    <span className="text-[9px] font-black text-rose-700 bg-rose-100/90 px-1.5 py-0.2 rounded border border-rose-200">
+                                      Due: ₹{Number(b.balanceAmount).toLocaleString("en-IN")}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <div 
+                                      className="flex-1 bg-white px-2 py-1 rounded-lg border border-amber-200 text-[9px] font-mono text-slate-700 truncate select-all" 
+                                      title={`${typeof window !== "undefined" ? window.location.origin : "https://ammaseva.in"}/pay-balance?id=${b.id}`}
+                                    >
+                                      /pay-balance?id={b.id}
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopyBookingPayLink(b.id)}
+                                      className={`px-2 py-1 rounded-lg text-[9px] font-bold flex items-center gap-1 transition-all shadow-xs cursor-pointer shrink-0 ${
+                                        copiedBookingLinkId === b.id
+                                          ? "bg-emerald-600 text-white border border-emerald-600 shadow-emerald-200"
+                                          : "bg-amber-600 hover:bg-amber-700 text-white border border-amber-700"
+                                      }`}
+                                      title="1-Click Copy Link"
+                                    >
+                                      {copiedBookingLinkId === b.id ? (
+                                        <>
+                                          <Check className="w-2.5 h-2.5 text-white" />
+                                          <span>Copied!</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Copy className="w-2.5 h-2.5" />
+                                          <span>Copy</span>
+                                        </>
+                                      )}
+                                    </button>
+                                    <a
+                                      href={`/pay-balance?id=${b.id}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="p-1 px-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-[9px] font-bold flex items-center gap-0.5 transition-all shadow-xs shrink-0"
+                                      title="Open Due Payment Page in New Tab"
+                                    >
+                                      <ExternalLink className="w-3 h-3 text-slate-600" />
+                                    </a>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="mt-2 p-1.5 px-2 rounded-xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-between text-[9px]">
+                                  <span className="font-extrabold text-emerald-800 flex items-center gap-1">
+                                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                    ✓ Due Cleared • Fully Paid
+                                  </span>
+                                  <a
+                                    href={`/pay-balance?id=${b.id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[8px] font-bold text-emerald-700 hover:underline flex items-center gap-0.5 shrink-0"
+                                    title="View Settlement Receipt"
+                                  >
+                                    Receipt <ExternalLink className="w-2.5 h-2.5" />
+                                  </a>
+                                </div>
+                              )}
                             </div>
                           </div>
 
                           {/* Action Controls */}
                           <div className="flex gap-2 self-stretch lg:self-auto justify-end border-t lg:border-t-0 border-slate-100 pt-3 lg:pt-0 shrink-0">
-                            {Number(b.balanceAmount) > 0 && (
+                            {Number(b.balanceAmount) > 0 ? (
                               <button
                                 onClick={() => handleOpenWhatsAppPayModal(b)}
-                                className="px-3 py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 border border-emerald-200 hover:border-emerald-600 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all hover:translate-y-[-1px] shadow-sm"
-                                title="Send WhatsApp Pay Balance Link"
+                                className="px-3 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all hover:translate-y-[-1px] shadow-sm"
+                                title="Send Payment Link via WhatsApp to Customer"
                               >
                                 <MessageSquare className="h-3.5 w-3.5" />
-                                <span className="hidden sm:inline">WhatsApp Pay</span>
+                                <span className="hidden sm:inline">Send Pay Link</span>
                               </button>
+                            ) : (
+                              <a
+                                href={`/pay-balance?id=${b.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all hover:translate-y-[-1px] shadow-xs"
+                                title="View Paid Invoice / Settlement Summary"
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                                <span className="hidden sm:inline">Paid Receipt</span>
+                              </a>
                             )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleSelectBookingForInvoice(String(b.id));
+                                setActiveTab("invoices");
+                                window.scrollTo({ top: 0, behavior: "smooth" });
+                              }}
+                              className="px-3 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-600 hover:text-white border border-amber-200/80 text-amber-800 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all hover:translate-y-[-1px] shadow-sm"
+                              title="Generate & Print Official Tax Invoice"
+                            >
+                              <Receipt className="h-3.5 w-3.5" />
+                              <span className="hidden sm:inline">Invoice</span>
+                            </button>
                             <button
                               onClick={() => {
                                 setIsRecordCaretakerPaymentMode(false);
@@ -2783,6 +3115,788 @@ function AdminPage() {
                   );
                 })()}
               </div>
+            </div>
+          )}
+
+          {/* ======================================================== */}
+          {/* INVOICES & BILLING GENERATOR (REAL-TIME TAX INVOICES)   */}
+          {/* ======================================================== */}
+          {activeTab === "invoices" && (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              
+              {/* Top Banner & Stats */}
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/40 premium-card flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-9 w-9 rounded-xl bg-amber-500/10 text-amber-700 flex items-center justify-center font-bold">
+                      <Receipt className="h-5 w-5" />
+                    </div>
+                    <h3 className="text-xl font-extrabold text-[#1e2a5a] font-display">Invoices &amp; Billing Hub</h3>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1 font-medium">
+                    Generate official GST Tax Invoices in real-time, record Cash or Bank Account payments, and share instantly via WhatsApp or Print.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectBookingForInvoice("custom")}
+                    className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> New Custom Invoice
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="px-3.5 py-2 rounded-xl bg-[#1e2a5a] hover:bg-[#152046] text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                  >
+                    <Printer className="w-3.5 h-3.5" /> Print Invoice
+                  </button>
+                </div>
+              </div>
+
+              {/* Statistics Cards */}
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-4.5 shadow-xs premium-card">
+                  <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider block">Total Billed Volume</span>
+                  <span className="text-2xl font-black font-display text-slate-900 mt-1 block">
+                    ₹{bookings.reduce((sum, b) => sum + (Number(b.amount) || 0), 0).toLocaleString()}
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-medium">Across all client reservations</span>
+                </div>
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-4.5 shadow-xs premium-card">
+                  <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider block">Total Collected (Cash &amp; Online)</span>
+                  <span className="text-2xl font-black font-display text-emerald-600 mt-1 block">
+                    ₹{bookings.filter(b => b.paymentStatus === "Paid").reduce((sum, b) => sum + (Number(b.amount) || 0), 0).toLocaleString()}
+                  </span>
+                  <span className="text-[10px] text-emerald-700 font-medium font-semibold">✓ Settled in full</span>
+                </div>
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-4.5 shadow-xs premium-card">
+                  <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider block">Pending Balance Due</span>
+                  <span className="text-2xl font-black font-display text-amber-600 mt-1 block">
+                    ₹{bookings.filter(b => b.paymentStatus !== "Paid").reduce((sum, b) => sum + (Number(b.balanceAmount || b.amount) || 0), 0).toLocaleString()}
+                  </span>
+                  <span className="text-[10px] text-amber-700 font-medium">⏳ Post-service collections pending</span>
+                </div>
+              </div>
+
+              {/* Client / Booking Selector Card */}
+              <div className="bg-gradient-to-r from-slate-50 via-amber-50/40 to-slate-50 border border-amber-200/80 rounded-2xl p-5 shadow-sm space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <label className="text-xs font-black uppercase tracking-wider text-[#1e2a5a] flex items-center gap-1.5">
+                    <User className="w-4 h-4 text-amber-600" />
+                    Select Client / Booking for Instant Real-Time Invoice:
+                  </label>
+                  <span className="text-[11px] text-slate-500 font-semibold">
+                    {bookings.length} reservations available in database
+                  </span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2.5 items-center">
+                  <select
+                    value={selectedInvoiceBookingId}
+                    onChange={(e) => handleSelectBookingForInvoice(e.target.value)}
+                    className="w-full sm:flex-1 px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-extrabold text-slate-800 outline-none focus:ring-2 focus:ring-[#c9a24c] shadow-xs cursor-pointer"
+                  >
+                    <option value="custom">➕ Create Custom Walk-in / Direct Client Invoice</option>
+                    {bookings.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        #{b.id} — {b.name} ({b.phone}) • {b.service} • ₹{Number(b.amount).toLocaleString()} [{b.paymentStatus || "Unpaid"}] {b.paymentMethod ? `(${b.paymentMethod})` : ""}
+                      </option>
+                    ))}
+                  </select>
+
+                  {selectedInvoiceBookingId !== "custom" && (
+                    <button
+                      type="button"
+                      onClick={() => handleSelectBookingForInvoice("custom")}
+                      className="px-3 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 text-xs font-bold transition-all shadow-xs cursor-pointer whitespace-nowrap"
+                    >
+                      Clear Selection
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Status Notice */}
+              {invoiceStatusMsg && (
+                <div className={`p-4 rounded-xl border text-xs font-bold flex items-center justify-between shadow-xs ${
+                  invoiceStatusMsg.type === "success"
+                    ? "bg-emerald-50 text-emerald-900 border-emerald-300"
+                    : "bg-rose-50 text-rose-900 border-rose-300"
+                }`}>
+                  <span>{invoiceStatusMsg.text}</span>
+                  <button
+                    type="button"
+                    onClick={() => setInvoiceStatusMsg(null)}
+                    className="text-xs opacity-60 hover:opacity-100 cursor-pointer ml-3"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
+              {/* Main Dual-Column: Left = Form Controls, Right = Live Invoice Sheet */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                {/* LEFT COLUMN: Invoice Parameters & Payment Method (5 cols on lg) */}
+                <div className="lg:col-span-5 bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 shadow-sm space-y-5">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <h4 className="font-extrabold text-[#1e2a5a] text-sm flex items-center gap-1.5">
+                      <CreditCard className="w-4 h-4 text-[#c9a24c]" />
+                      Payment Mode &amp; Ledger Status
+                    </h4>
+                    <span className="text-[10px] font-mono text-slate-400">
+                      ID: {selectedInvoiceBookingId === "custom" ? "Custom" : `#${selectedInvoiceBookingId}`}
+                    </span>
+                  </div>
+
+                  {/* Payment Mode Selector ("Cash iste Cash, Account ayite Account") */}
+                  <div>
+                    <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-2">
+                      Payment Mode (చెల్లింపు విధానం):
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setInvoicePaymentMethod("cash");
+                          if (!invoiceTransactionId || invoiceTransactionId.startsWith("UTR-") || invoiceTransactionId.startsWith("TXN-")) {
+                            setInvoiceTransactionId(`CASH-REC-${Date.now().toString().slice(-4)}`);
+                          }
+                        }}
+                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                          invoicePaymentMethod === "cash"
+                            ? "bg-emerald-50 border-emerald-400 ring-2 ring-emerald-500/30 text-emerald-950 font-bold shadow-xs"
+                            : "bg-slate-50/70 border-slate-200 hover:bg-slate-100 text-slate-700"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 font-black text-xs">
+                          <span>💵 Cash (నగదు)</span>
+                          {invoicePaymentMethod === "cash" && <Check className="w-3.5 h-3.5 text-emerald-600 ml-auto" />}
+                        </div>
+                        <div className="text-[9.5px] text-slate-500 font-normal mt-0.5">
+                          Handover to caregiver/driver
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setInvoicePaymentMethod("bank_account");
+                          if (!invoiceTransactionId || invoiceTransactionId.startsWith("CASH-")) {
+                            setInvoiceTransactionId(`UTR-${Date.now().toString().slice(-6)}`);
+                          }
+                        }}
+                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                          invoicePaymentMethod === "bank_account"
+                            ? "bg-blue-50 border-blue-400 ring-2 ring-blue-500/30 text-blue-950 font-bold shadow-xs"
+                            : "bg-slate-50/70 border-slate-200 hover:bg-slate-100 text-slate-700"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 font-black text-xs">
+                          <span>🏦 Bank Account / NEFT</span>
+                          {invoicePaymentMethod === "bank_account" && <Check className="w-3.5 h-3.5 text-blue-600 ml-auto" />}
+                        </div>
+                        <div className="text-[9.5px] text-slate-500 font-normal mt-0.5">
+                          Bank transfer / IMPS / RTGS
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setInvoicePaymentMethod("upi");
+                          if (!invoiceTransactionId || invoiceTransactionId.startsWith("CASH-")) {
+                            setInvoiceTransactionId(`UPI-${Date.now().toString().slice(-6)}`);
+                          }
+                        }}
+                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                          invoicePaymentMethod === "upi"
+                            ? "bg-purple-50 border-purple-400 ring-2 ring-purple-500/30 text-purple-950 font-bold shadow-xs"
+                            : "bg-slate-50/70 border-slate-200 hover:bg-slate-100 text-slate-700"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 font-black text-xs">
+                          <span>📱 UPI / PhonePe / GPay</span>
+                          {invoicePaymentMethod === "upi" && <Check className="w-3.5 h-3.5 text-purple-600 ml-auto" />}
+                        </div>
+                        <div className="text-[9.5px] text-slate-500 font-normal mt-0.5">
+                          Direct mobile UPI QR scan
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setInvoicePaymentMethod("razorpay");
+                        }}
+                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                          invoicePaymentMethod === "razorpay"
+                            ? "bg-indigo-50 border-indigo-400 ring-2 ring-indigo-500/30 text-indigo-950 font-bold shadow-xs"
+                            : "bg-slate-50/70 border-slate-200 hover:bg-slate-100 text-slate-700"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 font-black text-xs">
+                          <span>💳 Razorpay Gateway</span>
+                          {invoicePaymentMethod === "razorpay" && <Check className="w-3.5 h-3.5 text-indigo-600 ml-auto" />}
+                        </div>
+                        <div className="text-[9.5px] text-slate-500 font-normal mt-0.5">
+                          Online Debit/Credit Cards
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Payment Status Selector */}
+                  <div>
+                    <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
+                      Payment Clearance Status:
+                    </label>
+                    <div className="flex gap-2">
+                      {(["Paid", "Advance Paid", "Unpaid"] as const).map((status) => (
+                        <button
+                          key={status}
+                          type="button"
+                          onClick={() => {
+                            if (status === "Paid") {
+                              handleUpdateInvoiceAmounts(invoiceTotalAmount, invoiceTotalAmount, "Paid");
+                            } else if (status === "Advance Paid") {
+                              const adv = Math.round(Number(invoiceTotalAmount) * 0.2);
+                              handleUpdateInvoiceAmounts(invoiceTotalAmount, adv, "Advance Paid");
+                            } else {
+                              handleUpdateInvoiceAmounts(invoiceTotalAmount, 0, "Unpaid");
+                            }
+                          }}
+                          className={`flex-1 py-2 text-xs font-extrabold rounded-xl border transition-all cursor-pointer text-center ${
+                            invoicePaymentStatus === status
+                              ? status === "Paid"
+                                ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                                : status === "Advance Paid"
+                                  ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                                  : "bg-amber-600 text-white border-amber-600 shadow-xs"
+                              : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
+                          }`}
+                        >
+                          {status === "Paid" ? "✓ Fully Paid" : status === "Advance Paid" ? "Advance Paid" : "Unpaid / Due"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Amount Breakdown Inputs */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 bg-slate-50/90 p-3.5 rounded-xl border border-slate-200">
+                    <div>
+                      <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-slate-700 mb-1">
+                        Total Amount (₹)
+                      </label>
+                      <input
+                        type="number"
+                        value={invoiceTotalAmount}
+                        onChange={(e) => handleUpdateInvoiceAmounts(e.target.value, invoiceAdvancePaid)}
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-black text-slate-900 outline-none focus:ring-1 focus:ring-[#c9a24c]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-emerald-800 mb-1">
+                        Paid / Advance (₹)
+                      </label>
+                      <input
+                        type="number"
+                        value={invoiceAdvancePaid}
+                        onChange={(e) => handleUpdateInvoiceAmounts(invoiceTotalAmount, e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-white border border-emerald-300 rounded-lg text-xs font-black text-emerald-900 outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-amber-800 mb-1">
+                        Balance Due (₹)
+                      </label>
+                      <input
+                        type="number"
+                        readOnly
+                        value={invoiceBalanceAmount}
+                        className="w-full px-2.5 py-1.5 bg-slate-100 border border-amber-300 rounded-lg text-xs font-black text-amber-950 outline-none select-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Transaction Ref Input */}
+                  <div>
+                    <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">
+                      UTR / Transaction Ref / Cash Voucher No.:
+                    </label>
+                    <input
+                      type="text"
+                      value={invoiceTransactionId}
+                      onChange={(e) => setInvoiceTransactionId(e.target.value)}
+                      placeholder="e.g. UTR92837482910 or CASH-REC-14"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-800 outline-none focus:bg-white focus:ring-1 focus:ring-[#c9a24c]"
+                    />
+                  </div>
+
+                  {/* Client & Patient Details */}
+                  <div className="space-y-3 pt-2 border-t border-slate-100">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-[#1e2a5a] block">
+                      Customer &amp; Patient Information
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-[9.5px] font-bold text-slate-500 mb-0.5">Customer Name</label>
+                        <input
+                          type="text"
+                          value={invoiceCustomerName}
+                          onChange={(e) => setInvoiceCustomerName(e.target.value)}
+                          placeholder="Client Full Name"
+                          className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 outline-none focus:bg-white focus:ring-1 focus:ring-[#c9a24c]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9.5px] font-bold text-slate-500 mb-0.5">Mobile Phone</label>
+                        <input
+                          type="text"
+                          value={invoiceCustomerPhone}
+                          onChange={(e) => setInvoiceCustomerPhone(e.target.value)}
+                          placeholder="10-digit mobile number"
+                          className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-900 outline-none focus:bg-white focus:ring-1 focus:ring-[#c9a24c]"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-[9.5px] font-bold text-slate-500 mb-0.5">Patient Name (Optional)</label>
+                        <input
+                          type="text"
+                          value={invoicePatientName}
+                          onChange={(e) => setInvoicePatientName(e.target.value)}
+                          placeholder="Patient Full Name"
+                          className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 outline-none focus:bg-white focus:ring-1 focus:ring-[#c9a24c]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9.5px] font-bold text-slate-500 mb-0.5">Patient Age</label>
+                        <input
+                          type="text"
+                          value={invoicePatientAge}
+                          onChange={(e) => setInvoicePatientAge(e.target.value)}
+                          placeholder="e.g. 68"
+                          className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 outline-none focus:bg-white focus:ring-1 focus:ring-[#c9a24c]"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[9.5px] font-bold text-slate-500 mb-0.5">Service Description</label>
+                      <input
+                        type="text"
+                        value={invoiceService}
+                        onChange={(e) => setInvoiceService(e.target.value)}
+                        placeholder="e.g. Elder Care Assistant (24 Hours)"
+                        className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 outline-none focus:bg-white focus:ring-1 focus:ring-[#c9a24c]"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      <div>
+                        <label className="block text-[9.5px] font-bold text-slate-500 mb-0.5">Schedule Date</label>
+                        <input
+                          type="date"
+                          value={invoiceDate}
+                          onChange={(e) => setInvoiceDate(e.target.value)}
+                          className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 outline-none focus:bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9.5px] font-bold text-slate-500 mb-0.5">Shift Time</label>
+                        <input
+                          type="text"
+                          value={invoiceTime}
+                          onChange={(e) => setInvoiceTime(e.target.value)}
+                          placeholder="08:00 AM"
+                          className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 outline-none focus:bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9.5px] font-bold text-slate-500 mb-0.5">Duration</label>
+                        <input
+                          type="text"
+                          value={invoiceDuration}
+                          onChange={(e) => setInvoiceDuration(e.target.value)}
+                          placeholder="24 Hours Shift"
+                          className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 outline-none focus:bg-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[9.5px] font-bold text-slate-500 mb-0.5">Residence Address</label>
+                      <input
+                        type="text"
+                        value={invoiceAddress}
+                        onChange={(e) => setInvoiceAddress(e.target.value)}
+                        placeholder="House / Flat No, Street, Landmark, City"
+                        className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 outline-none focus:bg-white focus:ring-1 focus:ring-[#c9a24c]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Form Action Controls */}
+                  <div className="pt-3 border-t border-slate-100 flex flex-col gap-2.5">
+                    {selectedInvoiceBookingId !== "custom" && (
+                      <button
+                        type="button"
+                        onClick={handleSaveInvoiceToDatabase}
+                        disabled={isSavingInvoice}
+                        className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        {isSavingInvoice ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            Updating Database Record...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-4 h-4" />
+                            Save &amp; Update in Database (బుకింగ్‌లో సేవ్ చేయి)
+                          </>
+                        )}
+                      </button>
+                    )}
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSendInvoiceWhatsApp}
+                        className="flex-1 py-2.5 px-3 bg-[#25D366] hover:bg-[#20ba5a] text-white font-extrabold text-xs rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                        title="Send Tax Invoice Breakdown to Customer via WhatsApp"
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                        Send via WhatsApp
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => window.print()}
+                        className="py-2.5 px-4 bg-[#1e2a5a] hover:bg-[#152046] text-white font-extrabold text-xs rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                        title="Print Invoice directly onto A4 Sheet"
+                      >
+                        <Printer className="w-4 h-4" />
+                        Print
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* RIGHT COLUMN: Official Real-Time Live Tax Invoice Preview (7 cols on lg) */}
+                <div className="lg:col-span-7 space-y-3">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-500 px-1">
+                    <span className="flex items-center gap-1 text-[#1e2a5a] font-extrabold">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                      Live Tax Invoice Preview (రియల్ టైమ్ ప్రివ్యూ)
+                    </span>
+                    <span className="text-[10px] bg-slate-200/80 text-slate-700 px-2 py-0.5 rounded font-mono">
+                      A4 Single Page Format
+                    </span>
+                  </div>
+
+                  {/* The Official Printable Invoice Document */}
+                  <div
+                    id="admin-invoice-print-root"
+                    className="bg-white rounded-2xl border border-slate-300 shadow-xl p-5 sm:p-7 space-y-4 text-slate-800"
+                  >
+                    {/* Header: Company & Invoice Info */}
+                    <div className="flex justify-between items-start gap-4 border-b-2 border-[#1e2a5a] pb-3.5">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl sm:text-2xl font-black font-display text-[#1e2a5a] tracking-tight">AMMA SEVA</span>
+                          <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-300">
+                            TAX INVOICE / RECEIPT
+                          </span>
+                        </div>
+                        <p className="text-[11px] font-extrabold text-slate-800">LUXDHANA GLOBAL PRIVATE LIMITED</p>
+                        <p className="text-[9.5px] text-slate-500 leading-tight">
+                          GSTIN: <strong className="font-mono text-slate-900">36AAACL8921M1ZT</strong> &nbsp;|&nbsp; State Code: <strong>36 (Telangana)</strong><br />
+                          8-2-630/B/B/1, Mount Banjara complex, Rd #12, Banjara Hills, Hyderabad - 500034<br />
+                          Branch: Door No. 40-1-140, MG Road, Vijayawada - 520010<br />
+                          24/7 Helpline: +91 94945 16543 &nbsp;|&nbsp; support@ammaseva.in &nbsp;|&nbsp; www.ammaseva.in
+                        </p>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <div className="inline-block bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-300 mb-1.5">
+                          <span className="text-[8px] font-extrabold text-slate-500 uppercase tracking-widest block">Original for Recipient</span>
+                          <span className="text-base font-black text-[#1e2a5a] font-mono block">
+                            #INV-2026-{selectedInvoiceBookingId === "custom" ? "CUST" : selectedInvoiceBookingId}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-slate-600 font-medium">
+                          Date: <strong className="text-slate-900">{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</strong>
+                        </div>
+                        <div className="mt-1.5">
+                          <span className={`inline-block text-[9px] font-extrabold px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${
+                            invoicePaymentStatus === "Paid"
+                              ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                              : invoicePaymentStatus === "Advance Paid"
+                                ? "bg-blue-50 text-blue-800 border-blue-300"
+                                : "bg-amber-50 text-amber-800 border-amber-300"
+                          }`}>
+                            ● {invoicePaymentStatus}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Client & Service Delivery Details */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
+                      <div className="p-3 rounded-xl bg-slate-50/80 border border-slate-200 space-y-0.5">
+                        <span className="block text-slate-400 font-extrabold text-[8.5px] uppercase tracking-wider mb-1">Billed To (Client / Patient)</span>
+                        <span className="block font-black text-slate-900 text-xs sm:text-sm">{invoiceCustomerName || "Valued Client"}</span>
+                        <span className="block text-slate-600 font-mono text-xs">📞 {invoiceCustomerPhone || "—"}</span>
+                        {invoiceCustomerEmail && <span className="block text-slate-600 text-[10px]">✉️ {invoiceCustomerEmail}</span>}
+                        {invoicePatientName && (
+                          <div className="mt-1.5 pt-1.5 border-t border-slate-200 text-[10.5px] text-slate-700">
+                            Patient: <strong className="text-slate-900">{invoicePatientName}</strong> {invoicePatientAge ? `(${invoicePatientAge} yrs)` : ""}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-slate-50/80 border border-slate-200 space-y-0.5">
+                        <span className="block text-slate-400 font-extrabold text-[8.5px] uppercase tracking-wider mb-1">Service &amp; Delivery Details</span>
+                        <span className="block font-black text-[#1e2a5a] text-xs sm:text-sm">{invoiceService}</span>
+                        <span className="block text-slate-700 text-[10.5px]">
+                          Schedule: <strong className="text-slate-900">{invoiceDate}</strong> at <strong className="text-slate-900">{invoiceTime}</strong> ({invoiceDuration})
+                        </span>
+                        <span className="block text-slate-600 truncate text-[10px]" title={invoiceAddress}>
+                          Location: {invoiceAddress || "Customer Residence"}
+                        </span>
+                        <span className="block text-[9px] text-slate-500 pt-1">
+                          Place of Supply: <strong>Telangana (36) / Andhra Pradesh (37)</strong>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Itemized Table */}
+                    <div className="overflow-hidden rounded-xl border border-slate-300 text-[11px]">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-slate-100 border-b border-slate-300 font-bold text-slate-800 text-[9px] uppercase tracking-wider">
+                            <th className="py-2 px-3">Service &amp; Scope Description</th>
+                            <th className="py-2 px-2 text-center">SAC Code</th>
+                            <th className="py-2 px-2 text-center">Duration</th>
+                            <th className="py-2 px-3 text-right">Taxable Subtotal (₹)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          <tr>
+                            <td className="py-2.5 px-3 font-bold text-[#1e2a5a]">
+                              {invoiceService}
+                              <span className="block text-[9px] font-normal text-slate-500">Verified Healthcare Attendant &amp; Nursing Care Support</span>
+                            </td>
+                            <td className="py-2.5 px-2 text-center font-mono text-slate-600">999312</td>
+                            <td className="py-2.5 px-2 text-center text-slate-700">{invoiceDuration}</td>
+                            <td className="py-2.5 px-3 text-right font-black text-slate-900 font-mono">
+                              ₹{Math.round(Number(invoiceTotalAmount || 0) / 1.18).toLocaleString("en-IN")}
+                            </td>
+                          </tr>
+                        </tbody>
+                        <tfoot className="bg-slate-50/90 divide-y divide-slate-200 font-semibold text-[10.5px]">
+                          <tr>
+                            <td colSpan={3} className="py-1 px-3 text-right text-slate-600">Taxable Value:</td>
+                            <td className="py-1 px-3 text-right font-mono font-bold text-slate-800">
+                              ₹{Math.round(Number(invoiceTotalAmount || 0) / 1.18).toLocaleString("en-IN")}
+                            </td>
+                          </tr>
+                          <tr className="text-slate-600 text-[10px]">
+                            <td colSpan={3} className="py-1 px-3 text-right">CGST (Central Tax @ 9.0%):</td>
+                            <td className="py-1 px-3 text-right font-mono font-bold text-slate-800">
+                              ₹{Math.round((Number(invoiceTotalAmount || 0) - Math.round(Number(invoiceTotalAmount || 0) / 1.18)) / 2).toLocaleString("en-IN")}
+                            </td>
+                          </tr>
+                          <tr className="text-slate-600 text-[10px]">
+                            <td colSpan={3} className="py-1 px-3 text-right">SGST (State Tax @ 9.0%):</td>
+                            <td className="py-1 px-3 text-right font-mono font-bold text-slate-800">
+                              ₹{( (Number(invoiceTotalAmount || 0) - Math.round(Number(invoiceTotalAmount || 0) / 1.18)) - Math.round((Number(invoiceTotalAmount || 0) - Math.round(Number(invoiceTotalAmount || 0) / 1.18)) / 2) ).toLocaleString("en-IN")}
+                            </td>
+                          </tr>
+                          <tr className="bg-slate-100/90 font-black text-xs text-slate-900">
+                            <td colSpan={3} className="py-2 px-3 text-right text-[#1e2a5a] uppercase tracking-wider">
+                              Total Shift Value (Gross):
+                            </td>
+                            <td className="py-2 px-3 text-right font-mono text-[#1e2a5a] text-sm">
+                              ₹{Number(invoiceTotalAmount || 0).toLocaleString("en-IN")}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+
+                    {/* Settlement & Payment Mode Details */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-slate-50/80 p-3.5 rounded-xl border border-slate-200">
+                      <div className="space-y-1.5">
+                        <div className="text-[10px] uppercase font-bold text-slate-400">Payment Reconciliation</div>
+                        <div className="flex justify-between text-emerald-800 font-bold">
+                          <span>Advance / Paid Amount:</span>
+                          <span className="font-mono">₹{Number(invoiceAdvancePaid || 0).toLocaleString("en-IN")}</span>
+                        </div>
+                        <div className="flex justify-between text-amber-900 font-bold">
+                          <span>Balance Due:</span>
+                          <span className="font-mono">₹{Number(invoiceBalanceAmount || 0).toLocaleString("en-IN")}</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5 sm:border-l sm:border-slate-200 sm:pl-3">
+                        <div className="text-[10px] uppercase font-bold text-slate-400">Payment Mode &amp; Receipt Status</div>
+                        <div className="flex items-center gap-1.5 font-bold text-slate-900">
+                          <span>Mode:</span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border ${
+                            invoicePaymentMethod === "cash"
+                              ? "bg-emerald-100 text-emerald-900 border-emerald-300"
+                              : invoicePaymentMethod === "bank_account"
+                                ? "bg-blue-100 text-blue-900 border-blue-300"
+                                : invoicePaymentMethod === "upi"
+                                  ? "bg-purple-100 text-purple-900 border-purple-300"
+                                  : "bg-slate-200 text-slate-900 border-slate-300"
+                          }`}>
+                            {invoicePaymentMethod === "cash" ? "💵 CASH PAYMENT" :
+                             invoicePaymentMethod === "bank_account" ? "🏦 BANK ACCOUNT TRANSFER" :
+                             invoicePaymentMethod === "upi" ? "📱 UPI (PHONEPE / GPAY)" :
+                             invoicePaymentMethod === "razorpay" ? "💳 RAZORPAY GATEWAY" : "⏳ POST-SERVICE ESCROW"}
+                          </span>
+                        </div>
+                        {invoiceTransactionId && (
+                          <div className="text-[10px] text-slate-600 font-mono">
+                            Ref / UTR No: <strong className="text-slate-900">{invoiceTransactionId}</strong>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Footer notes & Signatory */}
+                    <div className="flex justify-between items-end pt-2 text-[9.5px] text-slate-500 border-t border-slate-200">
+                      <div className="space-y-0.5 max-w-sm">
+                        <p className="font-bold text-slate-700">Thank you for trusting Amma Seva Home Healthcare.</p>
+                        <p className="leading-tight">All caregiver &amp; nursing attendants are background-verified. Computer-generated tax document; no physical stamp required.</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-[#1e2a5a] text-[10.5px]">LUXDHANA GLOBAL PRIVATE LIMITED</div>
+                        <div className="text-[8.5px] text-slate-400 mt-5 uppercase tracking-wider">Authorized Signatory / Accounts Desk</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* RECENT INVOICES & RESERVATIONS TABLE */}
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                  <div>
+                    <h4 className="font-extrabold text-[#1e2a5a] text-base font-display">Client Reservations &amp; Invoices Directory</h4>
+                    <p className="text-xs text-slate-400 font-medium">Click &quot;Load in Generator&quot; on any booking to immediately generate or print their official invoice.</p>
+                  </div>
+                  <div className="relative w-full sm:w-72">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Search by client, phone, or service..."
+                      value={invoiceSearchQuery}
+                      onChange={(e) => setInvoiceSearchQuery(e.target.value)}
+                      className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:bg-white focus:ring-1 focus:ring-[#c9a24c]"
+                    />
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 font-bold text-slate-600 text-[10px] uppercase tracking-wider">
+                        <th className="py-3 px-4">Invoice #</th>
+                        <th className="py-3 px-4">Customer &amp; Phone</th>
+                        <th className="py-3 px-4">Service &amp; Schedule</th>
+                        <th className="py-3 px-4">Total Amount</th>
+                        <th className="py-3 px-4">Payment Method</th>
+                        <th className="py-3 px-4">Status</th>
+                        <th className="py-3 px-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                      {(() => {
+                        const q = invoiceSearchQuery.toLowerCase();
+                        const list = bookings.filter(b => {
+                          if (!invoiceSearchQuery) return true;
+                          return (
+                            b.name.toLowerCase().includes(q) ||
+                            b.phone.includes(q) ||
+                            b.service.toLowerCase().includes(q) ||
+                            String(b.id).includes(q)
+                          );
+                        });
+
+                        if (list.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan={7} className="py-8 text-center text-slate-400">
+                                No booking records match your search query.
+                              </td>
+                            </tr>
+                          );
+                        }
+
+                        return list.map(b => (
+                          <tr key={b.id} className="hover:bg-slate-50/70 transition-colors">
+                            <td className="py-3 px-4 font-mono font-bold text-[#1e2a5a]">
+                              #INV-{b.id}
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="font-bold text-slate-900">{b.name}</div>
+                              <div className="text-[10px] text-slate-400 font-mono">{b.phone}</div>
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="font-semibold text-slate-800">{b.service}</div>
+                              <div className="text-[10px] text-slate-400">{b.date} • {b.duration}</div>
+                            </td>
+                            <td className="py-3 px-4 font-extrabold text-slate-900 font-mono">
+                              ₹{Number(b.amount).toLocaleString()}
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                                {b.paymentMethod || "Cash on Service"}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase border ${
+                                b.paymentStatus === "Paid"
+                                  ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                                  : b.paymentStatus === "Advance Paid"
+                                    ? "bg-blue-50 text-blue-800 border-blue-200"
+                                    : "bg-amber-50 text-amber-800 border-amber-200"
+                              }`}>
+                                {b.paymentStatus || "Unpaid"}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleSelectBookingForInvoice(String(b.id));
+                                  window.scrollTo({ top: 0, behavior: "smooth" });
+                                }}
+                                className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-[#1e2a5a] hover:text-white text-slate-700 text-[11px] font-bold transition-all cursor-pointer shadow-xs inline-flex items-center gap-1"
+                              >
+                                <Receipt className="w-3 h-3" />
+                                Load in Generator
+                              </button>
+                            </td>
+                          </tr>
+                        ));
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
             </div>
           )}
 
@@ -3940,15 +5054,29 @@ function AdminPage() {
                               )}
                             </td>
                             <td className="py-4 px-6 text-right">
-                              <button
-                                onClick={() => {
-                                 setIsRecordCaretakerPaymentMode(false);
-                                 openEditModal("booking", b);
-                               }}
-                                className="px-3.5 py-2 rounded-lg border border-slate-200 hover:bg-[#c9a24c]/15 text-[#c9a24c] hover:border-[#c9a24c]/30 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors inline-flex"
-                              >
-                                <Edit3 className="h-3.5 w-3.5" /> Record Payment
-                              </button>
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleSelectBookingForInvoice(String(b.id));
+                                    setActiveTab("invoices");
+                                    window.scrollTo({ top: 0, behavior: "smooth" });
+                                  }}
+                                  className="px-2.5 py-2 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/80 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors inline-flex"
+                                  title="Open in Tax Invoice Generator"
+                                >
+                                  <Receipt className="h-3.5 w-3.5 text-amber-700" /> Invoice
+                                </button>
+                                <button
+                                  onClick={() => {
+                                   setIsRecordCaretakerPaymentMode(false);
+                                   openEditModal("booking", b);
+                                 }}
+                                  className="px-3.5 py-2 rounded-lg border border-slate-200 hover:bg-[#c9a24c]/15 text-[#c9a24c] hover:border-[#c9a24c]/30 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors inline-flex"
+                                >
+                                  <Edit3 className="h-3.5 w-3.5" /> Record Payment
+                                </button>
+                              </div>
                             </td>
                         </tr>
                       ));
@@ -7293,6 +8421,82 @@ function AdminPage() {
                           />
                         </div>
                       </div>
+
+                      {/* Customer Payment Link in Edit Modal */}
+                      {selectedId && (
+                        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/90 p-3 rounded-2xl space-y-2">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[10px] font-extrabold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+                              <CreditCard className="w-3.5 h-3.5 text-amber-700" />
+                              Customer Online Due Payment Link (డ్యూ చెల్లింపు లింక్)
+                            </label>
+                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
+                              Number(bookingBalanceAmount) > 0 
+                                ? "bg-amber-100 text-amber-900 border border-amber-300" 
+                                : "bg-emerald-100 text-emerald-900 border border-emerald-300"
+                            }`}>
+                              {Number(bookingBalanceAmount) > 0 ? `Due: ₹${Number(bookingBalanceAmount).toLocaleString("en-IN")}` : "✓ Fully Paid"}
+                            </span>
+                          </div>
+                          
+                          <div className="flex flex-wrap sm:flex-nowrap gap-2 items-center">
+                            <input
+                              type="text"
+                              readOnly
+                              value={`${typeof window !== "undefined" ? window.location.origin : "https://ammaseva.in"}/pay-balance?id=${selectedId}`}
+                              className="flex-1 min-w-[200px] px-2.5 py-1.5 bg-white border border-amber-200 rounded-xl font-mono text-[11px] text-slate-800 select-all"
+                            />
+                            <div className="flex gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleCopyBookingPayLink(selectedId)}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer shadow-xs ${
+                                  copiedBookingLinkId === selectedId
+                                    ? "bg-emerald-600 text-white"
+                                    : "bg-amber-600 hover:bg-amber-700 text-white"
+                                }`}
+                                title="Copy Payment Link"
+                              >
+                                {copiedBookingLinkId === selectedId ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                <span>{copiedBookingLinkId === selectedId ? "Copied!" : "Copy Link"}</span>
+                              </button>
+                              <a
+                                href={`/pay-balance?id=${selectedId}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1 transition-all shadow-xs"
+                                title="Open Due Checkout in New Tab"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5 text-slate-600" />
+                              </a>
+                              {Number(bookingBalanceAmount) > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenWhatsAppPayModal({
+                                    id: selectedId,
+                                    name: bookingName,
+                                    phone: bookingPhone,
+                                    service: bookingService,
+                                    date: bookingDate,
+                                    time: bookingTime,
+                                    amount: bookingAmount,
+                                    advancePaid: bookingAdvancePaid,
+                                    balanceAmount: bookingBalanceAmount
+                                  })}
+                                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+                                  title="Send Link via WhatsApp"
+                                >
+                                  <MessageSquare className="w-3.5 h-3.5" />
+                                  <span>WhatsApp</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-[10px] text-slate-500 italic">
+                            Send this link to the customer. When customer clicks and pays, the due is settled to ₹0 and verified automatically everywhere.
+                          </div>
+                        </div>
+                      )}
 
                       {/* Caretaker Payout Box */}
                       <div className="bg-white p-3 rounded-xl border border-slate-200/80 space-y-2.5">
