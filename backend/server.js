@@ -1374,7 +1374,7 @@ app.get('/api/proxy-document', async (req, res) => {
   }
 })
 
-// MSG91 Mobile SMS OTP Dispatcher (Dual Flow & OTP Multi-Delivery)
+// MSG91 Mobile SMS OTP Dispatcher (SendOTP v5 Engine)
 const sendMsg91SmsOtp = async (rawMobile, otp) => {
   if (!rawMobile) return false
   const cleanDigits = String(rawMobile).replace(/\D/g, '')
@@ -1387,63 +1387,63 @@ const sendMsg91SmsOtp = async (rawMobile, otp) => {
   const authKey = (process.env.MSG91_AUTH_KEY || '567130AQrTo6Hb6aba5f7cP1').trim()
   const templateId = (process.env.MSG91_TEMPLATE_ID || '6ab2184345370dac070a9500').trim()
   const senderId = (process.env.MSG91_SENDER_ID || 'AMMASV').trim()
-  const otpVar = (process.env.MSG91_OTP_VAR_NAME || 'OTP').trim()
 
   let sent = false
 
-  // 1. Dispatch via MSG91 Flow SMS Engine (Uses DLT Template ID & Sender ID)
+  // 1. Dispatch via MSG91 SendOTP v5 API (Primary endpoint for Verified DLT OTP Templates)
   try {
-    const flowResponse = await fetch('https://control.msg91.com/api/v5/flow/', {
+    const otpUrl = `https://control.msg91.com/api/v5/otp?template_id=${encodeURIComponent(templateId)}&mobile=${encodeURIComponent(formattedMobile)}&authkey=${encodeURIComponent(authKey)}&otp=${encodeURIComponent(otp)}`
+    const otpResponse = await fetch(otpUrl, {
       method: 'POST',
       headers: {
-        'authkey': authKey,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'authkey': authKey
       },
       signal: AbortSignal.timeout(6000),
       body: JSON.stringify({
-        template_id: templateId,
-        sender: senderId,
-        short_url: '0',
-        recipients: [
-          {
-            mobiles: formattedMobile,
-            [otpVar]: String(otp),
-            otp: String(otp),
-            OTP: String(otp),
-            VAR1: String(otp),
-            AMMASEVAOTP: String(otp)
-          }
-        ]
+        otp: String(otp),
+        OTP: String(otp)
       })
     })
-    const flowData = await flowResponse.json().catch(() => ({}))
-    console.log(`[MSG91 Flow SMS] Dispatched to +${formattedMobile}:`, flowData)
-    if (flowData.type === 'success' || flowResponse.ok) {
+    const otpData = await otpResponse.json().catch(() => ({}))
+    console.log(`[MSG91 SendOTP API] Dispatched to +${formattedMobile}:`, otpData)
+    if (otpData.type === 'success' || otpResponse.ok) {
       sent = true
     }
   } catch (err) {
-    console.error(`[MSG91 Flow Error] Failed to send SMS via flow to +${formattedMobile}:`, err.message)
+    console.error(`[MSG91 SendOTP Error] Failed to send SMS via SendOTP API to +${formattedMobile}:`, err.message)
   }
 
-  // 2. Dispatch via MSG91 OTP v5 API Engine (Fallback only if Flow didn't succeed)
+  // 2. Fallback via MSG91 Flow API
   if (!sent) {
     try {
-      const otpUrl = `https://control.msg91.com/api/v5/otp?template_id=${encodeURIComponent(templateId)}&mobile=${encodeURIComponent(formattedMobile)}&authkey=${encodeURIComponent(authKey)}&sender=${encodeURIComponent(senderId)}&${encodeURIComponent(otpVar)}=${encodeURIComponent(otp)}&otp=${encodeURIComponent(otp)}`
-      const otpResponse = await fetch(otpUrl, {
+      const flowResponse = await fetch('https://control.msg91.com/api/v5/flow/', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'authkey': authKey
+          'authkey': authKey,
+          'Content-Type': 'application/json'
         },
-        signal: AbortSignal.timeout(6000)
+        signal: AbortSignal.timeout(6000),
+        body: JSON.stringify({
+          template_id: templateId,
+          sender: senderId,
+          short_url: '0',
+          recipients: [
+            {
+              mobiles: formattedMobile,
+              otp: String(otp),
+              OTP: String(otp)
+            }
+          ]
+        })
       })
-      const otpData = await otpResponse.json().catch(() => ({}))
-      console.log(`[MSG91 OTP API] Dispatched to +${formattedMobile}:`, otpData)
-      if (otpData.type === 'success' || otpResponse.ok) {
+      const flowData = await flowResponse.json().catch(() => ({}))
+      console.log(`[MSG91 Flow Fallback] Dispatched to +${formattedMobile}:`, flowData)
+      if (flowData.type === 'success' || flowResponse.ok) {
         sent = true
       }
     } catch (err) {
-      console.error(`[MSG91 OTP Error] Failed to send SMS via OTP endpoint to +${formattedMobile}:`, err.message)
+      console.error(`[MSG91 Flow Error] Failed to send SMS via flow to +${formattedMobile}:`, err.message)
     }
   }
 
