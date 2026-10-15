@@ -1736,7 +1736,7 @@ function CustomerDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
               
               {/* Left Column - Sticky Profile Overview & Switcher */}
-              <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-6 self-start">
+              <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-24 self-start">
                 <div className="bg-white rounded-3xl border border-slate-200/60 shadow-sm p-6 space-y-6 text-center">
                   <div className="flex flex-col items-center">
                     <div className="h-24 w-24 rounded-full bg-indigo-50 border-2 border-slate-100 flex items-center justify-center text-indigo-600 shadow-inner relative overflow-hidden mb-4 shrink-0">

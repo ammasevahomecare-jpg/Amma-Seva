@@ -540,6 +540,7 @@ function MTPPage() {
       const data = await res.json();
       if (res.ok && data.success) {
         setOtpCountdown(60);
+        setRegistrationOtp("");
         toast.success(data.message || "A new 6-digit OTP code has been dispatched.");
       } else {
         toast.error(data.error || "Failed to resend verification code.");
@@ -588,6 +589,27 @@ function MTPPage() {
         }
         setSubmittedData(finalData);
         setShowOtpModal(false);
+        setRegistrationOtp("");
+        // Clean all form fields so the form is completely reset
+        setName("");
+        setPhone("");
+        setEmail("");
+        setAge("");
+        setSelectedState("Telangana");
+        setLocality(REGIONAL_CONFIG["Telangana"]?.zones[0] || "Ameerpet / SR Nagar");
+        setCustomAddress("");
+        setCustomStateName("");
+        setCustomCityName("");
+        setAadhaar("");
+        setEmergencyContactName("");
+        setEmergencyContactPhone("");
+        setSkillsSummary("");
+        setProfilePhoto("");
+        setAadhaarDoc("");
+        setPanDoc("");
+        setDrivingLicenseDoc("");
+        setTenthCertificateDoc("");
+        setPoliceVerificationDoc("");
         setShowSuccessModal(true);
         try {
           confetti({

@@ -640,7 +640,7 @@ html.js-scroll-anim .dark-luxury-card.scroll-in-view:hover {
 /* ========================================================================= */
 
 html, body {
-  overflow-x: hidden;
+  overflow-x: clip;
   max-width: 100vw;
 }
 

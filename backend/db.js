@@ -1206,6 +1206,7 @@ export const db = {
             email VARCHAR(255),
             gender VARCHAR(50),
             age VARCHAR(50),
+            state VARCHAR(100) DEFAULT 'Telangana',
             city VARCHAR(100) DEFAULT 'Hyderabad',
             locality VARCHAR(255),
             roles TEXT,
@@ -1216,6 +1217,7 @@ export const db = {
             skillsSummary TEXT,
             aadhaar VARCHAR(100),
             emergencyContact VARCHAR(255),
+            profilePhoto LONGTEXT,
             aadhaarDoc LONGTEXT,
             panDoc LONGTEXT,
             drivingLicenseDoc LONGTEXT,
@@ -1223,6 +1225,9 @@ export const db = {
             policeVerificationDoc LONGTEXT,
             status VARCHAR(50) DEFAULT 'Pending',
             adminNotes TEXT,
+            staffCategory VARCHAR(50) DEFAULT 'MTP',
+            designation VARCHAR(255) DEFAULT 'Medical Transport Partner & Escort',
+            employeeId VARCHAR(100),
             createdAt VARCHAR(255) NOT NULL
           )
         `)
@@ -1325,6 +1330,21 @@ export const db = {
         } catch (e) {}
         try {
           await connection.query(`ALTER TABLE caregivers ADD COLUMN additionalCertificates LONGTEXT`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE mtps ADD COLUMN state VARCHAR(100) DEFAULT 'Telangana'`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE mtps ADD COLUMN profilePhoto LONGTEXT`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE mtps ADD COLUMN staffCategory VARCHAR(50) DEFAULT 'MTP'`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE mtps ADD COLUMN designation VARCHAR(255) DEFAULT 'Medical Transport Partner & Escort'`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE mtps ADD COLUMN employeeId VARCHAR(100)`)
         } catch (e) {}
         try {
           await connection.query(`ALTER TABLE mtps ADD COLUMN aadhaarDoc LONGTEXT`)
@@ -3574,16 +3594,33 @@ export const db = {
     const designation = (mtpData.designation || 'Medical Transport Partner & Escort').trim()
 
     if (useMySQL) {
-      const [idRows] = await pool.query('SELECT employeeId FROM mtps WHERE employeeId IS NOT NULL')
-      const existingIds = (idRows || []).map(r => r.employeeId)
+      // Ensure all required columns exist in MySQL table
+      try { await pool.query(`ALTER TABLE mtps ADD COLUMN state VARCHAR(100) DEFAULT 'Telangana'`) } catch (e) {}
+      try { await pool.query(`ALTER TABLE mtps ADD COLUMN profilePhoto LONGTEXT`) } catch (e) {}
+      try { await pool.query(`ALTER TABLE mtps ADD COLUMN staffCategory VARCHAR(50) DEFAULT 'MTP'`) } catch (e) {}
+      try { await pool.query(`ALTER TABLE mtps ADD COLUMN designation VARCHAR(255) DEFAULT 'Medical Transport Partner & Escort'`) } catch (e) {}
+      try { await pool.query(`ALTER TABLE mtps ADD COLUMN employeeId VARCHAR(100)`) } catch (e) {}
+      try { await pool.query(`ALTER TABLE mtps ADD COLUMN aadhaarDoc LONGTEXT`) } catch (e) {}
+      try { await pool.query(`ALTER TABLE mtps ADD COLUMN panDoc LONGTEXT`) } catch (e) {}
+      try { await pool.query(`ALTER TABLE mtps ADD COLUMN drivingLicenseDoc LONGTEXT`) } catch (e) {}
+      try { await pool.query(`ALTER TABLE mtps ADD COLUMN tenthCertificateDoc LONGTEXT`) } catch (e) {}
+      try { await pool.query(`ALTER TABLE mtps ADD COLUMN policeVerificationDoc LONGTEXT`) } catch (e) {}
+
+      let existingIds = []
+      try {
+        const [idRows] = await pool.query('SELECT employeeId FROM mtps WHERE employeeId IS NOT NULL')
+        existingIds = (idRows || []).map(r => r.employeeId)
+      } catch (err) {
+        console.warn('[MTP ID generation fallback]:', err.message)
+      }
       const employeeId = mtpData.employeeId || generateNextStaffEmployeeId('MTP', existingIds)
 
       const [result] = await pool.query(
-        `INSERT INTO mtps (name, phone, email, gender, age, city, locality, roles, availability, vehicle, drivingLicense, experience, skillsSummary, aadhaar, emergencyContact, profilePhoto, aadhaarDoc, panDoc, drivingLicenseDoc, tenthCertificateDoc, policeVerificationDoc, status, adminNotes, staffCategory, designation, employeeId, createdAt)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [name, phone, email, gender, age, city, locality, rolesString, availability, vehicle, drivingLicense, experience, skillsSummary, aadhaar, emergencyContact, profilePhoto, aadhaarDoc, panDoc, drivingLicenseDoc, tenthCertificateDoc, policeVerificationDoc, status, adminNotes, staffCategory, designation, employeeId, createdAt]
+        `INSERT INTO mtps (name, phone, email, gender, age, state, city, locality, roles, availability, vehicle, drivingLicense, experience, skillsSummary, aadhaar, emergencyContact, profilePhoto, aadhaarDoc, panDoc, drivingLicenseDoc, tenthCertificateDoc, policeVerificationDoc, status, adminNotes, staffCategory, designation, employeeId, createdAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [name, phone, email, gender, age, state, city, locality, rolesString, availability, vehicle, drivingLicense, experience, skillsSummary, aadhaar, emergencyContact, profilePhoto, aadhaarDoc, panDoc, drivingLicenseDoc, tenthCertificateDoc, policeVerificationDoc, status, adminNotes, staffCategory, designation, employeeId, createdAt]
       )
-      return { id: result.insertId, ...mtpData, roles: rolesString, createdAt, status, staffCategory, designation, employeeId, profilePhoto }
+      return { id: result.insertId, ...mtpData, state, roles: rolesString, createdAt, status, staffCategory, designation, employeeId, profilePhoto }
     } else {
       const data = await readJSONDb()
       if (!data.mtps) data.mtps = []

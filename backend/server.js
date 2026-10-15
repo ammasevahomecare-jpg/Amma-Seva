@@ -3377,9 +3377,6 @@ app.post('/api/mtp/register', async (req, res) => {
   if (storedData.otp !== inputOtp) {
     return res.status(401).json({ success: false, error: 'Invalid verification OTP code. Please enter the 6-digit code received on your mobile.' })
   }
-  // Clear OTP on successful validation
-  await db.deleteOTP(cleanPhone)
-  await db.deleteOTP(cleanEmail)
 
   // Check if phone or email already registered
   const existingByPhone = await db.getMTPByPhone(cleanPhone)
@@ -3398,12 +3395,21 @@ app.post('/api/mtp/register', async (req, res) => {
   }
 
   try {
-    const uploadedProfilePhoto = profilePhoto ? await uploadToCloudinary(profilePhoto) : ''
-    const uploadedAadhaar = await uploadToCloudinary(aadhaarDoc)
-    const uploadedPan = await uploadToCloudinary(panDoc)
-    const uploadedDrivingLicense = await uploadToCloudinary(drivingLicenseDoc)
-    const uploadedTenthCert = await uploadToCloudinary(tenthCertificateDoc)
-    const uploadedPoliceVerification = await uploadToCloudinary(policeVerificationDoc)
+    const [
+      uploadedProfilePhoto,
+      uploadedAadhaar,
+      uploadedPan,
+      uploadedDrivingLicense,
+      uploadedTenthCert,
+      uploadedPoliceVerification
+    ] = await Promise.all([
+      profilePhoto ? uploadToCloudinary(profilePhoto) : Promise.resolve(''),
+      uploadToCloudinary(aadhaarDoc),
+      uploadToCloudinary(panDoc),
+      uploadToCloudinary(drivingLicenseDoc),
+      uploadToCloudinary(tenthCertificateDoc),
+      uploadToCloudinary(policeVerificationDoc)
+    ])
 
     const newMTP = await db.createMTP({
       name: name.trim(),
@@ -3477,7 +3483,7 @@ app.post('/api/mtp/register', async (req, res) => {
     })
   } catch (err) {
     console.error('Failed to register MTP:', err)
-    res.status(500).json({ success: false, error: 'Failed to submit MTP registration. Please try again.' })
+    res.status(500).json({ success: false, error: err.message || 'Failed to submit MTP registration. Please try again.' })
   }
 })
 

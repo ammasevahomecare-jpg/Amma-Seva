@@ -63,7 +63,7 @@ function Header() {
 
   return (
     <header
-      className={`sticky top-0 z-40 w-full transition-all duration-300 ease-in-out border-b ${
+      className={`sticky top-0 z-50 w-full transition-all duration-300 ease-in-out border-b ${
         isScrolled 
           ? "bg-white/95 backdrop-blur-md border-slate-200/80 shadow-[0_4px_25px_-5px_rgba(0,0,0,0.06)] py-2.5" 
           : "bg-white border-slate-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.03)] py-3.5"
