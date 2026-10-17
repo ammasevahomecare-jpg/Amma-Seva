@@ -1,7 +1,8 @@
 /**
  * Amma Seva Staff ID Card Generator & High-Resolution PNG Downloader
  * Renders the official ID Card template with composite photo, employee ID,
- * name, and designation at exact 682x1024 resolution and triggers client-side download.
+ * name, and clean unified designation (MTP, Nurse, Caregiver, Employee)
+ * using a single, unified premium sans-serif typography stack.
  */
 
 export interface IdCardData {
@@ -10,8 +11,108 @@ export interface IdCardData {
   designation?: string;
   specialty?: string;
   staffCategory?: string;
+  category?: string;
+  role?: string;
+  type?: string;
+  isMtp?: boolean | number;
   profilePhoto?: string;
 }
+
+/**
+ * Resolves the official, clean staff designation for ID Cards.
+ * Maps any registered staff member strictly to one of:
+ * - "MTP" (Medical Transport Partner)
+ * - "Nurse" (Registered Clinical Nurse)
+ * - "Caregiver" (Caregiver & Bedside Attendant)
+ * - "Employee" (Office & Operations Staff)
+ *
+ * Avoids verbose/long titles (e.g. "Senior Operations Coordinator & Dispatch").
+ */
+export function getCleanIdCardDesignation(staff?: IdCardData | null): "MTP" | "Nurse" | "Caregiver" | "Employee" {
+  if (!staff) return "Employee";
+
+  const empId = String(staff.employeeId || "").toUpperCase().replace(/\s+/g, "");
+  const cat = String(staff.staffCategory || staff.category || "").toUpperCase().trim();
+  const rawDesig = String(staff.designation || "").trim().toLowerCase();
+  const rawSpecialty = String(staff.specialty || "").trim().toLowerCase();
+  const rawRole = String(staff.role || "").trim().toLowerCase();
+  const rawType = String(staff.type || "").trim().toLowerCase();
+
+  // 1. MTP (Medical Transport Partner)
+  if (
+    empId.includes("MTP") ||
+    cat === "MTP" ||
+    Boolean(staff.isMtp) ||
+    rawType === "mtp" ||
+    rawRole.includes("mtp") ||
+    rawDesig.includes("mtp") ||
+    rawDesig.includes("transport") ||
+    rawSpecialty.includes("transport")
+  ) {
+    return "MTP";
+  }
+
+  // 2. Nurse (Clinical Homecare Nurse / GNM / ANM / ICU Nurse)
+  if (
+    empId.includes("NUR") ||
+    cat === "NUR" ||
+    cat === "NURSE" ||
+    rawType === "nurse" ||
+    rawRole.includes("nurse") ||
+    rawDesig.includes("nurse") ||
+    rawSpecialty.includes("nurse") ||
+    rawSpecialty.includes("nursing")
+  ) {
+    return "Nurse";
+  }
+
+  // 3. Caregiver (Bedside Attendant, Elder Care, Patient Care Specialist)
+  if (
+    empId.includes("CGV") ||
+    empId.includes("CAR") ||
+    cat === "CGV" ||
+    cat === "CARE" ||
+    cat === "CAREGIVER" ||
+    rawType === "caregiver" ||
+    rawRole.includes("caregiver") ||
+    rawRole.includes("caretaker") ||
+    rawDesig.includes("caregiver") ||
+    rawDesig.includes("attendant") ||
+    rawDesig.includes("specialist") ||
+    rawSpecialty.includes("care") ||
+    rawSpecialty.includes("attendant") ||
+    rawSpecialty.includes("elderly")
+  ) {
+    return "Caregiver";
+  }
+
+  // 4. Employee (Office Employee / Operations Lead / Internal Staff)
+  if (
+    empId.includes("EMP") ||
+    cat === "EMP" ||
+    cat === "EMPLOYEE" ||
+    rawType === "employee" ||
+    rawRole.includes("employee") ||
+    rawRole.includes("admin") ||
+    rawDesig.includes("operation") ||
+    rawDesig.includes("coordinator") ||
+    rawDesig.includes("executive") ||
+    rawDesig.includes("manager") ||
+    rawDesig.includes("officer")
+  ) {
+    return "Employee";
+  }
+
+  // Fallbacks
+  if (rawDesig.includes("nurse") || rawSpecialty.includes("nurse")) return "Nurse";
+  if (rawDesig.includes("mtp")) return "MTP";
+  if (rawDesig.includes("caregiver") || rawSpecialty.includes("care")) return "Caregiver";
+
+  return "Employee";
+}
+
+/** Single unified font stack across the entire ID card */
+const UNIFIED_CARD_FONT = "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
 
 export async function generateIdCardBlob(data: IdCardData): Promise<Blob> {
   return new Promise((resolve, reject) => {
@@ -38,45 +139,38 @@ export async function generateIdCardBlob(data: IdCardData): Promise<Blob> {
       const photoRadius = 16;
 
       const finishDrawing = () => {
-        // Text styling matching brand palette
+        // Text styling matching brand palette: unified deep navy, exact baseline
         ctx.fillStyle = "#091438";
         ctx.textBaseline = "middle";
         ctx.textAlign = "left";
 
-        // 1. Employee ID
+        // 1. Employee ID - Using unified sans-serif font
         const empIdText = (data.employeeId || "PENDING").trim();
-        ctx.font = "900 23px 'Courier New', Courier, monospace";
+        let empIdFontSize = 23;
+        ctx.font = `800 ${empIdFontSize}px ${UNIFIED_CARD_FONT}`;
+        while (ctx.measureText(empIdText).width > 320 && empIdFontSize > 14) {
+          empIdFontSize -= 1;
+          ctx.font = `800 ${empIdFontSize}px ${UNIFIED_CARD_FONT}`;
+        }
         ctx.fillText(empIdText, 312, 656);
 
-        // 2. Full Name
+        // 2. Full Name - Using unified sans-serif font
         const nameText = (data.name || "Amma Seva Staff").trim();
         let nameFontSize = 23;
-        ctx.font = `900 ${nameFontSize}px Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+        ctx.font = `800 ${nameFontSize}px ${UNIFIED_CARD_FONT}`;
         while (ctx.measureText(nameText).width > 320 && nameFontSize > 14) {
           nameFontSize -= 1;
-          ctx.font = `900 ${nameFontSize}px Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+          ctx.font = `800 ${nameFontSize}px ${UNIFIED_CARD_FONT}`;
         }
         ctx.fillText(nameText, 312, 727);
 
-        // 3. Designation - Standardized Clean Role (MTP, Caregiver, Nurse)
-        const empIdUpper = String(data.employeeId || "").toUpperCase().replace(/\s+/g, "");
-        const rawDesig = String(data.designation || data.specialty || "").trim();
-        let designationText = rawDesig;
-        if (empIdUpper.includes("MTP") || rawDesig.toLowerCase().includes("medical transport") || rawDesig.toUpperCase() === "MTP") {
-          designationText = "MTP";
-        } else if (empIdUpper.includes("NUR") || rawDesig.toLowerCase().includes("nurse")) {
-          designationText = "Nurse";
-        } else if (empIdUpper.includes("CGV") || rawDesig.toLowerCase().includes("caregiver") || rawDesig.toLowerCase().includes("attendant") || rawDesig.toLowerCase().includes("specialist")) {
-          designationText = "Caregiver";
-        } else if (!designationText) {
-          designationText = "Caregiver";
-        }
-
-        let desigFontSize = 21;
-        ctx.font = `900 ${desigFontSize}px Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+        // 3. Designation - Clean single role (MTP, Nurse, Caregiver, Employee) using unified font
+        const designationText = getCleanIdCardDesignation(data);
+        let desigFontSize = 23;
+        ctx.font = `800 ${desigFontSize}px ${UNIFIED_CARD_FONT}`;
         while (ctx.measureText(designationText).width > 320 && desigFontSize > 14) {
           desigFontSize -= 1;
-          ctx.font = `900 ${desigFontSize}px Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+          ctx.font = `800 ${desigFontSize}px ${UNIFIED_CARD_FONT}`;
         }
         ctx.fillText(designationText, 312, 799);
 
@@ -124,7 +218,7 @@ export async function generateIdCardBlob(data: IdCardData): Promise<Blob> {
           ctx.fillStyle = "#f1f5f9";
           ctx.fillRect(photoX, photoY, photoW, photoH);
           ctx.fillStyle = "#94a3b8";
-          ctx.font = "bold 15px sans-serif";
+          ctx.font = `bold 15px ${UNIFIED_CARD_FONT}`;
           ctx.textAlign = "center";
           ctx.fillText("PHOTO HERE", photoX + photoW / 2, photoY + photoH / 2);
           ctx.textAlign = "left";

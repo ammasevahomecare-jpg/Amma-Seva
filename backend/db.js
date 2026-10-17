@@ -43,7 +43,7 @@ const DEFAULT_MOCK_DATA = {
       name: "Sandeep Nanduri, IAS (Retd)",
       phone: "9848012345",
       email: "director@ammaseva.in",
-      designation: "Executive Director & Founder",
+      designation: "Employee",
       staffCategory: "EMP",
       employeeId: "AS - EMP - 26-001",
       profilePhoto: "/assets/sandeep-nanduri-ias.jpg",
@@ -55,7 +55,7 @@ const DEFAULT_MOCK_DATA = {
       name: "Dr. Ramesh V., MD",
       phone: "9490587576",
       email: "dr.ramesh@ammaseva.in",
-      designation: "Chief Medical Officer & Advisory Board",
+      designation: "Employee",
       staffCategory: "EMP",
       employeeId: "AS - EMP - 26-002",
       profilePhoto: "/assets/service-doctor.jpg",
@@ -67,7 +67,7 @@ const DEFAULT_MOCK_DATA = {
       name: "S. Rajesh Kumar",
       phone: "9490587575",
       email: "operations@ammaseva.in",
-      designation: "Senior Operations Coordinator & Dispatch",
+      designation: "Employee",
       staffCategory: "EMP",
       employeeId: "AS - EMP - 26-003",
       profilePhoto: "",
@@ -4649,64 +4649,245 @@ export const db = {
   // STAFF ID CARDS OPERATIONS (EMP, MTP, NUR, CGV)
   // ==========================================
   getAllStaffIdCards: async () => {
-    const data = await readJSONDb()
     const all = []
 
-    // 1. Employees (AS - EMP - 26-xxx)
-    if (Array.isArray(data.employees)) {
-      data.employees.forEach(e => {
-        all.push({
-          id: `emp_${e.id}`,
-          originalId: e.id,
-          type: 'employee',
-          source: 'employees',
-          staffCategory: 'EMP',
-          categoryLabel: 'Office Employee',
-          employeeId: e.employeeId || `AS - EMP - 26-${String(e.id).padStart(3, '0')}`,
-          name: e.name,
-          phone: e.phone || '',
-          email: e.email || '',
-          designation: e.designation || 'Operations Staff',
-          specialty: e.designation || 'Operations Staff',
-          profilePhoto: e.profilePhoto || '',
-          status: e.status || 'Active',
-          joinedAt: e.joinedAt || '2026-01-01T00:00:00.000Z'
+    if (useMySQL) {
+      try {
+        // Ensure employees table exists
+        try {
+          await pool.query(`
+            CREATE TABLE IF NOT EXISTS employees (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              name VARCHAR(255) NOT NULL,
+              phone VARCHAR(50) DEFAULT '',
+              email VARCHAR(255) DEFAULT '',
+              designation VARCHAR(255) NOT NULL,
+              employeeId VARCHAR(100) NOT NULL UNIQUE,
+              profilePhoto LONGTEXT,
+              status VARCHAR(50) DEFAULT 'Active',
+              joinedAt VARCHAR(255) NOT NULL
+            )
+          `)
+        } catch (e) {}
+
+        // 1. Employees from MySQL
+        const [empRows] = await pool.query('SELECT * FROM employees ORDER BY id ASC')
+        let employeesList = empRows || []
+
+        // If no employees in MySQL, seed default official employees
+        if (employeesList.length === 0 && Array.isArray(DEFAULT_MOCK_DATA.employees)) {
+          for (const dEmp of DEFAULT_MOCK_DATA.employees) {
+            try {
+              await pool.query(
+                'INSERT INTO employees (name, phone, email, designation, employeeId, profilePhoto, status, joinedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [dEmp.name, dEmp.phone || '', dEmp.email || '', dEmp.designation, dEmp.employeeId, dEmp.profilePhoto || '', dEmp.status || 'Active', dEmp.joinedAt || new Date().toISOString()]
+              )
+            } catch (err) {}
+          }
+          const [reloadedEmps] = await pool.query('SELECT * FROM employees ORDER BY id ASC')
+          employeesList = reloadedEmps || []
+        }
+
+        // Also check if any employees exist in db.json that aren't in MySQL
+        try {
+          const jsonDb = await readJSONDb()
+          if (Array.isArray(jsonDb.employees)) {
+            const existingEmpIds = new Set(employeesList.map(e => e.employeeId || e.id))
+            for (const je of jsonDb.employees) {
+              if (!existingEmpIds.has(je.employeeId) && !existingEmpIds.has(je.id)) {
+                employeesList.push(je)
+              }
+            }
+          }
+        } catch (e) {}
+
+        employeesList.forEach(e => {
+          all.push({
+            id: `emp_${e.id}`,
+            originalId: e.id,
+            type: 'employee',
+            source: 'employees',
+            staffCategory: 'EMP',
+            categoryLabel: 'Office Staff',
+            employeeId: e.employeeId || `AS - EMP - 26-${String(e.id).padStart(3, '0')}`,
+            name: e.name,
+            phone: e.phone || '',
+            email: e.email || '',
+            designation: 'Employee',
+            specialty: e.designation || 'Operations Staff',
+            profilePhoto: e.profilePhoto || '',
+            status: e.status || 'Active',
+            joinedAt: e.joinedAt || '2026-01-01T00:00:00.000Z'
+          })
         })
-      })
+
+        // 2. MTPs from MySQL
+        const [mtpRows] = await pool.query('SELECT * FROM mtps ORDER BY id ASC')
+        const existingMtpIds = (mtpRows || []).map(m => m.employeeId).filter(Boolean)
+
+        for (const m of (mtpRows || [])) {
+          let assignedEmpId = m.employeeId
+          if (!assignedEmpId) {
+            assignedEmpId = generateNextStaffEmployeeId('MTP', existingMtpIds)
+            existingMtpIds.push(assignedEmpId)
+            try {
+              await pool.query('UPDATE mtps SET employeeId = ?, staffCategory = "MTP" WHERE id = ?', [assignedEmpId, m.id])
+            } catch (err) {}
+          }
+
+          all.push({
+            id: `mtp_${m.id}`,
+            originalId: m.id,
+            type: 'mtp',
+            source: 'mtps',
+            staffCategory: 'MTP',
+            categoryLabel: 'MTP Partner',
+            employeeId: assignedEmpId,
+            name: m.name,
+            phone: m.phone || '',
+            email: m.email || '',
+            designation: 'MTP',
+            specialty: m.roles || 'Medical Transport & Companion Partner',
+            profilePhoto: m.profilePhoto || '',
+            status: m.status || 'Pending',
+            joinedAt: m.createdAt || m.joinedAt || '2026-01-01T00:00:00.000Z',
+            state: m.state || 'Telangana',
+            city: m.city || 'Hyderabad'
+          })
+        }
+
+        // 3. Caregivers & Registered Nurses from MySQL
+        const [cgvRows] = await pool.query('SELECT * FROM caregivers ORDER BY id ASC')
+        const existingCgvIds = (cgvRows || []).map(c => c.employeeId).filter(Boolean)
+
+        for (const c of (cgvRows || [])) {
+          const isNurse = (c.staffCategory === 'NUR') || 
+                          (c.employeeId && c.employeeId.includes('NUR')) || 
+                          /nurse|nursing|icu|gnm|clinical|sister|dr\./i.test(c.specialty || '') ||
+                          /nurse|sister|dr\./i.test(c.name || '') ||
+                          /nurse/i.test(c.designation || '')
+
+          const cat = isNurse ? 'NUR' : 'CGV'
+          const catLabel = isNurse ? 'Registered Nurse' : 'Caregiver'
+          const desig = isNurse ? 'Nurse' : 'Caregiver'
+
+          let assignedEmpId = c.employeeId
+          if (!assignedEmpId) {
+            assignedEmpId = generateNextStaffEmployeeId(cat, existingCgvIds)
+            existingCgvIds.push(assignedEmpId)
+            try {
+              await pool.query('UPDATE caregivers SET employeeId = ?, staffCategory = ? WHERE id = ?', [assignedEmpId, cat, c.id])
+            } catch (err) {}
+          }
+
+          all.push({
+            id: `cgv_${c.id}`,
+            originalId: c.id,
+            type: 'caregiver',
+            source: 'caregivers',
+            staffCategory: cat,
+            categoryLabel: catLabel,
+            employeeId: assignedEmpId,
+            name: c.name,
+            phone: c.phone || '',
+            email: c.email || '',
+            designation: desig,
+            specialty: c.specialty || (isNurse ? 'Clinical Care & Vitals' : 'Bedside & Elderly Care'),
+            profilePhoto: c.profilePhoto || '',
+            status: c.status || 'Pending',
+            joinedAt: c.joinedAt || '2026-01-01T00:00:00.000Z',
+            state: c.state || 'Telangana',
+            city: c.city || 'Hyderabad'
+          })
+        }
+
+        return all
+      } catch (mysqlErr) {
+        console.error('[getAllStaffIdCards MySQL error, falling back to JSON]:', mysqlErr)
+      }
     }
 
-    // 2. MTPs (AS - MTP - 26-xxx)
+    // JSON DB Fallback (when MySQL is not enabled or on error)
+    const data = await readJSONDb()
+
+    // 1. Employees
+    const emps = Array.isArray(data.employees) && data.employees.length > 0 
+      ? data.employees 
+      : (Array.isArray(DEFAULT_MOCK_DATA.employees) ? DEFAULT_MOCK_DATA.employees : [])
+
+    emps.forEach(e => {
+      all.push({
+        id: `emp_${e.id}`,
+        originalId: e.id,
+        type: 'employee',
+        source: 'employees',
+        staffCategory: 'EMP',
+        categoryLabel: 'Office Staff',
+        employeeId: e.employeeId || `AS - EMP - 26-${String(e.id).padStart(3, '0')}`,
+        name: e.name,
+        phone: e.phone || '',
+        email: e.email || '',
+        designation: 'Employee',
+        specialty: e.designation || 'Operations Staff',
+        profilePhoto: e.profilePhoto || '',
+        status: e.status || 'Active',
+        joinedAt: e.joinedAt || '2026-01-01T00:00:00.000Z'
+      })
+    })
+
+    // 2. MTPs
     if (Array.isArray(data.mtps)) {
+      const existingMtpIds = data.mtps.map(m => m.employeeId).filter(Boolean)
       data.mtps.forEach(m => {
+        let assignedEmpId = m.employeeId
+        if (!assignedEmpId) {
+          assignedEmpId = generateNextStaffEmployeeId('MTP', existingMtpIds)
+          existingMtpIds.push(assignedEmpId)
+          m.employeeId = assignedEmpId
+        }
         all.push({
           id: `mtp_${m.id}`,
           originalId: m.id,
           type: 'mtp',
           source: 'mtps',
           staffCategory: 'MTP',
-          categoryLabel: 'MTP',
-          employeeId: m.employeeId || `AS - MTP - 26-${String(m.id).padStart(3, '0')}`,
+          categoryLabel: 'MTP Partner',
+          employeeId: assignedEmpId,
           name: m.name,
           phone: m.phone || '',
           email: m.email || '',
           designation: 'MTP',
-          specialty: m.roles || 'MTP Companion & Tasks',
+          specialty: m.roles || 'Medical Transport & Companion Partner',
           profilePhoto: m.profilePhoto || '',
           status: m.status || 'Pending',
-          joinedAt: m.createdAt || m.joinedAt || '2026-01-01T00:00:00.000Z'
+          joinedAt: m.createdAt || m.joinedAt || '2026-01-01T00:00:00.000Z',
+          state: m.state || 'Telangana',
+          city: m.city || 'Hyderabad'
         })
       })
     }
 
-    // 3. Nurses & Caregivers (AS - NUR - 26-xxx / AS - CGV - 26-xxx)
+    // 3. Caregivers & Registered Nurses
     if (Array.isArray(data.caregivers)) {
+      const existingCgvIds = data.caregivers.map(c => c.employeeId).filter(Boolean)
       data.caregivers.forEach(c => {
         const isNurse = (c.staffCategory === 'NUR') || 
                         (c.employeeId && c.employeeId.includes('NUR')) || 
-                        String(c.specialty || '').toLowerCase().includes('nurse')
+                        /nurse|nursing|icu|gnm|clinical|sister|dr\./i.test(c.specialty || '') ||
+                        /nurse|sister|dr\./i.test(c.name || '') ||
+                        /nurse/i.test(c.designation || '')
+
         const cat = isNurse ? 'NUR' : 'CGV'
-        const catLabel = isNurse ? 'Nurse' : 'Caregiver'
+        const catLabel = isNurse ? 'Registered Nurse' : 'Caregiver'
         const desig = isNurse ? 'Nurse' : 'Caregiver'
+
+        let assignedEmpId = c.employeeId
+        if (!assignedEmpId) {
+          assignedEmpId = generateNextStaffEmployeeId(cat, existingCgvIds)
+          existingCgvIds.push(assignedEmpId)
+          c.employeeId = assignedEmpId
+        }
+
         all.push({
           id: `cgv_${c.id}`,
           originalId: c.id,
@@ -4714,15 +4895,17 @@ export const db = {
           source: 'caregivers',
           staffCategory: cat,
           categoryLabel: catLabel,
-          employeeId: c.employeeId || `AS - ${cat} - 26-${String(c.id).padStart(3, '0')}`,
+          employeeId: assignedEmpId,
           name: c.name,
           phone: c.phone || '',
           email: c.email || '',
           designation: desig,
-          specialty: c.specialty || '',
+          specialty: c.specialty || (isNurse ? 'Clinical Care & Vitals' : 'Bedside & Elderly Care'),
           profilePhoto: c.profilePhoto || '',
           status: c.status || 'Pending',
-          joinedAt: c.joinedAt || '2026-01-01T00:00:00.000Z'
+          joinedAt: c.joinedAt || '2026-01-01T00:00:00.000Z',
+          state: c.state || 'Telangana',
+          city: c.city || 'Hyderabad'
         })
       })
     }
@@ -4731,83 +4914,188 @@ export const db = {
   },
 
   createEmployee: async (empData) => {
-    const data = await readJSONDb()
-    if (!data.employees) data.employees = []
+    let newEmp = null
+    const joinedAt = empData.joinedAt || new Date().toISOString()
+    const name = (empData.name || '').trim()
+    const phone = (empData.phone || '').trim()
+    const email = (empData.email || '').trim().toLowerCase()
+    const designation = (empData.designation || 'Operations Coordinator').trim()
+    const profilePhoto = empData.profilePhoto || ''
+    const status = empData.status || 'Active'
 
-    const existingEmpIds = data.employees.map(e => e.employeeId).filter(Boolean)
-    const employeeId = empData.employeeId || generateNextStaffEmployeeId('EMP', existingEmpIds)
-    const newEmp = {
-      id: data.employees.length > 0 ? Math.max(...data.employees.map(e => e.id)) + 1 : 1,
-      name: (empData.name || '').trim(),
-      phone: (empData.phone || '').trim(),
-      email: (empData.email || '').trim().toLowerCase(),
-      designation: (empData.designation || 'Operations Coordinator').trim(),
-      staffCategory: 'EMP',
-      employeeId,
-      profilePhoto: empData.profilePhoto || '',
-      status: empData.status || 'Active',
-      joinedAt: empData.joinedAt || new Date().toISOString()
+    if (useMySQL) {
+      try {
+        const [idRows] = await pool.query('SELECT employeeId FROM employees WHERE employeeId IS NOT NULL')
+        const existingEmpIds = (idRows || []).map(e => e.employeeId).filter(Boolean)
+        const employeeId = empData.employeeId || generateNextStaffEmployeeId('EMP', existingEmpIds)
+
+        const [res] = await pool.query(
+          'INSERT INTO employees (name, phone, email, designation, employeeId, profilePhoto, status, joinedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [name, phone, email, designation, employeeId, profilePhoto, status, joinedAt]
+        )
+        newEmp = {
+          id: res.insertId,
+          name,
+          phone,
+          email,
+          designation,
+          staffCategory: 'EMP',
+          employeeId,
+          profilePhoto,
+          status,
+          joinedAt
+        }
+      } catch (err) {
+        console.error('[createEmployee MySQL error]:', err)
+      }
     }
-    data.employees.push(newEmp)
-    await writeJSONDb(data)
+
+    // Also update JSON db
+    try {
+      const data = await readJSONDb()
+      if (!data.employees) data.employees = []
+      const existingEmpIds = data.employees.map(e => e.employeeId).filter(Boolean)
+      const employeeId = newEmp ? newEmp.employeeId : (empData.employeeId || generateNextStaffEmployeeId('EMP', existingEmpIds))
+      if (!newEmp) {
+        newEmp = {
+          id: data.employees.length > 0 ? Math.max(...data.employees.map(e => e.id)) + 1 : 1,
+          name,
+          phone,
+          email,
+          designation,
+          staffCategory: 'EMP',
+          employeeId,
+          profilePhoto,
+          status,
+          joinedAt
+        }
+      }
+      data.employees.push(newEmp)
+      await writeJSONDb(data)
+    } catch (e) {}
+
     return newEmp
   },
 
   updateStaffIdCard: async (source, id, updateData) => {
-    const data = await readJSONDb()
     const numId = Number(id)
     const src = String(source).toLowerCase()
+    let updatedRecord = null
 
-    if (src === 'employees' || src === 'employee' || src === 'emp') {
-      if (!data.employees) data.employees = []
-      const idx = data.employees.findIndex(e => e.id === numId)
-      if (idx !== -1) {
-        data.employees[idx] = {
-          ...data.employees[idx],
-          ...updateData,
-          id: numId
+    if (useMySQL) {
+      try {
+        if (src === 'employees' || src === 'employee' || src === 'emp') {
+          const sets = []
+          const vals = []
+          if (updateData.name !== undefined) { sets.push('name = ?'); vals.push(updateData.name); }
+          if (updateData.phone !== undefined) { sets.push('phone = ?'); vals.push(updateData.phone); }
+          if (updateData.email !== undefined) { sets.push('email = ?'); vals.push(updateData.email); }
+          if (updateData.designation !== undefined) { sets.push('designation = ?'); vals.push(updateData.designation); }
+          if (updateData.profilePhoto !== undefined) { sets.push('profilePhoto = ?'); vals.push(updateData.profilePhoto); }
+          if (updateData.status !== undefined) { sets.push('status = ?'); vals.push(updateData.status); }
+          if (updateData.employeeId !== undefined) { sets.push('employeeId = ?'); vals.push(updateData.employeeId); }
+          if (sets.length > 0) {
+            vals.push(numId)
+            await pool.query(`UPDATE employees SET ${sets.join(', ')} WHERE id = ?`, vals)
+            const [rows] = await pool.query('SELECT * FROM employees WHERE id = ?', [numId])
+            if (rows && rows.length > 0) updatedRecord = rows[0]
+          }
+        } else if (src === 'caregivers' || src === 'caregiver' || src === 'nur' || src === 'cgv') {
+          const sets = []
+          const vals = []
+          if (updateData.name !== undefined) { sets.push('name = ?'); vals.push(updateData.name); }
+          if (updateData.phone !== undefined) { sets.push('phone = ?'); vals.push(updateData.phone); }
+          if (updateData.email !== undefined) { sets.push('email = ?'); vals.push(updateData.email); }
+          if (updateData.designation !== undefined) { sets.push('designation = ?'); vals.push(updateData.designation); }
+          if (updateData.staffCategory !== undefined) { sets.push('staffCategory = ?'); vals.push(updateData.staffCategory); }
+          if (updateData.profilePhoto !== undefined) { sets.push('profilePhoto = ?'); vals.push(updateData.profilePhoto); }
+          if (updateData.status !== undefined) { sets.push('status = ?'); vals.push(updateData.status); }
+          if (updateData.employeeId !== undefined) { sets.push('employeeId = ?'); vals.push(updateData.employeeId); }
+          if (sets.length > 0) {
+            vals.push(numId)
+            await pool.query(`UPDATE caregivers SET ${sets.join(', ')} WHERE id = ?`, vals)
+            const [rows] = await pool.query('SELECT * FROM caregivers WHERE id = ?', [numId])
+            if (rows && rows.length > 0) updatedRecord = rows[0]
+          }
+        } else if (src === 'mtps' || src === 'mtp') {
+          const sets = []
+          const vals = []
+          if (updateData.name !== undefined) { sets.push('name = ?'); vals.push(updateData.name); }
+          if (updateData.phone !== undefined) { sets.push('phone = ?'); vals.push(updateData.phone); }
+          if (updateData.email !== undefined) { sets.push('email = ?'); vals.push(updateData.email); }
+          if (updateData.designation !== undefined) { sets.push('designation = ?'); vals.push(updateData.designation); }
+          if (updateData.staffCategory !== undefined) { sets.push('staffCategory = ?'); vals.push(updateData.staffCategory); }
+          if (updateData.profilePhoto !== undefined) { sets.push('profilePhoto = ?'); vals.push(updateData.profilePhoto); }
+          if (updateData.status !== undefined) { sets.push('status = ?'); vals.push(updateData.status); }
+          if (updateData.employeeId !== undefined) { sets.push('employeeId = ?'); vals.push(updateData.employeeId); }
+          if (sets.length > 0) {
+            vals.push(numId)
+            await pool.query(`UPDATE mtps SET ${sets.join(', ')} WHERE id = ?`, vals)
+            const [rows] = await pool.query('SELECT * FROM mtps WHERE id = ?', [numId])
+            if (rows && rows.length > 0) updatedRecord = rows[0]
+          }
         }
-        await writeJSONDb(data)
-        return data.employees[idx]
-      }
-    } else if (src === 'caregivers' || src === 'caregiver' || src === 'nur' || src === 'cgv') {
-      if (!data.caregivers) data.caregivers = []
-      const idx = data.caregivers.findIndex(c => c.id === numId)
-      if (idx !== -1) {
-        data.caregivers[idx] = {
-          ...data.caregivers[idx],
-          ...updateData,
-          id: numId
-        }
-        await writeJSONDb(data)
-        return data.caregivers[idx]
-      }
-    } else if (src === 'mtps' || src === 'mtp') {
-      if (!data.mtps) data.mtps = []
-      const idx = data.mtps.findIndex(m => m.id === numId)
-      if (idx !== -1) {
-        data.mtps[idx] = {
-          ...data.mtps[idx],
-          ...updateData,
-          id: numId
-        }
-        await writeJSONDb(data)
-        return data.mtps[idx]
+      } catch (err) {
+        console.error('[updateStaffIdCard MySQL error]:', err)
       }
     }
-    return null
+
+    // Sync in JSON db
+    try {
+      const data = await readJSONDb()
+      if (src === 'employees' || src === 'employee' || src === 'emp') {
+        if (!data.employees) data.employees = []
+        const idx = data.employees.findIndex(e => e.id === numId)
+        if (idx !== -1) {
+          data.employees[idx] = { ...data.employees[idx], ...updateData, id: numId }
+          await writeJSONDb(data)
+          if (!updatedRecord) updatedRecord = data.employees[idx]
+        }
+      } else if (src === 'caregivers' || src === 'caregiver' || src === 'nur' || src === 'cgv') {
+        if (!data.caregivers) data.caregivers = []
+        const idx = data.caregivers.findIndex(c => c.id === numId)
+        if (idx !== -1) {
+          data.caregivers[idx] = { ...data.caregivers[idx], ...updateData, id: numId }
+          await writeJSONDb(data)
+          if (!updatedRecord) updatedRecord = data.caregivers[idx]
+        }
+      } else if (src === 'mtps' || src === 'mtp') {
+        if (!data.mtps) data.mtps = []
+        const idx = data.mtps.findIndex(m => m.id === numId)
+        if (idx !== -1) {
+          data.mtps[idx] = { ...data.mtps[idx], ...updateData, id: numId }
+          await writeJSONDb(data)
+          if (!updatedRecord) updatedRecord = data.mtps[idx]
+        }
+      }
+    } catch (e) {}
+
+    return updatedRecord || updateData
   },
 
   deleteEmployee: async (id) => {
-    const data = await readJSONDb()
-    if (!data.employees) data.employees = []
-    const prevLen = data.employees.length
-    data.employees = data.employees.filter(e => e.id !== Number(id))
-    if (data.employees.length < prevLen) {
-      await writeJSONDb(data)
-      return true
+    let deleted = false
+    const numId = Number(id)
+    if (useMySQL) {
+      try {
+        const [res] = await pool.query('DELETE FROM employees WHERE id = ?', [numId])
+        if (res.affectedRows > 0) deleted = true
+      } catch (err) {
+        console.error('[deleteEmployee MySQL error]:', err)
+      }
     }
-    return false
+    try {
+      const data = await readJSONDb()
+      if (data.employees) {
+        const prevLen = data.employees.length
+        data.employees = data.employees.filter(e => e.id !== numId)
+        if (data.employees.length < prevLen) {
+          await writeJSONDb(data)
+          deleted = true
+        }
+      }
+    } catch (e) {}
+    return deleted
   }
 }
 

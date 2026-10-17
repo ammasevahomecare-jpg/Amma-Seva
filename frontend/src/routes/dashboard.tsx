@@ -4,7 +4,7 @@ import { SiteLayout } from "@/components/SiteLayout";
 import { DocumentViewerModal } from "@/components/DocumentViewerModal";
 import { validateName, validatePhone, validateEmail, validateAddress, sanitizeIndianPhone, sanitizeName } from "@/lib/validation";
 import { fetchServices, type Service } from "../lib/services";
-import { downloadIdCardImage } from "@/lib/idCardDownload";
+import { downloadIdCardImage, getCleanIdCardDesignation } from "@/lib/idCardDownload";
 import { 
   Calendar, Clock, MapPin, User, Users, FileText, CheckCircle2, 
   AlertTriangle, RefreshCw, XCircle, Download, CreditCard, 
@@ -237,47 +237,13 @@ function CustomerDashboard() {
 
   const [photoUpdateMessage, setPhotoUpdateMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Helper to resolve official staff designation based on registered ID / Category (MTP, Caregiver, Nurse)
+  // Helper to resolve official clean staff designation (MTP, Nurse, Caregiver, Employee)
   const resolveOfficialDesignation = (staff: any): string => {
-    if (!staff) return "Staff";
-    const empId = String(staff.employeeId || "").toUpperCase().replace(/\s+/g, "");
-    const cat = String(staff.staffCategory || "").toUpperCase().trim();
-    const specialty = String(staff.specialty || "").toLowerCase();
-    const desig = String(staff.designation || "").trim().toLowerCase();
-
-    // 1. MTP
-    if (empId.includes("MTP") || cat === "MTP" || staff.isMtp || staff.type === "mtp" || desig.includes("medical transport") || desig === "mtp") {
-      return "MTP";
-    }
-
-    // 2. Nurse
-    if (
-      empId.includes("NUR") ||
-      cat === "NUR" ||
-      cat === "NURSE" ||
-      specialty.includes("nurse") ||
-      specialty.includes("nursing") ||
-      desig === "nurse" ||
-      desig.includes("registered staff nurse")
-    ) {
-      return "Nurse";
-    }
-
-    // 3. Office Employee
-    if (empId.includes("EMP") || cat === "EMP" || staff.type === "employee") {
-      return staff.designation || "Operations Staff";
-    }
-
-    // 4. Default: Caregiver
-    return "Caregiver";
+    return getCleanIdCardDesignation(staff);
   };
 
   const resolveOfficialCategory = (staff: any): string => {
-    const d = resolveOfficialDesignation(staff);
-    if (d === "MTP") return "MTP";
-    if (d === "Nurse") return "Nurse";
-    if (d === "Caregiver") return "Caregiver";
-    return staff?.staffCategory || "Staff";
+    return getCleanIdCardDesignation(staff);
   };
 
   const handleUpdatePhotoOnly = async (base64Photo: string) => {
@@ -3602,13 +3568,13 @@ function CustomerDashboard() {
                       <div
                         className="absolute flex items-center"
                         style={{
-                          top: "62.2%",
+                          top: "62.4%",
                           left: "45.5%",
-                          width: "44%",
-                          height: "3.5%"
+                          width: "46%",
+                          height: "3.6%"
                         }}
                       >
-                        <span className="text-[12px] sm:text-[13px] font-black text-[#091438] tracking-wider truncate font-mono">
+                        <span className="text-[12.5px] sm:text-[13.5px] font-black text-[#091438] tracking-wide truncate font-sans">
                           {caretaker?.employeeId || "PENDING"}
                         </span>
                       </div>
@@ -3617,13 +3583,13 @@ function CustomerDashboard() {
                       <div
                         className="absolute flex items-center"
                         style={{
-                          top: "69.2%",
+                          top: "69.4%",
                           left: "45.5%",
-                          width: "44%",
-                          height: "3.5%"
+                          width: "46%",
+                          height: "3.6%"
                         }}
                       >
-                        <span className="text-[12px] sm:text-[13px] font-black text-[#091438] tracking-wide truncate">
+                        <span className="text-[12.5px] sm:text-[13.5px] font-black text-[#091438] tracking-wide truncate font-sans">
                           {caretaker?.name || caretakerName}
                         </span>
                       </div>
@@ -3632,14 +3598,14 @@ function CustomerDashboard() {
                       <div
                         className="absolute flex items-center"
                         style={{
-                          top: "76.2%",
+                          top: "76.4%",
                           left: "45.5%",
-                          width: "44%",
-                          height: "3.8%"
+                          width: "46%",
+                          height: "3.6%"
                         }}
                       >
-                        <span className="text-[12px] sm:text-[13px] font-black text-[#091438] tracking-wider truncate font-mono">
-                          {resolveOfficialDesignation(caretaker)}
+                        <span className="text-[12.5px] sm:text-[13.5px] font-black text-[#091438] tracking-wide truncate font-sans">
+                          {getCleanIdCardDesignation(caretaker)}
                         </span>
                       </div>
                     </div>
@@ -3724,7 +3690,7 @@ function CustomerDashboard() {
                     <div className="grid grid-cols-2 gap-3 text-xs">
                       <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
                         <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Employee ID</span>
-                        <span className="font-mono font-black text-sm text-[#091438] mt-0.5 block truncate">
+                        <span className="font-sans font-black text-sm text-[#091438] mt-0.5 block truncate">
                           {caretaker?.employeeId || "PENDING"}
                         </span>
                       </div>
@@ -6460,8 +6426,9 @@ function CustomerDashboard() {
                     </div>
                     <p className="text-[11px] font-bold text-slate-700">LUXDHANA GLOBAL PRIVATE LIMITED</p>
                     <p className="text-[9.5px] text-slate-500 leading-tight">
-                      GSTIN: <strong className="font-mono text-slate-900">36AAACL8921M1ZT</strong> &nbsp;|&nbsp; State Code: <strong>36 (Telangana)</strong><br />
-                      8-2-630/B/B/1, Mount Banjara complex, Rd #12, Banjara Hills, Hyderabad - 500034<br />
+                      GSTIN: <strong className="font-mono text-slate-900">33AAGCL5078A1ZS</strong> &nbsp;|&nbsp; State Code: <strong>33 (Tamil Nadu)</strong><br />
+                      Shop No. S101, Door No. 769, Spencer Plaza, Anna Salai, Chennai, Tamil Nadu - 600002<br />
+                      Branch: 8-2-630/B/B/1, Mount Banjara complex, Rd #12, Banjara Hills, Hyderabad - 500034<br />
                       Helpdesk: +91 94945 16543 &nbsp;|&nbsp; Email: support@ammaseva.in &nbsp;|&nbsp; www.ammaseva.in
                     </p>
                   </div>

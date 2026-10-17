@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { DocumentViewerModal } from "@/components/DocumentViewerModal";
 import { validateName, validatePhone, validateEmail, validateAddress, validateAadhaar, validatePAN, sanitizeIndianPhone, sanitizeName } from "@/lib/validation";
-import { downloadIdCardImage } from "@/lib/idCardDownload";
+import { downloadIdCardImage, getCleanIdCardDesignation } from "@/lib/idCardDownload";
 import logoAsset from "@/assets/amma-seva-logo.png";
 import { 
   Trash2, RefreshCw, Mail, Phone, MapPin, ClipboardList, 
@@ -364,6 +364,7 @@ function AdminPage() {
 
   // Issue New Employee Modal State
   const [isIssueEmployeeModalOpen, setIsIssueEmployeeModalOpen] = useState(false);
+  const [newEmpCategory, setNewEmpCategory] = useState<"EMP" | "MTP" | "NUR" | "CGV">("EMP");
   const [newEmpName, setNewEmpName] = useState("");
   const [newEmpPhone, setNewEmpPhone] = useState("");
   const [newEmpEmail, setNewEmpEmail] = useState("");
@@ -786,7 +787,8 @@ function AdminPage() {
       `━━━━━━━━━━━━━━━━━━━━\n` +
       `🔗 *Online Invoice & Ledger:* ${viewUrl}\n\n` +
       `🏢 *LUXDHANA GLOBAL PRIVATE LIMITED*\n` +
-      `GSTIN: 36AAACL8921M1ZT | SAC: 999312\n` +
+      `GSTIN: 33AAGCL5078A1ZS | State Code: 33 (Tamil Nadu) | SAC: 999312\n` +
+      `Principal Office: Shop No. S101, Door No. 769, Spencer Plaza, Anna Salai, Chennai - 600002\n` +
       `24/7 Helpline: +91 94945 16543 | www.ammaseva.in\n\n` +
       `Thank you for trusting Amma Seva! 🙏`;
 
@@ -1143,9 +1145,76 @@ function AdminPage() {
       setMTPs(Array.isArray(mtpsRes) ? mtpsRes : []);
       setMtpTasks(Array.isArray(mtpTasksRes) ? mtpTasksRes : []);
       setMtpPrices(Array.isArray(mtpPricesRes) ? mtpPricesRes : []);
-      if (Array.isArray(idCardsRes)) {
-        setIdCards(idCardsRes);
+      let consolidatedCards: StaffIdCard[] = Array.isArray(idCardsRes) ? [...idCardsRes] : [];
+      const existingCardKeys = new Set(consolidatedCards.map(c => `${c.source}_${c.originalId}`));
+
+      // Ensure all MTPs are seamlessly included in ID cards
+      if (Array.isArray(mtpsRes)) {
+        mtpsRes.forEach((m: any) => {
+          const key = `mtps_${m.id}`;
+          if (!existingCardKeys.has(key)) {
+            existingCardKeys.add(key);
+            consolidatedCards.push({
+              id: `mtp_${m.id}`,
+              originalId: m.id,
+              type: "mtp",
+              source: "mtps",
+              staffCategory: "MTP",
+              categoryLabel: "MTP Partner",
+              employeeId: m.employeeId || `AS - MTP - 26-${String(m.id).padStart(3, "0")}`,
+              name: m.name,
+              phone: m.phone || "",
+              email: m.email || "",
+              designation: "MTP",
+              specialty: m.roles || "Medical Transport & Companion Partner",
+              profilePhoto: m.profilePhoto || "",
+              status: m.status || "Pending",
+              joinedAt: m.createdAt || m.joinedAt || "2026-01-01T00:00:00.000Z",
+              state: m.state || "Telangana",
+              city: m.city || "Hyderabad"
+            });
+          }
+        });
       }
+
+      // Ensure all Caregivers & Nurses are seamlessly included in ID cards
+      if (Array.isArray(caregiversRes)) {
+        caregiversRes.forEach((c: any) => {
+          const key = `caregivers_${c.id}`;
+          if (!existingCardKeys.has(key)) {
+            existingCardKeys.add(key);
+            const isNurse = (c.staffCategory === "NUR") || 
+                            (c.employeeId && c.employeeId.includes("NUR")) || 
+                            /nurse|nursing|icu|gnm|clinical|sister|dr\./i.test(c.specialty || "") ||
+                            /nurse|sister|dr\./i.test(c.name || "") ||
+                            /nurse/i.test(c.designation || "");
+            const cat = isNurse ? "NUR" : "CGV";
+            const catLabel = isNurse ? "Registered Nurse" : "Caregiver";
+            const desig = isNurse ? "Nurse" : "Caregiver";
+            consolidatedCards.push({
+              id: `cgv_${c.id}`,
+              originalId: c.id,
+              type: "caregiver",
+              source: "caregivers",
+              staffCategory: cat,
+              categoryLabel: catLabel,
+              employeeId: c.employeeId || `AS - ${cat} - 26-${String(c.id).padStart(3, "0")}`,
+              name: c.name,
+              phone: c.phone || "",
+              email: c.email || "",
+              designation: desig,
+              specialty: c.specialty || (isNurse ? "Clinical Care & Vitals" : "Bedside & Elderly Care"),
+              profilePhoto: c.profilePhoto || "",
+              status: c.status || "Pending",
+              joinedAt: c.joinedAt || "2026-01-01T00:00:00.000Z",
+              state: c.state || "Telangana",
+              city: c.city || "Hyderabad"
+            });
+          }
+        });
+      }
+
+      setIdCards(consolidatedCards);
       if (referralsRes && referralsRes.success) {
         setReferralsData(referralsRes);
       }
@@ -1202,45 +1271,72 @@ function AdminPage() {
   };
 
   // Staff ID Card Actions
-  const handleOpenIssueEmployeeModal = () => {
+  const handleOpenIssueEmployeeModal = (initialCategory: "EMP" | "MTP" | "NUR" | "CGV" = "EMP") => {
+    const cat = initialCategory || (idCardCategoryTab !== "ALL" ? idCardCategoryTab : "EMP");
+    setNewEmpCategory(cat);
     setNewEmpName("");
     setNewEmpPhone("");
     setNewEmpEmail("");
-    setNewEmpDesignation("Operations Coordinator");
+    const defaultDesigs = {
+      EMP: "Operations Coordinator",
+      MTP: "MTP Partner",
+      NUR: "Registered Staff Nurse",
+      CGV: "Certified Senior Caregiver"
+    };
+    setNewEmpDesignation(defaultDesigs[cat] || "Operations Coordinator");
     setNewEmpPhoto("");
     setIsIssueEmployeeModalOpen(true);
   };
 
   const handleIssueEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newEmpName.trim()) {
-      alert("Please enter the employee full name.");
+    const trimmedName = newEmpName.trim();
+    if (!trimmedName || trimmedName.length < 2) {
+      alert("⚠️ Please enter a valid full name (minimum 2 characters).");
       return;
     }
+    const cleanPhone = newEmpPhone.replace(/\D/g, "");
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      alert("⚠️ Phone number must be exactly 10 digits (e.g. 9876543210).");
+      return;
+    }
+    const cleanEmail = newEmpEmail.trim().toLowerCase();
+    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      alert("⚠️ Please enter a complete valid email address (e.g. name@example.com).");
+      return;
+    }
+    const trimmedDesig = newEmpDesignation.trim();
+    if (!trimmedDesig) {
+      alert("⚠️ Please specify an official designation or role.");
+      return;
+    }
+
     const token = localStorage.getItem("ammaseva_admin_token");
     setIsSubmittingEmployee(true);
     try {
-      const res = await fetch("/api/admin/id-cards/employee", {
+      const res = await fetch("/api/admin/id-cards/issue", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
-          name: newEmpName.trim(),
-          phone: newEmpPhone.trim(),
-          email: newEmpEmail.trim(),
-          designation: newEmpDesignation.trim() || "Operations Coordinator",
+          category: newEmpCategory,
+          staffCategory: newEmpCategory,
+          name: trimmedName,
+          phone: cleanPhone,
+          email: cleanEmail,
+          designation: trimmedDesig,
           profilePhoto: newEmpPhoto.trim()
         })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create employee.");
-      alert(`✅ Official Employee ID Created!\nAssigned ID: ${data.data?.employeeId}\nRole: ${data.data?.designation}`);
+      if (!res.ok) throw new Error(data.error || "Failed to issue staff ID card.");
+      alert(`✅ Official ${newEmpCategory} ID Card Issued!\nAssigned ID: ${data.data?.employeeId}\nName: ${data.data?.name}\nRole: ${data.data?.designation || trimmedDesig}`);
       setIsIssueEmployeeModalOpen(false);
       fetchDashboardData();
     } catch (err: any) {
-      alert(err.message || "Failed to create employee ID.");
+      alert(err.message || "Failed to create staff ID card.");
     } finally {
       setIsSubmittingEmployee(false);
     }
@@ -1249,7 +1345,7 @@ function AdminPage() {
   const handleOpenEditIdCardModal = (card: StaffIdCard) => {
     setEditingCardData(card);
     setEditCardName(card.name || "");
-    setEditCardDesignation(card.designation || card.specialty || "");
+    setEditCardDesignation(getCleanIdCardDesignation(card));
     setEditCardCategory(card.staffCategory || "NUR");
     setEditCardPhoto(card.profilePhoto || "");
     setEditCardStatus(card.status || "Verified");
@@ -4045,9 +4141,9 @@ function AdminPage() {
                                 </div>
                                 <p className="text-[11px] font-extrabold text-slate-800">LUXDHANA GLOBAL PRIVATE LIMITED</p>
                                 <p className="text-[9.5px] text-slate-500 leading-tight">
-                                  GSTIN: <strong className="font-mono text-slate-900">36AAACL8921M1ZT</strong> &nbsp;|&nbsp; State Code: <strong>36 (Telangana)</strong><br />
-                                  8-2-630/B/B/1, Mount Banjara complex, Rd #12, Banjara Hills, Hyderabad - 500034<br />
-                                  Branch: Door No. 40-1-140, MG Road, Vijayawada - 520010<br />
+                                  GSTIN: <strong className="font-mono text-slate-900">33AAGCL5078A1ZS</strong> &nbsp;|&nbsp; State Code: <strong>33 (Tamil Nadu)</strong><br />
+                                  Shop No. S101, Door No. 769, Spencer Plaza, Anna Salai, Chennai, Tamil Nadu - 600002<br />
+                                  Branch: 8-2-630/B/B/1, Mount Banjara complex, Rd #12, Banjara Hills, Hyderabad - 500034<br />
                                   24/7 Helpline: +91 94945 16543 &nbsp;|&nbsp; support@ammaseva.in &nbsp;|&nbsp; www.ammaseva.in
                                 </p>
                               </div>
@@ -4558,6 +4654,42 @@ function AdminPage() {
                                   <XCircle className="h-4 w-4" />
                                 </button>
                               )}
+                              <button
+                                onClick={() => {
+                                  const isNurse = (c.staffCategory === "NUR") || 
+                                                  (c.employeeId && c.employeeId.includes("NUR")) || 
+                                                  /nurse|nursing|icu|gnm|clinical|sister|dr\./i.test(c.specialty || "") ||
+                                                  /nurse|sister|dr\./i.test(c.name || "") ||
+                                                  /nurse/i.test(c.designation || "");
+                                  const cat = isNurse ? "NUR" : "CGV";
+                                  const catLabel = isNurse ? "Registered Nurse" : "Caregiver";
+                                  const desig = isNurse ? "Nurse" : "Caregiver";
+                                  const matchingCard = idCards.find(card => card.source === "caregivers" && card.originalId === c.id) || {
+                                    id: `cgv_${c.id}`,
+                                    originalId: c.id,
+                                    type: "caregiver" as const,
+                                    source: "caregivers" as const,
+                                    staffCategory: cat as const,
+                                    categoryLabel: catLabel,
+                                    employeeId: c.employeeId || `AS - ${cat} - 26-${String(c.id).padStart(3, "0")}`,
+                                    name: c.name,
+                                    phone: c.phone || "",
+                                    email: c.email || "",
+                                    designation: c.designation || desig,
+                                    specialty: c.specialty || "",
+                                    profilePhoto: c.profilePhoto || "",
+                                    status: c.status || "Pending",
+                                    joinedAt: c.joinedAt || "2026-01-01T00:00:00.000Z",
+                                    state: c.state || "Telangana",
+                                    city: c.city || "Hyderabad"
+                                  };
+                                  setSelectedCardForView(matchingCard);
+                                }}
+                                className="px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-700 border border-indigo-200 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                                title="View Official Staff ID Card"
+                              >
+                                <CreditCard className="h-3.5 w-3.5" />
+                              </button>
                               <button
                                 onClick={() => openEditModal("caregiver", c)}
                                 className="px-2.5 py-1.5 rounded-lg bg-slate-50 hover:bg-[#c9a24c]/15 text-[#c9a24c] border border-slate-200 hover:border-[#c9a24c]/30 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
@@ -6399,6 +6531,35 @@ function AdminPage() {
                                 >
                                   <Eye className="h-3.5 w-3.5" /> Full Details
                                 </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const matchingCard = idCards.find(c => c.source === "mtps" && c.originalId === m.id) || {
+                                      id: `mtp_${m.id}`,
+                                      originalId: m.id,
+                                      type: "mtp" as const,
+                                      source: "mtps" as const,
+                                      staffCategory: "MTP" as const,
+                                      categoryLabel: "MTP Partner",
+                                      employeeId: m.employeeId || `AS - MTP - 26-${String(m.id).padStart(3, "0")}`,
+                                      name: m.name,
+                                      phone: m.phone || "",
+                                      email: m.email || "",
+                                      designation: "MTP",
+                                      specialty: m.roles || "Medical Transport & Companion Partner",
+                                      profilePhoto: m.profilePhoto || "",
+                                      status: m.status || "Pending",
+                                      joinedAt: m.createdAt || m.joinedAt || "2026-01-01T00:00:00.000Z",
+                                      state: m.state || "Telangana",
+                                      city: m.city || "Hyderabad"
+                                    };
+                                    setSelectedCardForView(matchingCard);
+                                  }}
+                                  className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+                                  title="View Official MTP ID Card"
+                                >
+                                  <CreditCard className="h-3.5 w-3.5 text-white" /> ID Card
+                                </button>
 
                                 <div className="flex gap-1.5">
                                   {m.status !== "Verified" && (
@@ -7351,6 +7512,35 @@ function AdminPage() {
 
                         <div className="flex gap-2">
                           <button
+                            type="button"
+                            onClick={() => {
+                              const matchingCard = idCards.find(c => c.source === "mtps" && c.originalId === selectedMTPDetail.id) || {
+                                id: `mtp_${selectedMTPDetail.id}`,
+                                originalId: selectedMTPDetail.id,
+                                type: "mtp" as const,
+                                source: "mtps" as const,
+                                staffCategory: "MTP" as const,
+                                categoryLabel: "MTP Partner",
+                                employeeId: selectedMTPDetail.employeeId || `AS - MTP - 26-${String(selectedMTPDetail.id).padStart(3, "0")}`,
+                                name: selectedMTPDetail.name,
+                                phone: selectedMTPDetail.phone || "",
+                                email: selectedMTPDetail.email || "",
+                                designation: "MTP",
+                                specialty: selectedMTPDetail.roles || "Medical Transport & Companion Partner",
+                                profilePhoto: selectedMTPDetail.profilePhoto || "",
+                                status: selectedMTPDetail.status || "Pending",
+                                joinedAt: selectedMTPDetail.createdAt || "2026-01-01T00:00:00.000Z",
+                                state: selectedMTPDetail.state || "Telangana",
+                                city: selectedMTPDetail.city || "Hyderabad"
+                              };
+                              setSelectedMTPDetail(null);
+                              setSelectedCardForView(matchingCard);
+                            }}
+                            className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all cursor-pointer shadow-xs flex items-center gap-1.5"
+                          >
+                            <CreditCard className="h-3.5 w-3.5" /> View ID Card
+                          </button>
+                          <button
                             onClick={() => {
                               handleUpdateMTPStatus(selectedMTPDetail.id, selectedMTPDetail.status, mtpAdminNotes);
                               setSelectedMTPDetail(null);
@@ -7419,11 +7609,11 @@ function AdminPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={handleOpenIssueEmployeeModal}
+                      onClick={() => handleOpenIssueEmployeeModal(idCardCategoryTab !== "ALL" ? idCardCategoryTab : "EMP")}
                       className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#091438] to-[#1e2a5a] text-white hover:from-[#172147] hover:to-[#26356b] border border-[#c9a24c]/40 font-bold text-xs flex items-center gap-1.5 shadow-md shadow-[#091438]/10 transition-all cursor-pointer"
                     >
                       <Plus className="w-4 h-4 text-[#c9a24c]" />
-                      + Issue New Employee ID
+                      + Issue Staff ID Card
                     </button>
                   </div>
                 </div>
@@ -7659,10 +7849,10 @@ function AdminPage() {
                       )}
                       <button
                         type="button"
-                        onClick={handleOpenIssueEmployeeModal}
+                        onClick={() => handleOpenIssueEmployeeModal(idCardCategoryTab !== "ALL" ? idCardCategoryTab : "EMP")}
                         className="px-4 py-2 rounded-xl bg-[#091438] text-white text-xs font-bold hover:bg-[#172147] cursor-pointer"
                       >
-                        + Issue Employee ID
+                        + Issue Staff ID Card
                       </button>
                     </div>
                   </div>
@@ -7712,7 +7902,7 @@ function AdminPage() {
                                   {card.name}
                                 </h4>
                                 <p className="text-[11px] font-bold text-[#c9a24c] truncate mt-0.5">
-                                  {card.designation || card.specialty || "Amma Seva Staff"}
+                                  {getCleanIdCardDesignation(card)}
                                 </p>
                                 <div className="flex items-center gap-2 mt-1">
                                   <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
@@ -10457,13 +10647,13 @@ function AdminPage() {
                 <div
                   className="absolute flex items-center"
                   style={{
-                    top: "62.2%",
+                    top: "62.4%",
                     left: "45.5%",
-                    width: "44%",
-                    height: "3.5%"
+                    width: "46%",
+                    height: "3.6%"
                   }}
                 >
-                  <span className="text-[12px] sm:text-[13px] font-black text-[#091438] tracking-wider truncate font-mono">
+                  <span className="text-[12.5px] sm:text-[13.5px] font-black text-[#091438] tracking-wide truncate font-sans">
                     {selectedCardForView.employeeId}
                   </span>
                 </div>
@@ -10472,13 +10662,13 @@ function AdminPage() {
                 <div
                   className="absolute flex items-center"
                   style={{
-                    top: "69.2%",
+                    top: "69.4%",
                     left: "45.5%",
-                    width: "44%",
-                    height: "3.5%"
+                    width: "46%",
+                    height: "3.6%"
                   }}
                 >
-                  <span className="text-[12px] sm:text-[13px] font-black text-[#091438] tracking-wide truncate">
+                  <span className="text-[12.5px] sm:text-[13.5px] font-black text-[#091438] tracking-wide truncate font-sans">
                     {selectedCardForView.name}
                   </span>
                 </div>
@@ -10487,14 +10677,14 @@ function AdminPage() {
                 <div
                   className="absolute flex items-center"
                   style={{
-                    top: "76.2%",
+                    top: "76.4%",
                     left: "45.5%",
-                    width: "44%",
-                    height: "3.8%"
+                    width: "46%",
+                    height: "3.6%"
                   }}
                 >
-                  <span className="text-[10px] sm:text-[11px] font-extrabold text-[#091438] leading-tight line-clamp-2">
-                    {selectedCardForView.designation || selectedCardForView.specialty || "Amma Seva Staff"}
+                  <span className="text-[12.5px] sm:text-[13.5px] font-black text-[#091438] tracking-wide truncate font-sans">
+                    {getCleanIdCardDesignation(selectedCardForView)}
                   </span>
                 </div>
               </div>
@@ -10542,7 +10732,7 @@ function AdminPage() {
                       await downloadIdCardImage({
                         employeeId: selectedCardForView.employeeId,
                         name: selectedCardForView.name,
-                        designation: selectedCardForView.designation || selectedCardForView.specialty || "Amma Seva Staff",
+                        designation: getCleanIdCardDesignation(selectedCardForView),
                         profilePhoto: selectedCardForView.profilePhoto
                       });
                     } catch (err) {
@@ -10571,130 +10761,365 @@ function AdminPage() {
         </div>
       )}
 
-      {/* ISSUE NEW EMPLOYEE MODAL */}
-      {isIssueEmployeeModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden flex flex-col">
-            <div className="bg-gradient-to-r from-[#091438] to-[#1e2a5a] p-5 text-white flex items-center justify-between border-b border-[#c9a24c]/30">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-[#c9a24c]">
-                  <Plus className="w-5 h-5" />
+      {/* ISSUE NEW OFFICIAL STAFF ID CARD MODAL */}
+      {isIssueEmployeeModalOpen && (() => {
+        const categoryMeta = {
+          EMP: {
+            title: "Office Employee ID Card",
+            subtitle: "Internal Office & Operations Staff",
+            prefix: "AS - EMP - 26-xxx",
+            badgeClass: "bg-indigo-50 text-indigo-700 border-indigo-200",
+            headerGradient: "from-[#091438] via-[#10235b] to-[#1e2a5a]",
+            presets: ["Employee"],
+            defaultDesig: "Employee",
+            btnLabel: "Issue Employee ID"
+          },
+          MTP: {
+            title: "MTP Partner ID Card",
+            subtitle: "Medical Transport, Escort & Errands Partner",
+            prefix: "AS - MTP - 26-xxx",
+            badgeClass: "bg-amber-50 text-amber-700 border-amber-200",
+            headerGradient: "from-[#382309] via-[#5a3810] to-[#091438]",
+            presets: ["MTP"],
+            defaultDesig: "MTP",
+            btnLabel: "Issue MTP Partner ID"
+          },
+          NUR: {
+            title: "Registered Nurse ID Card",
+            subtitle: "Clinical Nursing, GNM & Critical Care Staff",
+            prefix: "AS - NUR - 26-xxx",
+            badgeClass: "bg-teal-50 text-teal-700 border-teal-200",
+            headerGradient: "from-[#093833] via-[#105b51] to-[#091438]",
+            presets: ["Nurse"],
+            defaultDesig: "Nurse",
+            btnLabel: "Issue Nurse ID"
+          },
+          CGV: {
+            title: "Caregiver ID Card",
+            subtitle: "Bedside Attendant & Patient Support Staff",
+            prefix: "AS - CGV - 26-xxx",
+            badgeClass: "bg-blue-50 text-blue-700 border-blue-200",
+            headerGradient: "from-[#092238] via-[#103a5b] to-[#091438]",
+            presets: ["Caregiver"],
+            defaultDesig: "Caregiver",
+            btnLabel: "Issue Caregiver ID"
+          }
+        }[newEmpCategory];
+
+        const cleanPhoneDigits = newEmpPhone.replace(/\D/g, "");
+        const isPhoneValid = cleanPhoneDigits.length === 10;
+        const isPhoneIncomplete = cleanPhoneDigits.length > 0 && cleanPhoneDigits.length < 10;
+
+        const isEmailEntered = Boolean(newEmpEmail.trim());
+        const isEmailValid = !isEmailEntered || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmpEmail.trim());
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in overflow-y-auto">
+            <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden flex flex-col my-auto max-h-[95vh]">
+              {/* Header */}
+              <div className={`bg-gradient-to-r ${categoryMeta.headerGradient} p-5 text-white flex items-center justify-between border-b border-[#c9a24c]/30`}>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-xl bg-white/10 border border-[#c9a24c]/40 flex items-center justify-center text-[#c9a24c] shrink-0">
+                    <CreditCard className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#c9a24c] text-[#091438] font-mono">
+                        {newEmpCategory}
+                      </span>
+                      <span className="text-xs font-mono font-bold text-slate-300">
+                        {categoryMeta.prefix}
+                      </span>
+                    </div>
+                    <h3 className="font-extrabold text-base text-white mt-0.5">
+                      Issue {categoryMeta.title}
+                    </h3>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-extrabold text-base text-white">Issue Employee ID Card</h3>
-                  <p className="text-[11px] text-slate-300">Internal Office Staff Credential (AS - EMP - 26-xxx)</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsIssueEmployeeModalOpen(false)}
-                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-slate-300 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleIssueEmployee} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Full Name <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Ramesh Varma"
-                  value={newEmpName}
-                  onChange={(e) => setNewEmpName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-[#1e2a5a] focus:outline-hidden"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Official Designation <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Operations Coordinator, HR Lead, Admin Supervisor"
-                  value={newEmpDesignation}
-                  onChange={(e) => setNewEmpDesignation(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-[#1e2a5a] focus:outline-hidden"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Phone Number</label>
-                  <input
-                    type="tel"
-                    placeholder="10-digit mobile"
-                    value={newEmpPhone}
-                    onChange={(e) => setNewEmpPhone(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-[#1e2a5a] focus:outline-hidden"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
-                  <input
-                    type="email"
-                    placeholder="staff@ammaseva.in"
-                    value={newEmpEmail}
-                    onChange={(e) => setNewEmpEmail(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-[#1e2a5a] focus:outline-hidden"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Profile Photo (Optional)</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    placeholder="Image URL or upload file"
-                    value={newEmpPhoto}
-                    onChange={(e) => setNewEmpPhoto(e.target.value)}
-                    className="flex-1 px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-[#1e2a5a] focus:outline-hidden"
-                  />
-                  <label className="px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-700 cursor-pointer">
-                    Browse
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => handleFileChange(e, setNewEmpPhoto)}
-                    />
-                  </label>
-                </div>
-              </div>
-
-              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200/80 text-[11px] text-amber-800 flex items-start gap-2">
-                <CreditCard className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <span>
-                  The employee ID will be automatically generated with the code prefix <strong>AS - EMP - 26-xxx</strong> starting sequentially from 001.
-                </span>
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2.5">
                 <button
                   type="button"
                   onClick={() => setIsIssueEmployeeModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-slate-300 hover:text-white transition-colors cursor-pointer"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmittingEmployee}
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#091438] to-[#1e2a5a] text-white font-extrabold text-xs shadow-md shadow-[#091438]/20 border border-[#c9a24c]/40 transition-all cursor-pointer disabled:opacity-50"
-                >
-                  {isSubmittingEmployee ? "Creating ID..." : "Issue Employee ID"}
+                  <X className="w-4 h-4" />
                 </button>
               </div>
-            </form>
+
+              <form onSubmit={handleIssueEmployee} className="p-6 space-y-4 overflow-y-auto text-left">
+                {/* Category Selection Tabs */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Select Staff Category <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-slate-100/90 rounded-2xl border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewEmpCategory("EMP");
+                        setNewEmpDesignation("Employee");
+                      }}
+                      className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex flex-col items-center gap-0.5 cursor-pointer ${
+                        newEmpCategory === "EMP"
+                          ? "bg-indigo-600 text-white shadow-xs font-extrabold"
+                          : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                      }`}
+                    >
+                      <span className="text-sm">💼</span>
+                      <span>Employee</span>
+                      <span className="text-[9px] opacity-80 font-mono">AS-EMP</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewEmpCategory("MTP");
+                        setNewEmpDesignation("MTP");
+                      }}
+                      className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex flex-col items-center gap-0.5 cursor-pointer ${
+                        newEmpCategory === "MTP"
+                          ? "bg-amber-600 text-white shadow-xs font-extrabold"
+                          : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                      }`}
+                    >
+                      <span className="text-sm">🚗</span>
+                      <span>MTP</span>
+                      <span className="text-[9px] opacity-80 font-mono">AS-MTP</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewEmpCategory("NUR");
+                        setNewEmpDesignation("Nurse");
+                      }}
+                      className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex flex-col items-center gap-0.5 cursor-pointer ${
+                        newEmpCategory === "NUR"
+                          ? "bg-teal-600 text-white shadow-xs font-extrabold"
+                          : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                      }`}
+                    >
+                      <span className="text-sm">🩺</span>
+                      <span>Nurse</span>
+                      <span className="text-[9px] opacity-80 font-mono">AS-NUR</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewEmpCategory("CGV");
+                        setNewEmpDesignation("Caregiver");
+                      }}
+                      className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex flex-col items-center gap-0.5 cursor-pointer ${
+                        newEmpCategory === "CGV"
+                          ? "bg-blue-600 text-white shadow-xs font-extrabold"
+                          : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                      }`}
+                    >
+                      <span className="text-sm">🤲</span>
+                      <span>Caregiver</span>
+                      <span className="text-[9px] opacity-80 font-mono">AS-CGV</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Full Name */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Full Name <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    minLength={2}
+                    placeholder="e.g. Ramesh Varma"
+                    value={newEmpName}
+                    onChange={(e) => setNewEmpName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-[#1e2a5a] focus:outline-hidden"
+                  />
+                </div>
+
+                {/* Official Designation with quick preset tags */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Official Designation <span className="text-rose-500">*</span>
+                    </label>
+                    <span className="text-[10px] text-slate-400 font-medium">Quick suggestions below</span>
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    placeholder={`e.g. ${categoryMeta.defaultDesig}`}
+                    value={newEmpDesignation}
+                    onChange={(e) => setNewEmpDesignation(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-[#1e2a5a] focus:outline-hidden"
+                  />
+                  {/* Preset Tags */}
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {categoryMeta.presets.map((preset, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setNewEmpDesignation(preset)}
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border transition-all cursor-pointer ${
+                          newEmpDesignation === preset
+                            ? "bg-[#091438] text-white border-[#091438]"
+                            : "bg-slate-50 text-slate-600 hover:bg-slate-100 border-slate-200"
+                        }`}
+                      >
+                        + {preset}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Phone & Email Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Phone */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-slate-700">
+                        Phone Number <span className="text-rose-500">*</span>
+                      </label>
+                      <span className={`text-[10px] font-mono font-bold ${
+                        isPhoneValid ? "text-emerald-600" : isPhoneIncomplete ? "text-amber-600" : "text-slate-400"
+                      }`}>
+                        {cleanPhoneDigits.length}/10 digits
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="tel"
+                        required
+                        maxLength={10}
+                        placeholder="10-digit mobile"
+                        value={newEmpPhone}
+                        onChange={(e) => setNewEmpPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                        className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold focus:outline-hidden transition-all ${
+                          isPhoneValid 
+                            ? "border-emerald-400 focus:ring-2 focus:ring-emerald-500 bg-emerald-50/20" 
+                            : isPhoneIncomplete 
+                            ? "border-amber-400 focus:ring-2 focus:ring-amber-500 bg-amber-50/20" 
+                            : "border-slate-300 focus:ring-2 focus:ring-[#1e2a5a]"
+                        }`}
+                      />
+                      {isPhoneValid && (
+                        <Check className="w-4 h-4 text-emerald-600 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      )}
+                    </div>
+                    {isPhoneIncomplete && (
+                      <p className="text-[10px] text-amber-600 font-bold mt-1">
+                        ⚠️ Please enter all 10 digits ({10 - cleanPhoneDigits.length} remaining)
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Email */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-slate-700">
+                        Email Address <span className="text-slate-400 font-normal">(Optional)</span>
+                      </label>
+                      {isEmailEntered && isEmailValid && (
+                        <span className="text-[10px] font-bold text-emerald-600">✓ Valid</span>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="email"
+                        placeholder="staff@ammaseva.in"
+                        value={newEmpEmail}
+                        onChange={(e) => setNewEmpEmail(e.target.value)}
+                        className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold focus:outline-hidden transition-all ${
+                          !isEmailValid
+                            ? "border-rose-400 focus:ring-2 focus:ring-rose-500 bg-rose-50/20"
+                            : isEmailEntered
+                            ? "border-emerald-400 focus:ring-2 focus:ring-emerald-500 bg-emerald-50/20"
+                            : "border-slate-300 focus:ring-2 focus:ring-[#1e2a5a]"
+                        }`}
+                      />
+                      {isEmailEntered && isEmailValid && (
+                        <Check className="w-4 h-4 text-emerald-600 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      )}
+                    </div>
+                    {!isEmailValid && (
+                      <p className="text-[10px] text-rose-600 font-bold mt-1">
+                        ⚠️ Complete email required (e.g. name@example.com)
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Profile Photo */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Profile Photo <span className="text-slate-400 font-normal">(Optional)</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    {newEmpPhoto && (
+                      <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 border border-slate-300 shrink-0">
+                        <img src={newEmpPhoto} alt="Preview" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <input
+                      type="text"
+                      placeholder="Paste image URL or browse file"
+                      value={newEmpPhoto}
+                      onChange={(e) => setNewEmpPhoto(e.target.value)}
+                      className="flex-1 px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-[#1e2a5a] focus:outline-hidden"
+                    />
+                    <label className="px-3.5 py-2 rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-700 cursor-pointer">
+                      Browse
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handleFileChange(e, setNewEmpPhoto)}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Live Serial Generation Info Callout */}
+                <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-700 flex items-start gap-3">
+                  <CreditCard className="w-5 h-5 text-[#c9a24c] shrink-0 mt-0.5" />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border ${categoryMeta.badgeClass}`}>
+                        {newEmpCategory} Credential
+                      </span>
+                      <span className="font-mono font-bold text-slate-800">
+                        {categoryMeta.prefix}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                      Assigned sequentially from 001. Immediately available for high-res PVC CR80 badge preview, customization, and printing.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Modal Actions */}
+                <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setIsIssueEmployeeModalOpen(false)}
+                    className="px-4 py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingEmployee || (newEmpPhone.length > 0 && !isPhoneValid) || !isEmailValid}
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#091438] to-[#1e2a5a] text-white font-black text-xs shadow-md shadow-[#091438]/20 border border-[#c9a24c]/40 transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    {isSubmittingEmployee ? "Issuing ID..." : categoryMeta.btnLabel}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* EDIT STAFF ID CARD DETAILS MODAL */}
       {isEditIdCardModalOpen && editingCardData && (

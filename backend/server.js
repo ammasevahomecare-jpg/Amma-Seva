@@ -1122,9 +1122,10 @@ const sendBookingConfirmationAndTaxInvoiceEmail = async (booking, userEmail) => 
 
           <!-- Footer -->
           <div style="border-top: 1px solid #f1f5f9; padding-top: 16px; text-align: center; font-size: 11px; color: #94a3b8; line-height: 1.6;">
-            <strong>LUXDHANA GLOBAL PRIVATE LIMITED</strong> • GSTIN: 36AAACL8921M1ZT<br />
-            8-2-630/B/B/1, Mount Banjara complex, Road No. 12, Banjara Hills, Hyderabad - 500034, Telangana.<br />
-            24/7 Helpline: <a href="tel:+919494516543" style="color: #1e2a5a; font-weight: bold; text-decoration: none;">+91 94945 16543</a> | <a href="mailto:ammasevahomecare@gmail.com" style="color: #1e2a5a; text-decoration: none;">ammasevahomecare@gmail.com</a>
+            <strong>LUXDHANA GLOBAL PRIVATE LIMITED</strong> • GSTIN: 33AAGCL5078A1ZS (State Code: 33 - Tamil Nadu)<br />
+            Shop No. S101, Door No. 769, Spencer Plaza, Anna Salai, Chennai, Tamil Nadu - 600002.<br />
+            Regional Branch: 8-2-630/B/B/1, Mount Banjara complex, Road No. 12, Banjara Hills, Hyderabad - 500034.<br />
+            24/7 Helpline: <a href="tel:+919494516543" style="color: #1e2a5a; font-weight: bold; text-decoration: none;">+91 94945 16543</a> | <a href="mailto:support@ammaseva.in" style="color: #1e2a5a; text-decoration: none;">support@ammaseva.in</a>
           </div>
         </div>
       </div>
@@ -1264,9 +1265,10 @@ const sendBalancePaymentSettlementEmail = async (booking, userEmail, transaction
 
           <!-- Footer -->
           <div style="border-top: 1px solid #f1f5f9; padding-top: 16px; text-align: center; font-size: 11px; color: #94a3b8; line-height: 1.6;">
-            <strong>LUXDHANA GLOBAL PRIVATE LIMITED</strong> • GSTIN: 36AAACL8921M1ZT<br />
-            8-2-630/B/B/1, Mount Banjara complex, Road No. 12, Banjara Hills, Hyderabad - 500034, Telangana.<br />
-            24/7 Helpline: <a href="tel:+919494516543" style="color: #1e2a5a; font-weight: bold; text-decoration: none;">+91 94945 16543</a> | <a href="mailto:ammasevahomecare@gmail.com" style="color: #1e2a5a; text-decoration: none;">ammasevahomecare@gmail.com</a>
+            <strong>LUXDHANA GLOBAL PRIVATE LIMITED</strong> • GSTIN: 33AAGCL5078A1ZS (State Code: 33 - Tamil Nadu)<br />
+            Shop No. S101, Door No. 769, Spencer Plaza, Anna Salai, Chennai, Tamil Nadu - 600002.<br />
+            Regional Branch: 8-2-630/B/B/1, Mount Banjara complex, Road No. 12, Banjara Hills, Hyderabad - 500034.<br />
+            24/7 Helpline: <a href="tel:+919494516543" style="color: #1e2a5a; font-weight: bold; text-decoration: none;">+91 94945 16543</a> | <a href="mailto:support@ammaseva.in" style="color: #1e2a5a; text-decoration: none;">support@ammaseva.in</a>
           </div>
         </div>
       </div>
@@ -3756,29 +3758,73 @@ app.get('/api/admin/id-cards', authenticateAdmin, async (req, res) => {
   }
 })
 
-// POST create new Employee ID card (Admin Panel)
-app.post('/api/admin/id-cards/employee', authenticateAdmin, async (req, res) => {
-  const { name, phone, email, designation, profilePhoto, status } = req.body
-  if (!name || !designation) {
-    return res.status(400).json({ success: false, error: 'Name and Designation are required.' })
+// POST create new Staff ID card (EMP, MTP, NUR, CGV) (Admin Panel)
+app.post(['/api/admin/id-cards/employee', '/api/admin/id-cards/issue'], authenticateAdmin, async (req, res) => {
+  const { name, phone, email, designation, profilePhoto, status, category, staffCategory } = req.body
+  const targetCategory = String(staffCategory || category || 'EMP').toUpperCase().trim()
+
+  if (!name || !name.trim()) {
+    return res.status(400).json({ success: false, error: 'Full Name is required.' })
   }
+
+  const cleanPhone = String(phone || '').replace(/\D/g, '')
+  if (cleanPhone && cleanPhone.length !== 10) {
+    return res.status(400).json({ success: false, error: 'Phone number must be exactly 10 digits.' })
+  }
+
+  const cleanEmail = String(email || '').trim().toLowerCase()
+  if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+    return res.status(400).json({ success: false, error: 'Please provide a valid email address (e.g. name@example.com).' })
+  }
+
   try {
     let uploadedPhoto = profilePhoto || ''
     if (profilePhoto && profilePhoto.startsWith('data:image')) {
       uploadedPhoto = await uploadToCloudinary(profilePhoto)
     }
-    const newEmp = await db.createEmployee({
-      name: name.trim(),
-      phone: (phone || '').trim(),
-      email: (email || '').trim().toLowerCase(),
-      designation: designation.trim(),
-      profilePhoto: uploadedPhoto,
-      status: status || 'Active'
+
+    let createdRecord = null
+    if (targetCategory === 'MTP') {
+      createdRecord = await db.createMTP({
+        name: name.trim(),
+        phone: cleanPhone,
+        email: cleanEmail,
+        designation: (designation || 'MTP').trim(),
+        profilePhoto: uploadedPhoto,
+        status: status || 'Verified',
+        roles: (designation || 'Medical Transport & Companion Partner').trim()
+      })
+    } else if (targetCategory === 'NUR' || targetCategory === 'CGV') {
+      const isNurse = targetCategory === 'NUR'
+      createdRecord = await db.addCaregiverWithPassword({
+        name: name.trim(),
+        phone: cleanPhone,
+        email: cleanEmail,
+        staffCategory: targetCategory,
+        designation: (designation || (isNurse ? 'Nurse' : 'Caregiver')).trim(),
+        specialty: (designation || (isNurse ? 'Clinical Care & Vitals' : 'Bedside & Elderly Care')).trim(),
+        profilePhoto: uploadedPhoto,
+        status: status || 'Verified'
+      })
+    } else {
+      createdRecord = await db.createEmployee({
+        name: name.trim(),
+        phone: cleanPhone,
+        email: cleanEmail,
+        designation: (designation || 'Employee').trim(),
+        profilePhoto: uploadedPhoto,
+        status: status || 'Active'
+      })
+    }
+
+    res.status(201).json({ 
+      success: true, 
+      message: `${targetCategory} ID card issued successfully!`, 
+      data: createdRecord 
     })
-    res.status(201).json({ success: true, message: 'Employee ID card generated successfully!', data: newEmp })
   } catch (err) {
-    console.error('Failed to create employee ID card:', err)
-    res.status(500).json({ success: false, error: 'Failed to create employee ID card.' })
+    console.error('Failed to create staff ID card:', err)
+    res.status(500).json({ success: false, error: 'Failed to issue staff ID card.' })
   }
 })
 
