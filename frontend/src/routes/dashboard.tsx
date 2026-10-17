@@ -614,7 +614,7 @@ function CustomerDashboard() {
   const [bookingEndDate, setBookingEndDate] = useState("");
   const [bookingTime, setBookingTime] = useState("09:00");
   const [bookingDuration, setBookingDuration] = useState("Daily");
-  const [durationCount, setDurationCount] = useState<number>(1);
+  const [durationCount, setDurationCount] = useState<number | string>(1);
   const [bookingStep, setBookingStep] = useState(1);
   // MTP Dynamic Hourly Packages & Advance Payment State
   const [mtpPriceTiers, setMtpPriceTiers] = useState<any[]>([]);
@@ -681,14 +681,14 @@ function CustomerDashboard() {
         const calculatedDays = calculateDaysBetween(newStartDate, bookingEndDate);
         setDurationCount(calculatedDays);
       } else {
-        const targetDays = durationCount > 0 ? durationCount : 1;
+        const targetDays = Number(durationCount) > 0 ? Number(durationCount) : 1;
         setBookingEndDate(addDaysToDate(newStartDate, targetDays));
       }
     } else if (bookingDuration === "Weekly") {
-      const days = (durationCount || 1) * 7;
+      const days = (Number(durationCount) || 1) * 7;
       setBookingEndDate(addDaysToDate(newStartDate, days));
     } else if (bookingDuration === "Monthly") {
-      const days = (durationCount || 1) * 30;
+      const days = (Number(durationCount) || 1) * 30;
       setBookingEndDate(addDaysToDate(newStartDate, days));
     }
   };
@@ -723,10 +723,19 @@ function CustomerDashboard() {
     }
   };
 
-  const handleDurationCountChange = (newCount: number) => {
-    const count = Math.max(1, newCount);
+  const handleDurationCountChange = (val: string | number) => {
+    if (val === "" || val === null || val === undefined) {
+      setDurationCount("");
+      return;
+    }
+    const cleanStr = String(val).replace(/\D/g, "");
+    if (cleanStr === "") {
+      setDurationCount("");
+      return;
+    }
+    const count = parseInt(cleanStr, 10);
     setDurationCount(count);
-    if (bookingDate) {
+    if (bookingDate && count > 0) {
       if (bookingDuration === "Daily") {
         setBookingEndDate(addDaysToDate(bookingDate, count));
       } else if (bookingDuration === "Weekly") {
@@ -734,6 +743,12 @@ function CustomerDashboard() {
       } else if (bookingDuration === "Monthly") {
         setBookingEndDate(addDaysToDate(bookingDate, count * 30));
       }
+    }
+  };
+
+  const handleDurationCountBlur = () => {
+    if (!durationCount || Number(durationCount) < 1) {
+      handleDurationCountChange(1);
     }
   };
 
@@ -1301,6 +1316,9 @@ function CustomerDashboard() {
   };
 
   const validateStep1 = () => {
+    if (!durationCount || Number(durationCount) < 1) {
+      setDurationCount(1);
+    }
     if (!bookingDate || !bookingTime) {
       alert("Please select the care shift starting Date and Time.");
       return false;
@@ -1431,13 +1449,14 @@ function CustomerDashboard() {
     const submitBooking = async (payStatus: string, razorpayPaymentDetails?: any) => {
       try {
         const activeTier = isMtpBooking ? getActiveMtpTier() : null;
+        const displayCount = Number(durationCount) || 1;
         const formattedDuration = isMtpBooking
           ? `${activeTier?.hours || 2} Hours (MTP Package)`
-          : `${durationCount} ${
-              bookingDuration === "Hourly" ? (durationCount === 1 ? "Hour" : "Hours") :
-              bookingDuration === "Daily" ? (durationCount === 1 ? "Day" : "Days") :
-              bookingDuration === "Weekly" ? (durationCount === 1 ? "Week" : "Weeks") :
-              (durationCount === 1 ? "Month" : "Months")
+          : `${displayCount} ${
+              bookingDuration === "Hourly" ? (displayCount === 1 ? "Hour" : "Hours") :
+              bookingDuration === "Daily" ? (displayCount === 1 ? "Day" : "Days") :
+              bookingDuration === "Weekly" ? (displayCount === 1 ? "Week" : "Weeks") :
+              (displayCount === 1 ? "Month" : "Months")
             }`;
 
         const baseCost = calculateBaseAmount();
@@ -1447,6 +1466,7 @@ function CustomerDashboard() {
           ? calculateAdvance() 
           : 0;
         const balDue = Math.max(0, totalCost - advPaid);
+        const token = typeof window !== "undefined" ? localStorage.getItem("ammaseva_user_token") : null;
 
         const res = await fetch("/api/booking", {
           method: "POST",
@@ -5078,20 +5098,20 @@ function CustomerDashboard() {
             // =========================================================================
             // 🚗 COMPACT ULTRA-PREMIUM 1-STEP MTP TASK BOOKING VIEW
             // =========================================================================
-            <div className="max-w-4xl mx-auto rounded-3xl bg-white border border-amber-300/80 shadow-2xl shadow-amber-900/10 p-5 sm:p-8 text-left animate-fade-in relative overflow-hidden mb-16">
+            <div className="max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto rounded-3xl bg-white border border-amber-300/80 shadow-2xl shadow-amber-900/10 p-4 sm:p-5 lg:p-6 lg:py-4.5 text-left animate-fade-in relative overflow-hidden mb-8">
               
               {/* Category Mode Switcher Tabs */}
-              <div className="space-y-4 pb-6 mb-6 border-b border-slate-150">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-2.5 pb-3 mb-3 border-b border-slate-150">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">Booking Category</span>
-                    <h2 className="text-lg sm:text-xl font-black text-[#0b183b] font-display flex items-center gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">Booking Category</span>
+                    <h2 className="text-base sm:text-lg lg:text-xl font-black text-[#0b183b] font-display flex items-center gap-2">
                       <span>🚗 Multi-Tasking Professional (MTP)</span>
                     </h2>
                   </div>
 
                   <div className="flex items-center gap-2 self-start sm:self-auto">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-black text-amber-900 bg-amber-100/90 border border-amber-300/80 px-3.5 py-1 rounded-full shadow-xs">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-black text-amber-900 bg-amber-100/90 border border-amber-300/80 px-3 py-0.5 rounded-full shadow-xs">
                       <span className="h-2 w-2 rounded-full bg-amber-600 animate-pulse" />
                       ⚡ 1-Step Fast Dispatch
                     </span>
@@ -5099,7 +5119,7 @@ function CustomerDashboard() {
                 </div>
 
                 {/* Full-width Luxury 2-Tab Segmented Control */}
-                <div className="grid grid-cols-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200/90 gap-1.5 shadow-inner">
+                <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-2xl border border-slate-200/90 gap-1.5 shadow-inner">
                   {/* Tab 1: Clinical Home Care */}
                   <button
                     type="button"
@@ -5108,9 +5128,9 @@ function CustomerDashboard() {
                       if (standard) setSelectedServiceId(standard.id);
                       setBookingStep(1);
                     }}
-                    className="relative py-2.5 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 text-center select-none bg-transparent text-slate-600 hover:text-[#0b183b] hover:bg-white/80"
+                    className="relative py-1.5 lg:py-2 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 text-center select-none bg-transparent text-slate-600 hover:text-[#0b183b] hover:bg-white/80"
                   >
-                    <span className="text-base sm:text-lg shrink-0">🩺</span>
+                    <span className="text-sm sm:text-base shrink-0">🩺</span>
                     <div className="text-left leading-tight">
                       <span className="block text-xs sm:text-sm font-bold text-slate-700">
                         Clinical Home Care
@@ -5622,38 +5642,38 @@ function CustomerDashboard() {
             // =========================================================================
             // 🏥 COMPACT ULTRA-PREMIUM 3-STEP CLINICAL HEALTHCARE BOOKING WIZARD
             // =========================================================================
-            <div className="max-w-4xl mx-auto rounded-3xl bg-white border border-slate-200/90 shadow-2xl shadow-slate-200/40 p-3.5 sm:p-6 md:p-8 text-left animate-fade-in relative overflow-hidden mb-16">
+            <div className="max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto rounded-3xl bg-white border border-slate-200/90 shadow-2xl shadow-slate-200/40 p-3.5 sm:p-5 lg:p-6 lg:py-4.5 text-left animate-fade-in relative overflow-hidden mb-8">
               
               {/* Category Mode Switcher Tabs */}
-              <div className="space-y-4 pb-6 mb-6 border-b border-slate-150">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-2.5 pb-3 mb-3 border-b border-slate-150">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">Booking Category</span>
-                    <h2 className="text-lg sm:text-xl font-black text-[#0b183b] font-display flex items-center gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">Booking Category</span>
+                    <h2 className="text-base sm:text-lg lg:text-xl font-black text-[#0b183b] font-display flex items-center gap-2">
                       <span>🩺 Clinical Healthcare Home Booking</span>
                     </h2>
                   </div>
 
                   <div className="flex items-center gap-2 self-start sm:self-auto">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-black text-slate-700 bg-slate-100 border border-slate-200 px-3.5 py-1 rounded-full shadow-xs">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-black text-slate-700 bg-slate-100 border border-slate-200 px-3 py-0.5 rounded-full shadow-xs">
                       Step <strong className="text-[#0b183b] font-black">{bookingStep}</strong> of 3
                     </span>
                   </div>
                 </div>
 
                 {/* Full-width Luxury 2-Tab Segmented Control */}
-                <div className="grid grid-cols-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200/90 gap-1.5 shadow-inner">
+                <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-2xl border border-slate-200/90 gap-1.5 shadow-inner">
                   {/* Tab 1: Clinical Home Care (Active) */}
                   <button
                     type="button"
-                    className="relative py-2.5 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 text-center select-none bg-[#0b183b] text-white shadow-md border border-[#0b183b]"
+                    className="relative py-1.5 lg:py-2 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 text-center select-none bg-[#0b183b] text-white shadow-md border border-[#0b183b]"
                   >
-                    <span className="text-base sm:text-lg shrink-0">🩺</span>
+                    <span className="text-sm sm:text-base shrink-0">🩺</span>
                     <div className="text-left leading-tight">
                       <span className="block text-xs sm:text-sm font-black text-white">
                         Clinical Home Care
                       </span>
-                      <span className="hidden xs:block text-[10px] sm:text-[11px] text-[#c9a24c] font-medium">
+                      <span className="hidden xs:block text-[10px] text-[#c9a24c] font-medium">
                         Nursing, Elderly &amp; ICU
                       </span>
                     </div>
@@ -5666,14 +5686,14 @@ function CustomerDashboard() {
                       const mtpItem = servicesList.find(s => s.isMtp || s.id.startsWith("mtp")) || { id: "mtp-hospital-escort" };
                       setSelectedServiceId(mtpItem.id);
                     }}
-                    className="relative py-2.5 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 text-center select-none bg-transparent text-slate-600 hover:text-[#0b183b] hover:bg-white/80"
+                    className="relative py-1.5 lg:py-2 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 text-center select-none bg-transparent text-slate-600 hover:text-[#0b183b] hover:bg-white/80"
                   >
-                    <span className="text-base sm:text-lg shrink-0">🚗</span>
+                    <span className="text-sm sm:text-base shrink-0">🚗</span>
                     <div className="text-left leading-tight">
                       <span className="block text-xs sm:text-sm font-bold text-slate-700">
                         MTP Tasks &amp; Errands
                       </span>
-                      <span className="hidden xs:block text-[10px] sm:text-[11px] text-slate-400 font-medium">
+                      <span className="hidden xs:block text-[10px] text-slate-400 font-medium">
                         ₹100 Base • Zero Docs
                       </span>
                     </div>
@@ -5681,10 +5701,10 @@ function CustomerDashboard() {
                 </div>
               </div>
 
-              {/* Progress Stepper Bar (Responsive & Spacious) */}
-              <div className="mb-8 max-w-2xl mx-auto px-1">
+              {/* Progress Stepper Bar (Responsive & Compact) */}
+              <div className="mb-3 lg:mb-3.5 max-w-3xl mx-auto px-1">
                 {/* Desktop 3-Step Pill Bar */}
-                <div className="hidden sm:grid grid-cols-3 gap-3">
+                <div className="hidden sm:grid grid-cols-3 gap-2.5">
                   {[
                     { step: 1, label: "1. Service & Schedule" },
                     { step: 2, label: "2. Patient Profile" },
@@ -5702,7 +5722,7 @@ function CustomerDashboard() {
                           else if (s.step === 2 && validateStep1()) goToBookingStep(2);
                           else if (s.step === 3 && validateStep1() && validateStep2()) goToBookingStep(3);
                         }}
-                        className={`flex items-center justify-center gap-2 min-h-[42px] py-2 px-3 rounded-xl text-xs font-bold leading-normal transition-all cursor-pointer border ${
+                        className={`flex items-center justify-center gap-2 min-h-[36px] py-1 px-3 rounded-xl text-xs font-bold leading-normal transition-all cursor-pointer border ${
                           isActive
                             ? "bg-[#0b183b] text-[#c9a24c] border-[#0b183b] shadow-sm ring-2 ring-[#c9a24c]/20"
                             : isCompleted
@@ -5710,7 +5730,7 @@ function CustomerDashboard() {
                               : "bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100"
                         }`}
                       >
-                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${
+                        <span className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[10px] font-black ${
                           isActive ? "bg-[#c9a24c] text-[#091129]" : isCompleted ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-600"
                         }`}>
                           {isCompleted ? "✓" : s.step}
@@ -5722,10 +5742,10 @@ function CustomerDashboard() {
                 </div>
 
                 {/* Mobile Stepper Indicator (Clean, non-squished) */}
-                <div className="sm:hidden space-y-2">
+                <div className="sm:hidden space-y-1.5">
                   <div className="flex items-center justify-between text-xs font-bold px-1">
                     <span className="text-[#0b183b] flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-[#0b183b] text-[#c9a24c] text-[10px] font-black flex items-center justify-center">
+                      <span className="w-4.5 h-4.5 rounded-full bg-[#0b183b] text-[#c9a24c] text-[10px] font-black flex items-center justify-center">
                         {bookingStep}
                       </span>
                       <span>
@@ -5734,7 +5754,7 @@ function CustomerDashboard() {
                         {bookingStep === 3 && "Location & Advance Payment"}
                       </span>
                     </span>
-                    <span className="text-[11px] text-slate-400 font-semibold">Step {bookingStep} of 3</span>
+                    <span className="text-[10px] text-slate-400 font-semibold">Step {bookingStep} of 3</span>
                   </div>
                   <div className="grid grid-cols-3 gap-1.5 h-1.5 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-200/60">
                     <div className={`h-full rounded-full transition-all ${bookingStep >= 1 ? "bg-emerald-500" : "bg-slate-200"}`} />
@@ -5744,21 +5764,21 @@ function CustomerDashboard() {
                 </div>
               </div>
 
-              <form onSubmit={handleBookingSubmit} className="space-y-6">
+              <form onSubmit={handleBookingSubmit} className="space-y-3 lg:space-y-3.5">
                 
                 {/* ========================================================================= */}
                 {/* 🌟 STEP 1: SERVICE & SCHEDULING */}
                 {/* ========================================================================= */}
                 {bookingStep === 1 && (
-                  <div className="space-y-5 animate-fade-in">
+                  <div className="space-y-3 lg:space-y-3 animate-fade-in">
                     
                     {/* Select Service Dropdown + Description */}
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                           Select Healthcare Service
                         </label>
-                        <span className="text-xs text-emerald-700 font-bold bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
+                        <span className="text-[11px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
                           Verified Clinical Care
                         </span>
                       </div>
@@ -5766,7 +5786,7 @@ function CustomerDashboard() {
                       <select
                         value={selectedServiceId}
                         onChange={(e) => setSelectedServiceId(e.target.value)}
-                        className="w-full h-11 sm:h-12 px-3.5 text-sm rounded-xl border border-slate-200 bg-slate-50/70 text-slate-900 outline-none transition-all focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
+                        className="w-full h-10 lg:h-10.5 px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/70 text-slate-900 outline-none transition-all focus:bg-white focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
                       >
                         <optgroup label="🌟 Standard Clinical Healthcare Services">
                           {servicesList
@@ -5789,28 +5809,28 @@ function CustomerDashboard() {
                       </select>
 
                       {currentService?.desc && (
-                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70 text-slate-600 text-xs flex items-center gap-2">
+                        <div className="py-1.5 px-3 rounded-xl bg-slate-50 border border-slate-200/70 text-slate-600 text-xs flex items-center gap-2">
                           <span className="text-[#c9a24c] font-bold text-sm">✦</span>
                           <span className="leading-snug">{currentService?.desc}</span>
                         </div>
                       )}
                     </div>
 
-                    {/* Schedule Inputs: 1 col on mobile, 2 on tablet, 4 on desktop */}
-                    <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/70 border border-slate-200/90 shadow-2xs space-y-3.5">
-                      <div className="flex items-center justify-between pb-2 border-b border-slate-200/70">
+                    {/* Schedule Inputs: 1 col on mobile, 2 on tablet, 5 on desktop */}
+                    <div className="p-3 sm:p-3.5 lg:p-4 rounded-2xl bg-slate-50/70 border border-slate-200/90 shadow-2xs space-y-2.5">
+                      <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/70">
                         <span className="text-xs font-bold uppercase tracking-wider text-[#1e2a5a] flex items-center gap-1.5">
                           <Clock className="h-3.5 w-3.5 text-indigo-600" /> Billing Option &amp; Shift Schedule
                         </span>
-                        <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                        <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                           Flexible shifts
                         </span>
                       </div>
 
-                      <div className={`grid grid-cols-1 sm:grid-cols-2 ${bookingDuration === "Hourly" ? "lg:grid-cols-4" : "lg:grid-cols-5"} gap-3.5`}>
+                      <div className={`grid grid-cols-1 sm:grid-cols-2 ${bookingDuration === "Hourly" ? "lg:grid-cols-4" : "lg:grid-cols-5"} gap-2.5 lg:gap-3`}>
                         {/* 1. Duration Type Selector */}
                         <div>
-                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 truncate">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 truncate">
                             Billing Option
                           </label>
                           <select
@@ -5829,7 +5849,7 @@ function CustomerDashboard() {
                                 }
                               }
                             }}
-                            className="w-full h-11 px-3 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
+                            className="w-full h-9.5 lg:h-10 px-2.5 lg:px-3 text-xs sm:text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
                           >
                             <option value="Daily">Daily</option>
                             <option value="Hourly">Hourly</option>
@@ -5840,7 +5860,7 @@ function CustomerDashboard() {
 
                         {/* 2. Preferred Start Date */}
                         <div>
-                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 truncate">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 truncate">
                             Start Date <span className="text-rose-500">*</span>
                           </label>
                           <input
@@ -5850,16 +5870,16 @@ function CustomerDashboard() {
                             max="2099-12-31"
                             value={bookingDate}
                             onChange={(e) => handleStartDateChange(e.target.value)}
-                            className="w-full h-11 px-3 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
+                            className="w-full h-9.5 lg:h-10 px-2.5 lg:px-3 text-xs sm:text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
                           />
                         </div>
 
                         {/* 3. Upto / End Date (shown for Daily, Weekly, Monthly) */}
                         {bookingDuration !== "Hourly" && (
                           <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 truncate flex items-center justify-between">
+                            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 truncate flex items-center justify-between">
                               <span>Upto Date <span className="text-rose-500">*</span></span>
-                              <span className="text-[10px] text-emerald-600 font-bold lowercase bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-150">auto-calc</span>
+                              <span className="text-[9px] text-emerald-600 font-bold lowercase bg-emerald-50 px-1 py-0.2 rounded border border-emerald-150">auto-calc</span>
                             </label>
                             <input
                               type="date"
@@ -5868,14 +5888,14 @@ function CustomerDashboard() {
                               max="2099-12-31"
                               value={bookingEndDate || bookingDate}
                               onChange={(e) => handleEndDateChange(e.target.value)}
-                              className="w-full h-11 px-3 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
+                              className="w-full h-9.5 lg:h-10 px-2.5 lg:px-3 text-xs sm:text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
                             />
                           </div>
                         )}
 
                         {/* 4. Duration count multiplier with rate badge */}
                         <div>
-                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 truncate">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 truncate">
                             {bookingDuration === "Hourly" ? "Hours" : bookingDuration === "Daily" ? "Days" : bookingDuration === "Weekly" ? "Weeks" : "Months"} (₹{
                               bookingDuration === "Hourly" ? getServiceRates().hourly :
                               bookingDuration === "Daily" ? getServiceRates().daily :
@@ -5889,12 +5909,20 @@ function CustomerDashboard() {
                               min={1}
                               required
                               value={durationCount}
-                              onChange={(e) => handleDurationCountChange(Number(e.target.value))}
-                              className="w-full h-11 px-3.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold"
+                              onChange={(e) => handleDurationCountChange(e.target.value)}
+                              onBlur={handleDurationCountBlur}
+                              onKeyDown={(e) => {
+                                if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                                  e.preventDefault();
+                                }
+                              }}
+                              placeholder="1"
+                              autoComplete="off"
+                              className="w-full h-9.5 lg:h-10 pl-2.5 lg:pl-3 pr-16 text-xs sm:text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold no-spinner"
                             />
-                            {bookingDuration === "Daily" && (
-                              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded pointer-events-none">
-                                {durationCount === 1 ? "1 day" : `${durationCount} days`}
+                            {bookingDuration === "Daily" && durationCount && Number(durationCount) > 0 && (
+                              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] sm:text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md pointer-events-none select-none">
+                                {Number(durationCount) === 1 ? "1 day" : `${durationCount} days`}
                               </span>
                             )}
                           </div>
@@ -5902,7 +5930,7 @@ function CustomerDashboard() {
 
                         {/* 5. Shift Start Time */}
                         <div>
-                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 truncate">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 truncate">
                             Start Time <span className="text-rose-500">*</span>
                           </label>
                           <input
@@ -5910,16 +5938,16 @@ function CustomerDashboard() {
                             required
                             value={bookingTime}
                             onChange={(e) => setBookingTime(e.target.value)}
-                            className="w-full h-11 px-3 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
+                            className="w-full h-9.5 lg:h-10 px-2.5 lg:px-3 text-xs sm:text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
                           />
                         </div>
                       </div>
 
                       {/* Dynamic Schedule Banner */}
                       {bookingDuration !== "Hourly" && bookingDate && (
-                        <div className="mt-3 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-amber-50/80 via-slate-50 to-emerald-50/80 border border-amber-200/70 flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div className="mt-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-50/80 via-slate-50 to-emerald-50/80 border border-amber-200/70 flex flex-wrap items-center justify-between gap-2 text-xs">
                           <div className="flex items-center gap-2 text-slate-700">
-                            <Calendar className="h-4 w-4 text-[#c9a24c] shrink-0" />
+                            <Calendar className="h-3.5 w-3.5 text-[#c9a24c] shrink-0" />
                             <span>
                               Shift Schedule: <strong className="font-bold text-slate-900">{bookingDate}</strong>
                               {bookingEndDate && bookingEndDate !== bookingDate && (
@@ -5929,11 +5957,11 @@ function CustomerDashboard() {
                             </span>
                           </div>
                           <div className="flex items-center gap-1.5">
-                            <span className="text-[11px] font-extrabold text-[#1e2a5a] bg-white px-2.5 py-0.5 rounded-lg border border-slate-200/90 shadow-2xs">
-                              {durationCount} {
-                                bookingDuration === "Daily" ? (durationCount === 1 ? "Day" : "Days") :
-                                bookingDuration === "Weekly" ? (durationCount === 1 ? "Week" : "Weeks") :
-                                (durationCount === 1 ? "Month" : "Months")
+                            <span className="text-[10px] font-extrabold text-[#1e2a5a] bg-white px-2 py-0.5 rounded-lg border border-slate-200/90 shadow-2xs">
+                              {Number(durationCount) || 1} {
+                                bookingDuration === "Daily" ? ((Number(durationCount) || 1) === 1 ? "Day" : "Days") :
+                                bookingDuration === "Weekly" ? ((Number(durationCount) || 1) === 1 ? "Week" : "Weeks") :
+                                ((Number(durationCount) || 1) === 1 ? "Month" : "Months")
                               } Total
                             </span>
                           </div>
@@ -5942,13 +5970,13 @@ function CustomerDashboard() {
                     </div>
 
                     {/* Next Action */}
-                    <div className="flex justify-end pt-2">
+                    <div className="flex justify-end pt-1">
                       <button
                         type="button"
                         onClick={() => {
                           if (validateStep1()) goToBookingStep(2);
                         }}
-                        className="h-10 sm:h-11 px-4 sm:px-6 bg-[#1e2a5a] hover:bg-[#283870] text-[#c9a24c] hover:text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all"
+                        className="h-9 sm:h-10 px-5 bg-[#1e2a5a] hover:bg-[#283870] text-[#c9a24c] hover:text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all"
                       >
                         <span>Next: Patient Profile</span>
                         <ChevronRight className="h-4 w-4 shrink-0" />
@@ -6257,7 +6285,7 @@ function CustomerDashboard() {
                       {/* Line Items */}
                       <div className="space-y-2 text-xs">
                         <div className="flex justify-between items-center text-slate-600">
-                          <span className="font-medium">Base Service ({durationCount} {bookingDuration}):</span>
+                          <span className="font-medium">Base Service ({Number(durationCount) || 1} {bookingDuration}):</span>
                           <span className="font-bold text-slate-900 font-mono text-xs sm:text-sm">₹{calculateBaseAmount().toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between items-center text-slate-600">

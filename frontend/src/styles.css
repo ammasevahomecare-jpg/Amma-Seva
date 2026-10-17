@@ -674,3 +674,21 @@ button, a, input, select, textarea {
   }
 }
 
+/* Hide number input spin buttons globally across all number inputs */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button,
+input.no-spinner::-webkit-outer-spin-button,
+input.no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+  display: none !important;
+}
+
+input[type="number"],
+input.no-spinner {
+  -moz-appearance: textfield !important;
+  appearance: textfield !important;
+}
+
+
+
