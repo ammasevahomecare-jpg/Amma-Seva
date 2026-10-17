@@ -611,6 +611,7 @@ function CustomerDashboard() {
   // New Booking State
   const [selectedServiceId, setSelectedServiceId] = useState("elderly");
   const [bookingDate, setBookingDate] = useState("");
+  const [bookingEndDate, setBookingEndDate] = useState("");
   const [bookingTime, setBookingTime] = useState("09:00");
   const [bookingDuration, setBookingDuration] = useState("Daily");
   const [durationCount, setDurationCount] = useState<number>(1);
@@ -650,6 +651,91 @@ function CustomerDashboard() {
     return `${year}-${month}-${day}`;
   };
   const todayStr = getTodayISO();
+
+  // Date calculation helpers for multi-day bookings
+  const calculateDaysBetween = (startStr: string, endStr: string): number => {
+    if (!startStr || !endStr) return 1;
+    const start = new Date(startStr + "T00:00:00");
+    const end = new Date(endStr + "T00:00:00");
+    const diffTime = end.getTime() - start.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    return diffDays > 0 ? diffDays : 1;
+  };
+
+  const addDaysToDate = (startStr: string, days: number): string => {
+    if (!startStr) return "";
+    const d = new Date(startStr + "T00:00:00");
+    d.setDate(d.getDate() + Math.max(0, days - 1));
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const handleStartDateChange = (newStartDate: string) => {
+    setBookingDate(newStartDate);
+    if (!newStartDate) return;
+
+    if (bookingDuration === "Daily") {
+      if (bookingEndDate && bookingEndDate >= newStartDate) {
+        const calculatedDays = calculateDaysBetween(newStartDate, bookingEndDate);
+        setDurationCount(calculatedDays);
+      } else {
+        const targetDays = durationCount > 0 ? durationCount : 1;
+        setBookingEndDate(addDaysToDate(newStartDate, targetDays));
+      }
+    } else if (bookingDuration === "Weekly") {
+      const days = (durationCount || 1) * 7;
+      setBookingEndDate(addDaysToDate(newStartDate, days));
+    } else if (bookingDuration === "Monthly") {
+      const days = (durationCount || 1) * 30;
+      setBookingEndDate(addDaysToDate(newStartDate, days));
+    }
+  };
+
+  const handleEndDateChange = (newEndDate: string) => {
+    setBookingEndDate(newEndDate);
+    if (!newEndDate) return;
+
+    if (!bookingDate) {
+      setBookingDate(newEndDate);
+      setDurationCount(1);
+      return;
+    }
+
+    if (newEndDate < bookingDate) {
+      setBookingEndDate(bookingDate);
+      setDurationCount(1);
+      return;
+    }
+
+    if (bookingDuration === "Daily") {
+      const calculatedDays = calculateDaysBetween(bookingDate, newEndDate);
+      setDurationCount(calculatedDays);
+    } else if (bookingDuration === "Weekly") {
+      const days = calculateDaysBetween(bookingDate, newEndDate);
+      const weeks = Math.max(1, Math.round(days / 7));
+      setDurationCount(weeks);
+    } else if (bookingDuration === "Monthly") {
+      const days = calculateDaysBetween(bookingDate, newEndDate);
+      const months = Math.max(1, Math.round(days / 30));
+      setDurationCount(months);
+    }
+  };
+
+  const handleDurationCountChange = (newCount: number) => {
+    const count = Math.max(1, newCount);
+    setDurationCount(count);
+    if (bookingDate) {
+      if (bookingDuration === "Daily") {
+        setBookingEndDate(addDaysToDate(bookingDate, count));
+      } else if (bookingDuration === "Weekly") {
+        setBookingEndDate(addDaysToDate(bookingDate, count * 7));
+      } else if (bookingDuration === "Monthly") {
+        setBookingEndDate(addDaysToDate(bookingDate, count * 30));
+      }
+    }
+  };
 
   // Document Viewer Modal State
   const [docViewerState, setDocViewerState] = useState<{
@@ -1225,6 +1311,10 @@ function CustomerDashboard() {
       alert("Booking date cannot be in the past. Please select today or a future date.");
       return false;
     }
+    if (bookingDuration !== "Hourly" && bookingEndDate && bookingEndDate < bookingDate) {
+      alert("Upto Date cannot be earlier than Start Date.");
+      return false;
+    }
     return true;
   };
 
@@ -1371,7 +1461,9 @@ function CustomerDashboard() {
             service: isMtpBooking 
               ? (currentService?.title?.includes("MTP") ? currentService.title : `Medical Transport Partner (MTP) - ${currentService?.title || "Escort"}`)
               : (currentService?.title || "Home Care Healthcare"),
-            date: bookingDate || new Date().toISOString().split("T")[0],
+            date: (bookingDuration !== "Hourly" && bookingEndDate && bookingEndDate !== bookingDate)
+              ? `${bookingDate} to ${bookingEndDate}`
+              : (bookingDate || new Date().toISOString().split("T")[0]),
             time: bookingTime || "09:00 AM",
             duration: formattedDuration || "2 Hours",
             address: bookingAddress || "Hyderabad, Telangana",
@@ -1419,6 +1511,7 @@ function CustomerDashboard() {
         setSuccessBooking(data.data);
         // Reset form
         setBookingDate("");
+        setBookingEndDate("");
         setBookingAddress("");
         setPatientName("");
         setPatientAge("");
@@ -5714,8 +5807,8 @@ function CustomerDashboard() {
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                        {/* 1. Billing Frequency */}
+                      <div className={`grid grid-cols-1 sm:grid-cols-2 ${bookingDuration === "Hourly" ? "lg:grid-cols-4" : "lg:grid-cols-5"} gap-3.5`}>
+                        {/* 1. Duration Type Selector */}
                         <div>
                           <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 truncate">
                             Billing Option
@@ -5723,8 +5816,18 @@ function CustomerDashboard() {
                           <select
                             value={bookingDuration}
                             onChange={(e) => {
-                              setBookingDuration(e.target.value);
+                              const newDuration = e.target.value;
+                              setBookingDuration(newDuration);
                               setDurationCount(1);
+                              if (bookingDate) {
+                                if (newDuration === "Daily") {
+                                  setBookingEndDate(bookingDate);
+                                } else if (newDuration === "Weekly") {
+                                  setBookingEndDate(addDaysToDate(bookingDate, 7));
+                                } else if (newDuration === "Monthly") {
+                                  setBookingEndDate(addDaysToDate(bookingDate, 30));
+                                }
+                              }
                             }}
                             className="w-full h-11 px-3 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
                           >
@@ -5735,27 +5838,7 @@ function CustomerDashboard() {
                           </select>
                         </div>
 
-                        {/* 2. Duration count multiplier with rate badge */}
-                        <div>
-                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 truncate">
-                            {bookingDuration === "Hourly" ? "Hours" : bookingDuration === "Daily" ? "Days" : bookingDuration === "Weekly" ? "Weeks" : "Months"} (₹{
-                              bookingDuration === "Hourly" ? getServiceRates().hourly :
-                              bookingDuration === "Daily" ? getServiceRates().daily :
-                              bookingDuration === "Weekly" ? getServiceRates().weekly :
-                              getServiceRates().monthly
-                            }/{bookingDuration === "Hourly" ? "hr" : bookingDuration === "Daily" ? "day" : bookingDuration === "Weekly" ? "wk" : "mo"})
-                          </label>
-                          <input
-                            type="number"
-                            min={1}
-                            required
-                            value={durationCount}
-                            onChange={(e) => setDurationCount(Math.max(1, Number(e.target.value)))}
-                            className="w-full h-11 px-3.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold"
-                          />
-                        </div>
-
-                        {/* 3. Preferred Start Date */}
+                        {/* 2. Preferred Start Date */}
                         <div>
                           <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 truncate">
                             Start Date <span className="text-rose-500">*</span>
@@ -5766,12 +5849,58 @@ function CustomerDashboard() {
                             min={todayStr}
                             max="2099-12-31"
                             value={bookingDate}
-                            onChange={(e) => setBookingDate(e.target.value)}
+                            onChange={(e) => handleStartDateChange(e.target.value)}
                             className="w-full h-11 px-3 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
                           />
                         </div>
 
-                        {/* 4. Shift Start Time */}
+                        {/* 3. Upto / End Date (shown for Daily, Weekly, Monthly) */}
+                        {bookingDuration !== "Hourly" && (
+                          <div>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 truncate flex items-center justify-between">
+                              <span>Upto Date <span className="text-rose-500">*</span></span>
+                              <span className="text-[10px] text-emerald-600 font-bold lowercase bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-150">auto-calc</span>
+                            </label>
+                            <input
+                              type="date"
+                              required
+                              min={bookingDate || todayStr}
+                              max="2099-12-31"
+                              value={bookingEndDate || bookingDate}
+                              onChange={(e) => handleEndDateChange(e.target.value)}
+                              className="w-full h-11 px-3 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
+                            />
+                          </div>
+                        )}
+
+                        {/* 4. Duration count multiplier with rate badge */}
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 truncate">
+                            {bookingDuration === "Hourly" ? "Hours" : bookingDuration === "Daily" ? "Days" : bookingDuration === "Weekly" ? "Weeks" : "Months"} (₹{
+                              bookingDuration === "Hourly" ? getServiceRates().hourly :
+                              bookingDuration === "Daily" ? getServiceRates().daily :
+                              bookingDuration === "Weekly" ? getServiceRates().weekly :
+                              getServiceRates().monthly
+                            }/{bookingDuration === "Hourly" ? "hr" : bookingDuration === "Daily" ? "day" : bookingDuration === "Weekly" ? "wk" : "mo"})
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min={1}
+                              required
+                              value={durationCount}
+                              onChange={(e) => handleDurationCountChange(Number(e.target.value))}
+                              className="w-full h-11 px-3.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold"
+                            />
+                            {bookingDuration === "Daily" && (
+                              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded pointer-events-none">
+                                {durationCount === 1 ? "1 day" : `${durationCount} days`}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* 5. Shift Start Time */}
                         <div>
                           <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 truncate">
                             Start Time <span className="text-rose-500">*</span>
@@ -5785,6 +5914,31 @@ function CustomerDashboard() {
                           />
                         </div>
                       </div>
+
+                      {/* Dynamic Schedule Banner */}
+                      {bookingDuration !== "Hourly" && bookingDate && (
+                        <div className="mt-3 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-amber-50/80 via-slate-50 to-emerald-50/80 border border-amber-200/70 flex flex-wrap items-center justify-between gap-2 text-xs">
+                          <div className="flex items-center gap-2 text-slate-700">
+                            <Calendar className="h-4 w-4 text-[#c9a24c] shrink-0" />
+                            <span>
+                              Shift Schedule: <strong className="font-bold text-slate-900">{bookingDate}</strong>
+                              {bookingEndDate && bookingEndDate !== bookingDate && (
+                                <> upto <strong className="font-bold text-slate-900">{bookingEndDate}</strong></>
+                              )}
+                              {" "}at <strong className="font-bold text-slate-900">{bookingTime}</strong>
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[11px] font-extrabold text-[#1e2a5a] bg-white px-2.5 py-0.5 rounded-lg border border-slate-200/90 shadow-2xs">
+                              {durationCount} {
+                                bookingDuration === "Daily" ? (durationCount === 1 ? "Day" : "Days") :
+                                bookingDuration === "Weekly" ? (durationCount === 1 ? "Week" : "Weeks") :
+                                (durationCount === 1 ? "Month" : "Months")
+                              } Total
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Next Action */}
