@@ -37,44 +37,7 @@ const DEFAULT_MOCK_DATA = {
   caregivers: [],
   referrals: [],
   mtps: [],
-  employees: [
-    {
-      id: 1,
-      name: "Sandeep Nanduri, IAS (Retd)",
-      phone: "9848012345",
-      email: "director@ammaseva.in",
-      designation: "Employee",
-      staffCategory: "EMP",
-      employeeId: "AS - EMP - 26-001",
-      profilePhoto: "/assets/sandeep-nanduri-ias.jpg",
-      status: "Active",
-      joinedAt: "2026-01-01T09:00:00.000Z"
-    },
-    {
-      id: 2,
-      name: "Dr. Ramesh V., MD",
-      phone: "9490587576",
-      email: "dr.ramesh@ammaseva.in",
-      designation: "Employee",
-      staffCategory: "EMP",
-      employeeId: "AS - EMP - 26-002",
-      profilePhoto: "/assets/service-doctor.jpg",
-      status: "Active",
-      joinedAt: "2026-01-10T09:00:00.000Z"
-    },
-    {
-      id: 3,
-      name: "S. Rajesh Kumar",
-      phone: "9490587575",
-      email: "operations@ammaseva.in",
-      designation: "Employee",
-      staffCategory: "EMP",
-      employeeId: "AS - EMP - 26-003",
-      profilePhoto: "",
-      status: "Active",
-      joinedAt: "2026-01-15T09:00:00.000Z"
-    }
-  ],
+  employees: [],
   mtpPrices: [
     {
       id: 1,
@@ -4670,36 +4633,9 @@ export const db = {
           `)
         } catch (e) {}
 
-        // 1. Employees from MySQL
+        // 1. Employees directly from MySQL database
         const [empRows] = await pool.query('SELECT * FROM employees ORDER BY id ASC')
-        let employeesList = empRows || []
-
-        // If no employees in MySQL, seed default official employees
-        if (employeesList.length === 0 && Array.isArray(DEFAULT_MOCK_DATA.employees)) {
-          for (const dEmp of DEFAULT_MOCK_DATA.employees) {
-            try {
-              await pool.query(
-                'INSERT INTO employees (name, phone, email, designation, employeeId, profilePhoto, status, joinedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                [dEmp.name, dEmp.phone || '', dEmp.email || '', dEmp.designation, dEmp.employeeId, dEmp.profilePhoto || '', dEmp.status || 'Active', dEmp.joinedAt || new Date().toISOString()]
-              )
-            } catch (err) {}
-          }
-          const [reloadedEmps] = await pool.query('SELECT * FROM employees ORDER BY id ASC')
-          employeesList = reloadedEmps || []
-        }
-
-        // Also check if any employees exist in db.json that aren't in MySQL
-        try {
-          const jsonDb = await readJSONDb()
-          if (Array.isArray(jsonDb.employees)) {
-            const existingEmpIds = new Set(employeesList.map(e => e.employeeId || e.id))
-            for (const je of jsonDb.employees) {
-              if (!existingEmpIds.has(je.employeeId) && !existingEmpIds.has(je.id)) {
-                employeesList.push(je)
-              }
-            }
-          }
-        } catch (e) {}
+        const employeesList = empRows || []
 
         employeesList.forEach(e => {
           all.push({
