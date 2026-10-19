@@ -1055,20 +1055,12 @@ const sendBookingConfirmationAndTaxInvoiceEmail = async (booking, userEmail) => 
               <td style="padding: 8px 14px;">Base Service Subtotal</td>
               <td style="padding: 8px 14px; text-align: right; font-weight: 600; font-family: monospace;">₹${calculatedBase.toLocaleString('en-IN')}</td>
             </tr>
-            <tr style="border-bottom: 1px solid #f1f5f9; color: #64748b; font-size: 12px;">
-              <td style="padding: 6px 14px;">CGST @ 9.0%</td>
-              <td style="padding: 6px 14px; text-align: right; font-family: monospace;">₹${cgstAmount.toLocaleString('en-IN')}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #f1f5f9; color: #64748b; font-size: 12px;">
-              <td style="padding: 6px 14px;">SGST @ 9.0%</td>
-              <td style="padding: 6px 14px; text-align: right; font-family: monospace;">₹${sgstAmount.toLocaleString('en-IN')}</td>
-            </tr>
             <tr style="border-bottom: 1px solid #e2e8f0; background-color: #fffbeb; font-weight: 600; color: #92400e; font-size: 12px;">
-              <td style="padding: 8px 14px;">Total 18% GST (CGST + SGST)</td>
+              <td style="padding: 8px 14px;">IGST @ 18% (Integrated Tax)</td>
               <td style="padding: 8px 14px; text-align: right; font-family: monospace;">+₹${calculatedGst.toLocaleString('en-IN')}</td>
             </tr>
             <tr style="background-color: #f8fafc; border-top: 2px solid #cbd5e1; font-weight: 800; font-size: 14px; color: #091438;">
-              <td style="padding: 10px 14px;">Total Order Value (incl. 18% GST)</td>
+              <td style="padding: 10px 14px;">Total Order Value (incl. 18% IGST)</td>
               <td style="padding: 10px 14px; text-align: right; color: #1e2a5a; font-family: monospace; font-size: 15px;">₹${totalAmount.toLocaleString('en-IN')}</td>
             </tr>
             ${advancePaid > 0 ? `
@@ -1124,7 +1116,6 @@ const sendBookingConfirmationAndTaxInvoiceEmail = async (booking, userEmail) => 
           <div style="border-top: 1px solid #f1f5f9; padding-top: 16px; text-align: center; font-size: 11px; color: #94a3b8; line-height: 1.6;">
             <strong>LUXDHANA GLOBAL PRIVATE LIMITED</strong> • GSTIN: 33AAGCL5078A1ZS (State Code: 33 - Tamil Nadu)<br />
             Shop No. S101, Door No. 769, Spencer Plaza, Anna Salai, Chennai, Tamil Nadu - 600002.<br />
-            Regional Branch: 8-2-630/B/B/1, Mount Banjara complex, Road No. 12, Banjara Hills, Hyderabad - 500034.<br />
             24/7 Helpline: <a href="tel:+919494516543" style="color: #1e2a5a; font-weight: bold; text-decoration: none;">+91 94945 16543</a> | <a href="mailto:support@ammaseva.in" style="color: #1e2a5a; text-decoration: none;">support@ammaseva.in</a>
           </div>
         </div>
@@ -1267,7 +1258,6 @@ const sendBalancePaymentSettlementEmail = async (booking, userEmail, transaction
           <div style="border-top: 1px solid #f1f5f9; padding-top: 16px; text-align: center; font-size: 11px; color: #94a3b8; line-height: 1.6;">
             <strong>LUXDHANA GLOBAL PRIVATE LIMITED</strong> • GSTIN: 33AAGCL5078A1ZS (State Code: 33 - Tamil Nadu)<br />
             Shop No. S101, Door No. 769, Spencer Plaza, Anna Salai, Chennai, Tamil Nadu - 600002.<br />
-            Regional Branch: 8-2-630/B/B/1, Mount Banjara complex, Road No. 12, Banjara Hills, Hyderabad - 500034.<br />
             24/7 Helpline: <a href="tel:+919494516543" style="color: #1e2a5a; font-weight: bold; text-decoration: none;">+91 94945 16543</a> | <a href="mailto:support@ammaseva.in" style="color: #1e2a5a; text-decoration: none;">support@ammaseva.in</a>
           </div>
         </div>
@@ -3792,7 +3782,7 @@ app.post(['/api/admin/id-cards/employee', '/api/admin/id-cards/issue'], authenti
         designation: (designation || 'MTP').trim(),
         profilePhoto: uploadedPhoto,
         status: status || 'Verified',
-        roles: (designation || 'Medical Transport & Companion Partner').trim()
+        roles: (designation || 'Multi Tasking Professional & Companion Partner').trim()
       })
     } else if (targetCategory === 'NUR' || targetCategory === 'CGV') {
       const isNurse = targetCategory === 'NUR'
@@ -4652,6 +4642,8 @@ app.post('/api/admin/booking', authenticateAdmin, async (req, res) => {
       assignedStaffRole: assignedStaffRole || null,
       assignedStaffPhone: assignedStaffPhone || null,
       amount: Number(amount) || 1200,
+      baseAmount: req.body.baseAmount !== undefined ? Number(req.body.baseAmount) : (Number(amount) ? Math.round(Number(amount) / 1.18) : 0),
+      gstAmount: req.body.gstAmount !== undefined ? Number(req.body.gstAmount) : (Number(amount) ? Math.round(Number(amount) - (Number(req.body.baseAmount) || Math.round(Number(amount) / 1.18))) : 0),
       caretakerPayout: Number(caretakerPayout) || 0,
       caretakerPayoutStatus: caretakerPayoutStatus || 'Unpaid',
       caretakerPayoutMethod: caretakerPayoutMethod || '',

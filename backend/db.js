@@ -220,8 +220,8 @@ const DEFAULT_MOCK_DATA = {
     {
       id: 9,
       imageUrl: "/assets/service-mtp.jpg",
-      title: "Medical Transport Partner (MTP) Safe Patient Escort",
-      category: "Medical Transport",
+      title: "Multi Tasking Professional (MTP) Safe Patient Escort",
+      category: "Multi Tasking Professional",
       location: "Kukatpally, Hyderabad",
       description: "Trained MTP escort safely assisting an elderly wheelchair patient from their doorstep to an outpatient hospital consultation.",
       createdAt: "2026-09-04T15:10:00.000Z",
@@ -626,9 +626,9 @@ const DEFAULT_MOCK_DATA = {
     {
       id: 6,
       slug: "mtp-transport-medical-escort-hyderabad",
-      title: "Medical Transport Partners (MTP): Safe Non-Emergency Hospital Escorts",
+      title: "Multi Tasking Professionals (MTP): Safe Non-Emergency Hospital Escorts",
       description: "Solving the medical mobility crisis with trained paramedical escorts, wheelchair assistance, and zero-surge door-to-hospital transport in Hyderabad.",
-      category: "Medical Transport",
+      category: "Multi Tasking Professional",
       author: "Amma Seva Emergency & Mobility Operations",
       date: "2026-09-05",
       readTime: "5 min read",
@@ -820,7 +820,7 @@ const readJSONDb = async () => {
         m.staffCategory = 'MTP'
         dbChanged = true
       }
-      if (!m.designation || m.designation === 'Medical Transport Partner & Escort' || m.designation === 'Medical Transport & Escort Partner') {
+      if (!m.designation || m.designation === 'Multi Tasking Professional & Escort' || m.designation === 'Multi Tasking Professional & Escort Partner') {
         m.designation = 'MTP'
         dbChanged = true
       }
@@ -1205,7 +1205,7 @@ export const db = {
             status VARCHAR(50) DEFAULT 'Pending',
             adminNotes TEXT,
             staffCategory VARCHAR(50) DEFAULT 'MTP',
-            designation VARCHAR(255) DEFAULT 'Medical Transport Partner & Escort',
+            designation VARCHAR(255) DEFAULT 'Multi Tasking Professional & Escort',
             employeeId VARCHAR(100),
             createdAt VARCHAR(255) NOT NULL
           )
@@ -1320,7 +1320,7 @@ export const db = {
           await connection.query(`ALTER TABLE mtps ADD COLUMN staffCategory VARCHAR(50) DEFAULT 'MTP'`)
         } catch (e) {}
         try {
-          await connection.query(`ALTER TABLE mtps ADD COLUMN designation VARCHAR(255) DEFAULT 'Medical Transport Partner & Escort'`)
+          await connection.query(`ALTER TABLE mtps ADD COLUMN designation VARCHAR(255) DEFAULT 'Multi Tasking Professional & Escort'`)
         } catch (e) {}
         try {
           await connection.query(`ALTER TABLE mtps ADD COLUMN employeeId VARCHAR(100)`)
@@ -1558,7 +1558,7 @@ export const db = {
           await connection.query(`ALTER TABLE mtps ADD COLUMN staffCategory VARCHAR(50) DEFAULT 'MTP'`)
         } catch (e) {}
         try {
-          await connection.query(`ALTER TABLE mtps ADD COLUMN designation VARCHAR(255) DEFAULT 'Medical Transport Partner & Escort'`)
+          await connection.query(`ALTER TABLE mtps ADD COLUMN designation VARCHAR(255) DEFAULT 'Multi Tasking Professional & Escort'`)
         } catch (e) {}
         try {
           await connection.query(`ALTER TABLE mtps ADD COLUMN employeeId VARCHAR(100)`)
@@ -1698,13 +1698,30 @@ export const db = {
 
   // Bookings Operations
   getBookings: async () => {
+    let list = []
     if (useMySQL) {
       const [rows] = await pool.query('SELECT * FROM bookings ORDER BY id DESC')
-      return rows
+      list = rows || []
     } else {
       const data = await readJSONDb()
-      return [...data.bookings].reverse()
+      list = [...(data.bookings || [])].reverse()
     }
+    return list.map(b => ({
+      ...b,
+      name: b?.name || b?.patientName || 'Customer',
+      phone: b?.phone || '',
+      service: b?.service || 'Home Healthcare Support',
+      date: b?.date || (b?.createdAt ? b.createdAt.split('T')[0] : '2026-10-19'),
+      time: b?.time || '10:00 AM',
+      duration: b?.duration || 'Standard Shift',
+      address: b?.address || '',
+      status: b?.status || 'Pending',
+      paymentStatus: b?.paymentStatus || 'Unpaid',
+      amount: Number(b?.amount) || 0,
+      baseAmount: Number(b?.baseAmount) || (Number(b?.amount) ? Math.round(Number(b.amount) / 1.18) : 0),
+      gstAmount: Number(b?.gstAmount) || (Number(b?.amount) ? Math.round(Number(b.amount) - (Number(b?.baseAmount) || Math.round(Number(b.amount) / 1.18))) : 0),
+      assignedStaff: b?.assignedStaff || null
+    }))
   },
 
   addBooking: async (bookingData) => {
@@ -1718,12 +1735,14 @@ export const db = {
     } = bookingData
     const createdAt = new Date().toISOString()
     const isMtpVal = isMTPService(service, isMtp) ? 1 : 0
+    const calcBase = bookingData.baseAmount !== undefined ? Number(bookingData.baseAmount) : (Number(amount) ? Math.round(Number(amount) / 1.18) : 0)
+    const calcGst = bookingData.gstAmount !== undefined ? Number(bookingData.gstAmount) : (Number(amount) ? Math.round(Number(amount) - calcBase) : 0)
     if (useMySQL) {
       const [result] = await pool.query(
         'INSERT INTO bookings (name, phone, service, date, time, duration, address, status, assignedStaff, assignedStaffId, assignedStaffRole, assignedStaffPhone, amount, paymentStatus, paymentMethod, transactionId, paymentDate, prescription, googleMapLocation, advancePaid, balanceAmount, patientName, patientAge, patientNeeds, caretakerPayout, caretakerPayoutStatus, caretakerPayoutMethod, caretakerPayoutRef, isMtp, mtpAcceptedAt, mtpAcceptedBy, mtpAcceptedById, mtpAcceptedPhone, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [name, phone, service, date, time, duration, address, status, assignedStaff, assignedStaffId, assignedStaffRole, assignedStaffPhone, amount, paymentStatus, paymentMethod, transactionId, paymentDate, prescription, googleMapLocation, advancePaid, balanceAmount, patientName, patientAge, patientNeeds, Number(caretakerPayout) || 0, caretakerPayoutStatus, caretakerPayoutMethod, caretakerPayoutRef, isMtpVal, mtpAcceptedAt, mtpAcceptedBy, mtpAcceptedById, mtpAcceptedPhone, createdAt]
       )
-      return { id: result.insertId, name, phone, service, date, time, duration, address, status, assignedStaff, assignedStaffId, assignedStaffRole, assignedStaffPhone, amount, paymentStatus, paymentMethod, transactionId, paymentDate, prescription, googleMapLocation, advancePaid, balanceAmount, patientName, patientAge, patientNeeds, caretakerPayout: Number(caretakerPayout) || 0, caretakerPayoutStatus, caretakerPayoutMethod, caretakerPayoutRef, isMtp: isMtpVal, mtpAcceptedAt, mtpAcceptedBy, mtpAcceptedById, mtpAcceptedPhone, createdAt }
+      return { id: result.insertId, name, phone, service, date, time, duration, address, status, assignedStaff, assignedStaffId, assignedStaffRole, assignedStaffPhone, amount, baseAmount: calcBase, gstAmount: calcGst, paymentStatus, paymentMethod, transactionId, paymentDate, prescription, googleMapLocation, advancePaid, balanceAmount, patientName, patientAge, patientNeeds, caretakerPayout: Number(caretakerPayout) || 0, caretakerPayoutStatus, caretakerPayoutMethod, caretakerPayoutRef, isMtp: isMtpVal, mtpAcceptedAt, mtpAcceptedBy, mtpAcceptedById, mtpAcceptedPhone, createdAt }
     } else {
       const data = await readJSONDb()
       const newBooking = {
@@ -1741,6 +1760,8 @@ export const db = {
         assignedStaffRole,
         assignedStaffPhone,
         amount,
+        baseAmount: calcBase,
+        gstAmount: calcGst,
         caretakerPayout: Number(caretakerPayout) || 0,
         caretakerPayoutStatus,
         caretakerPayoutMethod,
@@ -2768,6 +2789,8 @@ export const db = {
           assignedStaffRole: assignedStaffRole !== undefined ? assignedStaffRole : data.bookings[idx].assignedStaffRole,
           assignedStaffPhone: assignedStaffPhone !== undefined ? assignedStaffPhone : data.bookings[idx].assignedStaffPhone,
           amount: parsedAmount,
+          baseAmount: bookingData.baseAmount !== undefined ? Number(bookingData.baseAmount) : (data.bookings[idx].baseAmount || (parsedAmount ? Math.round(parsedAmount / 1.18) : 0)),
+          gstAmount: bookingData.gstAmount !== undefined ? Number(bookingData.gstAmount) : (data.bookings[idx].gstAmount || (parsedAmount ? Math.round(parsedAmount - (Number(bookingData.baseAmount) || Math.round(parsedAmount / 1.18))) : 0)),
           advancePaid: currentAdv,
           balanceAmount: calculatedBal,
           patientName: patientName !== undefined ? patientName : data.bookings[idx].patientName,
@@ -3571,7 +3594,7 @@ export const db = {
     const rolesString = Array.isArray(roles) ? roles.join(', ') : (roles || '')
 
     const staffCategory = 'MTP'
-    const designation = (mtpData.designation && mtpData.designation !== 'Medical Transport Partner & Escort' && mtpData.designation !== 'Medical Transport & Escort Partner' ? mtpData.designation : 'MTP').trim()
+    const designation = (mtpData.designation && mtpData.designation !== 'Multi Tasking Professional & Escort' && mtpData.designation !== 'Multi Tasking Professional & Escort Partner' ? mtpData.designation : 'MTP').trim()
 
     if (useMySQL) {
       // Ensure all required columns exist in MySQL table
@@ -4683,7 +4706,7 @@ export const db = {
             phone: m.phone || '',
             email: m.email || '',
             designation: 'MTP',
-            specialty: m.roles || 'Medical Transport & Companion Partner',
+            specialty: m.roles || 'Multi Tasking Professional & Companion Partner',
             profilePhoto: m.profilePhoto || '',
             status: m.status || 'Pending',
             joinedAt: m.createdAt || m.joinedAt || '2026-01-01T00:00:00.000Z',
@@ -4793,7 +4816,7 @@ export const db = {
           phone: m.phone || '',
           email: m.email || '',
           designation: 'MTP',
-          specialty: m.roles || 'Medical Transport & Companion Partner',
+          specialty: m.roles || 'Multi Tasking Professional & Companion Partner',
           profilePhoto: m.profilePhoto || '',
           status: m.status || 'Pending',
           joinedAt: m.createdAt || m.joinedAt || '2026-01-01T00:00:00.000Z',

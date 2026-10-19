@@ -258,8 +258,8 @@ For seniors suffering from vestibular degeneration, peripheral neuropathy, or Pa
   },
   {
     id: 6,
-    slug: "medical-transport-partner-senior-transit",
-    title: "Medical Transport Partner (MTP): Bridging the Critical Transit Gap for Senior Citizens",
+    slug: "multi-tasking-professional-senior-transit",
+    title: "Multi Tasking Professional (MTP): Bridging the Critical Transit Gap for Senior Citizens",
     description: "How trained youth healthcare companions empower seniors to access outpatient medical appointments with safe, dignified doorstep-to-hospital transit.",
     category: "Healthcare Logistics & Youth Welfare",
     author: "Amma Seva Youth Welfare & Logistics Committee",
@@ -279,9 +279,9 @@ Surveys indicate that over **42% of elderly individuals delay or cancel critical
 
 ---
 
-## 2. The Medical Transport Partner (MTP) Solution
+## 2. The Multi Tasking Professional (MTP) Solution
 
-Amma Seva launched the **Medical Transport Partner (MTP)** initiative to provide trained, compassionate non-emergency patient escorts:
+Amma Seva launched the **Multi Tasking Professional (MTP)** initiative to provide trained, compassionate non-emergency patient escorts:
 
 ### Doorstep-to-Doctor Concierge
 1. **Doorstep Pickup**: The MTP companion arrives at the senior's residence, assists with shoes and outerwear, safely transfers the patient to a wheelchair or vehicle, and handles all medical documentation files.

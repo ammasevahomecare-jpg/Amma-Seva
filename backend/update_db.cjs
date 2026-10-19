@@ -91,8 +91,8 @@ dbData.gallery = [
   {
     id: 9,
     imageUrl: '/assets/service-mtp.jpg',
-    title: 'Medical Transport Partner (MTP) Safe Patient Escort',
-    category: 'Medical Transport',
+    title: 'Multi Tasking Professional (MTP) Safe Patient Escort',
+    category: 'Multi Tasking Professional',
     location: 'Kukatpally, Hyderabad',
     description: 'Trained MTP escort safely assisting an elderly wheelchair patient from their doorstep to an outpatient hospital consultation.',
     createdAt: '2026-09-04T15:10:00.000Z',
@@ -294,7 +294,7 @@ Perturbation drills and dual-task gait exercises to eliminate fear of falling.`
   {
     id: 6,
     slug: 'medical-transport-partner-senior-transit',
-    title: 'Medical Transport Partner (MTP): Bridging the Critical Transit Gap for Senior Citizens',
+    title: 'Multi Tasking Professional (MTP): Bridging the Critical Transit Gap for Senior Citizens',
     description: 'How trained youth healthcare companions empower seniors to access outpatient medical appointments with safe, dignified doorstep-to-hospital transit.',
     category: 'Healthcare Logistics & Youth Welfare',
     author: 'Amma Seva Youth Welfare & Logistics Committee',
@@ -307,7 +307,7 @@ Over 42% of elderly individuals delay or cancel critical medical checkups becaus
 
 ---
 
-## 2. The Medical Transport Partner (MTP) Solution
+## 2. The Multi Tasking Professional (MTP) Solution
 
 Trained youth companions provide doorstep pickup, wheelchair assistance, hospital registration and elevator navigation, prescription collection, and safe return home.
 

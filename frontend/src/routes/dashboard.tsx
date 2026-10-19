@@ -1479,7 +1479,7 @@ function CustomerDashboard() {
             phone: bookerPhone,
             email: bookerEmail,
             service: isMtpBooking 
-              ? (currentService?.title?.includes("MTP") ? currentService.title : `Medical Transport Partner (MTP) - ${currentService?.title || "Escort"}`)
+              ? (currentService?.title?.includes("MTP") ? currentService.title : `Multi Tasking Professional (MTP) - ${currentService?.title || "Escort"}`)
               : (currentService?.title || "Home Care Healthcare"),
             date: (bookingDuration !== "Hourly" && bookingEndDate && bookingEndDate !== bookingDate)
               ? `${bookingDate} to ${bookingEndDate}`
@@ -2399,7 +2399,7 @@ function CustomerDashboard() {
                                       Task #{gig.id} • On-Demand
                                     </span>
                                     <h3 className="text-base sm:text-lg font-black text-[#091438] font-display leading-snug group-hover:text-amber-800 transition-colors">
-                                      {gig.service || "MTP Companion Task"}
+                                      {String(gig.service || "MTP Companion Task").replace(/Medical Transport Partner/gi, "Multi Tasking Professional")}
                                     </h3>
                                   </div>
                                 </div>
@@ -4488,7 +4488,7 @@ function CustomerDashboard() {
                                   </span>
                                 </div>
                                 <h3 className="text-lg sm:text-xl font-bold text-[#1e2a5a] font-display">
-                                  {booking.service}
+                                  {String(booking.service || "").replace(/Medical Transport Partner/gi, "Multi Tasking Professional")}
                                 </h3>
                                 {!isExpanded && (
                                   <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap pt-1 text-xs">
@@ -6448,7 +6448,7 @@ function CustomerDashboard() {
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-slate-600">
-                  <span>18% GST (CGST 9% + SGST 9%)</span>
+                  <span>IGST (Integrated Tax @ 18%)</span>
                   <span className="font-semibold text-amber-800 font-mono">
                     +₹{(successBooking.gstAmount || (successBooking.amount - Math.round(successBooking.amount / 1.18))).toLocaleString()}
                   </span>
@@ -6610,7 +6610,6 @@ function CustomerDashboard() {
                     <p className="text-[9.5px] text-slate-500 leading-tight">
                       GSTIN: <strong className="font-mono text-slate-900">33AAGCL5078A1ZS</strong> &nbsp;|&nbsp; State Code: <strong>33 (Tamil Nadu)</strong><br />
                       Shop No. S101, Door No. 769, Spencer Plaza, Anna Salai, Chennai, Tamil Nadu - 600002<br />
-                      Branch: 8-2-630/B/B/1, Mount Banjara complex, Rd #12, Banjara Hills, Hyderabad - 500034<br />
                       Helpdesk: +91 94945 16543 &nbsp;|&nbsp; Email: support@ammaseva.in &nbsp;|&nbsp; www.ammaseva.in
                     </p>
                   </div>
@@ -6653,7 +6652,7 @@ function CustomerDashboard() {
 
                   <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
                     <span className="block text-slate-400 font-extrabold text-[8.5px] uppercase tracking-wider mb-0.5">Service Delivery Details</span>
-                    <span className="block font-bold text-[#1e2a5a] text-xs">{activeInvoice.service}</span>
+                    <span className="block font-bold text-[#1e2a5a] text-xs">{String(activeInvoice.service || "").replace(/Medical Transport Partner/gi, "Multi Tasking Professional")}</span>
                     <span className="block text-slate-700">
                       Schedule: <strong>{activeInvoice.date}</strong> at <strong>{activeInvoice.time}</strong> ({activeInvoice.duration})
                     </span>
@@ -6680,7 +6679,7 @@ function CustomerDashboard() {
                     <tbody className="divide-y divide-slate-200">
                       <tr className="text-slate-800">
                         <td className="py-2 px-3 font-semibold text-[#1e2a5a]">
-                          {activeInvoice.service}
+                          {String(activeInvoice.service || "").replace(/Medical Transport Partner/gi, "Multi Tasking Professional")}
                           <span className="block text-[9px] font-normal text-slate-500">Verified Healthcare &amp; Caregiver Support Assistance</span>
                         </td>
                         <td className="py-2 px-2.5 text-center font-mono text-slate-600">999312</td>
@@ -6695,21 +6694,13 @@ function CustomerDashboard() {
                         <td colSpan={3} className="py-1 px-3 text-right text-slate-600">Base Taxable Subtotal:</td>
                         <td className="py-1 px-3 text-right font-bold text-slate-900 font-mono">₹{invBase.toLocaleString()}</td>
                       </tr>
-                      <tr className="text-slate-600 text-[10px]">
-                        <td colSpan={3} className="py-1 px-3 text-right">CGST (Central Tax @ 9.0%):</td>
-                        <td className="py-1 px-3 text-right font-mono text-slate-800">₹{invCgst.toLocaleString()}</td>
-                      </tr>
-                      <tr className="text-slate-600 text-[10px]">
-                        <td colSpan={3} className="py-1 px-3 text-right">SGST (State Tax @ 9.0%):</td>
-                        <td className="py-1 px-3 text-right font-mono text-slate-800">₹{invSgst.toLocaleString()}</td>
-                      </tr>
                       <tr className="text-amber-900 bg-amber-50/60 font-semibold text-[10.5px]">
-                        <td colSpan={3} className="py-1 px-3 text-right">Total 18% GST (CGST 9% + SGST 9%):</td>
-                        <td className="py-1 px-3 text-right font-bold text-amber-900 font-mono">+₹{invGst.toLocaleString()}</td>
+                        <td colSpan={3} className="py-1.5 px-3 text-right">IGST (Integrated Tax @ 18%):</td>
+                        <td className="py-1.5 px-3 text-right font-bold text-amber-900 font-mono">+₹{invGst.toLocaleString()}</td>
                       </tr>
                       <tr className="bg-slate-100 text-slate-900 font-bold border-t-2 border-slate-400">
                         <td colSpan={3} className="py-1.5 px-3 text-right uppercase tracking-wider text-[10px] text-[#1e2a5a]">
-                          Total Shift Value (incl. 18% GST):
+                          Total Shift Value (incl. 18% IGST):
                         </td>
                         <td className="py-1.5 px-3 text-right text-sm font-black text-[#1e2a5a] font-display">
                           ₹{invTotal.toLocaleString()}
@@ -6756,7 +6747,7 @@ function CustomerDashboard() {
 
                 {/* 5. Compact 1-Page Declaration Footer */}
                 <div className="border-t border-slate-200 pt-1.5 text-center text-[8.5px] text-slate-400">
-                  This is a computer-generated GST Tax Invoice compliant with Section 31 of CGST Act, 2017. Issued by Luxdhana Global Pvt. Ltd.
+                  This is a computer-generated GST Tax Invoice compliant with Section 20 of IGST Act & Section 31 of CGST Act, 2017. Issued by Luxdhana Global Pvt. Ltd.
                 </div>
 
               </div>

@@ -104,7 +104,7 @@ function getServiceDetails(slug: string) {
       shiftType: "Home Visit by Appointment",
     },
     "mtp": {
-      category: "Medical Transport",
+      category: "Multi Tasking Professional",
       badgeClass: "bg-emerald-50 text-emerald-800 border-emerald-200",
       image: mtp,
       highlights: ["Wheelchair & Stretcher Transit", "Paramedic Escort Onboard", "Zero Surge Pricing"],

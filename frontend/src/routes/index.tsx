@@ -119,7 +119,7 @@ function getServiceDetails(slug: string) {
       highlights: ["Home Doctor Visits", "Comprehensive Diagnosis", "Prescription Review"],
     },
     "mtp": {
-      category: "Medical Transport",
+      category: "Multi Tasking Professional",
       badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200/80",
       image: mtp,
       highlights: ["Wheelchair & Stretcher Transit", "Paramedic Escort Onboard", "Zero Surge Pricing"],

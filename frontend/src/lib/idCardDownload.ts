@@ -21,7 +21,7 @@ export interface IdCardData {
 /**
  * Resolves the official, clean staff designation for ID Cards.
  * Maps any registered staff member strictly to one of:
- * - "MTP" (Medical Transport Partner)
+ * - "MTP" (Multi Tasking Professional)
  * - "Nurse" (Registered Clinical Nurse)
  * - "Caregiver" (Caregiver & Bedside Attendant)
  * - "Employee" (Office & Operations Staff)
@@ -38,7 +38,7 @@ export function getCleanIdCardDesignation(staff?: IdCardData | null): "MTP" | "N
   const rawRole = String(staff.role || "").trim().toLowerCase();
   const rawType = String(staff.type || "").trim().toLowerCase();
 
-  // 1. MTP (Medical Transport Partner)
+  // 1. MTP (Multi Tasking Professional)
   if (
     empId.includes("MTP") ||
     cat === "MTP" ||

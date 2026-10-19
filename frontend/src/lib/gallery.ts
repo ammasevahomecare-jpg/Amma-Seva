@@ -170,8 +170,8 @@ export const DEFAULT_GALLERY: GalleryItem[] = [
   {
     id: 9,
     imageUrl: mtp,
-    title: "Medical Transport Partner (MTP) Safe Patient Escort",
-    category: "Medical Transport",
+    title: "Multi Tasking Professional (MTP) Safe Patient Escort",
+    category: "Multi Tasking Professional",
     location: "Kukatpally, Hyderabad",
     description: "Trained MTP escort safely assisting an elderly wheelchair patient from their doorstep to an outpatient hospital consultation.",
     createdAt: "2026-09-04T15:10:00.000Z",
