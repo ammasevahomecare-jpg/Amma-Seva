@@ -5345,8 +5345,13 @@ function CustomerDashboard() {
                           </div>
 
                           <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                              Start Time <span className="text-rose-500">*</span>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center justify-between">
+                              <span className="flex items-center gap-1.5">
+                                <Clock className="h-3.5 w-3.5 text-[#c9a24c]" /> Start Time <span className="text-rose-500">*</span>
+                              </span>
+                              <span className="text-xs font-bold text-slate-700">
+                                {bookingTime ? (bookingTime.includes(":") && parseInt(bookingTime.split(":")[0]) >= 12 ? `${(parseInt(bookingTime.split(":")[0]) % 12 || 12)}:${bookingTime.split(":")[1]} PM` : `${(parseInt(bookingTime.split(":")[0]) || 12)}:${bookingTime.split(":")[1]} AM`) : "09:00 AM"}
+                              </span>
                             </label>
                             <input
                               type="time"
@@ -5355,6 +5360,25 @@ function CustomerDashboard() {
                               onChange={(e) => setBookingTime(e.target.value)}
                               className="w-full h-11 px-3.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
                             />
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {["08:00", "09:00", "12:00", "14:00", "20:00"].map(t => {
+                                const label = t === "08:00" ? "08:00 AM" : t === "09:00" ? "09:00 AM" : t === "12:00" ? "12:00 PM" : t === "14:00" ? "02:00 PM" : "08:00 PM";
+                                return (
+                                  <button
+                                    key={t}
+                                    type="button"
+                                    onClick={() => setBookingTime(t)}
+                                    className={`text-[10px] px-2 py-0.5 rounded-md font-bold transition-all border ${
+                                      bookingTime === t 
+                                        ? "bg-[#1e2a5a] text-white border-[#1e2a5a]" 
+                                        : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                                    }`}
+                                  >
+                                    {label}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </div>
                         </div>
 
@@ -5975,8 +5999,13 @@ function CustomerDashboard() {
 
                         {/* 5. Shift Start Time */}
                         <div>
-                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 truncate">
-                            Start Time <span className="text-rose-500">*</span>
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 flex items-center justify-between">
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3.5 w-3.5 text-[#c9a24c]" /> Start Time <span className="text-rose-500">*</span>
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-700">
+                              {bookingTime ? (bookingTime.includes(":") && parseInt(bookingTime.split(":")[0]) >= 12 ? `${(parseInt(bookingTime.split(":")[0]) % 12 || 12)}:${bookingTime.split(":")[1]} PM` : `${(parseInt(bookingTime.split(":")[0]) || 12)}:${bookingTime.split(":")[1]} AM`) : "09:00 AM"}
+                            </span>
                           </label>
                           <input
                             type="time"
@@ -5985,6 +6014,25 @@ function CustomerDashboard() {
                             onChange={(e) => setBookingTime(e.target.value)}
                             className="w-full h-9.5 lg:h-10 px-2.5 lg:px-3 text-xs sm:text-sm rounded-xl border border-slate-200 bg-white text-slate-900 outline-none transition-all focus:border-[#c9a24c] focus:ring-2 focus:ring-[#c9a24c]/20 shadow-2xs font-semibold cursor-pointer"
                           />
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {["08:00", "09:00", "12:00", "14:00", "20:00"].map(t => {
+                              const label = t === "08:00" ? "08:00 AM" : t === "09:00" ? "09:00 AM" : t === "12:00" ? "12:00 PM" : t === "14:00" ? "02:00 PM" : "08:00 PM";
+                              return (
+                                <button
+                                  key={t}
+                                  type="button"
+                                  onClick={() => setBookingTime(t)}
+                                  className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold transition-all border ${
+                                    bookingTime === t 
+                                      ? "bg-[#1e2a5a] text-white border-[#1e2a5a]" 
+                                      : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                                  }`}
+                                >
+                                  {label}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
 

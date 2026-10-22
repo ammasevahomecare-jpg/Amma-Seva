@@ -41,6 +41,32 @@ export function getCaregiverReferralCode(c: { name?: string; phone?: string; uni
   return `${firstName}${last4}`;
 }
 
+// Helper: format any time string (e.g. "09:00 AM", "9:00", "14:30") to HH:mm for HTML5 <input type="time">
+export function formatTimeTo24H(val: string): string {
+  if (!val) return "09:00";
+  const cleaned = val.trim();
+  const match = cleaned.match(/^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i);
+  if (!match) return cleaned.slice(0, 5);
+  let hours = parseInt(match[1], 10);
+  const minutes = match[2];
+  const ampm = match[3] ? match[3].toUpperCase() : null;
+  if (ampm === "PM" && hours < 12) hours += 12;
+  if (ampm === "AM" && hours === 12) hours = 0;
+  return `${String(hours).padStart(2, "0")}:${minutes}`;
+}
+
+// Helper: format 24H HH:mm to friendly AM/PM string
+export function formatTimeTo12H(val: string): string {
+  if (!val) return "09:00 AM";
+  const match = val.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return val;
+  let hours = parseInt(match[1], 10);
+  const minutes = match[2];
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12 || 12;
+  return `${String(hours).padStart(2, "0")}:${minutes} ${ampm}`;
+}
+
 interface AdminErrorBoundaryProps {
   children: ReactNode;
   activeTab: string;
@@ -4823,13 +4849,14 @@ function AdminPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-[9.5px] font-bold text-slate-500 mb-0.5">Shift Time</label>
+                        <label className="block text-[9.5px] font-bold text-slate-500 mb-0.5 flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-[#c9a24c]" /> Shift Time
+                        </label>
                         <input
-                          type="text"
-                          value={invoiceTime}
-                          onChange={(e) => setInvoiceTime(e.target.value)}
-                          placeholder="08:00 AM"
-                          className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 outline-none focus:bg-white"
+                          type="time"
+                          value={formatTimeTo24H(invoiceTime)}
+                          onChange={(e) => setInvoiceTime(formatTimeTo12H(e.target.value))}
+                          className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 outline-none focus:bg-white cursor-pointer"
                         />
                       </div>
                       <div>
@@ -9888,12 +9915,37 @@ function AdminPage() {
                           </div>
                         ) : (
                           <div>
-                            <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Preferred Time *</label>
+                            <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1 flex items-center justify-between">
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3.5 h-3.5 text-[#c9a24c]" /> Preferred Time *
+                              </span>
+                              <span className="text-[10px] font-bold text-slate-600">{bookingTime || "09:00 AM"}</span>
+                            </label>
                             <input 
-                              type="text" required placeholder="e.g. 09:00 AM" value={bookingTime} onChange={e => setBookingTime(e.target.value)}
+                              type="time" 
+                              required 
+                              value={formatTimeTo24H(bookingTime)} 
+                              onChange={e => setBookingTime(formatTimeTo12H(e.target.value))}
                               disabled={isRecordCaretakerPaymentMode}
-                              className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800 disabled:opacity-70 disabled:bg-slate-100/50"
+                              className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-bold text-slate-800 disabled:opacity-70 disabled:bg-slate-100/50 cursor-pointer shadow-2xs"
                             />
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {["08:00 AM", "09:00 AM", "12:00 PM", "02:00 PM", "08:00 PM"].map(t => (
+                                <button
+                                  key={t}
+                                  type="button"
+                                  disabled={isRecordCaretakerPaymentMode}
+                                  onClick={() => setBookingTime(t)}
+                                  className={`text-[9px] px-2 py-0.5 rounded-md font-bold transition-all border ${
+                                    bookingTime === t 
+                                      ? "bg-[#1e2a5a] text-white border-[#1e2a5a]" 
+                                      : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200"
+                                  }`}
+                                >
+                                  {t}
+                                </button>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -9901,12 +9953,37 @@ function AdminPage() {
                       {/* If Multi-day (Daily/Weekly/Monthly), separate row for Preferred Time */}
                       {!bookingIsMtp && bookingDuration !== "Hourly" && (
                         <div>
-                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Preferred Time *</label>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1 flex items-center justify-between">
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3.5 h-3.5 text-[#c9a24c]" /> Preferred Shift Start Time *
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-600">{bookingTime || "09:00 AM"}</span>
+                          </label>
                           <input 
-                            type="text" required placeholder="e.g. 09:00 AM" value={bookingTime} onChange={e => setBookingTime(e.target.value)}
+                            type="time" 
+                            required 
+                            value={formatTimeTo24H(bookingTime)} 
+                            onChange={e => setBookingTime(formatTimeTo12H(e.target.value))}
                             disabled={isRecordCaretakerPaymentMode}
-                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800 disabled:opacity-70 disabled:bg-slate-100/50"
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-bold text-slate-800 disabled:opacity-70 disabled:bg-slate-100/50 cursor-pointer shadow-2xs"
                           />
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {["08:00 AM", "09:00 AM", "12:00 PM", "02:00 PM", "08:00 PM"].map(t => (
+                              <button
+                                key={t}
+                                type="button"
+                                disabled={isRecordCaretakerPaymentMode}
+                                onClick={() => setBookingTime(t)}
+                                className={`text-[9px] px-2 py-0.5 rounded-md font-bold transition-all border ${
+                                  bookingTime === t 
+                                    ? "bg-[#1e2a5a] text-white border-[#1e2a5a]" 
+                                    : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200"
+                                }`}
+                              >
+                                {t}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       )}
 
