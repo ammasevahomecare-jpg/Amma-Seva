@@ -1645,77 +1645,33 @@ const sendStaffShiftReminderWhatsApp = async (booking, interval = '1 hour') => {
     return false
   }
 
-  // 1. Attempt sending pure custom text (Zero payment details) via MSG91 session outbound
+  // 1. Dispatch pure shift reminder text (Zero payment details, shift & booking details only) via MSG91 WhatsApp outbound
   const cleanReminderText = `⏰ *Amma Seva — ${intervalLabel} Shift Reminder*\n\n🙏 Namaste *${staffName}*,\nThis is an alert that your scheduled healthcare shift ${timingPhrase}.\n\n📋 *Shift & Booking Details:*\n• *Booking ID:* #${bookingId}\n• *Service:* ${service}\n• *Patient Name:* ${patientName}\n• *Date (From & To):* ${dateRange}\n• *Shift Time:* ${scheduleTime}\n• *Location / Address:* ${address}\n\n📍 *Instructions:*\nPlease report to the patient location on time and update the coordinator upon arrival.\n\n📞 *Coordinator / Helpline:* +91 94945 16543\n🌐 *Amma Seva Home Care*`
 
+  let lastRes = null
   for (const recipientNumber of toList) {
     try {
-      fetch('https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/', {
+      const response = await fetch('https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/', {
         method: 'POST',
         headers: {
           'authkey': authKey,
           'Content-Type': 'application/json'
         },
-        signal: AbortSignal.timeout(4000),
+        signal: AbortSignal.timeout(8000),
         body: JSON.stringify({
           integrated_number: integratedNumber,
           recipient_number: recipientNumber,
           content_type: 'text',
           text: cleanReminderText
         })
-      }).catch(() => {})
-    } catch (e) {}
-  }
-
-  // 2. Dispatch via MSG91 Meta Template with zero/duty shift values (No patient payment amounts)
-  const requestBody = {
-    integrated_number: integratedNumber,
-    content_type: "template",
-    payload: {
-      messaging_product: "whatsapp",
-      type: "template",
-      template: {
-        name: templateName,
-        language: {
-          code: "en",
-          policy: "deterministic"
-        },
-        namespace: namespace,
-        to_and_components: [
-          {
-            to: toList,
-            components: {
-              body_1: { type: "text", value: `${staffName} (${intervalLabel.toUpperCase()} SHIFT ALERT)` },
-              body_2: { type: "text", value: bookingId },
-              body_3: { type: "text", value: `${service} (Patient: ${patientName})` },
-              body_4: { type: "text", value: scheduleDate },
-              body_5: { type: "text", value: address },
-              body_6: { type: "text", value: "0 (Staff Duty Shift - Do Not Collect Cash)" },
-              body_7: { type: "text", value: "0" },
-              body_8: { type: "text", value: "0 (Direct Settlement - Zero Due)" }
-            }
-          }
-        ]
-      }
+      })
+      lastRes = await response.json().catch(() => ({}))
+      console.log(`[MSG91 Staff Shift Reminder] Dispatched to +${recipientNumber}:`, lastRes)
+    } catch (e) {
+      console.error(`[MSG91 Staff Shift Reminder Error] +${recipientNumber}:`, e.message)
     }
   }
-
-  try {
-    const response = await fetch('https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/', {
-      method: 'POST',
-      headers: {
-        'authkey': authKey,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(requestBody)
-    })
-    const resData = await response.json().catch(() => ({}))
-    console.log(`[MSG91 Staff 1-Hr Reminder Alert] Booking #${bookingId} dispatched to [${toList.join(', ')}]:`, resData)
-    return resData
-  } catch (err) {
-    console.error(`[MSG91 Staff 1-Hr Reminder Error] Failed sending to [${toList.join(', ')}]:`, err.message)
-    return false
-  }
+  return lastRes || true
 }
 
 // MSG91 WhatsApp Direct Alert Dispatcher (Admin Custom Dispatches)
@@ -1725,58 +1681,33 @@ const sendDirectWhatsAppAlert = async (targetPhone, alertMessage, recipientLabel
 
   const authKey = (process.env.MSG91_AUTH_KEY || '567130AQrTo6Hb6aba5f7cP1').trim()
   const integratedNumber = (process.env.MSG91_WHATSAPP_NUMBER || '919494516543').trim()
-  const templateName = (process.env.MSG91_WHATSAPP_TEMPLATE_NAME || 'ammaseva_booking_confirmation').trim()
-  const namespace = (process.env.MSG91_WHATSAPP_NAMESPACE || '63c454df_9e23_4f4c_81d2_58201bb7012e').trim()
-
   const formattedMobile = `91${cleanPhone}`
-  const nowStr = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })
-  const alertId = `ALT-${Date.now().toString().slice(-6)}`
-  const cleanMessage = String(alertMessage || 'Alert Notification from Amma Seva').replace(/[\r\n]+/g, ' ').slice(0, 200)
 
-  const requestBody = {
-    integrated_number: integratedNumber,
-    content_type: "template",
-    payload: {
-      messaging_product: "whatsapp",
-      type: "template",
-      template: {
-        name: templateName,
-        language: {
-          code: "en",
-          policy: "deterministic"
-        },
-        namespace: namespace,
-        to_and_components: [
-          {
-            to: [formattedMobile],
-            components: {
-              body_1: { type: "text", value: String(recipientLabel || 'Amma Seva Member').trim() },
-              body_2: { type: "text", value: alertId },
-              body_3: { type: "text", value: "Priority Care Alert" },
-              body_4: { type: "text", value: nowStr },
-              body_5: { type: "text", value: cleanMessage },
-              body_6: { type: "text", value: "Official Alert" },
-              body_7: { type: "text", value: "Coordinator Desk" },
-              body_8: { type: "text", value: "9490587575" }
-            }
-          }
-        ]
-      }
-    }
-  }
+  const rawMessage = String(alertMessage || '').trim()
+  if (!rawMessage) return false
+
+  // Format clean message - exactly what admin typed, with clean Amma Seva alert header & footer (NO booking/payment templates!)
+  const messageToSend = rawMessage.includes('Amma Seva')
+    ? rawMessage
+    : `🔔 *Amma Seva — Care Notification*\n\n${rawMessage}\n\n📞 24/7 Helpline: +91 94945 16543\n🌐 https://ammaseva.in`
 
   try {
-    const response = await fetch('https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/', {
+    const response = await fetch('https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/', {
       method: 'POST',
       headers: {
         'authkey': authKey,
         'Content-Type': 'application/json'
       },
       signal: AbortSignal.timeout(8000),
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify({
+        integrated_number: integratedNumber,
+        recipient_number: formattedMobile,
+        content_type: 'text',
+        text: messageToSend
+      })
     })
     const resData = await response.json().catch(() => ({}))
-    console.log(`[MSG91 Direct WhatsApp Alert] Dispatched to +${formattedMobile}:`, resData)
+    console.log(`[MSG91 Direct WhatsApp Alert] Dispatched text to +${formattedMobile}:`, resData)
     return resData
   } catch (err) {
     console.error(`[MSG91 Direct WhatsApp Alert Error] Failed sending to +${formattedMobile}:`, err.message)
@@ -5560,10 +5491,18 @@ app.post('/api/notifications', authenticateAdmin, async (req, res) => {
       whatsappUrl = `https://wa.me/91${primaryPhone}?text=${encodeURIComponent(message)}`
     }
 
-    // Dispatch via WhatsApp and SMS for all resolved phone targets
+    // Dispatch via WhatsApp and SMS for all resolved phone targets based on delivery type
     for (const phone of targetPhones) {
-      sendDirectWhatsAppAlert(phone, message, recipientName).catch(e => console.error('[Notification WhatsApp Error]:', e.message))
-      sendDirectSmsAlert(phone, message).catch(e => console.error('[Notification SMS Error]:', e.message))
+      const typeStr = String(type || '')
+      const shouldSendWhatsApp = !typeStr || typeStr.includes('WhatsApp') || typeStr.includes('All') || !typeStr.includes('SMS')
+      const shouldSendSms = typeStr.includes('SMS') || (!typeStr.includes('WhatsApp') && !typeStr.includes('Email'))
+
+      if (shouldSendWhatsApp) {
+        sendDirectWhatsAppAlert(phone, message, recipientName).catch(e => console.error('[Notification WhatsApp Error]:', e.message))
+      }
+      if (shouldSendSms) {
+        sendDirectSmsAlert(phone, message).catch(e => console.error('[Notification SMS Error]:', e.message))
+      }
     }
 
     console.log(`[Notification Alert Dispatched] Type: ${type} to ${recipient} (Phones: ${targetPhones.join(', ') || 'N/A'}): ${message}`)
