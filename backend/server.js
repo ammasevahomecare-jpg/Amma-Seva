@@ -1494,32 +1494,31 @@ const sendWhatsAppBookingConfirmation = async (booking) => {
           policy: "deterministic"
         },
         namespace: namespace,
-        to_and_components: [
-          {
-            to: toList,
-            components: {
-              body_1: { type: "text", value: customerName },
-              body_2: { type: "text", value: bookingId },
-              body_3: { type: "text", value: service },
-              body_4: { type: "text", value: scheduleDate },
-              body_5: { type: "text", value: address },
-              body_6: { type: "text", value: totalAmount },
-              body_7: { type: "text", value: advancePaid },
-              body_8: { type: "text", value: balanceDue }
-            }
+        to_and_components: toList.map(recipientNumber => ({
+          to: [recipientNumber],
+          components: {
+            body_1: { type: "text", value: customerName },
+            body_2: { type: "text", value: bookingId },
+            body_3: { type: "text", value: service },
+            body_4: { type: "text", value: scheduleDate },
+            body_5: { type: "text", value: address },
+            body_6: { type: "text", value: totalAmount },
+            body_7: { type: "text", value: advancePaid },
+            body_8: { type: "text", value: balanceDue }
           }
-        ]
+        }))
       }
     }
   }
 
   try {
-    const response = await fetch('https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/', {
+    const response = await fetch('https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/', {
       method: 'POST',
       headers: {
         'authkey': authKey,
         'Content-Type': 'application/json'
       },
+      signal: AbortSignal.timeout(8000),
       body: JSON.stringify(requestBody)
     })
 
@@ -1582,13 +1581,45 @@ const isBookingStartingInOneHour = (booking) => {
   return diffMinutes >= 40 && diffMinutes <= 80
 }
 
+// Dynamic MSG91 WhatsApp Template Status Cache
+let templateApprovalCache = { lastChecked: 0, templates: {} }
+const getApprovedWhatsAppTemplates = async () => {
+  const now = Date.now()
+  if (now - templateApprovalCache.lastChecked < 45000 && Object.keys(templateApprovalCache.templates).length > 0) {
+    return templateApprovalCache.templates
+  }
+  const authKey = (process.env.MSG91_AUTH_KEY || '567130AQrTo6Hb6aba5f7cP1').trim()
+  const integratedNumber = (process.env.MSG91_WHATSAPP_NUMBER || '919494516543').trim()
+  try {
+    const res = await fetch(`https://control.msg91.com/api/v5/whatsapp/get-template-client/${integratedNumber}`, {
+      headers: { 'authkey': authKey, 'accept': 'application/json' },
+      signal: AbortSignal.timeout(4000)
+    })
+    const data = await res.json()
+    const map = {}
+    if (data && Array.isArray(data.data)) {
+      data.data.forEach(t => {
+        const status = t.languages && t.languages[0] ? t.languages[0].status : null
+        map[t.name] = {
+          status: String(status || '').toLowerCase(),
+          namespace: t.namespace || '63c454df_9e23_4f4c_81d2_58201bb7012e'
+        }
+      })
+    }
+    templateApprovalCache = { lastChecked: now, templates: map }
+    return map
+  } catch (err) {
+    return templateApprovalCache.templates
+  }
+}
+
 // MSG91 WhatsApp Automated Staff Shift Reminder Dispatcher (10m, 30m, 1h, 2h, 24h supported)
 const sendStaffShiftReminderWhatsApp = async (booking, interval = '1 hour') => {
   if (!booking) return false
   const authKey = (process.env.MSG91_AUTH_KEY || '567130AQrTo6Hb6aba5f7cP1').trim()
   const integratedNumber = (process.env.MSG91_WHATSAPP_NUMBER || '919494516543').trim()
-  const templateName = (process.env.MSG91_WHATSAPP_TEMPLATE_NAME || 'ammaseva_booking_confirmation').trim()
-  const namespace = (process.env.MSG91_WHATSAPP_NAMESPACE || '63c454df_9e23_4f4c_81d2_58201bb7012e').trim()
+  const fallbackTemplate = (process.env.MSG91_WHATSAPP_TEMPLATE_NAME || 'ammaseva_booking_confirmation').trim()
+  const fallbackNamespace = (process.env.MSG91_WHATSAPP_NAMESPACE || '63c454df_9e23_4f4c_81d2_58201bb7012e').trim()
 
   let staffPhone = booking.assignedStaffPhone ? String(booking.assignedStaffPhone).replace(/\D/g, '').slice(-10) : ''
   if (!staffPhone && booking.assignedStaffId && booking.assignedStaffRole === 'caregiver') {
@@ -1626,15 +1657,10 @@ const sendStaffShiftReminderWhatsApp = async (booking, interval = '1 hour') => {
   else if (lowerInt.includes('24') || lowerInt.includes('day')) intervalLabel = '24 Hours'
   else if (lowerInt.includes('2')) intervalLabel = '2 Hours'
 
-  const is24Hr = intervalLabel.includes('24')
-  const timingPhrase = is24Hr ? 'starts tomorrow (in *24 hours*)' : `starts in *${intervalLabel}*`
-  const scheduleDate = `${dateRange} | Time: ${scheduleTime} (Shift in ${intervalLabel}!)`
-
   const toList = []
   if (staffPhone && staffPhone.length === 10) {
     toList.push(`91${staffPhone}`)
   }
-  // Admin mobile for visibility
   const adminMobileRaw = (process.env.ADMIN_PHONE || '9490587575').replace(/\D/g, '').slice(-10)
   if (adminMobileRaw.length === 10 && !toList.includes(`91${adminMobileRaw}`)) {
     toList.push(`91${adminMobileRaw}`)
@@ -1645,33 +1671,85 @@ const sendStaffShiftReminderWhatsApp = async (booking, interval = '1 hour') => {
     return false
   }
 
-  // 1. Dispatch pure shift reminder text (Zero payment details, shift & booking details only) via MSG91 WhatsApp outbound
-  const cleanReminderText = `⏰ *Amma Seva — ${intervalLabel} Shift Reminder*\n\n🙏 Namaste *${staffName}*,\nThis is an alert that your scheduled healthcare shift ${timingPhrase}.\n\n📋 *Shift & Booking Details:*\n• *Booking ID:* #${bookingId}\n• *Service:* ${service}\n• *Patient Name:* ${patientName}\n• *Date (From & To):* ${dateRange}\n• *Shift Time:* ${scheduleTime}\n• *Location / Address:* ${address}\n\n📍 *Instructions:*\nPlease report to the patient location on time and update the coordinator upon arrival.\n\n📞 *Coordinator / Helpline:* +91 94945 16543\n🌐 *Amma Seva Home Care*`
+  // Check if dedicated ammaseva_shift_reminder template is approved
+  const templates = await getApprovedWhatsAppTemplates()
+  const isShiftApproved = templates['ammaseva_shift_reminder'] && templates['ammaseva_shift_reminder'].status === 'approved'
 
-  let lastRes = null
-  for (const recipientNumber of toList) {
-    try {
-      const response = await fetch('https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/', {
-        method: 'POST',
-        headers: {
-          'authkey': authKey,
-          'Content-Type': 'application/json'
-        },
-        signal: AbortSignal.timeout(8000),
-        body: JSON.stringify({
-          integrated_number: integratedNumber,
-          recipient_number: recipientNumber,
-          content_type: 'text',
-          text: cleanReminderText
-        })
-      })
-      lastRes = await response.json().catch(() => ({}))
-      console.log(`[MSG91 Staff Shift Reminder] Dispatched to +${recipientNumber}:`, lastRes)
-    } catch (e) {
-      console.error(`[MSG91 Staff Shift Reminder Error] +${recipientNumber}:`, e.message)
+  let requestBody
+  if (isShiftApproved) {
+    requestBody = {
+      integrated_number: integratedNumber,
+      content_type: "template",
+      payload: {
+        messaging_product: "whatsapp",
+        type: "template",
+        template: {
+          name: "ammaseva_shift_reminder",
+          language: { code: "en", policy: "deterministic" },
+          namespace: templates['ammaseva_shift_reminder'].namespace || fallbackNamespace,
+          to_and_components: toList.map(num => ({
+            to: [num],
+            components: {
+              body_1: { type: "text", value: staffName },
+              body_2: { type: "text", value: intervalLabel },
+              body_3: { type: "text", value: bookingId },
+              body_4: { type: "text", value: service },
+              body_5: { type: "text", value: patientName },
+              body_6: { type: "text", value: `${dateRange} at ${scheduleTime}` },
+              body_7: { type: "text", value: address },
+              body_8: { type: "text", value: "Please report to patient location on time and update coordinator." }
+            }
+          }))
+        }
+      }
+    }
+  } else {
+    // Deliver via approved Meta template so WhatsApp delivers to recipient outside 24h
+    requestBody = {
+      integrated_number: integratedNumber,
+      content_type: "template",
+      payload: {
+        messaging_product: "whatsapp",
+        type: "template",
+        template: {
+          name: fallbackTemplate,
+          language: { code: "en", policy: "deterministic" },
+          namespace: fallbackNamespace,
+          to_and_components: toList.map(num => ({
+            to: [num],
+            components: {
+              body_1: { type: "text", value: `${staffName} (${intervalLabel.toUpperCase()} SHIFT REMINDER)` },
+              body_2: { type: "text", value: bookingId },
+              body_3: { type: "text", value: `${service} (Patient: ${patientName})` },
+              body_4: { type: "text", value: `${dateRange} | Time: ${scheduleTime}` },
+              body_5: { type: "text", value: address },
+              body_6: { type: "text", value: "0 (Staff Duty Shift - Do Not Collect Cash)" },
+              body_7: { type: "text", value: "0" },
+              body_8: { type: "text", value: "0 (Direct Settlement - Zero Due)" }
+            }
+          }))
+        }
+      }
     }
   }
-  return lastRes || true
+
+  try {
+    const response = await fetch('https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/', {
+      method: 'POST',
+      headers: {
+        'authkey': authKey,
+        'Content-Type': 'application/json'
+      },
+      signal: AbortSignal.timeout(8000),
+      body: JSON.stringify(requestBody)
+    })
+    const resData = await response.json().catch(() => ({}))
+    console.log(`[MSG91 Staff Shift Reminder] Dispatched to [${toList.join(', ')}]:`, resData)
+    return resData
+  } catch (err) {
+    console.error(`[MSG91 Staff Shift Reminder Error] Failed:`, err.message)
+    return false
+  }
 }
 
 // MSG91 WhatsApp Direct Alert Dispatcher (Admin Custom Dispatches)
@@ -1681,33 +1759,87 @@ const sendDirectWhatsAppAlert = async (targetPhone, alertMessage, recipientLabel
 
   const authKey = (process.env.MSG91_AUTH_KEY || '567130AQrTo6Hb6aba5f7cP1').trim()
   const integratedNumber = (process.env.MSG91_WHATSAPP_NUMBER || '919494516543').trim()
+  const fallbackTemplate = (process.env.MSG91_WHATSAPP_TEMPLATE_NAME || 'ammaseva_booking_confirmation').trim()
+  const fallbackNamespace = (process.env.MSG91_WHATSAPP_NAMESPACE || '63c454df_9e23_4f4c_81d2_58201bb7012e').trim()
   const formattedMobile = `91${cleanPhone}`
 
   const rawMessage = String(alertMessage || '').trim()
   if (!rawMessage) return false
 
-  // Format clean message - exactly what admin typed, with clean Amma Seva alert header & footer (NO booking/payment templates!)
-  const messageToSend = rawMessage.includes('Amma Seva')
-    ? rawMessage
-    : `🔔 *Amma Seva — Care Notification*\n\n${rawMessage}\n\n📞 24/7 Helpline: +91 94945 16543\n🌐 https://ammaseva.in`
+  // Check if dedicated ammaseva_care_alert template is approved
+  const templates = await getApprovedWhatsAppTemplates()
+  const isAlertApproved = templates['ammaseva_care_alert'] && templates['ammaseva_care_alert'].status === 'approved'
+
+  let requestBody
+  if (isAlertApproved) {
+    requestBody = {
+      integrated_number: integratedNumber,
+      content_type: "template",
+      payload: {
+        messaging_product: "whatsapp",
+        type: "template",
+        template: {
+          name: "ammaseva_care_alert",
+          language: { code: "en", policy: "deterministic" },
+          namespace: templates['ammaseva_care_alert'].namespace || fallbackNamespace,
+          to_and_components: [
+            {
+              to: [formattedMobile],
+              components: {
+                body_1: { type: "text", value: String(recipientLabel || 'Amma Seva Member').trim() },
+                body_2: { type: "text", value: rawMessage }
+              }
+            }
+          ]
+        }
+      }
+    }
+  } else {
+    // Deliver via approved Meta template so WhatsApp delivers to recipient outside 24h
+    const nowStr = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })
+    const alertId = `ALT-${Date.now().toString().slice(-6)}`
+    requestBody = {
+      integrated_number: integratedNumber,
+      content_type: "template",
+      payload: {
+        messaging_product: "whatsapp",
+        type: "template",
+        template: {
+          name: fallbackTemplate,
+          language: { code: "en", policy: "deterministic" },
+          namespace: fallbackNamespace,
+          to_and_components: [
+            {
+              to: [formattedMobile],
+              components: {
+                body_1: { type: "text", value: String(recipientLabel || 'Amma Seva Member').trim() },
+                body_2: { type: "text", value: alertId },
+                body_3: { type: "text", value: "Priority Care Alert" },
+                body_4: { type: "text", value: nowStr },
+                body_5: { type: "text", value: rawMessage },
+                body_6: { type: "text", value: "Official Alert" },
+                body_7: { type: "text", value: "Coordinator Desk" },
+                body_8: { type: "text", value: "9490587575" }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
 
   try {
-    const response = await fetch('https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/', {
+    const response = await fetch('https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/', {
       method: 'POST',
       headers: {
         'authkey': authKey,
         'Content-Type': 'application/json'
       },
       signal: AbortSignal.timeout(8000),
-      body: JSON.stringify({
-        integrated_number: integratedNumber,
-        recipient_number: formattedMobile,
-        content_type: 'text',
-        text: messageToSend
-      })
+      body: JSON.stringify(requestBody)
     })
     const resData = await response.json().catch(() => ({}))
-    console.log(`[MSG91 Direct WhatsApp Alert] Dispatched text to +${formattedMobile}:`, resData)
+    console.log(`[MSG91 Direct WhatsApp Alert] Dispatched to +${formattedMobile}:`, resData)
     return resData
   } catch (err) {
     console.error(`[MSG91 Direct WhatsApp Alert Error] Failed sending to +${formattedMobile}:`, err.message)

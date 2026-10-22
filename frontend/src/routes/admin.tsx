@@ -4104,7 +4104,7 @@ function AdminPage() {
                                           onClick={() => handleSendStaffReminder(b, reminderIntervals[b.id] || "1 hour")}
                                           disabled={sendingStaffReminderId === b.id}
                                           className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-amber-900 bg-amber-200 hover:bg-amber-300 border border-l-0 border-amber-300 rounded-r-md px-2 py-1 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
-                                          title={`Send Shift Alert to Staff (${reminderIntervals[b.id] || "1 hour"})`}
+                                          title={`Auto Dispatch Shift Alert (${reminderIntervals[b.id] || "1 hour"})`}
                                         >
                                           {sendingStaffReminderId === b.id ? (
                                             <span className="animate-spin text-amber-800">⌛</span>
@@ -4113,6 +4113,17 @@ function AdminPage() {
                                           )}
                                           <span>{sendingStaffReminderId === b.id ? "..." : "Ping"}</span>
                                         </button>
+                                        {b.assignedStaffPhone && (
+                                          <a
+                                            href={`https://wa.me/91${String(b.assignedStaffPhone).replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(`⏰ *Amma Seva Shift Reminder*\n\n🙏 Namaste *${b.assignedStaff}*,\nYour scheduled healthcare shift starts in *${reminderIntervals[b.id] || "1 hour"}*.\n\n📋 *Shift Details:*\n• Booking ID: #${b.id}\n• Service: ${b.service || "Home Care"}\n• Patient: ${b.patientName || b.name || "Patient"}\n• Shift: ${b.date || "Scheduled Date"} at ${b.time || "Scheduled Time"}\n• Location: ${b.address || "Contact coordinator"}\n\n📍 Please report to duty on time.\n📞 Helpline: +91 94945 16543\n🌐 Amma Seva Home Care`)}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center justify-center p-1 px-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[9px] font-bold transition-all shadow-xs shrink-0 cursor-pointer"
+                                            title="Open Direct WhatsApp chat with caregiver"
+                                          >
+                                            <MessageSquare className="w-3 h-3" />
+                                          </a>
+                                        )}
                                       </div>
 
                                       {b.staffReminderSent ? (
