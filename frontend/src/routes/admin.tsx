@@ -2769,7 +2769,7 @@ function AdminPage() {
       ? Number(b.balanceAmount)
       : Math.max(0, tot - adv);
 
-    if (!window.confirm(`Mark Booking #${b.id} (${b.name}) as 100% Settled?\n\n• Current Outstanding Balance: ₹${balDue.toLocaleString('en-IN')}\n• This will set remaining balance to ₹0 and update payment status to Settled.\n\nProceed with settlement?`)) {
+    if (!window.confirm(`Settle Balance for Booking #${b.id} (${b.name})?\n\n• Settle Balance: ₹${balDue.toLocaleString('en-IN')}\n• This will clear the remaining balance to ₹0 and mark the account as Settled.\n\nProceed to settle ₹${balDue.toLocaleString('en-IN')}?`)) {
       return;
     }
 
@@ -2789,7 +2789,7 @@ function AdminPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setAccountsSuccessToast(`✅ Booking #${b.id} (${b.name}) has been 100% settled! Remaining balance is now ₹0.`);
+        setAccountsSuccessToast(`✅ Settle Complete! Booking #${b.id} (${b.name}) balance of ₹${balDue.toLocaleString('en-IN')} is settled (Balance: ₹0).`);
         setTimeout(() => setAccountsSuccessToast(null), 4500);
         await fetchDashboardData();
       } else {
@@ -5096,15 +5096,15 @@ function AdminPage() {
                                           type="button"
                                           disabled={isSettlingThis}
                                           onClick={() => handleQuickSettleBooking(b)}
-                                          className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-xs disabled:opacity-50"
-                                          title="Instant Balance Settlement to ₹0"
+                                          className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-xs disabled:opacity-50 whitespace-nowrap"
+                                          title={`Settle outstanding balance of ₹${balanceDue.toLocaleString('en-IN')}`}
                                         >
                                           {isSettlingThis ? (
                                             <RefreshCw className="h-3 w-3 animate-spin" />
                                           ) : (
                                             <CheckCircle2 className="h-3 w-3" />
                                           )}
-                                          <span>Settle ₹0</span>
+                                          <span>Settle ₹{balanceDue.toLocaleString("en-IN")}</span>
                                         </button>
 
                                         <button
