@@ -14,7 +14,7 @@ import {
   Briefcase, Car, Eye, MessageCircle, FileText, Sparkles,
   GraduationCap, CreditCard, ShieldCheck, FileCheck, User, ExternalLink,
   Gift, Copy, Share2, Heart, AlertTriangle, Zap, Navigation, Printer, Download, BadgeCheck,
-  Receipt, Landmark
+  Receipt, Landmark, FileSpreadsheet, Filter
 } from "lucide-react";
 
 const INDIAN_STATES = [
@@ -328,7 +328,7 @@ function AdminPage() {
   };
 
   const VALID_ADMIN_TABS = [
-    "overview", "bookings", "invoices", "caregivers", "referrals", "mtps", "id-cards",
+    "overview", "bookings", "accounts", "invoices", "caregivers", "referrals", "mtps", "id-cards",
     "users", "services", "payments", "salaries", "notifications", 
     "enquiries", "blogs", "faqs", "gallery"
   ] as const;
@@ -1559,6 +1559,15 @@ function AdminPage() {
   const [paymentSearch, setPaymentSearch] = useState("");
   const [paymentStartDate, setPaymentStartDate] = useState("");
   const [paymentEndDate, setPaymentEndDate] = useState("");
+  
+  // Accounts Ledger & Financials State
+  const [accountsSearch, setAccountsSearch] = useState("");
+  const [accountsStartDate, setAccountsStartDate] = useState("");
+  const [accountsEndDate, setAccountsEndDate] = useState("");
+  const [accountsMonthFilter, setAccountsMonthFilter] = useState("all");
+  const [accountsStatusFilter, setAccountsStatusFilter] = useState<"all" | "settled" | "pending">("all");
+  const [isSettlingBookingId, setIsSettlingBookingId] = useState<number | string | null>(null);
+  const [accountsSuccessToast, setAccountsSuccessToast] = useState<string | null>(null);
 
   const [salarySearch, setSalarySearch] = useState("");
   const [salaryStartDate, setSalaryStartDate] = useState("");
@@ -2752,6 +2761,165 @@ function AdminPage() {
     }
   };
 
+  // Quick settle booking balance in Accounts
+  const handleQuickSettleBooking = async (b: Booking) => {
+    const tot = Number(b.amount || 0);
+    const adv = Number(b.advancePaid || 0);
+    const balDue = (b.balanceAmount !== undefined && b.balanceAmount !== null)
+      ? Number(b.balanceAmount)
+      : Math.max(0, tot - adv);
+
+    if (!window.confirm(`Mark Booking #${b.id} (${b.name}) as 100% Settled?\n\n• Current Outstanding Balance: ₹${balDue.toLocaleString('en-IN')}\n• This will set remaining balance to ₹0 and update payment status to Settled.\n\nProceed with settlement?`)) {
+      return;
+    }
+
+    setIsSettlingBookingId(b.id);
+    try {
+      const token = localStorage.getItem("ammaseva_admin_token");
+      const res = await fetch(`/api/admin/booking/${b.id}/settle`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          paymentMethod: "Direct Cash / UPI Settlement",
+          transactionId: `ADMIN-SETTLE-${Date.now().toString().slice(-6)}`
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAccountsSuccessToast(`✅ Booking #${b.id} (${b.name}) has been 100% settled! Remaining balance is now ₹0.`);
+        setTimeout(() => setAccountsSuccessToast(null), 4500);
+        await fetchDashboardData();
+      } else {
+        alert(data.error || "Failed to settle booking balance.");
+      }
+    } catch (err: any) {
+      console.error("Settlement error:", err);
+      alert("Error occurred while processing settlement.");
+    } finally {
+      setIsSettlingBookingId(null);
+    }
+  };
+
+  // Download filtered accounts data as clean Excel-compatible CSV with UTF-8 BOM
+  const handleDownloadAccountsExcel = (records: Booking[]) => {
+    if (!records || records.length === 0) {
+      alert("No accounting records found in current filter to export.");
+      return;
+    }
+
+    const headers = [
+      "Booking Ref",
+      "Booking Date",
+      "Customer Name",
+      "Patient Name",
+      "Phone Number",
+      "Service Booked",
+      "Base Taxable Value (INR)",
+      "CGST 9% (INR)",
+      "SGST 9% (INR)",
+      "Total GST 18% (INR)",
+      "Gross Invoiced Total (INR)",
+      "Total Collected (INR)",
+      "Balance Due (INR)",
+      "Settlement Status",
+      "Payment Mode",
+      "Transaction Ref",
+      "Payment Date"
+    ];
+
+    const cleanField = (val: any) => {
+      if (val === undefined || val === null) return '""';
+      const str = String(val).replace(/"/g, '""').replace(/\r?\n/g, ' ');
+      return `"${str}"`;
+    };
+
+    let totalBase = 0;
+    let totalCgst = 0;
+    let totalSgst = 0;
+    let totalGst = 0;
+    let totalGross = 0;
+    let totalCollected = 0;
+    let totalBalance = 0;
+
+    const rows = records.map((b) => {
+      const totalAmount = Number(b.amount || 0);
+      const isPaid = (b.paymentStatus || "").toLowerCase() === "paid" || 
+                     (b.balanceAmount !== undefined && Number(b.balanceAmount) <= 0 && totalAmount > 0) ||
+                     (b.advancePaid !== undefined && Number(b.advancePaid) >= totalAmount && totalAmount > 0);
+      const collected = isPaid ? totalAmount : (b.advancePaid !== undefined ? Number(b.advancePaid) : 0);
+      const balanceDue = isPaid ? 0 : (b.balanceAmount !== undefined && b.balanceAmount !== null ? Math.max(0, Number(b.balanceAmount)) : Math.max(0, totalAmount - collected));
+      const baseAmount = Number(b.baseAmount) || Math.round(totalAmount / 1.18);
+      const gstAmount = Number(b.gstAmount) !== undefined ? Number(b.gstAmount) : Math.max(0, totalAmount - baseAmount);
+      const cgst = Math.round(gstAmount / 2);
+      const sgst = gstAmount - cgst;
+      const statusLabel = balanceDue <= 0 ? "Settled" : "Pending Balance";
+
+      totalBase += baseAmount;
+      totalCgst += cgst;
+      totalSgst += sgst;
+      totalGst += gstAmount;
+      totalGross += totalAmount;
+      totalCollected += collected;
+      totalBalance += balanceDue;
+
+      return [
+        cleanField(`BK-${b.id}`),
+        cleanField(b.date || (b.createdAt ? b.createdAt.slice(0, 10) : "")),
+        cleanField(b.name || "Customer"),
+        cleanField(b.patientName || b.name || "—"),
+        cleanField(b.phone || ""),
+        cleanField(b.service || "Healthcare Support"),
+        baseAmount,
+        cgst,
+        sgst,
+        gstAmount,
+        totalAmount,
+        collected,
+        balanceDue,
+        cleanField(statusLabel),
+        cleanField(b.paymentMethod || (isPaid ? "Paid" : "Pending")),
+        cleanField(b.transactionId || "—"),
+        cleanField(b.paymentDate || "—")
+      ].join(",");
+    });
+
+    // Summary row at the bottom
+    const summaryRow = [
+      cleanField("TOTAL / SUMMARY"),
+      cleanField(""),
+      cleanField(`${records.length} Transactions`),
+      cleanField(""),
+      cleanField(""),
+      cleanField(""),
+      totalBase,
+      totalCgst,
+      totalSgst,
+      totalGst,
+      totalGross,
+      totalCollected,
+      totalBalance,
+      cleanField(totalBalance <= 0 ? "All 100% Settled" : `Pending Balance: INR ${totalBalance.toLocaleString('en-IN')}`),
+      cleanField(""),
+      cleanField(""),
+      cleanField("")
+    ].join(",");
+
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows, summaryRow].join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const dateStamp = new Date().toISOString().slice(0, 10);
+    link.href = url;
+    link.setAttribute("download", `Amma_Seva_Accounts_Ledger_${dateStamp}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   // Submit forms
   const handleModalSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -3182,6 +3350,18 @@ function AdminPage() {
             {[
               { id: "overview", label: "Dashboard", icon: LayoutDashboard },
               { id: "bookings", label: "Manage Bookings", icon: CalendarDays },
+              { 
+                id: "accounts", 
+                label: "Accounts", 
+                icon: Landmark,
+                badge: bookings.filter(b => {
+                  const tot = Number(b.amount || 0);
+                  const isPaid = (b.paymentStatus || "").toLowerCase() === "paid" || 
+                                 (b.balanceAmount !== undefined && Number(b.balanceAmount) <= 0 && tot > 0) ||
+                                 (b.advancePaid !== undefined && Number(b.advancePaid) >= tot && tot > 0);
+                  return !isPaid && b.status !== "Cancelled";
+                }).length 
+              },
               { id: "invoices", label: "Invoices & Billing", icon: Receipt },
               { id: "caregivers", label: "Employees & Staff", icon: UserCheck },
               { id: "id-cards", label: "Staff ID Cards", icon: CreditCard, badge: idCards.length },
@@ -4350,6 +4530,675 @@ function AdminPage() {
               </div>
             </div>
           )}
+
+          {/* ======================================================== */}
+          {/* ACCOUNTS & FINANCIAL LEDGER (COMPANY COLLECTIONS & GST)  */}
+          {/* ======================================================== */}
+          {activeTab === "accounts" && (() => {
+            // Helper to extract ISO date from booking
+            const getBookingISODate = (b: Booking): string => {
+              if (b.date) {
+                const firstPart = b.date.includes(" to ") ? b.date.split(" to ")[0].trim() : b.date.trim();
+                if (/^\d{4}-\d{2}-\d{2}/.test(firstPart)) return firstPart.slice(0, 10);
+              }
+              if (b.createdAt) {
+                return b.createdAt.slice(0, 10);
+              }
+              return "";
+            };
+
+            // Distinct Month options generated from active bookings
+            const availableMonths = Array.from(new Set(
+              bookings.map(b => {
+                const iso = getBookingISODate(b);
+                return iso ? iso.slice(0, 7) : "";
+              }).filter(Boolean)
+            )).sort().reverse();
+
+            const formatMonthDisplay = (mStr: string) => {
+              try {
+                const [year, month] = mStr.split("-");
+                const d = new Date(Number(year), Number(month) - 1, 1);
+                return d.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
+              } catch (e) {
+                return mStr;
+              }
+            };
+
+            // Filter bookings for accounts ledger
+            const filteredBookings = bookings.filter((b) => {
+              // Exclude cancelled bookings from accounts ledger calculations unless specifically searched
+              if (b.status === "Cancelled" && !accountsSearch) return false;
+
+              // Search query
+              if (accountsSearch.trim()) {
+                const q = accountsSearch.toLowerCase();
+                const match = (b.name || "").toLowerCase().includes(q) ||
+                              (b.patientName || "").toLowerCase().includes(q) ||
+                              (b.phone || "").includes(q) ||
+                              (b.service || "").toLowerCase().includes(q) ||
+                              `#${b.id}`.includes(q) ||
+                              String(b.id) === q;
+                if (!match) return false;
+              }
+
+              // Date range
+              const bDate = getBookingISODate(b);
+              if (accountsStartDate && bDate && bDate < accountsStartDate) return false;
+              if (accountsEndDate && bDate && bDate > accountsEndDate) return false;
+
+              // Month filter
+              if (accountsMonthFilter !== "all") {
+                const today = new Date();
+                const thisMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+                const lastMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                const lastMonthStr = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, "0")}`;
+
+                if (accountsMonthFilter === "this_month") {
+                  if (!bDate.startsWith(thisMonthStr)) return false;
+                } else if (accountsMonthFilter === "last_month") {
+                  if (!bDate.startsWith(lastMonthStr)) return false;
+                } else {
+                  if (!bDate.startsWith(accountsMonthFilter)) return false;
+                }
+              }
+
+              // Status filter
+              const tot = Number(b.amount || 0);
+              const isPaid = (b.paymentStatus || "").toLowerCase() === "paid" || 
+                             (b.balanceAmount !== undefined && Number(b.balanceAmount) <= 0 && tot > 0) ||
+                             (b.advancePaid !== undefined && Number(b.advancePaid) >= tot && tot > 0);
+              const balanceDue = isPaid ? 0 : (b.balanceAmount !== undefined && b.balanceAmount !== null ? Math.max(0, Number(b.balanceAmount)) : Math.max(0, tot - Number(b.advancePaid || 0)));
+
+              if (accountsStatusFilter === "settled" && balanceDue > 0) return false;
+              if (accountsStatusFilter === "pending" && balanceDue <= 0) return false;
+
+              return true;
+            });
+
+            // Calculate aggregates dynamically based on filtered records
+            let sumBase = 0;
+            let sumCgst = 0;
+            let sumSgst = 0;
+            let sumGst = 0;
+            let sumGross = 0;
+            let sumCollections = 0;
+            let sumBalance = 0;
+            let countSettled = 0;
+            let countPending = 0;
+
+            filteredBookings.forEach((b) => {
+              const tot = Number(b.amount || 0);
+              const isPaid = (b.paymentStatus || "").toLowerCase() === "paid" || 
+                             (b.balanceAmount !== undefined && Number(b.balanceAmount) <= 0 && tot > 0) ||
+                             (b.advancePaid !== undefined && Number(b.advancePaid) >= tot && tot > 0);
+              const collected = isPaid ? tot : (b.advancePaid !== undefined ? Number(b.advancePaid) : 0);
+              const balance = isPaid ? 0 : (b.balanceAmount !== undefined && b.balanceAmount !== null ? Math.max(0, Number(b.balanceAmount)) : Math.max(0, tot - collected));
+              const base = Number(b.baseAmount) || Math.round(tot / 1.18);
+              const gst = Number(b.gstAmount) !== undefined ? Number(b.gstAmount) : Math.max(0, tot - base);
+              const cgst = Math.round(gst / 2);
+              const sgst = gst - cgst;
+
+              sumBase += base;
+              sumCgst += cgst;
+              sumSgst += sgst;
+              sumGst += gst;
+              sumGross += tot;
+              sumCollections += collected;
+              sumBalance += balance;
+
+              if (balance <= 0) countSettled++;
+              else countPending++;
+            });
+
+            const hasActiveFilters = Boolean(accountsSearch || accountsStartDate || accountsEndDate || accountsMonthFilter !== "all" || accountsStatusFilter !== "all");
+
+            return (
+              <div className="space-y-6 animate-in fade-in duration-200">
+                {/* Success Toast */}
+                {accountsSuccessToast && (
+                  <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 px-4 py-3 rounded-2xl flex items-center justify-between text-xs font-bold animate-in fade-in duration-150 shadow-sm">
+                    <div className="flex items-center gap-2.5">
+                      <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                      <span>{accountsSuccessToast}</span>
+                    </div>
+                    <button
+                      onClick={() => setAccountsSuccessToast(null)}
+                      className="text-emerald-700 hover:text-emerald-900 font-extrabold cursor-pointer ml-4 px-2 py-0.5 rounded-lg hover:bg-emerald-100"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+
+                {/* Header Banner */}
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/40 premium-card flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-2xl bg-[#1e2a5a] text-[#c9a24c] flex items-center justify-center font-bold shadow-xs">
+                        <Landmark className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-extrabold text-[#1e2a5a] font-display">Accounts &amp; Collections Ledger</h3>
+                        <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                          Real-time collections, zero-balance settlements, 18% GST (CGST/SGST) audit, and exportable ledger.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+                    <button
+                      type="button"
+                      onClick={() => fetchDashboardData()}
+                      className="px-3.5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs"
+                      title="Refresh Accounting Data"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5 text-slate-500" />
+                      <span>Refresh</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadAccountsExcel(filteredBookings)}
+                      className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white text-xs font-extrabold flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md shadow-emerald-700/20 active:scale-[0.98]"
+                      title="Download Filtered Ledger in Excel (.csv)"
+                    >
+                      <FileSpreadsheet className="h-4 w-4" />
+                      <span>Download Excel ({filteredBookings.length})</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 4 Financial Stat Cards (Real-time dynamic recalculation) */}
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                  {/* Total Collections */}
+                  <div className="bg-white border border-emerald-200/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 h-16 w-16 bg-emerald-50 rounded-bl-full -z-0 opacity-60 group-hover:scale-110 transition-transform" />
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-700">Total Collections</span>
+                        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                      </div>
+                      <div className="text-2xl sm:text-3xl font-black font-display text-emerald-600 mt-2">
+                        ₹{sumCollections.toLocaleString("en-IN")}
+                      </div>
+                      <div className="mt-2 text-xs font-semibold text-slate-500 flex items-center justify-between">
+                        <span>{countSettled} accounts settled</span>
+                        <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md text-[10px]">
+                          {sumGross > 0 ? `${Math.round((sumCollections / sumGross) * 100)}% Recovered` : "100%"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Outstanding Balance */}
+                  <div className={`bg-white border rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group ${
+                    sumBalance > 0 ? "border-amber-200/80" : "border-emerald-200/80"
+                  }`}>
+                    <div className={`absolute top-0 right-0 h-16 w-16 rounded-bl-full -z-0 opacity-60 group-hover:scale-110 transition-transform ${
+                      sumBalance > 0 ? "bg-amber-50" : "bg-emerald-50"
+                    }`} />
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between">
+                        <span className={`text-[11px] font-extrabold uppercase tracking-wider ${
+                          sumBalance > 0 ? "text-amber-700" : "text-emerald-700"
+                        }`}>
+                          Outstanding Balance
+                        </span>
+                        <Clock className={`h-4 w-4 ${sumBalance > 0 ? "text-amber-500" : "text-emerald-500"}`} />
+                      </div>
+                      <div className={`text-2xl sm:text-3xl font-black font-display mt-2 ${
+                        sumBalance > 0 ? "text-amber-600" : "text-emerald-600"
+                      }`}>
+                        ₹{sumBalance.toLocaleString("en-IN")}
+                      </div>
+                      <div className="mt-2 text-xs font-semibold text-slate-500 flex items-center justify-between">
+                        <span>
+                          {sumBalance <= 0 ? "All accounts cleared" : `${countPending} accounts with balance`}
+                        </span>
+                        {sumBalance <= 0 ? (
+                          <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md text-[10px] flex items-center gap-0.5">
+                            <CheckCircle2 className="h-3 w-3" /> Zero Due
+                          </span>
+                        ) : (
+                          <span className="text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded-md text-[10px]">
+                            Pending
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 18% GST Breakdown */}
+                  <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 h-16 w-16 bg-blue-50 rounded-bl-full -z-0 opacity-60 group-hover:scale-110 transition-transform" />
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">GST (18% Total)</span>
+                        <Receipt className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div className="text-2xl sm:text-3xl font-black font-display text-[#1e2a5a] mt-2">
+                        ₹{sumGst.toLocaleString("en-IN")}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        <span className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md">
+                          CGST 9%: ₹{sumCgst.toLocaleString("en-IN")}
+                        </span>
+                        <span className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md">
+                          SGST 9%: ₹{sumSgst.toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Gross Invoiced Total */}
+                  <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 h-16 w-16 bg-slate-100 rounded-bl-full -z-0 opacity-60 group-hover:scale-110 transition-transform" />
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Gross Invoiced Total</span>
+                        <Calendar className="h-4 w-4 text-slate-400" />
+                      </div>
+                      <div className="text-2xl sm:text-3xl font-black font-display text-slate-900 mt-2">
+                        ₹{sumGross.toLocaleString("en-IN")}
+                      </div>
+                      <div className="mt-2 text-xs font-semibold text-slate-500 flex items-center justify-between">
+                        <span>Base: ₹{sumBase.toLocaleString("en-IN")}</span>
+                        <span className="text-slate-700 font-bold bg-slate-100 px-2 py-0.5 rounded-md text-[10px]">
+                          {filteredBookings.length} Bookings
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Filter Controls Bar */}
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4">
+                  <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <Filter className="h-4 w-4 text-[#c9a24c]" />
+                      <span className="text-xs font-extrabold text-[#1e2a5a] uppercase tracking-wider">
+                        Filter Accounts Ledger
+                      </span>
+                    </div>
+
+                    {/* Status Pill Filters */}
+                    <div className="flex flex-wrap gap-1.5 bg-slate-100 p-1 rounded-xl">
+                      {[
+                        { id: "all", label: "All Bookings", count: bookings.filter(b => b.status !== "Cancelled").length },
+                        { id: "settled", label: "Settled (₹0 Due)", count: bookings.filter(b => {
+                          const tot = Number(b.amount || 0);
+                          const isPaid = (b.paymentStatus || "").toLowerCase() === "paid" || (b.balanceAmount !== undefined && Number(b.balanceAmount) <= 0 && tot > 0) || (b.advancePaid !== undefined && Number(b.advancePaid) >= tot && tot > 0);
+                          return isPaid && b.status !== "Cancelled";
+                        }).length },
+                        { id: "pending", label: "Pending Balance", count: bookings.filter(b => {
+                          const tot = Number(b.amount || 0);
+                          const isPaid = (b.paymentStatus || "").toLowerCase() === "paid" || (b.balanceAmount !== undefined && Number(b.balanceAmount) <= 0 && tot > 0) || (b.advancePaid !== undefined && Number(b.advancePaid) >= tot && tot > 0);
+                          return !isPaid && b.status !== "Cancelled";
+                        }).length }
+                      ].map((tab) => {
+                        const isSelected = accountsStatusFilter === tab.id;
+                        return (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => setAccountsStatusFilter(tab.id as any)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                              isSelected
+                                ? "bg-white text-[#1e2a5a] shadow-xs font-extrabold"
+                                : "text-slate-600 hover:text-[#1e2a5a]"
+                            }`}
+                          >
+                            {tab.label} <span className="text-[10px] opacity-75">({tab.count})</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Filter Inputs Grid */}
+                  <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 items-center">
+                    {/* Search Field */}
+                    <div className="lg:col-span-4 relative">
+                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="Search Client, Patient, Phone, #ID, Service..."
+                        value={accountsSearch}
+                        onChange={(e) => setAccountsSearch(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50/50 focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] text-xs font-semibold text-slate-800"
+                      />
+                    </div>
+
+                    {/* Quick Month Selector */}
+                    <div className="lg:col-span-3 flex items-center gap-2 bg-slate-50/80 border border-slate-200 rounded-xl px-3 py-1.5">
+                      <span className="text-[10px] font-extrabold uppercase text-slate-400 shrink-0">Month</span>
+                      <select
+                        value={accountsMonthFilter}
+                        onChange={(e) => {
+                          setAccountsMonthFilter(e.target.value);
+                          if (e.target.value !== "all") {
+                            setAccountsStartDate("");
+                            setAccountsEndDate("");
+                          }
+                        }}
+                        className="w-full bg-transparent outline-none text-xs font-bold text-slate-700 cursor-pointer"
+                      >
+                        <option value="all">All Months (All Time)</option>
+                        <option value="this_month">This Month</option>
+                        <option value="last_month">Last Month</option>
+                        {availableMonths.map((m) => (
+                          <option key={m} value={m}>
+                            {formatMonthDisplay(m)} ({m})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* From Date */}
+                    <div className="lg:col-span-2 flex items-center gap-2 bg-slate-50/80 border border-slate-200 rounded-xl px-3 py-1.5">
+                      <span className="text-[10px] font-extrabold uppercase text-slate-400 shrink-0">From</span>
+                      <input
+                        type="date"
+                        value={accountsStartDate}
+                        onChange={(e) => {
+                          setAccountsStartDate(e.target.value);
+                          setAccountsMonthFilter("all");
+                        }}
+                        className="w-full bg-transparent outline-none text-xs font-bold text-slate-700"
+                      />
+                    </div>
+
+                    {/* To Date */}
+                    <div className="lg:col-span-2 flex items-center gap-2 bg-slate-50/80 border border-slate-200 rounded-xl px-3 py-1.5">
+                      <span className="text-[10px] font-extrabold uppercase text-slate-400 shrink-0">To</span>
+                      <input
+                        type="date"
+                        value={accountsEndDate}
+                        onChange={(e) => {
+                          setAccountsEndDate(e.target.value);
+                          setAccountsMonthFilter("all");
+                        }}
+                        className="w-full bg-transparent outline-none text-xs font-bold text-slate-700"
+                      />
+                    </div>
+
+                    {/* Clear Button */}
+                    {hasActiveFilters && (
+                      <div className="lg:col-span-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAccountsSearch("");
+                            setAccountsStartDate("");
+                            setAccountsEndDate("");
+                            setAccountsMonthFilter("all");
+                            setAccountsStatusFilter("all");
+                          }}
+                          className="w-full px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black transition-all cursor-pointer text-center"
+                          title="Reset All Filters"
+                        >
+                          Reset
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Active Filter Summary Bar */}
+                  <div className="flex flex-wrap items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
+                    <span className="font-semibold">
+                      Showing <strong className="text-[#1e2a5a]">{filteredBookings.length}</strong> ledger records
+                      {accountsMonthFilter !== "all" && (
+                        <span> • Month: <strong className="text-slate-800">{accountsMonthFilter === "this_month" ? "This Month" : accountsMonthFilter === "last_month" ? "Last Month" : formatMonthDisplay(accountsMonthFilter)}</strong></span>
+                      )}
+                      {(accountsStartDate || accountsEndDate) && (
+                        <span> • Range: <strong className="text-slate-800">{accountsStartDate || "Start"}</strong> to <strong className="text-slate-800">{accountsEndDate || "Present"}</strong></span>
+                      )}
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-400">
+                      Collections: <strong className="text-emerald-700 font-extrabold">₹{sumCollections.toLocaleString("en-IN")}</strong> • Pending: <strong className="text-amber-700 font-extrabold">₹{sumBalance.toLocaleString("en-IN")}</strong>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Accounts Table */}
+                <div className="bg-white border border-slate-200/80 rounded-2xl shadow-md shadow-slate-100/30 overflow-hidden premium-card">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-sm min-w-[1000px]">
+                      <thead>
+                        <tr className="bg-[#1e2a5a]/5 border-b border-slate-200/80 text-[#1e2a5a] text-xs font-bold uppercase tracking-wider">
+                          <th className="py-4 px-5">Ref &amp; Date</th>
+                          <th className="py-4 px-5">Client &amp; Patient</th>
+                          <th className="py-4 px-5">Service Booked</th>
+                          <th className="py-4 px-4 text-right">Taxable Base</th>
+                          <th className="py-4 px-4 text-right">18% GST</th>
+                          <th className="py-4 px-4 text-right">Gross Total</th>
+                          <th className="py-4 px-4 text-right">Collected</th>
+                          <th className="py-4 px-4 text-right">Balance Due</th>
+                          <th className="py-4 px-4 text-center">Settlement Status</th>
+                          <th className="py-4 px-5 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredBookings.length === 0 ? (
+                          <tr>
+                            <td colSpan={10} className="py-12 text-center text-slate-400 text-sm font-semibold">
+                              No ledger entries found matching your selected date and filter criteria.
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredBookings.map((b) => {
+                            const tot = Number(b.amount || 0);
+                            const isPaid = (b.paymentStatus || "").toLowerCase() === "paid" || 
+                                           (b.balanceAmount !== undefined && Number(b.balanceAmount) <= 0 && tot > 0) ||
+                                           (b.advancePaid !== undefined && Number(b.advancePaid) >= tot && tot > 0);
+                            const collected = isPaid ? tot : (b.advancePaid !== undefined ? Number(b.advancePaid) : 0);
+                            const balanceDue = isPaid ? 0 : (b.balanceAmount !== undefined && b.balanceAmount !== null ? Math.max(0, Number(b.balanceAmount)) : Math.max(0, tot - collected));
+                            const base = Number(b.baseAmount) || Math.round(tot / 1.18);
+                            const gst = Number(b.gstAmount) !== undefined ? Number(b.gstAmount) : Math.max(0, tot - base);
+                            const isSettlingThis = isSettlingBookingId === b.id;
+
+                            return (
+                              <tr key={b.id} className="hover:bg-slate-50/70 transition-colors">
+                                {/* Ref & Date */}
+                                <td className="py-4 px-5">
+                                  <div className="font-mono font-extrabold text-[#1e2a5a] text-xs">
+                                    #BK-{b.id}
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 font-medium mt-0.5">
+                                    {b.date || (b.createdAt ? b.createdAt.slice(0, 10) : "—")}
+                                  </div>
+                                </td>
+
+                                {/* Client & Patient */}
+                                <td className="py-4 px-5">
+                                  <div className="font-bold text-slate-900 leading-tight">
+                                    {b.name || "Customer"}
+                                  </div>
+                                  {b.patientName && b.patientName !== b.name && (
+                                    <div className="text-xs text-slate-600 font-medium mt-0.5">
+                                      Patient: <span className="font-semibold">{b.patientName}</span>
+                                    </div>
+                                  )}
+                                  <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                                    {b.phone || "—"}
+                                  </div>
+                                </td>
+
+                                {/* Service */}
+                                <td className="py-4 px-5">
+                                  <div className="font-semibold text-slate-800 text-xs leading-tight">
+                                    {b.service || "Healthcare Support"}
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 mt-0.5">
+                                    {b.duration || "Standard Shift"}
+                                  </div>
+                                </td>
+
+                                {/* Base */}
+                                <td className="py-4 px-4 text-right font-mono text-xs text-slate-700 font-bold">
+                                  ₹{base.toLocaleString("en-IN")}
+                                </td>
+
+                                {/* GST 18% */}
+                                <td className="py-4 px-4 text-right">
+                                  <div className="font-mono text-xs font-bold text-blue-900">
+                                    ₹{gst.toLocaleString("en-IN")}
+                                  </div>
+                                  <div className="text-[9px] text-slate-400 font-mono">
+                                    9%+9%
+                                  </div>
+                                </td>
+
+                                {/* Gross Total */}
+                                <td className="py-4 px-4 text-right font-mono text-xs font-black text-slate-900">
+                                  ₹{tot.toLocaleString("en-IN")}
+                                </td>
+
+                                {/* Collected */}
+                                <td className="py-4 px-4 text-right font-mono text-xs font-extrabold text-emerald-700 bg-emerald-50/30">
+                                  ₹{collected.toLocaleString("en-IN")}
+                                </td>
+
+                                {/* Balance Due */}
+                                <td className={`py-4 px-4 text-right font-mono text-xs font-black ${
+                                  balanceDue <= 0 ? "text-emerald-600 bg-emerald-50/20" : "text-amber-600 bg-amber-50/30"
+                                }`}>
+                                  {balanceDue <= 0 ? (
+                                    <span className="inline-flex items-center gap-1 font-extrabold text-emerald-600">
+                                      <CheckCircle2 className="h-3.5 w-3.5" /> ₹0
+                                    </span>
+                                  ) : (
+                                    `₹${balanceDue.toLocaleString("en-IN")}`
+                                  )}
+                                </td>
+
+                                {/* Settlement Status */}
+                                <td className="py-4 px-4 text-center">
+                                  {balanceDue <= 0 ? (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                      <BadgeCheck className="h-3.5 w-3.5 text-emerald-600" /> Settled ✓
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">
+                                      <Clock className="h-3 w-3 text-amber-600" /> Pending Due
+                                    </span>
+                                  )}
+                                </td>
+
+                                {/* Actions */}
+                                <td className="py-4 px-5 text-right">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    {balanceDue > 0 ? (
+                                      <>
+                                        <button
+                                          type="button"
+                                          disabled={isSettlingThis}
+                                          onClick={() => handleQuickSettleBooking(b)}
+                                          className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-xs disabled:opacity-50"
+                                          title="Instant Balance Settlement to ₹0"
+                                        >
+                                          {isSettlingThis ? (
+                                            <RefreshCw className="h-3 w-3 animate-spin" />
+                                          ) : (
+                                            <CheckCircle2 className="h-3 w-3" />
+                                          )}
+                                          <span>Settle ₹0</span>
+                                        </button>
+
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyBookingPayLink(b.id)}
+                                          className="px-2 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                                          title="Copy direct balance payment link"
+                                        >
+                                          {copiedBookingLinkId === b.id ? (
+                                            <Check className="h-3 w-3 text-emerald-600" />
+                                          ) : (
+                                            <Copy className="h-3 w-3 text-slate-500" />
+                                          )}
+                                          <span className="hidden sm:inline">Pay Link</span>
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          handleSelectBookingForInvoice(String(b.id));
+                                          setActiveTab("invoices");
+                                          window.scrollTo({ top: 0, behavior: "smooth" });
+                                        }}
+                                        className="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/80 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                                        title="Open in Tax Invoice Generator"
+                                      >
+                                        <Receipt className="h-3.5 w-3.5 text-amber-700" />
+                                        <span>Invoice</span>
+                                      </button>
+                                    )}
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setIsRecordCaretakerPaymentMode(false);
+                                        openEditModal("booking", b);
+                                      }}
+                                      className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 text-xs font-semibold cursor-pointer transition-colors"
+                                      title="Edit Booking or Record Payment Details"
+                                    >
+                                      <Edit3 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+
+                      {/* Summary Table Footer */}
+                      {filteredBookings.length > 0 && (
+                        <tfoot>
+                          <tr className="bg-slate-50/90 border-t-2 border-slate-300 text-slate-900 font-extrabold text-xs">
+                            <td colSpan={3} className="py-4 px-5 uppercase tracking-wider text-[#1e2a5a]">
+                              Ledger Column Totals ({filteredBookings.length} records)
+                            </td>
+                            <td className="py-4 px-4 text-right font-mono font-bold text-slate-700">
+                              ₹{sumBase.toLocaleString("en-IN")}
+                            </td>
+                            <td className="py-4 px-4 text-right font-mono font-bold text-blue-900">
+                              ₹{sumGst.toLocaleString("en-IN")}
+                            </td>
+                            <td className="py-4 px-4 text-right font-mono font-black text-slate-900">
+                              ₹{sumGross.toLocaleString("en-IN")}
+                            </td>
+                            <td className="py-4 px-4 text-right font-mono font-black text-emerald-700 bg-emerald-50/40">
+                              ₹{sumCollections.toLocaleString("en-IN")}
+                            </td>
+                            <td className={`py-4 px-4 text-right font-mono font-black ${
+                              sumBalance <= 0 ? "text-emerald-600 bg-emerald-50/30" : "text-amber-600 bg-amber-50/40"
+                            }`}>
+                              ₹{sumBalance.toLocaleString("en-IN")}
+                            </td>
+                            <td className="py-4 px-4 text-center">
+                              <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${
+                                sumBalance <= 0 ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                              }`}>
+                                {sumBalance <= 0 ? "100% Settled" : `${countPending} Pending`}
+                              </span>
+                            </td>
+                            <td className="py-4 px-5 text-right text-[11px] text-slate-400 font-medium">
+                              Ledger Audit ✓
+                            </td>
+                          </tr>
+                        </tfoot>
+                      )}
+                    </table>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ======================================================== */}
           {/* INVOICES & BILLING GENERATOR (REAL-TIME TAX INVOICES)   */}

@@ -5171,6 +5171,33 @@ app.put('/api/admin/booking/:id', authenticateAdmin, async (req, res) => {
   }
 })
 
+// POST quick settle / clear balance (Admin Accounts Ledger)
+app.post('/api/admin/booking/:id/settle', authenticateAdmin, async (req, res) => {
+  try {
+    const booking = await db.getBookingById(req.params.id)
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found.' })
+    }
+    const paymentMethod = req.body.paymentMethod || 'Direct Cash / UPI Settlement'
+    const transactionId = req.body.transactionId || `ADMIN-SETTLE-${Date.now().toString().slice(-6)}`
+    const updated = await db.payBookingBalance(req.params.id, paymentMethod, transactionId)
+    if (updated === true || updated?.success || updated?.alreadyPaid) {
+      const settledBooking = await db.getBookingById(req.params.id)
+      res.json({ 
+        success: true, 
+        message: `Booking #${req.params.id} has been 100% settled with zero balance due.`,
+        data: settledBooking 
+      })
+    } else {
+      res.status(400).json({ error: 'Failed to settle booking balance.' })
+    }
+  } catch (err) {
+    console.error('[Admin Settle Booking Error]:', err)
+    res.status(500).json({ error: 'Failed to process balance settlement.' })
+  }
+})
+
+
 // DELETE booking (Admin Panel)
 app.delete('/api/booking/:id', authenticateAdmin, async (req, res) => {
   try {
