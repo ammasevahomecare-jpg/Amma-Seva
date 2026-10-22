@@ -4298,10 +4298,11 @@ function AdminPage() {
                                             href={`https://wa.me/91${String(b.assignedStaffPhone).replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(`⏰ *Amma Seva Shift Reminder*\n\n🙏 Namaste *${b.assignedStaff}*,\nYour scheduled healthcare shift starts in *${reminderIntervals[b.id] || "1 hour"}*.\n\n📋 *Shift Details:*\n• Booking ID: #${b.id}\n• Service: ${b.service || "Home Care"}\n• Patient: ${b.patientName || b.name || "Patient"}\n• Shift: ${b.date || "Scheduled Date"} at ${b.time || "Scheduled Time"}\n• Location: ${b.address || "Contact coordinator"}\n\n📍 Please report to duty on time.\n📞 Helpline: +91 94945 16543\n🌐 Amma Seva Home Care`)}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="inline-flex items-center justify-center p-1 px-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[9px] font-bold transition-all shadow-xs shrink-0 cursor-pointer"
+                                            className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[9px] font-bold transition-all shadow-xs shrink-0 cursor-pointer"
                                             title="Open Direct WhatsApp chat with caregiver"
                                           >
                                             <MessageSquare className="w-3 h-3" />
+                                            <span>WhatsApp</span>
                                           </a>
                                         )}
                                       </div>
