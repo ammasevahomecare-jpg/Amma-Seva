@@ -585,23 +585,7 @@ function AdminPage() {
         staffReminderInterval: intervalLabel
       } : item));
 
-      // Direct WhatsApp Web option
-      const staffPhone = String(b.assignedStaffPhone || "").replace(/\D/g, "").slice(-10);
-      const dateRange = String(b.date || "Scheduled Date").trim();
-      const patientName = String(b.patientName || b.name || "Valued Client").trim();
-      const is24Hr = intervalLabel.includes("24");
-      const timingPhrase = is24Hr ? "starts tomorrow (in *24 hours*)" : `starts in *${intervalLabel}*`;
-      const reminderText = `⏰ *Amma Seva — ${intervalLabel} Shift Reminder*\n\n🙏 Namaste *${b.assignedStaff}*,\nThis is an alert that your scheduled healthcare shift ${timingPhrase}.\n\n📋 *Shift & Booking Details:*\n• *Booking ID:* #${b.id}\n• *Service:* ${b.service || "Home Care"}\n• *Patient Name:* ${patientName}\n• *Date (From & To):* ${dateRange}\n• *Shift Time:* ${b.time || "Scheduled Time"}\n• *Location / Address:* ${b.address || "Contact Coordinator"}\n\n📍 *Instructions:*\nPlease report to the patient location on time and update the care coordinator upon arrival. Thank you!\n\n📞 *Coordinator / Helpline:* +91 94945 16543\n🌐 *Amma Seva Home Care*`;
-
-      const targetUrl = data.whatsappUrl || (staffPhone.length === 10 ? `https://wa.me/91${staffPhone}?text=${encodeURIComponent(reminderText)}` : null);
-
-      if (targetUrl) {
-        if (confirm(`✅ ${data.message}\n\nWould you also like to open WhatsApp Web to send a direct message to ${b.assignedStaff} (+91 ${staffPhone})?`)) {
-          window.open(targetUrl, "_blank");
-        }
-      } else {
-        alert(`✅ ${data.message}`);
-      }
+      alert(`✅ ${data.message || `WhatsApp ${intervalLabel} shift reminder successfully dispatched to ${b.assignedStaff}!`}`);
     } catch (err: any) {
       alert(`❌ Error: ${err.message}`);
     } finally {
@@ -3008,16 +2992,7 @@ function AdminPage() {
           setModalType(null);
           if (modalType === "notification") {
             setNotifMessage("");
-            if (data.whatsappUrl) {
-              const shouldOpenWhatsApp = window.confirm(
-                `✓ ${data.message || "Alert dispatched via server!"}\n\nWould you like to open WhatsApp directly with this message?`
-              );
-              if (shouldOpenWhatsApp) {
-                window.open(data.whatsappUrl, "_blank");
-              }
-            } else {
-              alert(data.message || "Notification successfully dispatched!");
-            }
+            alert(`✅ ${data.message || "Alert notification successfully dispatched!"}`);
           }
         } else {
           alert(data.error || "Failed to update record.");
