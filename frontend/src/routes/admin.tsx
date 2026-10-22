@@ -3634,34 +3634,42 @@ function AdminPage() {
               </div>
 
               {/* Quick Bookings Stats Grid */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-left">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 text-left">
                 <div 
                   onClick={() => setBookingStatusFilter("all")}
-                  className={`bg-white border rounded-2xl p-4 shadow-sm flex items-center gap-3.5 cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${
+                  className={`bg-white border rounded-xl sm:rounded-2xl p-2.5 sm:p-4 shadow-xs sm:shadow-sm flex items-center gap-2 sm:gap-3.5 cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${
                     bookingStatusFilter === "all" ? "border-[#1e2a5a] ring-2 ring-[#1e2a5a]/20" : "border-slate-200/80 hover:border-slate-300"
                   }`}
                 >
-                  <div className="p-3 bg-indigo-50 text-[#1e2a5a] rounded-xl shrink-0">
-                    <Calendar className="h-5 w-5" />
+                  <div className="p-2 sm:p-3 bg-indigo-50 text-[#1e2a5a] rounded-lg sm:rounded-xl shrink-0">
+                    <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
-                  <div className="min-w-0">
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block truncate">Total Bookings</span>
-                    <span className="text-xl font-extrabold text-[#1e2a5a] font-display">{bookings.length}</span>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 block truncate">
+                      <span className="hidden sm:inline">Total Bookings</span>
+                      <span className="sm:hidden">Total</span>
+                    </span>
+                    <span className="text-base sm:text-xl font-extrabold text-[#1e2a5a] font-display block truncate">
+                      {bookings.length}
+                    </span>
                   </div>
                 </div>
 
                 <div 
                   onClick={() => setBookingStatusFilter("unassigned")}
-                  className={`bg-white border rounded-2xl p-4 shadow-sm flex items-center gap-3.5 cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${
+                  className={`bg-white border rounded-xl sm:rounded-2xl p-2.5 sm:p-4 shadow-xs sm:shadow-sm flex items-center gap-2 sm:gap-3.5 cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${
                     bookingStatusFilter === "unassigned" ? "border-amber-500 ring-2 ring-amber-500/20" : "border-slate-200/80 hover:border-amber-300"
                   }`}
                 >
-                  <div className="p-3 bg-amber-50 text-amber-700 rounded-xl shrink-0">
-                    <Clock className="h-5 w-5 animate-pulse" />
+                  <div className="p-2 sm:p-3 bg-amber-50 text-amber-700 rounded-lg sm:rounded-xl shrink-0">
+                    <Clock className="h-4 w-4 sm:h-5 sm:w-5 animate-pulse" />
                   </div>
-                  <div className="min-w-0">
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block truncate">Unassigned Shifts</span>
-                    <span className="text-xl font-extrabold text-amber-800 font-display">
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 block truncate">
+                      <span className="hidden sm:inline">Unassigned Shifts</span>
+                      <span className="sm:hidden">Unassigned</span>
+                    </span>
+                    <span className="text-base sm:text-xl font-extrabold text-amber-800 font-display block truncate">
                       {bookings.filter(b => !b.assignedStaff && b.status !== "Cancelled").length}
                     </span>
                   </div>
@@ -3669,28 +3677,37 @@ function AdminPage() {
 
                 <div 
                   onClick={() => setBookingStatusFilter("active")}
-                  className={`bg-white border rounded-2xl p-4 shadow-sm flex items-center gap-3.5 cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${
+                  className={`bg-white border rounded-xl sm:rounded-2xl p-2.5 sm:p-4 shadow-xs sm:shadow-sm flex items-center gap-2 sm:gap-3.5 cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${
                     bookingStatusFilter === "active" ? "border-emerald-500 ring-2 ring-emerald-500/20" : "border-slate-200/80 hover:border-emerald-300"
                   }`}
                 >
-                  <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl shrink-0">
-                    <CheckCircle2 className="h-5 w-5" />
+                  <div className="p-2 sm:p-3 bg-emerald-50 text-emerald-600 rounded-lg sm:rounded-xl shrink-0">
+                    <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
-                  <div className="min-w-0">
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block truncate">Active Shifts</span>
-                    <span className="text-xl font-extrabold text-emerald-700 font-display">
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 block truncate">
+                      <span className="hidden sm:inline">Active Shifts</span>
+                      <span className="sm:hidden">Active</span>
+                    </span>
+                    <span className="text-base sm:text-xl font-extrabold text-emerald-700 font-display block truncate">
                       {bookings.filter(b => b.status === "Confirmed" || b.status === "Active").length}
                     </span>
                   </div>
                 </div>
 
-                <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm flex items-center gap-3.5">
-                  <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl shrink-0">
-                    <DollarSign className="h-5 w-5" />
+                <div className="bg-white border border-slate-200/80 rounded-xl sm:rounded-2xl p-2.5 sm:p-4 shadow-xs sm:shadow-sm flex items-center gap-2 sm:gap-3.5">
+                  <div className="p-2 sm:p-3 bg-emerald-50 text-emerald-600 rounded-lg sm:rounded-xl shrink-0">
+                    <DollarSign className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
-                  <div className="min-w-0">
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block truncate">Advance Revenue</span>
-                    <span className="text-xl font-extrabold text-emerald-800 font-display truncate">
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 block truncate">
+                      <span className="hidden sm:inline">Advance Revenue</span>
+                      <span className="sm:hidden">Advance</span>
+                    </span>
+                    <span 
+                      className="text-xs xs:text-sm sm:text-base md:text-xl font-black text-emerald-800 font-display block truncate"
+                      title={`₹${bookings.reduce((sum, b) => sum + Number(b.advancePaid || 0), 0).toLocaleString()}`}
+                    >
                       ₹{bookings.reduce((sum, b) => sum + Number(b.advancePaid || 0), 0).toLocaleString()}
                     </span>
                   </div>
