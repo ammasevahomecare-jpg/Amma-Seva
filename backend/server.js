@@ -1582,8 +1582,8 @@ const isBookingStartingInOneHour = (booking) => {
   return diffMinutes >= 40 && diffMinutes <= 80
 }
 
-// MSG91 WhatsApp Automated 1-Hour Staff Shift Reminder Dispatcher
-const sendStaffShiftReminderWhatsApp = async (booking) => {
+// MSG91 WhatsApp Automated Staff Shift Reminder Dispatcher (10m, 30m, 1h, 2h, 24h supported)
+const sendStaffShiftReminderWhatsApp = async (booking, interval = '1 hour') => {
   if (!booking) return false
   const authKey = (process.env.MSG91_AUTH_KEY || '567130AQrTo6Hb6aba5f7cP1').trim()
   const integratedNumber = (process.env.MSG91_WHATSAPP_NUMBER || '919494516543').trim()
@@ -1614,14 +1614,21 @@ const sendStaffShiftReminderWhatsApp = async (booking) => {
   const bookingId = String(booking.id || 'N/A')
   const service = String(booking.service || 'Home Healthcare Support').trim()
   const scheduleTime = String(booking.time || 'Scheduled Time').trim()
-  const scheduleDate = `TODAY at ${scheduleTime} (Shift in 1 Hour!)`
+  const dateRange = String(booking.date || 'Today').trim()
   const address = String(booking.address || 'Location provided in booking details').trim()
-  const totalAmountNum = Number(booking.amount !== undefined ? booking.amount : 1200)
-  const isPaid = String(booking.paymentStatus || '').trim().toLowerCase() === 'paid' || 
-                 (booking.balanceAmount !== undefined && Number(booking.balanceAmount) <= 0 && totalAmountNum > 0)
-  const totalAmount = String(totalAmountNum)
-  const advancePaid = String(isPaid ? totalAmountNum : (booking.advancePaid !== undefined ? Number(booking.advancePaid) : 0))
-  const balanceDue = String(isPaid ? 0 : (booking.balanceAmount !== undefined ? Math.max(0, Number(booking.balanceAmount)) : Math.max(0, totalAmountNum - Number(advancePaid))))
+  const patientName = String(booking.patientName || booking.name || 'Valued Patient').trim()
+
+  // Format Interval labels (10 minutes, 30 minutes, 1 hour, 2 hours, 24 hours)
+  let intervalLabel = '1 Hour'
+  const lowerInt = String(interval || '').toLowerCase()
+  if (lowerInt.includes('10')) intervalLabel = '10 Minutes'
+  else if (lowerInt.includes('30')) intervalLabel = '30 Minutes'
+  else if (lowerInt.includes('24') || lowerInt.includes('day')) intervalLabel = '24 Hours'
+  else if (lowerInt.includes('2')) intervalLabel = '2 Hours'
+
+  const is24Hr = intervalLabel.includes('24')
+  const timingPhrase = is24Hr ? 'starts tomorrow (in *24 hours*)' : `starts in *${intervalLabel}*`
+  const scheduleDate = `${dateRange} | Time: ${scheduleTime} (Shift in ${intervalLabel}!)`
 
   const toList = []
   if (staffPhone && staffPhone.length === 10) {
@@ -1638,6 +1645,29 @@ const sendStaffShiftReminderWhatsApp = async (booking) => {
     return false
   }
 
+  // 1. Attempt sending pure custom text (Zero payment details) via MSG91 session outbound
+  const cleanReminderText = `⏰ *Amma Seva — ${intervalLabel} Shift Reminder*\n\n🙏 Namaste *${staffName}*,\nThis is an alert that your scheduled healthcare shift ${timingPhrase}.\n\n📋 *Shift & Booking Details:*\n• *Booking ID:* #${bookingId}\n• *Service:* ${service}\n• *Patient Name:* ${patientName}\n• *Date (From & To):* ${dateRange}\n• *Shift Time:* ${scheduleTime}\n• *Location / Address:* ${address}\n\n📍 *Instructions:*\nPlease report to the patient location on time and update the coordinator upon arrival.\n\n📞 *Coordinator / Helpline:* +91 94945 16543\n🌐 *Amma Seva Home Care*`
+
+  for (const recipientNumber of toList) {
+    try {
+      fetch('https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/', {
+        method: 'POST',
+        headers: {
+          'authkey': authKey,
+          'Content-Type': 'application/json'
+        },
+        signal: AbortSignal.timeout(4000),
+        body: JSON.stringify({
+          integrated_number: integratedNumber,
+          recipient_number: recipientNumber,
+          content_type: 'text',
+          text: cleanReminderText
+        })
+      }).catch(() => {})
+    } catch (e) {}
+  }
+
+  // 2. Dispatch via MSG91 Meta Template with zero/duty shift values (No patient payment amounts)
   const requestBody = {
     integrated_number: integratedNumber,
     content_type: "template",
@@ -1655,14 +1685,14 @@ const sendStaffShiftReminderWhatsApp = async (booking) => {
           {
             to: toList,
             components: {
-              body_1: { type: "text", value: `URGENT 1-HR SHIFT REMINDER: ${staffName}` },
+              body_1: { type: "text", value: `${staffName} (${intervalLabel.toUpperCase()} SHIFT ALERT)` },
               body_2: { type: "text", value: bookingId },
-              body_3: { type: "text", value: `${service} (Patient: ${booking.patientName || booking.name || 'Client'})` },
+              body_3: { type: "text", value: `${service} (Patient: ${patientName})` },
               body_4: { type: "text", value: scheduleDate },
               body_5: { type: "text", value: address },
-              body_6: { type: "text", value: totalAmount },
-              body_7: { type: "text", value: advancePaid },
-              body_8: { type: "text", value: balanceDue }
+              body_6: { type: "text", value: "0 (Staff Duty Shift - Do Not Collect Cash)" },
+              body_7: { type: "text", value: "0" },
+              body_8: { type: "text", value: "0 (Direct Settlement - Zero Due)" }
             }
           }
         ]
@@ -1684,6 +1714,113 @@ const sendStaffShiftReminderWhatsApp = async (booking) => {
     return resData
   } catch (err) {
     console.error(`[MSG91 Staff 1-Hr Reminder Error] Failed sending to [${toList.join(', ')}]:`, err.message)
+    return false
+  }
+}
+
+// MSG91 WhatsApp Direct Alert Dispatcher (Admin Custom Dispatches)
+const sendDirectWhatsAppAlert = async (targetPhone, alertMessage, recipientLabel = 'Valued Member') => {
+  const cleanPhone = String(targetPhone || '').replace(/\D/g, '').slice(-10)
+  if (cleanPhone.length !== 10) return false
+
+  const authKey = (process.env.MSG91_AUTH_KEY || '567130AQrTo6Hb6aba5f7cP1').trim()
+  const integratedNumber = (process.env.MSG91_WHATSAPP_NUMBER || '919494516543').trim()
+  const templateName = (process.env.MSG91_WHATSAPP_TEMPLATE_NAME || 'ammaseva_booking_confirmation').trim()
+  const namespace = (process.env.MSG91_WHATSAPP_NAMESPACE || '63c454df_9e23_4f4c_81d2_58201bb7012e').trim()
+
+  const formattedMobile = `91${cleanPhone}`
+  const nowStr = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })
+  const alertId = `ALT-${Date.now().toString().slice(-6)}`
+  const cleanMessage = String(alertMessage || 'Alert Notification from Amma Seva').replace(/[\r\n]+/g, ' ').slice(0, 200)
+
+  const requestBody = {
+    integrated_number: integratedNumber,
+    content_type: "template",
+    payload: {
+      messaging_product: "whatsapp",
+      type: "template",
+      template: {
+        name: templateName,
+        language: {
+          code: "en",
+          policy: "deterministic"
+        },
+        namespace: namespace,
+        to_and_components: [
+          {
+            to: [formattedMobile],
+            components: {
+              body_1: { type: "text", value: String(recipientLabel || 'Amma Seva Member').trim() },
+              body_2: { type: "text", value: alertId },
+              body_3: { type: "text", value: "Priority Care Alert" },
+              body_4: { type: "text", value: nowStr },
+              body_5: { type: "text", value: cleanMessage },
+              body_6: { type: "text", value: "Official Alert" },
+              body_7: { type: "text", value: "Coordinator Desk" },
+              body_8: { type: "text", value: "9490587575" }
+            }
+          }
+        ]
+      }
+    }
+  }
+
+  try {
+    const response = await fetch('https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/', {
+      method: 'POST',
+      headers: {
+        'authkey': authKey,
+        'Content-Type': 'application/json'
+      },
+      signal: AbortSignal.timeout(8000),
+      body: JSON.stringify(requestBody)
+    })
+    const resData = await response.json().catch(() => ({}))
+    console.log(`[MSG91 Direct WhatsApp Alert] Dispatched to +${formattedMobile}:`, resData)
+    return resData
+  } catch (err) {
+    console.error(`[MSG91 Direct WhatsApp Alert Error] Failed sending to +${formattedMobile}:`, err.message)
+    return false
+  }
+}
+
+// MSG91 Mobile SMS Alert Dispatcher (Admin Custom Dispatches)
+const sendDirectSmsAlert = async (targetPhone, alertMessage) => {
+  const cleanPhone = String(targetPhone || '').replace(/\D/g, '').slice(-10)
+  if (cleanPhone.length !== 10) return false
+
+  const authKey = (process.env.MSG91_AUTH_KEY || '567130AQrTo6Hb6aba5f7cP1').trim()
+  const templateId = (process.env.MSG91_TEMPLATE_ID || '6ab2184345370dac070a9500').trim()
+  const senderId = (process.env.MSG91_SENDER_ID || 'AMMASV').trim()
+  const formattedMobile = `91${cleanPhone}`
+
+  try {
+    const flowResponse = await fetch('https://control.msg91.com/api/v5/flow/', {
+      method: 'POST',
+      headers: {
+        'authkey': authKey,
+        'Content-Type': 'application/json'
+      },
+      signal: AbortSignal.timeout(6000),
+      body: JSON.stringify({
+        template_id: templateId,
+        sender: senderId,
+        short_url: '0',
+        recipients: [
+          {
+            mobiles: formattedMobile,
+            message: alertMessage,
+            otp: '123456',
+            OTP: '123456'
+          }
+        ]
+      })
+    })
+    const flowData = await flowResponse.json().catch(() => ({}))
+    console.log(`[MSG91 Direct SMS Alert] Dispatched to +${formattedMobile}:`, flowData)
+    return flowData
+  } catch (err) {
+    console.error(`[MSG91 Direct SMS Alert Error] Failed sending to +${formattedMobile}:`, err.message)
     return false
   }
 }
@@ -4652,7 +4789,7 @@ app.post('/api/admin/booking/:id/send-balance-reminder', authenticateAdmin, asyn
   }
 })
 
-// POST Admin trigger 1-hour staff reminder manually
+// POST Admin trigger staff reminder manually with customizable interval (10m, 30m, 1h, 2h, 24h)
 app.post('/api/admin/booking/:id/send-staff-reminder', authenticateAdmin, async (req, res) => {
   try {
     const booking = await db.getBookingById(req.params.id)
@@ -4663,20 +4800,40 @@ app.post('/api/admin/booking/:id/send-staff-reminder', authenticateAdmin, async 
       return res.status(400).json({ error: 'No staff member has been assigned to this booking yet.' })
     }
 
-    const result = await sendStaffShiftReminderWhatsApp(booking)
-    await db.markStaffReminderSent(booking.id)
+    const interval = req.body.interval || '1 hour'
+    const result = await sendStaffShiftReminderWhatsApp(booking, interval)
+    await db.markStaffReminderSent(booking.id, interval)
+
+    let intervalLabel = '1 Hour'
+    const lowerInt = String(interval || '').toLowerCase()
+    if (lowerInt.includes('10')) intervalLabel = '10 Minutes'
+    else if (lowerInt.includes('30')) intervalLabel = '30 Minutes'
+    else if (lowerInt.includes('24') || lowerInt.includes('day')) intervalLabel = '24 Hours'
+    else if (lowerInt.includes('2')) intervalLabel = '2 Hours'
 
     try {
       await db.addNotification({
         recipient: booking.assignedStaffPhone || booking.assignedStaff,
-        message: `⏰ 1-Hour Shift Reminder dispatched for Booking #${booking.id} (${booking.service} at ${booking.time}) to ${booking.assignedStaff}.`,
+        message: `⏰ ${intervalLabel} Shift Reminder dispatched for Booking #${booking.id} (${booking.service} at ${booking.time}) to ${booking.assignedStaff}.`,
         type: 'Staff Reminder'
       })
     } catch (e) {}
 
+    const staffPhone = String(booking.assignedStaffPhone || '').replace(/\D/g, '').slice(-10)
+    const dateRange = String(booking.date || 'Today').trim()
+    const patientName = String(booking.patientName || booking.name || 'Valued Patient').trim()
+    const is24Hr = intervalLabel.includes('24')
+    const timingPhrase = is24Hr ? 'starts tomorrow (in *24 hours*)' : `starts in *${intervalLabel}*`
+
+    const cleanReminderText = `⏰ *Amma Seva — ${intervalLabel} Shift Reminder*\n\n🙏 Namaste *${booking.assignedStaff}*,\nThis is an alert that your scheduled healthcare shift ${timingPhrase}.\n\n📋 *Shift & Booking Details:*\n• *Booking ID:* #${booking.id}\n• *Service:* ${booking.service || 'Home Care'}\n• *Patient Name:* ${patientName}\n• *Date (From & To):* ${dateRange}\n• *Shift Time:* ${booking.time || 'Scheduled Time'}\n• *Location / Address:* ${booking.address || 'Address provided in booking'}\n\n📍 *Instructions:*\nPlease report to the patient location on time and update the care coordinator upon arrival. Thank you!\n\n📞 *Coordinator / Helpline:* +91 94945 16543\n🌐 *Amma Seva Home Care*`
+
+    const whatsappUrl = staffPhone.length === 10 ? `https://wa.me/91${staffPhone}?text=${encodeURIComponent(cleanReminderText)}` : null
+
     res.json({
       success: true,
-      message: `WhatsApp shift reminder successfully dispatched to ${booking.assignedStaff} (${booking.assignedStaffPhone || ''}).`,
+      message: `WhatsApp ${intervalLabel} shift reminder successfully dispatched to ${booking.assignedStaff} (${booking.assignedStaffPhone || ''}).`,
+      interval: intervalLabel,
+      whatsappUrl,
       data: result
     })
   } catch (err) {
@@ -5350,11 +5507,39 @@ app.post('/api/notifications', authenticateAdmin, async (req, res) => {
   try {
     const log = await db.addNotification({ recipient, message, type })
 
-    // If recipient has email formatting, attempt to send real email alert in background
-    if (recipient.includes('@')) {
+    // Resolve target phone numbers
+    const targetPhones = []
+    let recipientName = 'Amma Seva Member'
+    const lowerRec = String(recipient || '').toLowerCase().trim()
+
+    if (lowerRec === 'admin' || lowerRec.includes('admin') || lowerRec.includes('9490587575')) {
+      const adminPhone = (process.env.ADMIN_PHONE || '9490587575').replace(/\D/g, '').slice(-10)
+      if (adminPhone && !targetPhones.includes(adminPhone)) {
+        targetPhones.push(adminPhone)
+      }
+      recipientName = 'Amma Seva Admin'
+    } else {
+      const extractedPhone = recipient.replace(/\D/g, '')
+      if (extractedPhone.length >= 10) {
+        targetPhones.push(extractedPhone.slice(-10))
+      }
+    }
+
+    if (lowerRec === 'all users' || lowerRec === 'all' || lowerRec === 'all caregivers' || lowerRec === 'all mtps') {
+      recipientName = 'Valued Customer'
+      // Always include admin as supervisor copy
+      const adminPhone = (process.env.ADMIN_PHONE || '9490587575').replace(/\D/g, '').slice(-10)
+      if (adminPhone && !targetPhones.includes(adminPhone)) {
+        targetPhones.push(adminPhone)
+      }
+    }
+
+    // 1. If recipient has email formatting or is Email type
+    if (recipient.includes('@') || type === 'Email') {
+      const targetEmail = recipient.includes('@') ? recipient.trim() : (process.env.ADMIN_EMAIL || 'ammasevahomecare@gmail.com')
       const mailOptions = {
         from: `"Amma Seva Notifications" <${process.env.SMTP_EMAIL || 'ammasevahomecare@gmail.com'}>`,
-        to: recipient.trim(),
+        to: targetEmail,
         subject: 'Alert Notification from Amma Seva',
         html: `
           <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 16px;">
@@ -5365,12 +5550,32 @@ app.post('/api/notifications', authenticateAdmin, async (req, res) => {
           </div>
         `
       }
-      transporter.sendMail(mailOptions).catch(e => console.error('Failed system broadcast:', e.message))
+      transporter.sendMail(mailOptions).catch(e => console.error('[Notification Email Error]:', e.message))
     }
 
-    console.log(`[Notification Alert Logged] Type: ${type} to ${recipient}: ${message}`)
-    res.status(201).json({ success: true, message: 'Notification successfully dispatched!', data: log })
+    // 2. If SMS or WhatsApp delivery requested or phone detected
+    const primaryPhone = targetPhones[0] || null
+    let whatsappUrl = null
+    if (primaryPhone) {
+      whatsappUrl = `https://wa.me/91${primaryPhone}?text=${encodeURIComponent(message)}`
+    }
+
+    // Dispatch via WhatsApp and SMS for all resolved phone targets
+    for (const phone of targetPhones) {
+      sendDirectWhatsAppAlert(phone, message, recipientName).catch(e => console.error('[Notification WhatsApp Error]:', e.message))
+      sendDirectSmsAlert(phone, message).catch(e => console.error('[Notification SMS Error]:', e.message))
+    }
+
+    console.log(`[Notification Alert Dispatched] Type: ${type} to ${recipient} (Phones: ${targetPhones.join(', ') || 'N/A'}): ${message}`)
+    res.status(201).json({ 
+      success: true, 
+      message: primaryPhone ? `Alert dispatched to +91 ${primaryPhone}!` : 'Notification successfully dispatched!',
+      phone: primaryPhone,
+      whatsappUrl,
+      data: log 
+    })
   } catch (err) {
+    console.error('Failed to send notification:', err)
     res.status(500).json({ error: 'Failed to send notification.' })
   }
 })

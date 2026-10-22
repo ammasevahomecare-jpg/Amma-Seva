@@ -2747,17 +2747,23 @@ export const db = {
     }
   },
 
-  markStaffReminderSent: async (id) => {
+  markStaffReminderSent: async (id, interval = '1 hour') => {
     const timestamp = new Date().toISOString()
     if (useMySQL) {
-      const [result] = await pool.query('UPDATE bookings SET staffReminderSent = 1, staffReminderSentAt = ? WHERE id = ?', [timestamp, id])
-      return result.affectedRows > 0
+      try {
+        const [result] = await pool.query('UPDATE bookings SET staffReminderSent = 1, staffReminderSentAt = ?, staffReminderInterval = ? WHERE id = ?', [timestamp, interval, id])
+        return result.affectedRows > 0
+      } catch (e) {
+        const [result] = await pool.query('UPDATE bookings SET staffReminderSent = 1, staffReminderSentAt = ? WHERE id = ?', [timestamp, id])
+        return result.affectedRows > 0
+      }
     } else {
       const data = await readJSONDb()
       const idx = data.bookings.findIndex(b => b.id === Number(id))
       if (idx > -1) {
         data.bookings[idx].staffReminderSent = 1
         data.bookings[idx].staffReminderSentAt = timestamp
+        data.bookings[idx].staffReminderInterval = interval
         await writeJSONDb(data)
         return true
       }

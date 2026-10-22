@@ -524,13 +524,15 @@ function AdminPage() {
   };
 
   const [sendingStaffReminderId, setSendingStaffReminderId] = useState<number | string | null>(null);
+  const [reminderIntervals, setReminderIntervals] = useState<Record<string | number, string>>({});
 
-  const handleSendStaffReminder = async (b: any) => {
+  const handleSendStaffReminder = async (b: any, customInterval?: string) => {
     if (!b || !b.id) return;
     if (!b.assignedStaff) {
       alert("⚠️ No staff member has been allocated for this shift yet.");
       return;
     }
+    const interval = customInterval || reminderIntervals[b.id] || "1 hour";
     const token = localStorage.getItem("ammaseva_admin_token");
     setSendingStaffReminderId(b.id);
     try {
@@ -539,23 +541,37 @@ function AdminPage() {
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
-        }
+        },
+        body: JSON.stringify({ interval })
       });
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || "Failed to dispatch staff reminder");
       }
 
-      // Update local state to mark reminder sent
-      y((prev: any[]) => prev.map(item => item.id === b.id ? { ...item, staffReminderSent: 1, staffReminderSentAt: new Date().toISOString() } : item));
+      const intervalLabel = data.interval || (interval.includes("10") ? "10 Minutes" : interval.includes("30") ? "30 Minutes" : interval.includes("24") ? "24 Hours" : interval.includes("2") ? "2 Hours" : "1 Hour");
+
+      // Update local state to mark reminder sent with interval
+      setBookings((prev: any[]) => prev.map(item => item.id === b.id ? { 
+        ...item, 
+        staffReminderSent: 1, 
+        staffReminderSentAt: new Date().toISOString(),
+        staffReminderInterval: intervalLabel
+      } : item));
 
       // Direct WhatsApp Web option
       const staffPhone = String(b.assignedStaffPhone || "").replace(/\D/g, "").slice(-10);
-      const reminderText = `⏰ *Amma Seva Shift Reminder (1 Hour Alert)*\n\n🙏 Namaste *${b.assignedStaff}*,\nThis is an alert that your scheduled healthcare shift starts in *1 hour*.\n\n📋 *Shift Details:*\n• *Booking ID:* #${b.id}\n• *Service:* ${b.service || "Home Care"}\n• *Patient:* ${b.patientName || b.name || "Customer"}\n• *Time:* ${b.time || "Scheduled Time"}\n• *Address:* ${b.address || "Contact Coordinator"}\n\n📍 Please reach the location on time and update the coordinator upon arrival. Thank you!`;
+      const dateRange = String(b.date || "Scheduled Date").trim();
+      const patientName = String(b.patientName || b.name || "Valued Client").trim();
+      const is24Hr = intervalLabel.includes("24");
+      const timingPhrase = is24Hr ? "starts tomorrow (in *24 hours*)" : `starts in *${intervalLabel}*`;
+      const reminderText = `⏰ *Amma Seva — ${intervalLabel} Shift Reminder*\n\n🙏 Namaste *${b.assignedStaff}*,\nThis is an alert that your scheduled healthcare shift ${timingPhrase}.\n\n📋 *Shift & Booking Details:*\n• *Booking ID:* #${b.id}\n• *Service:* ${b.service || "Home Care"}\n• *Patient Name:* ${patientName}\n• *Date (From & To):* ${dateRange}\n• *Shift Time:* ${b.time || "Scheduled Time"}\n• *Location / Address:* ${b.address || "Contact Coordinator"}\n\n📍 *Instructions:*\nPlease report to the patient location on time and update the care coordinator upon arrival. Thank you!\n\n📞 *Coordinator / Helpline:* +91 94945 16543\n🌐 *Amma Seva Home Care*`;
 
-      if (staffPhone.length === 10) {
+      const targetUrl = data.whatsappUrl || (staffPhone.length === 10 ? `https://wa.me/91${staffPhone}?text=${encodeURIComponent(reminderText)}` : null);
+
+      if (targetUrl) {
         if (confirm(`✅ ${data.message}\n\nWould you also like to open WhatsApp Web to send a direct message to ${b.assignedStaff} (+91 ${staffPhone})?`)) {
-          window.open(`https://wa.me/91${staffPhone}?text=${encodeURIComponent(reminderText)}`, "_blank");
+          window.open(targetUrl, "_blank");
         }
       } else {
         alert(`✅ ${data.message}`);
@@ -2964,6 +2980,19 @@ function AdminPage() {
         if (data.success) {
           fetchDashboardData();
           setModalType(null);
+          if (modalType === "notification") {
+            setNotifMessage("");
+            if (data.whatsappUrl) {
+              const shouldOpenWhatsApp = window.confirm(
+                `✓ ${data.message || "Alert dispatched via server!"}\n\nWould you like to open WhatsApp directly with this message?`
+              );
+              if (shouldOpenWhatsApp) {
+                window.open(data.whatsappUrl, "_blank");
+              }
+            } else {
+              alert(data.message || "Notification successfully dispatched!");
+            }
+          }
         } else {
           alert(data.error || "Failed to update record.");
         }
@@ -4034,30 +4063,48 @@ function AdminPage() {
                                         )}
                                       </div>
                                     </div>
-                                    <div className="shrink-0 flex flex-col items-end gap-1">
-                                      {b.staffReminderSent ? (
-                                        <span 
-                                          className="inline-flex items-center gap-1 text-[9px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200"
-                                          title={b.staffReminderSentAt ? `Automated reminder dispatched at ${new Date(b.staffReminderSentAt).toLocaleTimeString()}` : "Automated reminder dispatched"}
-                                        >
-                                          <Check className="w-3 h-3 text-emerald-600" /> 1-Hr Sent
-                                        </span>
-                                      ) : (
+                                    <div className="shrink-0 flex flex-col items-end gap-1.5">
+                                      <div className="flex items-center shadow-2xs rounded-md">
+                                        <div className="relative inline-flex items-center">
+                                          <Clock className="w-3 h-3 text-amber-700 absolute left-1.5 pointer-events-none" />
+                                          <select
+                                            value={reminderIntervals[b.id] || "1 hour"}
+                                            onChange={(e) => setReminderIntervals(prev => ({ ...prev, [b.id]: e.target.value }))}
+                                            className="text-[10px] font-extrabold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-l-md pl-5 pr-1.5 py-1 outline-none cursor-pointer appearance-none transition-colors"
+                                            title="Select Shift Reminder Timing (10m, 30m, 1h, 2h, 24h)"
+                                          >
+                                            <option value="10 minutes">10m</option>
+                                            <option value="30 minutes">30m</option>
+                                            <option value="1 hour">1h</option>
+                                            <option value="2 hours">2h</option>
+                                            <option value="24 hours">24h</option>
+                                          </select>
+                                        </div>
+
                                         <button
                                           type="button"
-                                          onClick={() => handleSendStaffReminder(b)}
+                                          onClick={() => handleSendStaffReminder(b, reminderIntervals[b.id] || "1 hour")}
                                           disabled={sendingStaffReminderId === b.id}
-                                          className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-2 py-1 rounded-md transition-all cursor-pointer shadow-2xs active:scale-95"
-                                          title="Send 1-Hour Shift Reminder WhatsApp to Staff"
+                                          className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-amber-900 bg-amber-200 hover:bg-amber-300 border border-l-0 border-amber-300 rounded-r-md px-2 py-1 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
+                                          title={`Send Shift Alert to Staff (${reminderIntervals[b.id] || "1 hour"})`}
                                         >
                                           {sendingStaffReminderId === b.id ? (
-                                            <span className="animate-spin text-amber-700">⌛</span>
+                                            <span className="animate-spin text-amber-800">⌛</span>
                                           ) : (
-                                            <Bell className="w-3 h-3 text-amber-700" />
+                                            <Send className="w-3 h-3 text-amber-800" />
                                           )}
-                                          <span>{sendingStaffReminderId === b.id ? "..." : "Ping 1-Hr"}</span>
+                                          <span>{sendingStaffReminderId === b.id ? "..." : "Ping"}</span>
                                         </button>
-                                      )}
+                                      </div>
+
+                                      {b.staffReminderSent ? (
+                                        <span 
+                                          className="inline-flex items-center gap-1 text-[8px] font-extrabold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200"
+                                          title={b.staffReminderSentAt ? `Last reminder sent at ${new Date(b.staffReminderSentAt).toLocaleTimeString()}` : "Shift reminder dispatched"}
+                                        >
+                                          <Check className="w-2.5 h-2.5 text-emerald-600" /> Sent ({b.staffReminderInterval || "1-Hr"})
+                                        </span>
+                                      ) : null}
                                     </div>
                                   </div>
                                 ) : (
@@ -6933,87 +6980,202 @@ function AdminPage() {
           )}
 
           {/* Alert Notifications panel */}
-          {activeTab === "notifications" && (
-            <div className="space-y-6">
-              <div className="grid gap-6 md:grid-cols-3">
-                
-                {/* Notification dispatcher form */}
-                <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/30 md:col-span-1 h-fit premium-card">
-                  <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display mb-4">Send Alert Notification</h3>
+          {activeTab === "notifications" && (() => {
+            const cleanTargetPhone = String(notifRecipient || '').replace(/\D/g, '').slice(-10);
+            const isPhoneTarget = cleanTargetPhone.length === 10;
+
+            return (
+              <div className="space-y-6">
+                <div className="grid gap-6 md:grid-cols-3">
                   
-                  <form onSubmit={handleModalSubmit} className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Recipient Target</label>
-                      <input 
-                        type="text"
-                        required
-                        value={notifRecipient}
-                        onChange={(e) => setNotifRecipient(e.target.value)}
-                        placeholder="e.g. All Users, email@test.com"
-                        className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 bg-background outline-none focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] transition-all bg-slate-50/50"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Delivery Method</label>
-                      <select
-                        value={notifType}
-                        onChange={(e) => setNotifType(e.target.value)}
-                        className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 bg-background outline-none focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] cursor-pointer bg-slate-50/50"
-                      >
-                        <option value="Email">Email Message</option>
-                        <option value="SMS">SMS / WhatsApp Alert</option>
-                        <option value="Broadcast">Broadcast Dashboard Alert</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Alert Message</label>
-                      <textarea
-                        required
-                        rows={4}
-                        value={notifMessage}
-                        onChange={(e) => setNotifMessage(e.target.value)}
-                        placeholder="Type alert notification details here..."
-                        className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 bg-background outline-none focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] bg-slate-50/50"
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={isLoading}
-                      onClick={() => setModalType("notification")}
-                      className="btn-primary w-full py-2.5 flex items-center justify-center gap-2 cursor-pointer shadow-md mt-2"
-                    >
-                      <Send className="h-4 w-4" /> Send Dispatch
-                    </button>
-                  </form>
-                </div>
-
-                {/* Notifications Dispatch Logs */}
-                <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/30 md:col-span-2 premium-card">
-                  <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display mb-4">Dispatched Alerts Log</h3>
-                  
-                  <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1">
-                    {filteredNotifications.map((notif) => (
-                      <div key={notif.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50/30 hover:bg-slate-50 transition-colors">
-                        <div className="flex justify-between items-center gap-2 text-[10px] font-bold text-slate-400 mb-2">
-                          <span className="text-[#1e2a5a] bg-[#1e2a5a]/5 border border-[#1e2a5a]/10 px-2.5 py-0.5 rounded-full uppercase tracking-wider font-extrabold">{notif.type}</span>
-                          <span>{new Date(notif.sentAt).toLocaleString()}</span>
+                  {/* Notification dispatcher form */}
+                  <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/30 md:col-span-1 h-fit premium-card">
+                    <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display mb-4">Send Alert Notification</h3>
+                    
+                    <form onSubmit={handleModalSubmit} className="space-y-4">
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Recipient Target</label>
+                          <span className="text-[10px] text-slate-400 font-medium">Quick click or type phone</span>
                         </div>
-                        <div className="text-sm font-bold text-[#1e2a5a] mb-1">To: {notif.recipient}</div>
-                        <p className="text-xs text-slate-600 leading-relaxed font-sans font-medium">{notif.message}</p>
-                      </div>
-                    ))}
-                    {filteredNotifications.length === 0 && (
-                      <p className="text-center text-xs text-slate-400 py-10 font-bold">No notification logs recorded.</p>
-                    )}
-                  </div>
-                </div>
 
+                        {/* Quick Recipient Target Badges */}
+                        <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNotifRecipient("9490587575");
+                              setNotifType("WhatsApp");
+                            }}
+                            className={`text-xs px-2.5 py-1 rounded-full font-bold transition-all border ${
+                              notifRecipient === "9490587575"
+                                ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                                : "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
+                            }`}
+                            title="Target Amma Seva Admin Mobile directly"
+                          >
+                            👑 Admin (9490587575)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNotifRecipient("All Users");
+                              setNotifType("Broadcast");
+                            }}
+                            className={`text-xs px-2.5 py-1 rounded-full font-bold transition-all border ${
+                              notifRecipient === "All Users"
+                                ? "bg-[#1e2a5a] text-white border-[#1e2a5a] shadow-sm"
+                                : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                            }`}
+                          >
+                            👥 All Users
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNotifRecipient("All Caregivers");
+                              setNotifType("WhatsApp");
+                            }}
+                            className={`text-xs px-2.5 py-1 rounded-full font-bold transition-all border ${
+                              notifRecipient === "All Caregivers"
+                                ? "bg-[#c9a24c] text-white border-[#c9a24c] shadow-sm"
+                                : "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
+                            }`}
+                          >
+                            🩺 Caregivers
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNotifRecipient("All MTPs");
+                              setNotifType("WhatsApp");
+                            }}
+                            className={`text-xs px-2.5 py-1 rounded-full font-bold transition-all border ${
+                              notifRecipient === "All MTPs"
+                                ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                                : "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100"
+                            }`}
+                          >
+                            🚗 MTP Staff
+                          </button>
+                        </div>
+
+                        <input 
+                          type="text"
+                          required
+                          value={notifRecipient}
+                          onChange={(e) => setNotifRecipient(e.target.value)}
+                          placeholder="e.g. 9490587575, All Users, admin@ammaseva.in"
+                          className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 bg-background outline-none focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] transition-all bg-slate-50/50"
+                        />
+
+                        {isPhoneTarget && (
+                          <div className="mt-2 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/80 rounded-md px-2.5 py-1.5 flex items-center justify-between">
+                            <span className="flex items-center gap-1.5">
+                              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                              Phone Target: <b>+91 {cleanTargetPhone}</b>
+                            </span>
+                            <span className="text-[10px] text-emerald-800 font-extrabold uppercase bg-emerald-100/80 px-1.5 py-0.5 rounded">WhatsApp & SMS Ready</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Delivery Method</label>
+                        <select
+                          value={notifType}
+                          onChange={(e) => setNotifType(e.target.value)}
+                          className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 bg-background outline-none focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] cursor-pointer bg-slate-50/50"
+                        >
+                          <option value="WhatsApp">💬 WhatsApp Message (Automated & Direct)</option>
+                          <option value="SMS">📱 Mobile SMS Alert (MSG91 Flow)</option>
+                          <option value="Email">📧 Email Message (Official SMTP)</option>
+                          <option value="Broadcast">📢 Broadcast Dashboard Alert</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Alert Message</label>
+                        <textarea
+                          required
+                          rows={4}
+                          value={notifMessage}
+                          onChange={(e) => setNotifMessage(e.target.value)}
+                          placeholder="Type alert notification details here..."
+                          className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 bg-background outline-none focus:ring-1 focus:ring-[#c9a24c] focus:border-[#c9a24c] bg-slate-50/50"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-2">
+                        <button
+                          type="submit"
+                          disabled={isLoading}
+                          onClick={() => setModalType("notification")}
+                          className="btn-primary flex-1 py-2.5 flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                        >
+                          <Send className="h-4 w-4" /> Send Dispatch
+                        </button>
+                        {isPhoneTarget && (
+                          <a
+                            href={`https://wa.me/91${cleanTargetPhone}?text=${encodeURIComponent(notifMessage || '')}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-md transition-all cursor-pointer whitespace-nowrap"
+                            title="Open WhatsApp chat directly with this typed message"
+                          >
+                            <MessageSquare className="h-4 w-4" /> WhatsApp
+                          </a>
+                        )}
+                      </div>
+                    </form>
+                  </div>
+
+                  {/* Notifications Dispatch Logs */}
+                  <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-md shadow-slate-100/30 md:col-span-2 premium-card">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-extrabold text-[#1e2a5a] font-display">Dispatched Alerts Log</h3>
+                      <span className="text-xs text-slate-400 font-bold">{filteredNotifications.length} alerts logged</span>
+                    </div>
+                    
+                    <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1">
+                      {filteredNotifications.map((notif) => {
+                        const cleanLogPhone = String(notif.recipient || '').replace(/\D/g, '').slice(-10);
+                        const hasValidPhone = cleanLogPhone.length === 10;
+                        return (
+                          <div key={notif.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50/30 hover:bg-slate-50 transition-colors">
+                            <div className="flex justify-between items-center gap-2 text-[10px] font-bold text-slate-400 mb-2">
+                              <span className="text-[#1e2a5a] bg-[#1e2a5a]/5 border border-[#1e2a5a]/10 px-2.5 py-0.5 rounded-full uppercase tracking-wider font-extrabold">{notif.type}</span>
+                              <span>{new Date(notif.sentAt).toLocaleString()}</span>
+                            </div>
+                            <div className="text-sm font-bold text-[#1e2a5a] mb-1 flex items-center justify-between flex-wrap gap-2">
+                              <span>To: {notif.recipient}</span>
+                              {hasValidPhone && (
+                                <a
+                                  href={`https://wa.me/91${cleanLogPhone}?text=${encodeURIComponent(notif.message || '')}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[11px] font-bold shadow-sm transition-all"
+                                  title="Open WhatsApp chat with this message pre-filled"
+                                >
+                                  <MessageSquare className="h-3 w-3" />
+                                  <span>WhatsApp</span>
+                                </a>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-600 leading-relaxed font-sans font-medium">{notif.message}</p>
+                          </div>
+                        );
+                      })}
+                      {filteredNotifications.length === 0 && (
+                        <p className="text-center text-xs text-slate-400 py-10 font-bold">No notification logs recorded.</p>
+                      )}
+                    </div>
+                  </div>
+
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* MTP (Multi Tasking Professionals) Panel */}
           {activeTab === "mtps" && (() => {
