@@ -192,11 +192,19 @@ function LoginPage() {
       } catch (e) {}
     }
 
-    if (localStorage.getItem("ammaseva_user_token") || localStorage.getItem("ammaseva_caretaker_token")) {
+    const isLogout = urlParams.get("logout") === "true";
+    if (isLogout) {
+      try {
+        localStorage.removeItem("ammaseva_user_token");
+        localStorage.removeItem("ammaseva_user_details");
+        localStorage.removeItem("ammaseva_caretaker_token");
+        localStorage.removeItem("ammaseva_caretaker_details");
+        localStorage.removeItem("ammaseva_token");
+        localStorage.removeItem("token");
+      } catch (e) {}
+    } else if (localStorage.getItem("ammaseva_user_token") || localStorage.getItem("ammaseva_caretaker_token")) {
       const redirect = urlParams.get("redirect") || "/dashboard";
       window.location.href = redirect;
-    } else if (localStorage.getItem("ammaseva_admin_token")) {
-      navigate({ to: "/admin" });
     }
   }, [navigate]);
 

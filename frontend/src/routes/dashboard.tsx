@@ -182,12 +182,39 @@ function CustomerDashboard() {
   });
 
   const handleLogout = () => {
-    localStorage.removeItem("ammaseva_user_token");
-    localStorage.removeItem("ammaseva_user_details");
-    localStorage.removeItem("ammaseva_caretaker_token");
-    localStorage.removeItem("ammaseva_caretaker_details");
+    try {
+      localStorage.removeItem("ammaseva_user_token");
+      localStorage.removeItem("ammaseva_user_details");
+      localStorage.removeItem("ammaseva_caretaker_token");
+      localStorage.removeItem("ammaseva_caretaker_details");
+      localStorage.removeItem("ammaseva_token");
+      localStorage.removeItem("token");
+      sessionStorage.removeItem("ammaseva_user_token");
+      sessionStorage.removeItem("ammaseva_user_details");
+      sessionStorage.removeItem("ammaseva_caretaker_token");
+      sessionStorage.removeItem("ammaseva_caretaker_details");
+    } catch (e) {
+      console.error("Storage clear error:", e);
+    }
+
     setIsAuthenticated(false);
-    navigate({ to: "/login" });
+    setUser(null);
+    setCaretaker(null);
+    setIsCaretaker(false);
+    setBookings([]);
+    setCaretakerBookings([]);
+
+    try {
+      window.dispatchEvent(new Event("storage"));
+      window.dispatchEvent(new CustomEvent("ammaseva:logout"));
+    } catch (e) {}
+
+    // Hard redirect replaces URL, purges history state, and drops all background polling/fetch requests
+    if (typeof window !== "undefined") {
+      window.location.replace("/login?logout=true");
+    } else {
+      navigate({ to: "/login" });
+    }
   };
 
   const [user, setUser] = useState<UserDetails | null>(null);
@@ -4252,7 +4279,12 @@ function CustomerDashboard() {
                     <div className="min-w-0 flex-1">
                       <div className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-slate-400 truncate">Total Paid</div>
                       <div className="text-base sm:text-lg lg:text-xl font-black text-slate-800 font-display truncate">
-                        ₹{bookings.reduce((sum, b) => sum + Number(b.advancePaid || 0), 0).toLocaleString()}
+                        ₹{bookings.reduce((sum, b) => {
+                          const isPaid = String(b.paymentStatus || "").toLowerCase() === "paid" || 
+                                         (b.balanceAmount !== undefined && b.balanceAmount !== null && Number(b.balanceAmount) <= 0 && Number(b.amount) > 0);
+                          const paidVal = isPaid ? Number(b.amount || 0) : Number(b.advancePaid || 0);
+                          return sum + paidVal;
+                        }, 0).toLocaleString()}
                       </div>
                     </div>
                   </div>
@@ -4265,7 +4297,16 @@ function CustomerDashboard() {
                     <div className="min-w-0 flex-1">
                       <div className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-slate-400 truncate">Balance Due</div>
                       <div className="text-base sm:text-lg lg:text-xl font-black text-slate-800 font-display truncate">
-                        ₹{bookings.filter(b => b.status !== "Cancelled" && b.paymentStatus !== "Paid").reduce((sum, b) => sum + Number(b.balanceAmount || 0), 0).toLocaleString()}
+                        ₹{bookings.filter(b => {
+                          const isPaid = String(b.paymentStatus || "").toLowerCase() === "paid" || 
+                                         (b.balanceAmount !== undefined && b.balanceAmount !== null && Number(b.balanceAmount) <= 0 && Number(b.amount) > 0);
+                          return b.status !== "Cancelled" && !isPaid;
+                        }).reduce((sum, b) => {
+                          const bal = b.balanceAmount !== undefined && b.balanceAmount !== null
+                            ? Math.max(0, Number(b.balanceAmount))
+                            : Math.max(0, Number(b.amount || 0) - Number(b.advancePaid || 0));
+                          return sum + bal;
+                        }, 0).toLocaleString()}
                       </div>
                     </div>
                   </div>
@@ -4451,12 +4492,16 @@ function CustomerDashboard() {
                     {sortedFiltered.map((booking) => {
                       const isExpanded = !!expandedBookingIds[booking.id];
                       const isActive = booking.status !== "Completed" && booking.status !== "Cancelled";
-                      const advPaid = booking.advancePaid !== undefined && booking.advancePaid !== null 
-                        ? Number(booking.advancePaid) 
-                        : (booking.paymentStatus === "Paid" ? Number(booking.amount) : 0);
-                      const balDue = booking.balanceAmount !== undefined && booking.balanceAmount !== null
-                        ? Number(booking.balanceAmount)
-                        : Math.max(0, Number(booking.amount) - advPaid);
+                      const isPaid = String(booking.paymentStatus || "").toLowerCase() === "paid" || 
+                                     (booking.balanceAmount !== undefined && booking.balanceAmount !== null && Number(booking.balanceAmount) <= 0 && Number(booking.amount) > 0);
+                      const advPaid = isPaid 
+                        ? Number(booking.amount) 
+                        : (booking.advancePaid !== undefined && booking.advancePaid !== null ? Number(booking.advancePaid) : 0);
+                      const balDue = isPaid 
+                        ? 0 
+                        : (booking.balanceAmount !== undefined && booking.balanceAmount !== null
+                          ? Math.max(0, Number(booking.balanceAmount))
+                          : Math.max(0, Number(booking.amount) - advPaid));
 
                       return (
                         <div
@@ -4518,7 +4563,7 @@ function CustomerDashboard() {
                               </div>
                               
                               <div className="flex items-center gap-2 self-start sm:self-center shrink-0 pt-1 sm:pt-0">
-                                {!isExpanded && balDue > 0 && booking.status !== "Cancelled" && (
+                                {!isExpanded && !isPaid && balDue > 0 && booking.status !== "Cancelled" && (
                                   <button
                                     type="button"
                                     onClick={() => handlePayBalance(booking)}
@@ -4658,16 +4703,16 @@ function CustomerDashboard() {
                                 ₹{Number(booking.amount).toLocaleString()}
                               </span>
                               <span className={`text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded-md border ${
-                                booking.paymentStatus === 'Paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                                isPaid ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
                                 booking.paymentStatus === 'Advance Paid' ? 'bg-amber-50 text-amber-700 border-amber-100' :
                                 'bg-slate-100 text-slate-600 border-slate-200'
                               }`}>
-                                {booking.paymentStatus}
+                                {isPaid ? 'Paid' : (booking.paymentStatus || 'Unpaid')}
                               </span>
                             </div>
                             <div className="text-[9px] text-slate-500 border-t border-slate-200/60 pt-1 flex justify-between gap-2 font-medium">
-                              <span>Paid: <strong className="text-slate-700">₹{Number(booking.advancePaid || 0).toLocaleString()}</strong></span>
-                              <span>Bal: <strong className="text-amber-800">₹{Number(booking.balanceAmount || 0).toLocaleString()}</strong></span>
+                              <span>Paid: <strong className="text-slate-700">₹{advPaid.toLocaleString()}</strong></span>
+                              <span>Bal: <strong className={isPaid ? "text-emerald-700" : "text-amber-800"}>{isPaid ? "₹0 (Settled)" : `₹${balDue.toLocaleString()}`}</strong></span>
                             </div>
                           </div>
                         </div>
@@ -5029,12 +5074,12 @@ function CustomerDashboard() {
                       {/* Action buttons */}
                       {isExpanded && (
                         <div className="flex flex-col sm:flex-row lg:flex-col justify-end gap-2.5 shrink-0 border-t lg:border-t-0 lg:border-l border-slate-100/80 pt-4 lg:pt-0 lg:pl-6">
-                          {booking.status !== "Cancelled" && (booking.paymentStatus === "Advance Paid" || booking.paymentStatus === "Unpaid") && Number(booking.balanceAmount) > 0 && (
+                          {booking.status !== "Cancelled" && !isPaid && balDue > 0 && (
                             <button
                               onClick={() => handlePayBalance(booking)}
                               className="px-4 py-2.5 rounded-xl bg-emerald-600 border border-emerald-700 text-white text-xs font-bold uppercase tracking-wider hover:bg-emerald-700 cursor-pointer transition-all hover:translate-y-[-1px] text-center w-full sm:w-auto"
                             >
-                              Pay Balance (₹{booking.balanceAmount})
+                              Pay Balance (₹{balDue.toLocaleString()})
                             </button>
                           )}
                            {booking.status !== "Cancelled" && booking.status !== "Completed" && (
@@ -6459,14 +6504,26 @@ function CustomerDashboard() {
                 <span className="text-slate-700 font-bold uppercase tracking-wider text-[10px]">Total Shift Amount</span>
                 <span className="font-black text-emerald-700 text-sm font-display">₹{Number(successBooking.amount).toLocaleString()}</span>
               </div>
-              <div className="flex justify-between items-center text-[11px] pt-1">
-                <span className="text-emerald-700 font-medium">Advance Paid:</span>
-                <span className="font-bold text-emerald-800 font-mono">₹{Number(successBooking.advancePaid || 0).toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between items-center text-[11px]">
-                <span className="text-amber-800 font-medium">Balance Payable:</span>
-                <span className="font-bold text-amber-900 font-mono">₹{Number(successBooking.balanceAmount || 0).toLocaleString()}</span>
-              </div>
+              {(() => {
+                const isSuccPaid = String(successBooking.paymentStatus || "").toLowerCase() === "paid" || 
+                                   (successBooking.balanceAmount !== undefined && successBooking.balanceAmount !== null && Number(successBooking.balanceAmount) <= 0);
+                const succAdv = isSuccPaid ? Number(successBooking.amount) : Number(successBooking.advancePaid || 0);
+                const succBal = isSuccPaid ? 0 : Math.max(0, Number(successBooking.amount) - succAdv);
+                return (
+                  <>
+                    <div className="flex justify-between items-center text-[11px] pt-1">
+                      <span className="text-emerald-700 font-medium">Advance Paid:</span>
+                      <span className="font-bold text-emerald-800 font-mono">₹{succAdv.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[11px]">
+                      <span className={isSuccPaid ? "text-emerald-800 font-medium" : "text-amber-800 font-medium"}>Balance Payable:</span>
+                      <span className={`font-bold font-mono ${isSuccPaid ? "text-emerald-900" : "text-amber-900"}`}>
+                        {isSuccPaid ? "₹0 (Settled)" : `₹${succBal.toLocaleString()}`}
+                      </span>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
             <button
@@ -6583,12 +6640,18 @@ function CustomerDashboard() {
         const invCgst = Math.round(invGst / 2);
         const invSgst = invGst - invCgst;
         const invTotal = Number(activeInvoice.amount);
-        const invAdvPaid = activeInvoice.advancePaid !== undefined && activeInvoice.advancePaid !== null
-          ? Number(activeInvoice.advancePaid)
-          : (activeInvoice.paymentStatus === 'Paid' ? invTotal : 0);
-        const invBalance = activeInvoice.balanceAmount !== undefined && activeInvoice.balanceAmount !== null
-          ? Number(activeInvoice.balanceAmount)
-          : Math.max(0, invTotal - invAdvPaid);
+        const isInvPaid = String(activeInvoice.paymentStatus || '').toLowerCase() === 'paid' || 
+                          (activeInvoice.balanceAmount !== undefined && activeInvoice.balanceAmount !== null && Number(activeInvoice.balanceAmount) <= 0);
+        const invAdvPaid = isInvPaid
+          ? invTotal
+          : (activeInvoice.advancePaid !== undefined && activeInvoice.advancePaid !== null
+            ? Number(activeInvoice.advancePaid)
+            : 0);
+        const invBalance = isInvPaid
+          ? 0
+          : (activeInvoice.balanceAmount !== undefined && activeInvoice.balanceAmount !== null
+            ? Math.max(0, Number(activeInvoice.balanceAmount))
+            : Math.max(0, invTotal - invAdvPaid));
 
         return (
           <div id="invoice-modal-root" className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 animate-fade-in overflow-y-auto">
@@ -6624,13 +6687,13 @@ function CustomerDashboard() {
                     </div>
                     <div className="mt-1">
                       <span className={`inline-block text-[9px] font-extrabold px-2 py-0.5 rounded border uppercase tracking-wider ${
-                        activeInvoice.paymentStatus === 'Paid'
+                        isInvPaid
                           ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
                           : activeInvoice.paymentStatus === 'Advance Paid'
                             ? 'bg-blue-50 text-blue-800 border-blue-300'
                             : 'bg-amber-50 text-amber-800 border-amber-300'
                       }`}>
-                        {activeInvoice.paymentStatus || 'Pay on Service'}
+                        {isInvPaid ? 'Paid in Full' : (activeInvoice.paymentStatus || 'Pay on Service')}
                       </span>
                     </div>
                   </div>

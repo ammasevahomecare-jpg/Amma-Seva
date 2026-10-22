@@ -75,7 +75,7 @@ export default function PayBalancePage() {
       }
       const data: BookingPayInfo = await res.json();
       setBooking(data);
-      if (data.balanceAmount <= 0 || data.paymentStatus === "Paid") {
+      if (Number(data.balanceAmount) <= 0 || String(data.paymentStatus || "").toLowerCase() === "paid") {
         setPaymentSuccess(true);
       }
     } catch (err: any) {
@@ -95,11 +95,13 @@ export default function PayBalancePage() {
 
   const handlePayOnline = async () => {
     if (!booking) return;
-    const balance = Number(booking.balanceAmount);
-    if (balance <= 0) {
-      alert("No pending balance for this booking.");
+    const isSettled = Number(booking.balanceAmount) <= 0 || String(booking.paymentStatus || "").toLowerCase() === "paid";
+    if (isSettled) {
+      alert("✓ Notice: This booking has already been settled in full! Duplicate payment has been blocked.");
+      setPaymentSuccess(true);
       return;
     }
+    const balance = Number(booking.balanceAmount);
 
     setIsProcessingPayment(true);
     try {
@@ -313,11 +315,11 @@ export default function PayBalancePage() {
 
                   <div className="text-right">
                     <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                      paymentSuccess || booking.balanceAmount <= 0
+                      paymentSuccess || Number(booking.balanceAmount) <= 0 || String(booking.paymentStatus || "").toLowerCase() === "paid"
                         ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
                         : "bg-amber-500/20 text-amber-300 border border-amber-500/40"
                     }`}>
-                      {paymentSuccess || booking.balanceAmount <= 0 ? "✓ Fully Paid" : "⏳ Balance Due"}
+                      {paymentSuccess || Number(booking.balanceAmount) <= 0 || String(booking.paymentStatus || "").toLowerCase() === "paid" ? "✓ Fully Paid" : "⏳ Balance Due"}
                     </span>
                   </div>
                 </div>
@@ -381,7 +383,7 @@ export default function PayBalancePage() {
                 </div>
 
                 {/* Final Balance Due Highlight Card */}
-                {paymentSuccess || booking.balanceAmount <= 0 ? (
+                {paymentSuccess || Number(booking.balanceAmount) <= 0 || String(booking.paymentStatus || "").toLowerCase() === "paid" ? (
                   <div className="mt-6 bg-gradient-to-b from-emerald-50 to-teal-50 border-2 border-emerald-300 rounded-3xl p-6 text-center shadow-xs">
                     <div className="w-14 h-14 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-3 text-emerald-700 shadow-2xs">
                       <Check className="w-7 h-7 stroke-[3]" />

@@ -475,11 +475,18 @@ function AdminPage() {
     if (!b) return "";
     const customerName = b.name || b.patientName || "Customer";
     const bookingId = b.id;
-    const balance = Number(b.balanceAmount) || Math.max(0, Number(b.amount) - Number(b.advancePaid || 0));
+    const isPaid = String(b.paymentStatus || "").toLowerCase() === "paid" || Number(b.balanceAmount) <= 0;
+    const totalAmt = Number(b.amount || 0);
+    const balance = isPaid ? 0 : (Number(b.balanceAmount) || Math.max(0, totalAmt - Number(b.advancePaid || 0)));
+    const advance = isPaid ? totalAmt : Number(b.advancePaid || 0);
     const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://ammaseva.in";
     const payUrl = `${baseUrl}/pay-balance?id=${bookingId}`;
 
-    return `🙏 Namaste *${customerName}*,\n\nThank you for choosing *Amma Seva Home Healthcare*!\n\n📋 *Care Reservation Details:*\n• *Booking ID:* #${bookingId}\n• *Service:* ${b.service || "Healthcare"}\n• *Schedule:* ${b.date || "Scheduled"}${b.time ? " at " + b.time : ""}\n• *Total Shift Value:* ₹${Number(b.amount).toLocaleString("en-IN")}\n• *Advance Paid:* ₹${Number(b.advancePaid || 0).toLocaleString("en-IN")}\n• *Pending Balance Due:* *₹${balance.toLocaleString("en-IN")}*\n\n💳 *Click here to pay balance securely online:*\n👉 ${payUrl}\n_(Google Pay, PhonePe, UPI, Cards, NetBanking accepted)_\n\nNeed assistance? Call our 24/7 Coordinator at +91 94905 87575.`;
+    if (isPaid || balance <= 0) {
+      return `🙏 Namaste *${customerName}*,\n\nThank you for choosing *Amma Seva Home Healthcare*!\n\n📋 *Payment Receipt & Confirmation:*\n• *Booking ID:* #${bookingId}\n• *Service:* ${b.service || "Healthcare"}\n• *Schedule:* ${b.date || "Scheduled"}${b.time ? " at " + b.time : ""}\n• *Total Shift Value:* ₹${totalAmt.toLocaleString("en-IN")}\n• *Amount Paid:* ₹${totalAmt.toLocaleString("en-IN")}\n• *Payment Status:* *FULLY PAID (SETTLED) ✓*\n• *Outstanding Balance:* *₹0.00*\n\n📄 *View/Download Your Digital Invoice:*\n👉 ${payUrl}\n\nNeed assistance? Call our 24/7 Helpline at +91 94905 87575.`;
+    }
+
+    return `🙏 Namaste *${customerName}*,\n\nThank you for choosing *Amma Seva Home Healthcare*!\n\n📋 *Care Reservation Details:*\n• *Booking ID:* #${bookingId}\n• *Service:* ${b.service || "Healthcare"}\n• *Schedule:* ${b.date || "Scheduled"}${b.time ? " at " + b.time : ""}\n• *Total Shift Value:* ₹${totalAmt.toLocaleString("en-IN")}\n• *Advance Paid:* ₹${advance.toLocaleString("en-IN")}\n• *Pending Balance Due:* *₹${balance.toLocaleString("en-IN")}*\n\n💳 *Click here to pay balance securely online:*\n👉 ${payUrl}\n_(Google Pay, PhonePe, UPI, Cards, NetBanking accepted)_\n\nNeed assistance? Call our 24/7 Coordinator at +91 94905 87575.`;
   };
 
   const handleOpenWhatsAppDirect = (b: any) => {
@@ -513,6 +520,50 @@ function AdminPage() {
       setWhatsAppReminderStatus("❌ Error: " + err.message);
     } finally {
       setIsSendingWhatsAppReminder(false);
+    }
+  };
+
+  const [sendingStaffReminderId, setSendingStaffReminderId] = useState<number | string | null>(null);
+
+  const handleSendStaffReminder = async (b: any) => {
+    if (!b || !b.id) return;
+    if (!b.assignedStaff) {
+      alert("⚠️ No staff member has been allocated for this shift yet.");
+      return;
+    }
+    const token = localStorage.getItem("ammaseva_admin_token");
+    setSendingStaffReminderId(b.id);
+    try {
+      const res = await fetch(`/api/admin/booking/${b.id}/send-staff-reminder`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to dispatch staff reminder");
+      }
+
+      // Update local state to mark reminder sent
+      y((prev: any[]) => prev.map(item => item.id === b.id ? { ...item, staffReminderSent: 1, staffReminderSentAt: new Date().toISOString() } : item));
+
+      // Direct WhatsApp Web option
+      const staffPhone = String(b.assignedStaffPhone || "").replace(/\D/g, "").slice(-10);
+      const reminderText = `⏰ *Amma Seva Shift Reminder (1 Hour Alert)*\n\n🙏 Namaste *${b.assignedStaff}*,\nThis is an alert that your scheduled healthcare shift starts in *1 hour*.\n\n📋 *Shift Details:*\n• *Booking ID:* #${b.id}\n• *Service:* ${b.service || "Home Care"}\n• *Patient:* ${b.patientName || b.name || "Customer"}\n• *Time:* ${b.time || "Scheduled Time"}\n• *Address:* ${b.address || "Contact Coordinator"}\n\n📍 Please reach the location on time and update the coordinator upon arrival. Thank you!`;
+
+      if (staffPhone.length === 10) {
+        if (confirm(`✅ ${data.message}\n\nWould you also like to open WhatsApp Web to send a direct message to ${b.assignedStaff} (+91 ${staffPhone})?`)) {
+          window.open(`https://wa.me/91${staffPhone}?text=${encodeURIComponent(reminderText)}`, "_blank");
+        }
+      } else {
+        alert(`✅ ${data.message}`);
+      }
+    } catch (err: any) {
+      alert(`❌ Error: ${err.message}`);
+    } finally {
+      setSendingStaffReminderId(null);
     }
   };
 
@@ -933,6 +984,7 @@ function AdminPage() {
   const [bookingPhone, setBookingPhone] = useState("");
   const [bookingService, setBookingService] = useState("");
   const [bookingDate, setBookingDate] = useState("");
+  const [bookingModalEndDate, setBookingModalEndDate] = useState("");
   const [bookingTime, setBookingTime] = useState("");
   const [bookingDuration, setBookingDuration] = useState("Daily");
   const [bookingDurationCount, setBookingDurationCount] = useState("1");
@@ -959,6 +1011,65 @@ function AdminPage() {
   const [payoutCalcMode, setPayoutCalcMode] = useState<"percentage" | "fixed">("percentage");
   const [payoutPercentValue, setPayoutPercentValue] = useState("85");
   const [isRecordCaretakerPaymentMode, setIsRecordCaretakerPaymentMode] = useState(false);
+
+  // Date calculation helpers for multi-day bookings
+  const calculateDaysBetween = (startStr: string, endStr: string): number => {
+    if (!startStr || !endStr) return 1;
+    const start = new Date(startStr + "T00:00:00");
+    const end = new Date(endStr + "T00:00:00");
+    const diffTime = end.getTime() - start.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    return diffDays > 0 ? diffDays : 1;
+  };
+
+  const addDaysToDate = (startStr: string, days: number): string => {
+    if (!startStr) return "";
+    const d = new Date(startStr + "T00:00:00");
+    d.setDate(d.getDate() + Math.max(0, days - 1));
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  // Helper to extract rates for standard service
+  const getStandardServiceRates = (serviceTitle: string) => {
+    const allStd = [...(Array.isArray(services) && services.length > 0 ? services : []), ...ADMIN_STANDARD_SERVICES];
+    const s = allStd.find(x => x.title === serviceTitle) || allStd[0];
+    const priceStr = (s?.price || s?.pricing || "").toString();
+    const matches = priceStr.replace(/,/g, '').match(/\d+/);
+    const rate = matches ? Number(matches[0]) : (s?.defaultRate || 1200);
+    const unit = (s?.unit || priceStr).toLowerCase();
+
+    let hourly = 0;
+    let daily = 0;
+    let weekly = 0;
+    let monthly = 0;
+
+    if (unit.includes('month')) {
+      monthly = rate;
+      daily = Math.round(monthly / 30);
+      weekly = Math.round(daily * 7);
+      hourly = Math.round(daily / 24);
+    } else if (unit.includes('hour')) {
+      hourly = rate;
+      daily = Math.round(hourly * 24);
+      weekly = Math.round(daily * 7);
+      monthly = Math.round(daily * 30);
+    } else if (unit.includes('visit') || unit.includes('session') || unit.includes('consultation')) {
+      daily = rate;
+      hourly = rate;
+      weekly = rate * 7;
+      monthly = rate * 30;
+    } else {
+      daily = rate;
+      hourly = Math.round(daily / 24);
+      weekly = Math.round(daily * 7);
+      monthly = Math.round(daily * 30);
+    }
+
+    return { hourly, daily, weekly, monthly, rawRate: rate, unit: s?.unit || unit };
+  };
 
   // Helper to get active MTP pricing tiers
   const getActiveMtpTiers = () => {
@@ -1001,40 +1112,7 @@ function AdminPage() {
 
   // Helper to calculate rate for standard care service
   const calculateRatesForStandardService = (serviceTitle: string, duration: string, countStr: string) => {
-    const allStd = [...(Array.isArray(services) && services.length > 0 ? services : []), ...ADMIN_STANDARD_SERVICES];
-    const s = allStd.find(x => x.title === serviceTitle) || allStd[0];
-    const priceStr = (s?.price || s?.pricing || "").toString();
-    const matches = priceStr.replace(/,/g, '').match(/\d+/);
-    const rate = matches ? Number(matches[0]) : (s?.defaultRate || 1200);
-    const unit = (s?.unit || priceStr).toLowerCase();
-
-    let hourly = 0;
-    let daily = 0;
-    let weekly = 0;
-    let monthly = 0;
-
-    if (unit.includes('month')) {
-      monthly = rate;
-      daily = Math.round(monthly / 30);
-      weekly = Math.round(daily * 7);
-      hourly = Math.round(daily / 24);
-    } else if (unit.includes('hour')) {
-      hourly = rate;
-      daily = Math.round(hourly * 24);
-      weekly = Math.round(daily * 7);
-      monthly = Math.round(daily * 30);
-    } else if (unit.includes('visit') || unit.includes('session') || unit.includes('consultation')) {
-      daily = rate;
-      hourly = rate;
-      weekly = rate * 7;
-      monthly = rate * 30;
-    } else {
-      daily = rate;
-      hourly = Math.round(daily / 24);
-      weekly = Math.round(daily * 7);
-      monthly = Math.round(daily * 30);
-    }
-
+    const { hourly, daily, weekly, monthly } = getStandardServiceRates(serviceTitle);
     const count = Math.max(1, Number(countStr) || 1);
     let base = daily * count;
     if (duration === "Hourly") base = hourly * count;
@@ -1045,6 +1123,21 @@ function AdminPage() {
     const gst = Math.round(base * 0.18);
     const total = base + gst;
     return { base, gst, total };
+  };
+
+  // Recalculate and update financial states
+  const applyStandardPricing = (serviceTitle: string, duration: string, countStr: string) => {
+    const { base, gst, total } = calculateRatesForStandardService(serviceTitle, duration, countStr);
+    setBookingBaseAmount(base.toString());
+    setBookingGstAmount(gst.toString());
+    setBookingAmount(total.toString());
+    const currentAdv = Number(bookingAdvancePaid) || 0;
+    setBookingBalanceAmount(Math.max(0, total - currentAdv).toString());
+
+    if (payoutCalcMode === "percentage") {
+      const pct = Number(payoutPercentValue) || 85;
+      setBookingCaretakerPayout(Math.round(total * (pct / 100)).toString());
+    }
   };
 
   // Handler when service changes
@@ -1058,53 +1151,109 @@ function AdminPage() {
       const firstTier = tiers[0] || ADMIN_MTP_DEFAULT_TIERS[0];
       selectMtpTier(firstTier);
     } else {
-      const { base, gst, total } = calculateRatesForStandardService(serviceTitle, bookingDuration, bookingDurationCount);
-      setBookingBaseAmount(base.toString());
-      setBookingGstAmount(gst.toString());
-      setBookingAmount(total.toString());
-      const currentAdv = Number(bookingAdvancePaid) || 0;
-      setBookingBalanceAmount(Math.max(0, total - currentAdv).toString());
-
-      if (payoutCalcMode === "percentage") {
-        const pct = Number(payoutPercentValue) || 85;
-        setBookingCaretakerPayout(Math.round(total * (pct / 100)).toString());
-      }
+      applyStandardPricing(serviceTitle, bookingDuration, bookingDurationCount);
     }
   };
 
-  // Handler when duration changes
+  // Handler when start date changes
+  const handleStartDateChange = (newStartDate: string) => {
+    setBookingDate(newStartDate);
+    if (!newStartDate) return;
+
+    if (bookingIsMtp || bookingDuration === "Hourly") {
+      setBookingModalEndDate(newStartDate);
+      return;
+    }
+
+    if (bookingDuration === "Daily") {
+      if (bookingModalEndDate && bookingModalEndDate >= newStartDate) {
+        const calculatedDays = calculateDaysBetween(newStartDate, bookingModalEndDate);
+        setBookingDurationCount(calculatedDays.toString());
+        applyStandardPricing(bookingService, "Daily", calculatedDays.toString());
+      } else {
+        const targetDays = Number(bookingDurationCount) > 0 ? Number(bookingDurationCount) : 1;
+        setBookingModalEndDate(addDaysToDate(newStartDate, targetDays));
+      }
+    } else if (bookingDuration === "Weekly") {
+      const days = (Number(bookingDurationCount) || 1) * 7;
+      setBookingModalEndDate(addDaysToDate(newStartDate, days));
+    } else if (bookingDuration === "Monthly") {
+      const days = (Number(bookingDurationCount) || 1) * 30;
+      setBookingModalEndDate(addDaysToDate(newStartDate, days));
+    }
+  };
+
+  // Handler when end date changes
+  const handleEndDateChange = (newEndDate: string) => {
+    setBookingModalEndDate(newEndDate);
+    if (!newEndDate) return;
+
+    if (!bookingDate) {
+      setBookingDate(newEndDate);
+      setBookingDurationCount("1");
+      return;
+    }
+
+    if (newEndDate < bookingDate) {
+      setBookingModalEndDate(bookingDate);
+      setBookingDurationCount("1");
+      return;
+    }
+
+    if (bookingDuration === "Daily") {
+      const calculatedDays = calculateDaysBetween(bookingDate, newEndDate);
+      setBookingDurationCount(calculatedDays.toString());
+      applyStandardPricing(bookingService, "Daily", calculatedDays.toString());
+    } else if (bookingDuration === "Weekly") {
+      const days = calculateDaysBetween(bookingDate, newEndDate);
+      const weeks = Math.max(1, Math.round(days / 7));
+      setBookingDurationCount(weeks.toString());
+      applyStandardPricing(bookingService, "Weekly", weeks.toString());
+    } else if (bookingDuration === "Monthly") {
+      const days = calculateDaysBetween(bookingDate, newEndDate);
+      const months = Math.max(1, Math.round(days / 30));
+      setBookingDurationCount(months.toString());
+      applyStandardPricing(bookingService, "Monthly", months.toString());
+    }
+  };
+
+  // Handler when duration unit changes
   const handleDurationChange = (newDuration: string, countStr: string) => {
     setBookingDuration(newDuration);
-    if (!bookingIsMtp) {
-      const { base, gst, total } = calculateRatesForStandardService(bookingService, newDuration, countStr);
-      setBookingBaseAmount(base.toString());
-      setBookingGstAmount(gst.toString());
-      setBookingAmount(total.toString());
-      const currentAdv = Number(bookingAdvancePaid) || 0;
-      setBookingBalanceAmount(Math.max(0, total - currentAdv).toString());
-
-      if (payoutCalcMode === "percentage") {
-        const pct = Number(payoutPercentValue) || 85;
-        setBookingCaretakerPayout(Math.round(total * (pct / 100)).toString());
+    const count = Math.max(1, Number(countStr) || 1);
+    if (bookingDate) {
+      if (newDuration === "Hourly") {
+        setBookingModalEndDate(bookingDate);
+      } else if (newDuration === "Daily") {
+        setBookingModalEndDate(addDaysToDate(bookingDate, count));
+      } else if (newDuration === "Weekly") {
+        setBookingModalEndDate(addDaysToDate(bookingDate, count * 7));
+      } else if (newDuration === "Monthly") {
+        setBookingModalEndDate(addDaysToDate(bookingDate, count * 30));
       }
+    }
+    if (!bookingIsMtp) {
+      applyStandardPricing(bookingService, newDuration, countStr);
     }
   };
 
   // Handler when duration count changes
   const handleDurationCountChange = (countStr: string) => {
     setBookingDurationCount(countStr);
-    if (!bookingIsMtp) {
-      const { base, gst, total } = calculateRatesForStandardService(bookingService, bookingDuration, countStr);
-      setBookingBaseAmount(base.toString());
-      setBookingGstAmount(gst.toString());
-      setBookingAmount(total.toString());
-      const currentAdv = Number(bookingAdvancePaid) || 0;
-      setBookingBalanceAmount(Math.max(0, total - currentAdv).toString());
-
-      if (payoutCalcMode === "percentage") {
-        const pct = Number(payoutPercentValue) || 85;
-        setBookingCaretakerPayout(Math.round(total * (pct / 100)).toString());
+    const count = Math.max(1, Number(countStr) || 1);
+    if (bookingDate) {
+      if (bookingDuration === "Daily") {
+        setBookingModalEndDate(addDaysToDate(bookingDate, count));
+      } else if (bookingDuration === "Weekly") {
+        setBookingModalEndDate(addDaysToDate(bookingDate, count * 7));
+      } else if (bookingDuration === "Monthly") {
+        setBookingModalEndDate(addDaysToDate(bookingDate, count * 30));
+      } else if (bookingDuration === "Hourly") {
+        setBookingModalEndDate(bookingDate);
       }
+    }
+    if (!bookingIsMtp) {
+      applyStandardPricing(bookingService, bookingDuration, countStr);
     }
   };
 
@@ -1168,10 +1317,51 @@ function AdminPage() {
 
     if (adv >= total && total > 0) {
       setBookingPaymentStatus("Paid");
+      setBookingBalanceAmount("0");
     } else if (adv > 0) {
       setBookingPaymentStatus("Advance Paid");
     } else {
       setBookingPaymentStatus("Pay on Service");
+    }
+  };
+
+  // Handler when Payment Status dropdown is changed directly by Admin
+  const handleBookingPaymentStatusChange = (newStatus: string) => {
+    setBookingPaymentStatus(newStatus);
+    const total = Number(bookingAmount) || 0;
+    if (newStatus === "Paid") {
+      setBookingAdvancePaid(total.toString());
+      setBookingBalanceAmount("0");
+    } else if (newStatus === "Unpaid") {
+      setBookingAdvancePaid("0");
+      setBookingBalanceAmount(total.toString());
+    } else if (newStatus === "Advance Paid") {
+      const adv = Number(bookingAdvancePaid) > 0 ? Number(bookingAdvancePaid) : Math.round(total * 0.2);
+      setBookingAdvancePaid(adv.toString());
+      setBookingBalanceAmount(Math.max(0, total - adv).toString());
+    } else if (newStatus === "Pay on Service") {
+      setBookingAdvancePaid("0");
+      setBookingBalanceAmount(total.toString());
+    }
+  };
+
+  // Handler when Balance Amount is manually edited
+  const handleBalanceAmountChange = (val: string) => {
+    setBookingBalanceAmount(val);
+    const total = Number(bookingAmount) || 0;
+    const bal = Number(val) || 0;
+    if (bal <= 0 && total > 0) {
+      setBookingPaymentStatus("Paid");
+      setBookingAdvancePaid(total.toString());
+      setBookingBalanceAmount("0");
+    } else {
+      const adv = Math.max(0, total - bal);
+      setBookingAdvancePaid(adv.toString());
+      if (adv > 0) {
+        setBookingPaymentStatus("Advance Paid");
+      } else {
+        setBookingPaymentStatus("Unpaid");
+      }
     }
   };
   const [bookingPatientName, setBookingPatientName] = useState("");
@@ -2266,6 +2456,7 @@ function AdminPage() {
       setBookingPhone("");
       setBookingService(initialService);
       setBookingDate(getTodayISO());
+      setBookingModalEndDate(getTodayISO());
       setBookingTime("09:00 AM");
       setBookingDuration("Daily");
       setBookingDurationCount("1");
@@ -2366,9 +2557,46 @@ function AdminPage() {
       setBookingName(record.name);
       setBookingPhone(record.phone);
       setBookingService(record.service);
-      setBookingDate(record.date);
-      setBookingTime(record.time);
-      setBookingDuration(record.duration || "Daily");
+
+      // Parse date range: e.g. "2026-10-22 to 2026-10-25" or single date "2026-10-22"
+      let parsedStartDate = getTodayISO();
+      let parsedEndDate = getTodayISO();
+      if (record.date) {
+        if (record.date.includes(" to ")) {
+          const parts = record.date.split(" to ");
+          parsedStartDate = parts[0]?.trim() || getTodayISO();
+          parsedEndDate = parts[1]?.trim() || parsedStartDate;
+        } else {
+          parsedStartDate = record.date.trim();
+          parsedEndDate = record.date.trim();
+        }
+      }
+      setBookingDate(parsedStartDate);
+      setBookingModalEndDate(parsedEndDate);
+      setBookingTime(record.time || "09:00 AM");
+
+      const rawDur = record.duration || "Daily";
+      let parsedDurUnit = "Daily";
+      let parsedCount = "1";
+      if (rawDur.includes("Hour")) {
+        parsedDurUnit = "Hourly";
+      } else if (rawDur.includes("Week")) {
+        parsedDurUnit = "Weekly";
+      } else if (rawDur.includes("Month")) {
+        parsedDurUnit = "Monthly";
+      } else {
+        parsedDurUnit = "Daily";
+      }
+      setBookingDuration(parsedDurUnit);
+
+      const matchNum = String(rawDur).match(/\d+/);
+      if (matchNum) {
+        parsedCount = matchNum[0];
+      } else if (parsedStartDate && parsedEndDate && parsedStartDate !== parsedEndDate) {
+        parsedCount = calculateDaysBetween(parsedStartDate, parsedEndDate).toString();
+      }
+      setBookingDurationCount(parsedCount);
+
       setBookingAddress(record.address);
       setBookingStatus(record.status || "Pending");
       let foundId = record.assignedStaffId ? Number(record.assignedStaffId) : null;
@@ -2405,15 +2633,17 @@ function AdminPage() {
       setBookingAmount(parsedAmt.toString());
       setBookingBaseAmount(parsedBase.toString());
       setBookingGstAmount(parsedGst.toString());
-      setBookingDurationCount("1");
       setBookingPatientName(record.patientName || "");
       setBookingPatientAge(record.patientAge || "");
       setBookingPatientNeeds(record.patientNeeds || "");
-      const adv = record.advancePaid !== undefined ? record.advancePaid.toString() : "0";
+      const isPaidRec = (record.paymentStatus || "").toLowerCase() === "paid" || 
+                        (record.balanceAmount !== undefined && Number(record.balanceAmount) <= 0 && parsedAmt > 0) ||
+                        (record.advancePaid !== undefined && Number(record.advancePaid) >= parsedAmt && parsedAmt > 0);
+      const adv = isPaidRec ? parsedAmt.toString() : (record.advancePaid !== undefined ? record.advancePaid.toString() : "0");
+      const bal = isPaidRec ? "0" : (record.balanceAmount !== undefined ? record.balanceAmount.toString() : Math.max(0, parsedAmt - (Number(adv) || 0)).toString());
       setBookingAdvancePaid(adv);
-      const bal = record.balanceAmount !== undefined ? record.balanceAmount.toString() : Math.max(0, parsedAmt - (Number(adv) || 0)).toString();
       setBookingBalanceAmount(bal);
-      setBookingPaymentStatus(record.paymentStatus || "Unpaid");
+      setBookingPaymentStatus(isPaidRec ? "Paid" : (record.paymentStatus || "Unpaid"));
       setBookingPaymentMethod(record.paymentMethod || "");
       setBookingTransactionId(record.transactionId || "");
       setBookingPaymentDate(record.paymentDate || "");
@@ -2525,22 +2755,44 @@ function AdminPage() {
         return;
       }
 
+      const finalBookingDate = (!bookingIsMtp && bookingDuration !== "Hourly" && bookingModalEndDate && bookingModalEndDate !== bookingDate)
+        ? `${bookingDate} to ${bookingModalEndDate}`
+        : (bookingDate || getTodayISO());
+
+      const displayCount = Number(bookingDurationCount) || 1;
+      const formattedDuration = bookingIsMtp
+        ? bookingDuration
+        : `${displayCount} ${
+            bookingDuration === "Hourly" ? (displayCount === 1 ? "Hour" : "Hours") :
+            bookingDuration === "Daily" ? (displayCount === 1 ? "Day" : "Days") :
+            bookingDuration === "Weekly" ? (displayCount === 1 ? "Week" : "Weeks") :
+            (displayCount === 1 ? "Month" : "Months")
+          }`;
+
       setIsLoading(true);
       url = modalMode === "add" ? "/api/admin/booking" : `/api/admin/booking/${selectedId}`;
       method = modalMode === "add" ? "POST" : "PUT";
+      const finalAmountNum = Number(bookingAmount) || 1200;
+      const isPaidBooking = bookingPaymentStatus === "Paid" || 
+                           (bookingBalanceAmount !== undefined && Number(bookingBalanceAmount) <= 0 && finalAmountNum > 0) ||
+                           (bookingAdvancePaid !== undefined && Number(bookingAdvancePaid) >= finalAmountNum && finalAmountNum > 0);
+      const finalAdvancePaid = isPaidBooking ? finalAmountNum : (Number(bookingAdvancePaid) || 0);
+      const finalBalanceAmount = isPaidBooking ? 0 : (Number(bookingBalanceAmount) !== undefined ? Math.max(0, Number(bookingBalanceAmount)) : Math.max(0, finalAmountNum - finalAdvancePaid));
+      const finalPaymentStatus = isPaidBooking || finalBalanceAmount <= 0 ? "Paid" : (finalAdvancePaid > 0 ? "Advance Paid" : (bookingPaymentStatus || "Unpaid"));
+
       bodyData = {
         name: bookingName.trim(),
         phone: bookingPhone.replace(/\D/g, ""),
         service: bookingService,
-        date: bookingDate,
+        date: finalBookingDate,
         time: bookingTime,
-        duration: bookingDuration,
+        duration: formattedDuration,
         address: bookingAddress.trim(),
-        amount: Number(bookingAmount) || 1200,
-        baseAmount: Number(bookingBaseAmount) || Math.round((Number(bookingAmount) || 1200) / 1.18),
-        gstAmount: Number(bookingGstAmount) !== undefined ? Number(bookingGstAmount) : Math.round((Number(bookingAmount) || 1200) - (Number(bookingBaseAmount) || Math.round((Number(bookingAmount) || 1200) / 1.18))),
-        advancePaid: Number(bookingAdvancePaid) || 0,
-        balanceAmount: Number(bookingBalanceAmount) !== undefined ? Number(bookingBalanceAmount) : Math.max(0, (Number(bookingAmount) || 0) - (Number(bookingAdvancePaid) || 0)),
+        amount: finalAmountNum,
+        baseAmount: Number(bookingBaseAmount) || Math.round(finalAmountNum / 1.18),
+        gstAmount: Number(bookingGstAmount) !== undefined ? Number(bookingGstAmount) : Math.round(finalAmountNum - (Number(bookingBaseAmount) || Math.round(finalAmountNum / 1.18))),
+        advancePaid: finalAdvancePaid,
+        balanceAmount: finalBalanceAmount,
         caretakerPayout: Number(bookingCaretakerPayout) || 0,
         caretakerPayoutStatus: bookingCaretakerPayoutStatus,
         caretakerPayoutMethod: bookingCaretakerPayoutMethod,
@@ -2550,10 +2802,10 @@ function AdminPage() {
         assignedStaffId: bookingAssignedStaffId || null,
         assignedStaffRole: bookingAssignedStaffRole || null,
         assignedStaffPhone: bookingAssignedStaffPhone || null,
-        paymentStatus: bookingPaymentStatus,
-        paymentMethod: bookingPaymentMethod,
+        paymentStatus: finalPaymentStatus,
+        paymentMethod: bookingPaymentMethod || (isPaidBooking ? "Cash/Direct" : ""),
         transactionId: bookingTransactionId,
-        paymentDate: bookingPaymentDate,
+        paymentDate: bookingPaymentDate || (isPaidBooking ? new Date().toISOString() : ""),
         patientName: bookingPatientName,
         patientAge: bookingPatientAge,
         patientNeeds: bookingPatientNeeds,
@@ -3527,7 +3779,8 @@ function AdminPage() {
 
                     // Date range filter
                     if (bookingStartDate || bookingEndDate) {
-                      const bDate = new Date(b?.date || b?.createdAt || Date.now());
+                      const bDateStr = (b?.date || "").split(" to ")[0];
+                      const bDate = new Date(bDateStr || b?.createdAt || Date.now());
                       if (bookingStartDate) {
                         const start = new Date(bookingStartDate);
                         if (bDate < start) return false;
@@ -3571,9 +3824,15 @@ function AdminPage() {
                         <strong className="text-slate-800">{bookings.length}</strong> booking records
                       </div>
 
-                      {filtered.map((b) => (
-                        <div
-                          key={b.id}
+                      {filtered.map((b) => {
+                        const isPaidBookingRow = String(b.paymentStatus || "").toLowerCase() === "paid" || Number(b.balanceAmount) <= 0;
+                        const totalAmtRow = Number(b.amount || 0);
+                        const rowAdvPaid = isPaidBookingRow ? totalAmtRow : Number(b.advancePaid || 0);
+                        const rowBalDue = isPaidBookingRow ? 0 : (b.balanceAmount !== undefined && b.balanceAmount !== null ? Math.max(0, Number(b.balanceAmount)) : Math.max(0, totalAmtRow - rowAdvPaid));
+
+                        return (
+                          <div
+                            key={b.id}
                           className="bg-white border border-slate-200/80 hover:border-[#c9a24c]/60 rounded-2xl p-5 shadow-xs hover:shadow-md transition-all text-left space-y-4 premium-card"
                         >
                           {/* TOP BAR: Client Header, ID, Contact, Date & Status */}
@@ -3755,22 +4014,49 @@ function AdminPage() {
                                     </div>
                                   )
                                 ) : b.assignedStaff ? (
-                                  <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 flex items-center gap-2.5">
-                                    <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-[#1e2a5a] to-[#2d3e7d] text-white flex items-center justify-center font-bold text-xs shrink-0">
-                                      {(b.assignedStaff || "S").charAt(0).toUpperCase()}
-                                    </div>
-                                    <div>
-                                      <div className="text-xs font-extrabold text-[#1e2a5a]">
-                                        {b.assignedStaff}
+                                  <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-[#1e2a5a] to-[#2d3e7d] text-white flex items-center justify-center font-bold text-xs shrink-0">
+                                        {(b.assignedStaff || "S").charAt(0).toUpperCase()}
                                       </div>
-                                      {b.assignedStaffPhone ? (
-                                        <div className="text-[10px] text-slate-500 font-medium">
-                                          📞 {b.assignedStaffPhone}
+                                      <div className="min-w-0">
+                                        <div className="text-xs font-extrabold text-[#1e2a5a] truncate">
+                                          {b.assignedStaff}
                                         </div>
+                                        {b.assignedStaffPhone ? (
+                                          <div className="text-[10px] text-slate-500 font-medium">
+                                            📞 {b.assignedStaffPhone}
+                                          </div>
+                                        ) : (
+                                          <div className="text-[10px] text-emerald-600 font-bold">
+                                            ✓ Active Caregiver
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="shrink-0 flex flex-col items-end gap-1">
+                                      {b.staffReminderSent ? (
+                                        <span 
+                                          className="inline-flex items-center gap-1 text-[9px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200"
+                                          title={b.staffReminderSentAt ? `Automated reminder dispatched at ${new Date(b.staffReminderSentAt).toLocaleTimeString()}` : "Automated reminder dispatched"}
+                                        >
+                                          <Check className="w-3 h-3 text-emerald-600" /> 1-Hr Sent
+                                        </span>
                                       ) : (
-                                        <div className="text-[10px] text-emerald-600 font-bold">
-                                          ✓ Active Caregiver
-                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleSendStaffReminder(b)}
+                                          disabled={sendingStaffReminderId === b.id}
+                                          className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-2 py-1 rounded-md transition-all cursor-pointer shadow-2xs active:scale-95"
+                                          title="Send 1-Hour Shift Reminder WhatsApp to Staff"
+                                        >
+                                          {sendingStaffReminderId === b.id ? (
+                                            <span className="animate-spin text-amber-700">⌛</span>
+                                          ) : (
+                                            <Bell className="w-3 h-3 text-amber-700" />
+                                          )}
+                                          <span>{sendingStaffReminderId === b.id ? "..." : "Ping 1-Hr"}</span>
+                                        </button>
                                       )}
                                     </div>
                                   </div>
@@ -3808,17 +4094,17 @@ function AdminPage() {
                                   Financial Summary
                                 </span>
                                 <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${
-                                  b.paymentStatus === "Paid" || Number(b.balanceAmount) === 0
+                                  isPaidBookingRow
                                     ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                     : "bg-amber-50 text-amber-700 border-amber-200"
                                 }`}>
-                                  {b.paymentStatus === "Paid" || Number(b.balanceAmount) === 0 ? "Paid in Full" : (b.paymentStatus || "Balance Pending")}
+                                  {isPaidBookingRow ? "Paid in Full" : (b.paymentStatus || "Balance Pending")}
                                 </span>
                               </div>
 
                               <div>
                                 <div className="text-lg font-black text-slate-900 font-display">
-                                  ₹{Number(b.amount || 0).toLocaleString()}
+                                  ₹{totalAmtRow.toLocaleString()}
                                   <span className="text-[10px] font-semibold text-slate-400 ml-1">Total Shift Value</span>
                                 </div>
                                 {(b.baseAmount !== undefined && b.gstAmount !== undefined && Number(b.gstAmount) > 0) ? (
@@ -3833,20 +4119,20 @@ function AdminPage() {
                                 <div className="bg-white p-2 rounded-lg border border-slate-200/70">
                                   <div className="text-[9px] uppercase font-bold text-slate-400">Advance Paid</div>
                                   <div className="text-xs font-black text-emerald-700 mt-0.5">
-                                    ₹{Number(b.advancePaid || 0).toLocaleString()}
+                                    ₹{rowAdvPaid.toLocaleString()}
                                   </div>
                                 </div>
                                 <div className={`p-2 rounded-lg border ${
-                                  Number(b.balanceAmount) > 0 
+                                  rowBalDue > 0 
                                     ? "bg-amber-50 border-amber-200 text-amber-900" 
                                     : "bg-emerald-50 border-emerald-200 text-emerald-900"
                                 }`}>
                                   <div className="text-[9px] uppercase font-bold text-slate-500">
-                                    {Number(b.balanceAmount) > 0 ? "Balance Due" : "Settlement"}
+                                    {rowBalDue > 0 ? "Balance Due" : "Settlement"}
                                   </div>
                                   <div className="text-xs font-black mt-0.5">
-                                    {Number(b.balanceAmount) > 0 
-                                      ? `₹${Number(b.balanceAmount).toLocaleString()}` 
+                                    {rowBalDue > 0 
+                                      ? `₹${rowBalDue.toLocaleString()}` 
                                       : "Cleared ✓"}
                                   </div>
                                 </div>
@@ -3859,7 +4145,7 @@ function AdminPage() {
                             
                             {/* Left: Payment Link or Cleared Receipt */}
                             <div className="flex-1 max-w-xl">
-                              {Number(b.balanceAmount) > 0 ? (
+                              {rowBalDue > 0 ? (
                                 <div className="flex items-center gap-2 bg-amber-50/90 border border-amber-200 p-2 rounded-xl text-xs">
                                   <span className="text-[10px] font-black uppercase text-amber-900 shrink-0 flex items-center gap-1">
                                     <CreditCard className="w-3.5 h-3.5 text-amber-700" />
@@ -3923,7 +4209,7 @@ function AdminPage() {
 
                             {/* Right: Action Buttons */}
                             <div className="flex items-center gap-2 flex-wrap justify-end">
-                              {Number(b.balanceAmount) > 0 ? (
+                              {rowBalDue > 0 ? (
                                 <button
                                   onClick={() => handleOpenWhatsAppPayModal(b)}
                                   className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-xs"
@@ -3980,7 +4266,8 @@ function AdminPage() {
 
                           </div>
                         </div>
-                      ))}
+                      );
+                    })}
                     </div>
                   );
                 })()}
@@ -4038,14 +4325,24 @@ function AdminPage() {
                 <div className="bg-white border border-slate-200/80 rounded-2xl p-4.5 shadow-xs premium-card">
                   <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider block">Total Collected (Cash &amp; Online)</span>
                   <span className="text-2xl font-black font-display text-emerald-600 mt-1 block">
-                    ₹{bookings.filter(b => b.paymentStatus === "Paid").reduce((sum, b) => sum + (Number(b.amount) || 0), 0).toLocaleString()}
+                    ₹{bookings.reduce((sum, b) => {
+                      const isPaid = String(b.paymentStatus || "").toLowerCase() === "paid" || Number(b.balanceAmount) <= 0;
+                      return sum + (isPaid ? (Number(b.amount) || 0) : (Number(b.advancePaid) || 0));
+                    }, 0).toLocaleString()}
                   </span>
-                  <span className="text-[10px] text-emerald-700 font-medium font-semibold">✓ Settled in full</span>
+                  <span className="text-[10px] text-emerald-700 font-medium font-semibold">✓ Settled &amp; advance payments</span>
                 </div>
                 <div className="bg-white border border-slate-200/80 rounded-2xl p-4.5 shadow-xs premium-card">
                   <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider block">Pending Balance Due</span>
                   <span className="text-2xl font-black font-display text-amber-600 mt-1 block">
-                    ₹{bookings.filter(b => b.paymentStatus !== "Paid").reduce((sum, b) => sum + (Number(b.balanceAmount || b.amount) || 0), 0).toLocaleString()}
+                    ₹{bookings.filter(b => {
+                      const isPaid = String(b.paymentStatus || "").toLowerCase() === "paid" || Number(b.balanceAmount) <= 0;
+                      return !isPaid && b.status !== "Cancelled";
+                    }).reduce((sum, b) => {
+                      const adv = Number(b.advancePaid) || 0;
+                      const bal = b.balanceAmount !== undefined && b.balanceAmount !== null ? Number(b.balanceAmount) : Math.max(0, (Number(b.amount) || 0) - adv);
+                      return sum + Math.max(0, bal);
+                    }, 0).toLocaleString()}
                   </span>
                   <span className="text-[10px] text-amber-700 font-medium">⏳ Post-service collections pending</span>
                 </div>
@@ -9346,25 +9643,34 @@ function AdminPage() {
                           </div>
                           <div>
                             <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">
-                              Duration Quantity ({bookingDuration === "Hourly" ? "Hours" : bookingDuration === "Monthly" ? "Months" : bookingDuration === "Weekly" ? "Weeks" : "Shifts"})
+                              Duration Quantity ({bookingDuration === "Hourly" ? "Hours" : bookingDuration === "Monthly" ? "Months" : bookingDuration === "Weekly" ? "Weeks" : "Shifts / Days"})
                             </label>
-                            <input 
-                              type="number"
-                              min="1"
-                              value={bookingDurationCount}
-                              onChange={e => handleDurationCountChange(e.target.value)}
-                              disabled={isRecordCaretakerPaymentMode}
-                              placeholder="1"
-                              className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800 disabled:opacity-70 disabled:bg-slate-100/50"
-                            />
+                            <div className="relative">
+                              <input 
+                                type="number"
+                                min="1"
+                                value={bookingDurationCount}
+                                onChange={e => handleDurationCountChange(e.target.value)}
+                                disabled={isRecordCaretakerPaymentMode}
+                                placeholder="1"
+                                className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800 disabled:opacity-70 disabled:bg-slate-100/50"
+                              />
+                              {bookingDuration === "Daily" && Number(bookingDurationCount) > 0 && (
+                                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md pointer-events-none select-none">
+                                  {Number(bookingDurationCount) === 1 ? "1 day" : `${bookingDurationCount} days`}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       )}
 
-                      {/* Booking Date & Time */}
+                      {/* Booking Date Range (Start Date to End Date) & Preferred Time */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Booking Date *</label>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">
+                            Start Date <span className="text-rose-500">*</span>
+                          </label>
                           <input 
                             type="date" 
                             required 
@@ -9380,12 +9686,58 @@ function AdminPage() {
                                   val = parts.join("-");
                                 }
                               }
-                              setBookingDate(val);
+                              handleStartDateChange(val);
                             }}
                             disabled={isRecordCaretakerPaymentMode}
                             className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800 disabled:opacity-70 disabled:bg-slate-100/50 cursor-pointer"
                           />
                         </div>
+
+                        {!bookingIsMtp && bookingDuration !== "Hourly" ? (
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+                                End Date (Upto) <span className="text-rose-500">*</span>
+                              </label>
+                              <span className="text-[9px] text-emerald-700 font-extrabold bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                                auto-calc
+                              </span>
+                            </div>
+                            <input 
+                              type="date" 
+                              required 
+                              min={bookingDate || todayStr}
+                              max="2099-12-31"
+                              value={bookingModalEndDate || bookingDate} 
+                              onChange={e => {
+                                let val = e.target.value;
+                                if (val) {
+                                  const parts = val.split("-");
+                                  if (parts[0] && parts[0].length > 4) {
+                                    parts[0] = parts[0].slice(0, 4);
+                                    val = parts.join("-");
+                                  }
+                                }
+                                handleEndDateChange(val);
+                              }}
+                              disabled={isRecordCaretakerPaymentMode}
+                              className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800 disabled:opacity-70 disabled:bg-slate-100/50 cursor-pointer"
+                            />
+                          </div>
+                        ) : (
+                          <div>
+                            <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Preferred Time *</label>
+                            <input 
+                              type="text" required placeholder="e.g. 09:00 AM" value={bookingTime} onChange={e => setBookingTime(e.target.value)}
+                              disabled={isRecordCaretakerPaymentMode}
+                              className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800 disabled:opacity-70 disabled:bg-slate-100/50"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* If Multi-day (Daily/Weekly/Monthly), separate row for Preferred Time */}
+                      {!bookingIsMtp && bookingDuration !== "Hourly" && (
                         <div>
                           <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Preferred Time *</label>
                           <input 
@@ -9394,6 +9746,77 @@ function AdminPage() {
                             className="w-full px-3 py-1.5 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-[#c9a24c] bg-white text-xs font-semibold text-slate-800 disabled:opacity-70 disabled:bg-slate-100/50"
                           />
                         </div>
+                      )}
+
+                      {/* Live Date-to-Date & Calculation Summary ("Edi, Enduku, Ela, Enni Days") */}
+                      <div className="bg-gradient-to-r from-amber-50/70 via-indigo-50/40 to-emerald-50/60 rounded-xl p-3 border border-amber-200/70 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#1e2a5a] flex items-center gap-1.5">
+                            <span>📅 Schedule &amp; Duration Breakdown</span>
+                          </span>
+                          <span className="text-[10px] font-black text-[#1e2a5a] bg-white/90 px-2.5 py-0.5 rounded-full border border-amber-300 shadow-2xs">
+                            {bookingIsMtp ? (
+                              <span>{bookingDuration}</span>
+                            ) : (
+                              <span>
+                                {bookingDuration === "Daily" 
+                                  ? `${Number(bookingDurationCount) || 1} ${(Number(bookingDurationCount) || 1) === 1 ? "Day" : "Days"} (${Number(bookingDurationCount) || 1} Shifts)` 
+                                  : bookingDuration === "Weekly" 
+                                  ? `${Number(bookingDurationCount) || 1} ${(Number(bookingDurationCount) || 1) === 1 ? "Week" : "Weeks"} (${(Number(bookingDurationCount) || 1) * 7} Days)` 
+                                  : bookingDuration === "Monthly" 
+                                  ? `${Number(bookingDurationCount) || 1} ${(Number(bookingDurationCount) || 1) === 1 ? "Month" : "Months"} (~${(Number(bookingDurationCount) || 1) * 30} Days)` 
+                                  : `${Number(bookingDurationCount) || 1} ${(Number(bookingDurationCount) || 1) === 1 ? "Hour" : "Hours"}`
+                                }
+                              </span>
+                            )}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-amber-200/50">
+                          <div className="bg-white/80 p-2 rounded-lg border border-slate-200/60">
+                            <span className="text-[9px] uppercase font-bold text-slate-400 block">From (Start Date)</span>
+                            <span className="font-extrabold text-slate-800">
+                              {bookingDate || todayStr}
+                            </span>
+                          </div>
+                          <div className="bg-white/80 p-2 rounded-lg border border-slate-200/60">
+                            <span className="text-[9px] uppercase font-bold text-slate-400 block">
+                              {bookingDuration === "Hourly" || bookingIsMtp ? "Same Day" : "To (End Date)"}
+                            </span>
+                            <span className="font-extrabold text-slate-800">
+                              {bookingDuration === "Hourly" || bookingIsMtp ? (bookingDate || todayStr) : (bookingModalEndDate || bookingDate || todayStr)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {!bookingIsMtp && (
+                          <div className="text-[10px] bg-white/90 p-2 rounded-lg border border-slate-200/80 font-medium text-slate-700 flex flex-col gap-0.5">
+                            <div className="flex items-center justify-between text-slate-500 font-semibold text-[9px] uppercase">
+                              <span>Service Rate Basis</span>
+                              <span>Formula (Rate × Units)</span>
+                            </div>
+                            <div className="flex items-center justify-between font-bold text-slate-800">
+                              <span>
+                                {bookingDuration === "Hourly" ? `₹${getStandardServiceRates(bookingService).hourly} / hr` :
+                                 bookingDuration === "Weekly" ? `₹${getStandardServiceRates(bookingService).weekly} / wk` :
+                                 bookingDuration === "Monthly" ? `₹${getStandardServiceRates(bookingService).monthly} / mo` :
+                                 `₹${getStandardServiceRates(bookingService).daily} / day`}
+                              </span>
+                              <span className="text-[#1e2a5a]">
+                                {bookingDurationCount || 1} {bookingDuration === "Hourly" ? "hrs" : bookingDuration === "Weekly" ? "wks" : bookingDuration === "Monthly" ? "mos" : "days"} × ₹{
+                                  bookingDuration === "Hourly" ? getStandardServiceRates(bookingService).hourly :
+                                  bookingDuration === "Weekly" ? getStandardServiceRates(bookingService).weekly :
+                                  bookingDuration === "Monthly" ? getStandardServiceRates(bookingService).monthly :
+                                  getStandardServiceRates(bookingService).daily
+                                } = ₹{bookingBaseAmount || "0"} Base
+                              </span>
+                            </div>
+                            <div className="text-[9px] text-slate-500 flex items-center justify-between pt-1 border-t border-slate-100">
+                              <span>+ 18% IGST: ₹{bookingGstAmount || "0"}</span>
+                              <span className="font-extrabold text-emerald-700">Total: ₹{bookingAmount || "0"}</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Patient Location Address */}
@@ -9549,7 +9972,7 @@ function AdminPage() {
                           <input
                             type="number"
                             value={bookingBalanceAmount}
-                            onChange={e => setBookingBalanceAmount(e.target.value)}
+                            onChange={e => handleBalanceAmountChange(e.target.value)}
                             placeholder="0"
                             disabled={isRecordCaretakerPaymentMode}
                             className="w-full px-3 py-1.5 border border-amber-300 rounded-xl outline-none bg-amber-50/30 text-xs font-black text-amber-950 focus:ring-1 focus:ring-amber-500"
@@ -9731,7 +10154,7 @@ function AdminPage() {
                         <div>
                           <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Client Payment</label>
                           <select 
-                            value={bookingPaymentStatus} onChange={e => setBookingPaymentStatus(e.target.value)}
+                            value={bookingPaymentStatus} onChange={e => handleBookingPaymentStatusChange(e.target.value)}
                             disabled={isRecordCaretakerPaymentMode}
                             className={`w-full px-3 py-1.5 border rounded-xl outline-none text-xs font-extrabold cursor-pointer ${
                               bookingPaymentStatus === "Paid" ? "bg-emerald-50 text-emerald-800 border-emerald-300" :
@@ -9750,18 +10173,24 @@ function AdminPage() {
 
                       {/* Customer Online Due Payment Link (When Editing) */}
                       {selectedId && (
-                        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/90 p-3 rounded-2xl space-y-2">
+                        <div className={`p-3 rounded-2xl space-y-2 border ${
+                          Number(bookingBalanceAmount) <= 0 || bookingPaymentStatus === "Paid"
+                            ? "bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200/90"
+                            : "bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200/90"
+                        }`}>
                           <div className="flex items-center justify-between">
-                            <label className="text-[10px] font-extrabold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
-                              <CreditCard className="w-3.5 h-3.5 text-amber-700" />
-                              Customer Online Due Payment Link
+                            <label className={`text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 ${
+                              Number(bookingBalanceAmount) <= 0 || bookingPaymentStatus === "Paid" ? "text-emerald-900" : "text-amber-900"
+                            }`}>
+                              <CreditCard className={`w-3.5 h-3.5 ${Number(bookingBalanceAmount) <= 0 || bookingPaymentStatus === "Paid" ? "text-emerald-700" : "text-amber-700"}`} />
+                              {Number(bookingBalanceAmount) <= 0 || bookingPaymentStatus === "Paid" ? "Payment Cleared & Settled in Full" : "Customer Online Due Payment Link"}
                             </label>
                             <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
-                              Number(bookingBalanceAmount) > 0 
+                              Number(bookingBalanceAmount) > 0 && bookingPaymentStatus !== "Paid"
                                 ? "bg-amber-100 text-amber-900 border border-amber-300" 
                                 : "bg-emerald-100 text-emerald-900 border border-emerald-300"
                             }`}>
-                              {Number(bookingBalanceAmount) > 0 ? `Due: ₹${Number(bookingBalanceAmount).toLocaleString("en-IN")}` : "✓ Fully Paid"}
+                              {Number(bookingBalanceAmount) > 0 && bookingPaymentStatus !== "Paid" ? `Due: ₹${Number(bookingBalanceAmount).toLocaleString("en-IN")}` : "✓ Fully Paid (₹0 Due)"}
                             </span>
                           </div>
                           
@@ -9770,7 +10199,7 @@ function AdminPage() {
                               type="text"
                               readOnly
                               value={`${typeof window !== "undefined" ? window.location.origin : "https://ammaseva.in"}/pay-balance?id=${selectedId}`}
-                              className="flex-1 min-w-[200px] px-2.5 py-1.5 bg-white border border-amber-200 rounded-xl font-mono text-[11px] text-slate-800 select-all"
+                              className="flex-1 min-w-[200px] px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl font-mono text-[11px] text-slate-800 select-all"
                             />
                             <div className="flex gap-1.5">
                               <button
@@ -9779,9 +10208,11 @@ function AdminPage() {
                                 className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer shadow-xs ${
                                   copiedBookingLinkId === selectedId
                                     ? "bg-emerald-600 text-white"
-                                    : "bg-amber-600 hover:bg-amber-700 text-white"
+                                    : Number(bookingBalanceAmount) <= 0 || bookingPaymentStatus === "Paid"
+                                      ? "bg-emerald-700 hover:bg-emerald-800 text-white"
+                                      : "bg-amber-600 hover:bg-amber-700 text-white"
                                 }`}
-                                title="Copy Payment Link"
+                                title={Number(bookingBalanceAmount) <= 0 || bookingPaymentStatus === "Paid" ? "Copy Receipt Link" : "Copy Payment Link"}
                               >
                                 {copiedBookingLinkId === selectedId ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                                 <span>{copiedBookingLinkId === selectedId ? "Copied!" : "Copy Link"}</span>
@@ -9791,11 +10222,11 @@ function AdminPage() {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1 transition-all shadow-xs"
-                                title="Open Due Checkout in New Tab"
+                                title="Open in New Tab"
                               >
                                 <ExternalLink className="w-3.5 h-3.5 text-slate-600" />
                               </a>
-                              {Number(bookingBalanceAmount) > 0 && (
+                              {Number(bookingBalanceAmount) > 0 && bookingPaymentStatus !== "Paid" && (
                                 <button
                                   type="button"
                                   onClick={() => handleOpenWhatsAppPayModal({
@@ -9803,7 +10234,7 @@ function AdminPage() {
                                     name: bookingName,
                                     phone: bookingPhone,
                                     service: bookingService,
-                                    date: bookingDate,
+                                    date: (!bookingIsMtp && bookingDuration !== "Hourly" && bookingModalEndDate && bookingModalEndDate !== bookingDate) ? `${bookingDate} to ${bookingModalEndDate}` : bookingDate,
                                     time: bookingTime,
                                     amount: bookingAmount,
                                     advancePaid: bookingAdvancePaid,

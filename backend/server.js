@@ -971,11 +971,13 @@ const sendBookingConfirmationAndTaxInvoiceEmail = async (booking, userEmail) => 
   const address = booking.address || 'Hyderabad, Telangana'
   const patientName = booking.patientName || name
   const patientAge = booking.patientAge ? `(${booking.patientAge} yrs)` : ''
-  const patientNeeds = booking.patientNeeds || ''
   const totalAmount = Number(booking.amount) || 0
-  const advancePaid = Number(booking.advancePaid) || 0
-  const balanceAmount = Number(booking.balanceAmount) || Math.max(0, totalAmount - advancePaid)
-  const paymentStatus = booking.paymentStatus || (advancePaid >= totalAmount ? 'Paid' : (advancePaid > 0 ? 'Advance Paid' : 'Unpaid'))
+  const isPaid = String(booking.paymentStatus || '').trim().toLowerCase() === 'paid' || 
+                 (booking.balanceAmount !== undefined && Number(booking.balanceAmount) <= 0 && totalAmount > 0) ||
+                 (booking.advancePaid !== undefined && Number(booking.advancePaid) >= totalAmount && totalAmount > 0)
+  const advancePaid = isPaid ? totalAmount : (Number(booking.advancePaid) || 0)
+  const balanceAmount = isPaid ? 0 : (booking.balanceAmount !== undefined && booking.balanceAmount !== null ? Math.max(0, Number(booking.balanceAmount)) : Math.max(0, totalAmount - advancePaid))
+  const paymentStatus = isPaid || balanceAmount <= 0 ? 'Paid' : (advancePaid > 0 ? 'Advance Paid' : (booking.paymentStatus || 'Unpaid'))
 
   // Calculate 18% GST breakdown
   const calculatedBase = booking.baseAmount !== undefined && booking.baseAmount !== null
@@ -1135,8 +1137,11 @@ const sendBookingConfirmationAndTaxInvoiceEmail = async (booking, userEmail) => 
 const sendAdminNewBookingNotificationEmail = async (booking) => {
   const adminEmail = (process.env.ADMIN_EMAIL || cleanSmtpEmail).trim()
   const totalAmount = Number(booking.amount) || 0
-  const advancePaid = Number(booking.advancePaid) || 0
-  const balanceAmount = Number(booking.balanceAmount) || Math.max(0, totalAmount - advancePaid)
+  const isPaid = String(booking.paymentStatus || '').trim().toLowerCase() === 'paid' || 
+                 (booking.balanceAmount !== undefined && Number(booking.balanceAmount) <= 0 && totalAmount > 0) ||
+                 (booking.advancePaid !== undefined && Number(booking.advancePaid) >= totalAmount && totalAmount > 0)
+  const advancePaid = isPaid ? totalAmount : (Number(booking.advancePaid) || 0)
+  const balanceAmount = isPaid ? 0 : (booking.balanceAmount !== undefined && booking.balanceAmount !== null ? Math.max(0, Number(booking.balanceAmount)) : Math.max(0, totalAmount - advancePaid))
 
   const mailOptions = {
     from: `"Amma Seva System Alert" <${cleanSmtpEmail}>`,
@@ -1455,9 +1460,13 @@ const sendWhatsAppBookingConfirmation = async (booking) => {
   const service = String(booking.service || 'Home Care Healthcare').trim()
   const scheduleDate = `${booking.date || 'Scheduled Date'}${booking.time ? ', ' + booking.time : ''}`
   const address = String(booking.address || 'Hyderabad, Telangana').trim()
-  const totalAmount = String(booking.amount !== undefined ? booking.amount : '1200')
-  const advancePaid = String(booking.advancePaid !== undefined ? booking.advancePaid : (booking.paymentMethod === 'razorpay' ? totalAmount : '0'))
-  const balanceDue = String(booking.balanceAmount !== undefined ? booking.balanceAmount : (Math.max(0, Number(totalAmount) - Number(advancePaid))))
+  const totalAmountNum = Number(booking.amount !== undefined ? booking.amount : 1200)
+  const isPaid = String(booking.paymentStatus || '').trim().toLowerCase() === 'paid' || 
+                 (booking.balanceAmount !== undefined && Number(booking.balanceAmount) <= 0 && totalAmountNum > 0) ||
+                 (booking.advancePaid !== undefined && Number(booking.advancePaid) >= totalAmountNum && totalAmountNum > 0)
+  const totalAmount = String(totalAmountNum)
+  const advancePaid = String(isPaid ? totalAmountNum : (booking.advancePaid !== undefined ? Number(booking.advancePaid) : (booking.paymentMethod === 'razorpay' ? totalAmountNum : 0)))
+  const balanceDue = String(isPaid ? 0 : (booking.balanceAmount !== undefined ? Math.max(0, Number(booking.balanceAmount)) : Math.max(0, totalAmountNum - Number(advancePaid))))
 
   const customerMobileRaw = String(booking.phone || '').replace(/\D/g, '').slice(-10)
   const adminMobileRaw = (process.env.ADMIN_PHONE || '9490587575').replace(/\D/g, '').slice(-10)
@@ -1520,6 +1529,213 @@ const sendWhatsAppBookingConfirmation = async (booking) => {
   } catch (err) {
     console.error(`[MSG91 Bulk WhatsApp Alert Error] Failed sending to [${toList.join(', ')}]:`, err.message)
     return false
+  }
+}
+
+// Helper: Parse shift time string (e.g. "09:00 AM", "14:30", "9:00 AM", "10 PM")
+const parseBookingShiftTime = (timeStr) => {
+  if (!timeStr) return null
+  const cleaned = timeStr.trim()
+  const match = cleaned.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?$/i)
+  if (!match) return null
+  let hours = parseInt(match[1], 10)
+  const minutes = match[2] ? parseInt(match[2], 10) : 0
+  const ampm = match[3] ? match[3].toUpperCase() : null
+  if (ampm === 'PM' && hours < 12) hours += 12
+  if (ampm === 'AM' && hours === 12) hours = 0
+  return { hours, minutes }
+}
+
+// Helper: Check if a booking shift starts in ~1 hour (40 to 80 minutes from now in IST)
+const isBookingStartingInOneHour = (booking) => {
+  if (!booking || !booking.date || !booking.time) return false
+
+  // Current time in Asia/Kolkata
+  const nowStr = new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+  const nowIST = new Date(nowStr)
+  const todayYMD = `${nowIST.getFullYear()}-${String(nowIST.getMonth() + 1).padStart(2, '0')}-${String(nowIST.getDate()).padStart(2, '0')}`
+
+  // Parse booking date
+  let isToday = false
+  const dateStr = String(booking.date).trim()
+  if (dateStr.includes(" to ")) {
+    const parts = dateStr.split(" to ")
+    const startYMD = parts[0]?.trim() || ''
+    const endYMD = parts[1]?.trim() || startYMD
+    if (startYMD && endYMD) {
+      isToday = (todayYMD >= startYMD && todayYMD <= endYMD)
+    }
+  } else {
+    isToday = (dateStr === todayYMD || dateStr.includes(todayYMD))
+  }
+
+  if (!isToday) return false
+
+  // Parse shift time
+  const parsedTime = parseBookingShiftTime(booking.time)
+  if (!parsedTime) return false
+
+  const targetShiftDate = new Date(nowIST)
+  targetShiftDate.setHours(parsedTime.hours, parsedTime.minutes, 0, 0)
+
+  const diffMinutes = (targetShiftDate.getTime() - nowIST.getTime()) / (1000 * 60)
+  return diffMinutes >= 40 && diffMinutes <= 80
+}
+
+// MSG91 WhatsApp Automated 1-Hour Staff Shift Reminder Dispatcher
+const sendStaffShiftReminderWhatsApp = async (booking) => {
+  if (!booking) return false
+  const authKey = (process.env.MSG91_AUTH_KEY || '567130AQrTo6Hb6aba5f7cP1').trim()
+  const integratedNumber = (process.env.MSG91_WHATSAPP_NUMBER || '919494516543').trim()
+  const templateName = (process.env.MSG91_WHATSAPP_TEMPLATE_NAME || 'ammaseva_booking_confirmation').trim()
+  const namespace = (process.env.MSG91_WHATSAPP_NAMESPACE || '63c454df_9e23_4f4c_81d2_58201bb7012e').trim()
+
+  let staffPhone = booking.assignedStaffPhone ? String(booking.assignedStaffPhone).replace(/\D/g, '').slice(-10) : ''
+  if (!staffPhone && booking.assignedStaffId && booking.assignedStaffRole === 'caregiver') {
+    try {
+      const cg = await db.getCaregiverById(booking.assignedStaffId)
+      if (cg && cg.phone) staffPhone = String(cg.phone).replace(/\D/g, '').slice(-10)
+    } catch (e) {}
+  } else if (!staffPhone && booking.assignedStaffId && booking.assignedStaffRole === 'mtp') {
+    try {
+      const mtp = await db.getMtpById(booking.assignedStaffId)
+      if (mtp && mtp.phone) staffPhone = String(mtp.phone).replace(/\D/g, '').slice(-10)
+    } catch (e) {}
+  }
+  if (!staffPhone && booking.assignedStaff) {
+    try {
+      const caregivers = await db.getCaregivers()
+      const cg = (caregivers || []).find(c => c.name && c.name.toLowerCase().trim() === booking.assignedStaff.toLowerCase().trim())
+      if (cg && cg.phone) staffPhone = String(cg.phone).replace(/\D/g, '').slice(-10)
+    } catch (e) {}
+  }
+
+  const staffName = String(booking.assignedStaff || 'Staff Member').trim()
+  const bookingId = String(booking.id || 'N/A')
+  const service = String(booking.service || 'Home Healthcare Support').trim()
+  const scheduleTime = String(booking.time || 'Scheduled Time').trim()
+  const scheduleDate = `TODAY at ${scheduleTime} (Shift in 1 Hour!)`
+  const address = String(booking.address || 'Location provided in booking details').trim()
+  const totalAmountNum = Number(booking.amount !== undefined ? booking.amount : 1200)
+  const isPaid = String(booking.paymentStatus || '').trim().toLowerCase() === 'paid' || 
+                 (booking.balanceAmount !== undefined && Number(booking.balanceAmount) <= 0 && totalAmountNum > 0)
+  const totalAmount = String(totalAmountNum)
+  const advancePaid = String(isPaid ? totalAmountNum : (booking.advancePaid !== undefined ? Number(booking.advancePaid) : 0))
+  const balanceDue = String(isPaid ? 0 : (booking.balanceAmount !== undefined ? Math.max(0, Number(booking.balanceAmount)) : Math.max(0, totalAmountNum - Number(advancePaid))))
+
+  const toList = []
+  if (staffPhone && staffPhone.length === 10) {
+    toList.push(`91${staffPhone}`)
+  }
+  // Admin mobile for visibility
+  const adminMobileRaw = (process.env.ADMIN_PHONE || '9490587575').replace(/\D/g, '').slice(-10)
+  if (adminMobileRaw.length === 10 && !toList.includes(`91${adminMobileRaw}`)) {
+    toList.push(`91${adminMobileRaw}`)
+  }
+
+  if (toList.length === 0) {
+    console.warn(`[Staff Reminder] No valid phone number to alert for Booking #${booking.id}`)
+    return false
+  }
+
+  const requestBody = {
+    integrated_number: integratedNumber,
+    content_type: "template",
+    payload: {
+      messaging_product: "whatsapp",
+      type: "template",
+      template: {
+        name: templateName,
+        language: {
+          code: "en",
+          policy: "deterministic"
+        },
+        namespace: namespace,
+        to_and_components: [
+          {
+            to: toList,
+            components: {
+              body_1: { type: "text", value: `URGENT 1-HR SHIFT REMINDER: ${staffName}` },
+              body_2: { type: "text", value: bookingId },
+              body_3: { type: "text", value: `${service} (Patient: ${booking.patientName || booking.name || 'Client'})` },
+              body_4: { type: "text", value: scheduleDate },
+              body_5: { type: "text", value: address },
+              body_6: { type: "text", value: totalAmount },
+              body_7: { type: "text", value: advancePaid },
+              body_8: { type: "text", value: balanceDue }
+            }
+          }
+        ]
+      }
+    }
+  }
+
+  try {
+    const response = await fetch('https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/', {
+      method: 'POST',
+      headers: {
+        'authkey': authKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    })
+    const resData = await response.json().catch(() => ({}))
+    console.log(`[MSG91 Staff 1-Hr Reminder Alert] Booking #${bookingId} dispatched to [${toList.join(', ')}]:`, resData)
+    return resData
+  } catch (err) {
+    console.error(`[MSG91 Staff 1-Hr Reminder Error] Failed sending to [${toList.join(', ')}]:`, err.message)
+    return false
+  }
+}
+
+// Background Cron Scheduler: Check upcoming bookings and send 1-hour staff reminders
+const runShiftReminderScheduler = async () => {
+  try {
+    const nowStr = new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+    const nowIST = new Date(nowStr)
+    const todayYMD = `${nowIST.getFullYear()}-${String(nowIST.getMonth() + 1).padStart(2, '0')}-${String(nowIST.getDate()).padStart(2, '0')}`
+
+    const bookings = await db.getBookings()
+    if (!Array.isArray(bookings)) return
+
+    for (const b of bookings) {
+      // Must be confirmed or active
+      const statusLower = String(b.status || '').toLowerCase()
+      if (statusLower !== 'confirmed' && statusLower !== 'active') continue
+
+      // Must have assigned staff
+      if (!b.assignedStaff) continue
+
+      // Check if already sent today
+      const alreadySentToday = Boolean(
+        b.staffReminderSent &&
+        b.staffReminderSentAt &&
+        String(b.staffReminderSentAt).slice(0, 10) === todayYMD
+      )
+      if (alreadySentToday) continue
+
+      // Check if starting in ~1 hour
+      if (isBookingStartingInOneHour(b)) {
+        console.log(`⏰ [Auto-Scheduler] Booking #${b.id} for ${b.assignedStaff} starts in ~1 hour. Dispatching WhatsApp reminder...`)
+        
+        // Dispatch WhatsApp to assigned staff & admin
+        await sendStaffShiftReminderWhatsApp(b)
+
+        // Mark as sent in DB
+        await db.markStaffReminderSent(b.id)
+
+        // Record notification
+        try {
+          await db.addNotification({
+            recipient: b.assignedStaffPhone || b.assignedStaff,
+            message: `⏰ 1-Hour Shift Reminder dispatched for Booking #${b.id} (${b.service} at ${b.time}) to ${b.assignedStaff}.`,
+            type: 'Staff Reminder'
+          })
+        } catch (e) {}
+      }
+    }
+  } catch (err) {
+    console.error(`[Shift Reminder Scheduler Error]:`, err.message)
   }
 }
 
@@ -4080,7 +4296,8 @@ app.post('/api/payment/order', async (req, res) => {
         const bal = Number(existing.balanceAmount) !== undefined && existing.balanceAmount !== null
           ? Number(existing.balanceAmount)
           : Math.max(0, Number(existing.amount) - Number(existing.advancePaid || 0))
-        if (bal <= 0 || existing.paymentStatus === 'Paid') {
+        const isPaid = String(existing.paymentStatus || '').trim().toLowerCase() === 'paid' || bal <= 0
+        if (isPaid) {
           return res.status(400).json({ 
             error: `Dual payment prevented: Booking #${bookingId} has already been settled in full. No payment is required.`,
             alreadyPaid: true 
@@ -4300,10 +4517,13 @@ app.get('/api/booking/:id/pay-info', async (req, res) => {
     }
 
     const totalAmount = Number(booking.amount) || 0
-    const advancePaid = Number(booking.advancePaid) || 0
-    const balanceAmount = booking.balanceAmount !== undefined && booking.balanceAmount !== null
-      ? Number(booking.balanceAmount)
-      : Math.max(0, totalAmount - advancePaid)
+    const isPaid = String(booking.paymentStatus || '').trim().toLowerCase() === 'paid' || 
+                   (booking.balanceAmount !== undefined && Number(booking.balanceAmount) <= 0 && totalAmount > 0) ||
+                   (booking.advancePaid !== undefined && Number(booking.advancePaid) >= totalAmount && totalAmount > 0)
+
+    const advancePaid = isPaid ? totalAmount : (Number(booking.advancePaid) || 0)
+    const balanceAmount = isPaid ? 0 : (booking.balanceAmount !== undefined && booking.balanceAmount !== null ? Math.max(0, Number(booking.balanceAmount)) : Math.max(0, totalAmount - advancePaid))
+    const paymentStatus = isPaid || balanceAmount <= 0 ? 'Paid' : (advancePaid > 0 ? 'Advance Paid' : (booking.paymentStatus || 'Unpaid'))
 
     // Mask phone for customer privacy
     const phone = String(booking.phone || '')
@@ -4325,7 +4545,7 @@ app.get('/api/booking/:id/pay-info', async (req, res) => {
       amount: totalAmount,
       advancePaid,
       balanceAmount,
-      paymentStatus: booking.paymentStatus || (balanceAmount <= 0 ? 'Paid' : (advancePaid > 0 ? 'Advance Paid' : 'Unpaid')),
+      paymentStatus,
       status: booking.status || 'Confirmed',
       isMtp: Boolean(booking.isMtp)
     })
@@ -4370,7 +4590,8 @@ app.post('/api/booking/:id/pay-balance', async (req, res) => {
     const currentBal = Number(existing.balanceAmount) !== undefined && existing.balanceAmount !== null
       ? Number(existing.balanceAmount)
       : Math.max(0, Number(existing.amount) - Number(existing.advancePaid || 0))
-    if (currentBal <= 0 || existing.paymentStatus === 'Paid') {
+    const isPaid = currentBal <= 0 || String(existing.paymentStatus || '').trim().toLowerCase() === 'paid'
+    if (isPaid) {
       return res.status(400).json({ 
         error: `Dual payment prevented: Booking #${id} is already paid in full. No duplicate charge will be processed.`,
         alreadyPaid: true 
@@ -4428,6 +4649,39 @@ app.post('/api/admin/booking/:id/send-balance-reminder', authenticateAdmin, asyn
   } catch (err) {
     console.error('[Send Balance Reminder Error]:', err)
     res.status(500).json({ error: 'Failed to dispatch WhatsApp reminder.' })
+  }
+})
+
+// POST Admin trigger 1-hour staff reminder manually
+app.post('/api/admin/booking/:id/send-staff-reminder', authenticateAdmin, async (req, res) => {
+  try {
+    const booking = await db.getBookingById(req.params.id)
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found.' })
+    }
+    if (!booking.assignedStaff) {
+      return res.status(400).json({ error: 'No staff member has been assigned to this booking yet.' })
+    }
+
+    const result = await sendStaffShiftReminderWhatsApp(booking)
+    await db.markStaffReminderSent(booking.id)
+
+    try {
+      await db.addNotification({
+        recipient: booking.assignedStaffPhone || booking.assignedStaff,
+        message: `⏰ 1-Hour Shift Reminder dispatched for Booking #${booking.id} (${booking.service} at ${booking.time}) to ${booking.assignedStaff}.`,
+        type: 'Staff Reminder'
+      })
+    } catch (e) {}
+
+    res.json({
+      success: true,
+      message: `WhatsApp shift reminder successfully dispatched to ${booking.assignedStaff} (${booking.assignedStaffPhone || ''}).`,
+      data: result
+    })
+  } catch (err) {
+    console.error('[Send Staff Reminder Error]:', err)
+    res.status(500).json({ error: 'Failed to dispatch staff reminder.' })
   }
 })
 
@@ -4628,6 +4882,14 @@ app.post('/api/admin/booking', authenticateAdmin, async (req, res) => {
     return res.status(400).json({ error: 'Missing required booking details.' })
   }
   try {
+    const totalBookingAmt = Number(amount) || 1200
+    const isPaidBooking = String(paymentStatus || '').trim().toLowerCase() === 'paid' || 
+                         (req.body.balanceAmount !== undefined && Number(req.body.balanceAmount) <= 0 && totalBookingAmt > 0) ||
+                         (req.body.advancePaid !== undefined && Number(req.body.advancePaid) >= totalBookingAmt && totalBookingAmt > 0)
+    const finalAdvPaid = isPaidBooking ? totalBookingAmt : (req.body.advancePaid !== undefined ? Number(req.body.advancePaid) : 0)
+    const finalBalAmt = isPaidBooking ? 0 : (req.body.balanceAmount !== undefined ? Number(req.body.balanceAmount) : Math.max(0, totalBookingAmt - finalAdvPaid))
+    const finalPayStatus = isPaidBooking || finalBalAmt <= 0 ? 'Paid' : (finalAdvPaid > 0 ? 'Advance Paid' : (paymentStatus || 'Unpaid'))
+
     const newBooking = await db.addBooking({
       name,
       phone,
@@ -4641,19 +4903,19 @@ app.post('/api/admin/booking', authenticateAdmin, async (req, res) => {
       assignedStaffId: assignedStaffId || null,
       assignedStaffRole: assignedStaffRole || null,
       assignedStaffPhone: assignedStaffPhone || null,
-      amount: Number(amount) || 1200,
-      baseAmount: req.body.baseAmount !== undefined ? Number(req.body.baseAmount) : (Number(amount) ? Math.round(Number(amount) / 1.18) : 0),
-      gstAmount: req.body.gstAmount !== undefined ? Number(req.body.gstAmount) : (Number(amount) ? Math.round(Number(amount) - (Number(req.body.baseAmount) || Math.round(Number(amount) / 1.18))) : 0),
+      amount: totalBookingAmt,
+      baseAmount: req.body.baseAmount !== undefined ? Number(req.body.baseAmount) : (totalBookingAmt ? Math.round(totalBookingAmt / 1.18) : 0),
+      gstAmount: req.body.gstAmount !== undefined ? Number(req.body.gstAmount) : (totalBookingAmt ? Math.round(totalBookingAmt - (Number(req.body.baseAmount) || Math.round(totalBookingAmt / 1.18))) : 0),
       caretakerPayout: Number(caretakerPayout) || 0,
       caretakerPayoutStatus: caretakerPayoutStatus || 'Unpaid',
       caretakerPayoutMethod: caretakerPayoutMethod || '',
       caretakerPayoutRef: caretakerPayoutRef || '',
-      paymentStatus: paymentStatus || 'Unpaid',
-      paymentMethod: paymentMethod || '',
+      paymentStatus: finalPayStatus,
+      paymentMethod: paymentMethod || (isPaidBooking ? 'Cash/Direct' : ''),
       transactionId: transactionId || '',
-      paymentDate: paymentDate || '',
-      advancePaid: req.body.advancePaid !== undefined ? Number(req.body.advancePaid) : 0,
-      balanceAmount: req.body.balanceAmount !== undefined ? Number(req.body.balanceAmount) : Math.max(0, (Number(amount) || 1200) - (Number(req.body.advancePaid) || 0)),
+      paymentDate: paymentDate || (isPaidBooking ? new Date().toISOString() : ''),
+      advancePaid: finalAdvPaid,
+      balanceAmount: finalBalAmt,
       patientName: patientName || '',
       patientAge: patientAge || '',
       patientNeeds: patientNeeds || '',
@@ -5353,6 +5615,12 @@ const startServer = async () => {
   await db.init()
   app.listen(PORT, () => {
     console.log(`🚀 Amma Seva Backend running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`)
+
+    // Start automated 1-hour staff shift reminder background scheduler (every 5 minutes)
+    setInterval(runShiftReminderScheduler, 5 * 60 * 1000)
+    // Run initial check 15 seconds after boot
+    setTimeout(runShiftReminderScheduler, 15000)
+    console.log(`⏰ Automated 1-Hour Staff Shift Reminder Scheduler initialized.`)
   })
 }
 

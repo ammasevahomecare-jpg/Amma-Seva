@@ -3,7 +3,7 @@ import { useState, useEffect, type ReactNode } from "react";
 import { 
   Menu, X, Phone, MessageCircle, Mail, MapPin, Building2, 
   Award, ShieldCheck, Heart, Sparkles, Clock, ChevronRight, 
-  User, ArrowUpRight, Calendar, Car
+  User, ArrowUpRight, Calendar, Car, LogOut
 } from "lucide-react";
 import logoAsset from "@/assets/amma-seva-logo.png";
 import { fetchServices, type Service } from "@/lib/services";
@@ -25,14 +25,37 @@ function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
 
+  const handleGlobalLogout = () => {
+    try {
+      localStorage.removeItem("ammaseva_user_token");
+      localStorage.removeItem("ammaseva_user_details");
+      localStorage.removeItem("ammaseva_caretaker_token");
+      localStorage.removeItem("ammaseva_caretaker_details");
+      localStorage.removeItem("ammaseva_token");
+      localStorage.removeItem("token");
+      sessionStorage.clear();
+      setIsUser(false);
+      setIsCaretaker(false);
+      window.dispatchEvent(new Event("storage"));
+      window.dispatchEvent(new CustomEvent("ammaseva:logout"));
+    } catch (e) {}
+    window.location.replace("/login?logout=true");
+  };
+
   useEffect(() => {
     const checkAuth = () => {
       setIsUser(!!localStorage.getItem("ammaseva_user_token"));
       setIsCaretaker(!!localStorage.getItem("ammaseva_caretaker_token"));
     };
     checkAuth();
-    const interval = setInterval(checkAuth, 1500);
-    return () => clearInterval(interval);
+    window.addEventListener("storage", checkAuth);
+    window.addEventListener("ammaseva:logout", checkAuth);
+    const interval = setInterval(checkAuth, 1000);
+    return () => {
+      window.removeEventListener("storage", checkAuth);
+      window.removeEventListener("ammaseva:logout", checkAuth);
+      clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {
@@ -141,23 +164,43 @@ function Header() {
           </a>
 
           {isUser ? (
-            <Link 
-              to="/dashboard" 
-              onClick={() => window.scrollTo({ top: 0, left: 0, behavior: "instant" })}
-              className="px-5 py-2 rounded-full bg-primary hover:bg-primary/90 text-white text-xs font-bold uppercase tracking-wider shadow-md shadow-primary/20 flex items-center gap-1.5 transition-all hover:scale-[1.02]"
-            >
-              <User className="h-3.5 w-3.5" />
-              <span>Dashboard</span>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link 
+                to="/dashboard" 
+                onClick={() => window.scrollTo({ top: 0, left: 0, behavior: "instant" })}
+                className="px-4.5 py-2 rounded-full bg-primary hover:bg-primary/90 text-white text-xs font-bold uppercase tracking-wider shadow-md shadow-primary/20 flex items-center gap-1.5 transition-all hover:scale-[1.02]"
+              >
+                <User className="h-3.5 w-3.5" />
+                <span>Dashboard</span>
+              </Link>
+              <button
+                type="button"
+                onClick={handleGlobalLogout}
+                title="Sign Out"
+                className="h-8 w-8 rounded-full bg-slate-100 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 border border-slate-200 text-slate-500 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+              </button>
+            </div>
           ) : isCaretaker ? (
-            <Link 
-              to="/dashboard" 
-              onClick={() => window.scrollTo({ top: 0, left: 0, behavior: "instant" })}
-              className="px-5 py-2 rounded-full bg-primary hover:bg-primary/90 text-white text-xs font-bold uppercase tracking-wider shadow-md shadow-primary/20 flex items-center gap-1.5 transition-all hover:scale-[1.02]"
-            >
-              <User className="h-3.5 w-3.5" />
-              <span>Profile</span>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link 
+                to="/dashboard" 
+                onClick={() => window.scrollTo({ top: 0, left: 0, behavior: "instant" })}
+                className="px-4.5 py-2 rounded-full bg-primary hover:bg-primary/90 text-white text-xs font-bold uppercase tracking-wider shadow-md shadow-primary/20 flex items-center gap-1.5 transition-all hover:scale-[1.02]"
+              >
+                <User className="h-3.5 w-3.5" />
+                <span>Profile</span>
+              </Link>
+              <button
+                type="button"
+                onClick={handleGlobalLogout}
+                title="Sign Out"
+                className="h-8 w-8 rounded-full bg-slate-100 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 border border-slate-200 text-slate-500 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+              </button>
+            </div>
           ) : (
             <Link 
               to="/login" 
@@ -217,27 +260,55 @@ function Header() {
               </a>
 
               {isUser ? (
-                <Link 
-                  to="/dashboard" 
-                  onClick={() => {
-                    setOpen(false);
-                    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-                  }} 
-                  className="py-3 px-4 rounded-xl bg-primary text-white text-xs font-bold uppercase tracking-wider text-center shadow-md"
-                >
-                  My Dashboard
-                </Link>
+                <div className="flex flex-col gap-2">
+                  <Link 
+                    to="/dashboard" 
+                    onClick={() => {
+                      setOpen(false);
+                      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+                    }} 
+                    className="py-3 px-4 rounded-xl bg-primary text-white text-xs font-bold uppercase tracking-wider text-center shadow-md flex items-center justify-center gap-1.5"
+                  >
+                    <User className="h-4 w-4" />
+                    <span>My Dashboard</span>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      handleGlobalLogout();
+                    }}
+                    className="py-2.5 px-4 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-xs font-bold uppercase tracking-wider text-center cursor-pointer hover:bg-rose-100 transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    <span>Log Out</span>
+                  </button>
+                </div>
               ) : isCaretaker ? (
-                <Link 
-                  to="/dashboard" 
-                  onClick={() => {
-                    setOpen(false);
-                    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-                  }} 
-                  className="py-3 px-4 rounded-xl bg-primary text-white text-xs font-bold uppercase tracking-wider text-center shadow-md"
-                >
-                  My Caregiver Profile
-                </Link>
+                <div className="flex flex-col gap-2">
+                  <Link 
+                    to="/dashboard" 
+                    onClick={() => {
+                      setOpen(false);
+                      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+                    }} 
+                    className="py-3 px-4 rounded-xl bg-primary text-white text-xs font-bold uppercase tracking-wider text-center shadow-md flex items-center justify-center gap-1.5"
+                  >
+                    <User className="h-4 w-4" />
+                    <span>My Caregiver Profile</span>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      handleGlobalLogout();
+                    }}
+                    className="py-2.5 px-4 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-xs font-bold uppercase tracking-wider text-center cursor-pointer hover:bg-rose-100 transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    <span>Log Out</span>
+                  </button>
+                </div>
               ) : (
                 <Link 
                   to="/login" 

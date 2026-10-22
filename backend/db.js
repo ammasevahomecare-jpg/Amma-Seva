@@ -714,12 +714,59 @@ const initJSONDb = () => {
   }
 }
 
+// Centralized booking payment normalization function to prevent dual/contradictory payment states
+const normalizeBooking = (b) => {
+  if (!b) return b
+  const amount = Number(b.amount) || 0
+  const isPaid = String(b.paymentStatus || '').trim().toLowerCase() === 'paid'
+  const rawAdv = b.advancePaid !== undefined && b.advancePaid !== null ? Number(b.advancePaid) : null
+  const rawBal = b.balanceAmount !== undefined && b.balanceAmount !== null ? Number(b.balanceAmount) : null
+  const staffReminderSent = b.staffReminderSent ? 1 : 0
+  const staffReminderSentAt = b.staffReminderSentAt || null
+
+  // If status is Paid, or if balance is <= 0 for non-zero shift, or if advance >= amount:
+  if (isPaid || (rawBal !== null && rawBal <= 0 && amount > 0) || (rawAdv !== null && rawAdv >= amount && amount > 0)) {
+    return {
+      ...b,
+      paymentStatus: 'Paid',
+      advancePaid: amount,
+      balanceAmount: 0,
+      staffReminderSent,
+      staffReminderSentAt
+    }
+  }
+
+  const advance = rawAdv !== null && rawAdv >= 0 ? rawAdv : 0
+  const balance = rawBal !== null && rawBal >= 0 ? rawBal : Math.max(0, amount - advance)
+  return {
+    ...b,
+    advancePaid: advance,
+    balanceAmount: balance,
+    paymentStatus: balance <= 0 && amount > 0 ? 'Paid' : (advance > 0 ? 'Advance Paid' : (b.paymentStatus || 'Unpaid')),
+    staffReminderSent,
+    staffReminderSentAt
+  }
+}
+
 // Read JSON database file
 const readJSONDb = async () => {
   initJSONDb()
   const raw = await fs.promises.readFile(JSON_DB_PATH, 'utf-8')
   const data = JSON.parse(raw)
   let dbChanged = false
+
+  // Auto-heal contradictory booking payment records in JSON DB on read
+  if (Array.isArray(data.bookings)) {
+    data.bookings.forEach(b => {
+      const norm = normalizeBooking(b)
+      if (b.paymentStatus !== norm.paymentStatus || Number(b.balanceAmount) !== Number(norm.balanceAmount) || Number(b.advancePaid) !== Number(norm.advancePaid)) {
+        b.paymentStatus = norm.paymentStatus
+        b.balanceAmount = norm.balanceAmount
+        b.advancePaid = norm.advancePaid
+        dbChanged = true
+      }
+    })
+  }
 
   if (!data.mtpPrices || !Array.isArray(data.mtpPrices) || data.mtpPrices.length === 0) {
     data.mtpPrices = [...DEFAULT_MOCK_DATA.mtpPrices]
@@ -1047,6 +1094,22 @@ export const db = {
           console.log('[MySQL] Added column careLogs to bookings table.')
         } catch (err) {
           // Column probably already exists, ignore
+        }
+
+        // Auto-heal contradictory booking payment records in MySQL
+        try {
+          await connection.query(`
+            UPDATE bookings 
+            SET balanceAmount = 0, advancePaid = amount 
+            WHERE LOWER(TRIM(paymentStatus)) = 'paid' AND balanceAmount > 0
+          `)
+          await connection.query(`
+            UPDATE bookings 
+            SET paymentStatus = 'Paid', balanceAmount = 0, advancePaid = amount 
+            WHERE balanceAmount <= 0 AND amount > 0 AND LOWER(TRIM(paymentStatus)) != 'paid'
+          `)
+        } catch (healErr) {
+          // Table or column might differ, ignore
         }
 
         await connection.query(`
@@ -1414,6 +1477,12 @@ export const db = {
         try {
           await connection.query(`ALTER TABLE bookings ADD COLUMN mtpAcceptedPhone VARCHAR(50) NULL`)
         } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE bookings ADD COLUMN staffReminderSent TINYINT DEFAULT 0`)
+        } catch (e) {}
+        try {
+          await connection.query(`ALTER TABLE bookings ADD COLUMN staffReminderSentAt VARCHAR(100) NULL`)
+        } catch (e) {}
 
         // Migration queries for services table
         try {
@@ -1706,25 +1775,29 @@ export const db = {
       const data = await readJSONDb()
       list = [...(data.bookings || [])].reverse()
     }
-    return list.map(b => ({
-      ...b,
-      name: b?.name || b?.patientName || 'Customer',
-      phone: b?.phone || '',
-      service: b?.service || 'Home Healthcare Support',
-      date: b?.date || (b?.createdAt ? b.createdAt.split('T')[0] : '2026-10-19'),
-      time: b?.time || '10:00 AM',
-      duration: b?.duration || 'Standard Shift',
-      address: b?.address || '',
-      status: b?.status || 'Pending',
-      paymentStatus: b?.paymentStatus || 'Unpaid',
-      amount: Number(b?.amount) || 0,
-      baseAmount: Number(b?.baseAmount) || (Number(b?.amount) ? Math.round(Number(b.amount) / 1.18) : 0),
-      gstAmount: Number(b?.gstAmount) || (Number(b?.amount) ? Math.round(Number(b.amount) - (Number(b?.baseAmount) || Math.round(Number(b.amount) / 1.18))) : 0),
-      assignedStaff: b?.assignedStaff || null
-    }))
+    return list.map(b => {
+      const norm = normalizeBooking(b)
+      return {
+        ...norm,
+        name: norm?.name || norm?.patientName || 'Customer',
+        phone: norm?.phone || '',
+        service: norm?.service || 'Home Healthcare Support',
+        date: norm?.date || (norm?.createdAt ? norm.createdAt.split('T')[0] : '2026-10-19'),
+        time: norm?.time || '10:00 AM',
+        duration: norm?.duration || 'Standard Shift',
+        address: norm?.address || '',
+        status: norm?.status || 'Pending',
+        paymentStatus: norm?.paymentStatus || 'Unpaid',
+        amount: Number(norm?.amount) || 0,
+        baseAmount: Number(norm?.baseAmount) || (Number(norm?.amount) ? Math.round(Number(norm.amount) / 1.18) : 0),
+        gstAmount: Number(norm?.gstAmount) || (Number(norm?.amount) ? Math.round(Number(norm.amount) - (Number(norm?.baseAmount) || Math.round(Number(norm.amount) / 1.18))) : 0),
+        assignedStaff: norm?.assignedStaff || null
+      }
+    })
   },
 
   addBooking: async (bookingData) => {
+    const norm = normalizeBooking(bookingData)
     const { 
       name, phone, service, date, time, duration, address, 
       status = 'Pending', assignedStaff = null, assignedStaffId = null, assignedStaffRole = null, assignedStaffPhone = null,
@@ -1732,11 +1805,11 @@ export const db = {
       prescription = '', googleMapLocation = '', caretakerPayout = 0, caretakerPayoutStatus = 'Unpaid', caretakerPayoutMethod = '', caretakerPayoutRef = '', advancePaid = 0, balanceAmount = 0,
       patientName = '', patientAge = '', patientNeeds = '',
       isMtp = null, mtpAcceptedAt = null, mtpAcceptedBy = null, mtpAcceptedById = null, mtpAcceptedPhone = null
-    } = bookingData
+    } = norm
     const createdAt = new Date().toISOString()
     const isMtpVal = isMTPService(service, isMtp) ? 1 : 0
-    const calcBase = bookingData.baseAmount !== undefined ? Number(bookingData.baseAmount) : (Number(amount) ? Math.round(Number(amount) / 1.18) : 0)
-    const calcGst = bookingData.gstAmount !== undefined ? Number(bookingData.gstAmount) : (Number(amount) ? Math.round(Number(amount) - calcBase) : 0)
+    const calcBase = norm.baseAmount !== undefined ? Number(norm.baseAmount) : (Number(amount) ? Math.round(Number(amount) / 1.18) : 0)
+    const calcGst = norm.gstAmount !== undefined ? Number(norm.gstAmount) : (Number(amount) ? Math.round(Number(amount) - calcBase) : 0)
     if (useMySQL) {
       const [result] = await pool.query(
         'INSERT INTO bookings (name, phone, service, date, time, duration, address, status, assignedStaff, assignedStaffId, assignedStaffRole, assignedStaffPhone, amount, paymentStatus, paymentMethod, transactionId, paymentDate, prescription, googleMapLocation, advancePaid, balanceAmount, patientName, patientAge, patientNeeds, caretakerPayout, caretakerPayoutStatus, caretakerPayoutMethod, caretakerPayoutRef, isMtp, mtpAcceptedAt, mtpAcceptedBy, mtpAcceptedById, mtpAcceptedPhone, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -1791,10 +1864,20 @@ export const db = {
   },
 
   updateBooking: async (id, status, assignedStaff, paymentStatus, staffId = null, staffRole = null, staffPhone = null) => {
+    const isPaid = String(paymentStatus || '').trim().toLowerCase() === 'paid'
     if (useMySQL) {
       const [result] = await pool.query(
-        'UPDATE bookings SET status = ?, assignedStaff = ?, paymentStatus = ?, assignedStaffId = COALESCE(?, assignedStaffId), assignedStaffRole = COALESCE(?, assignedStaffRole), assignedStaffPhone = COALESCE(?, assignedStaffPhone) WHERE id = ?',
-        [status, assignedStaff, paymentStatus, staffId, staffRole, staffPhone, id]
+        `UPDATE bookings SET 
+          status = ?, 
+          assignedStaff = ?, 
+          paymentStatus = ?, 
+          assignedStaffId = COALESCE(?, assignedStaffId), 
+          assignedStaffRole = COALESCE(?, assignedStaffRole), 
+          assignedStaffPhone = COALESCE(?, assignedStaffPhone),
+          advancePaid = CASE WHEN ? THEN amount ELSE advancePaid END,
+          balanceAmount = CASE WHEN ? THEN 0 ELSE balanceAmount END
+        WHERE id = ?`,
+        [status, assignedStaff, isPaid ? 'Paid' : paymentStatus, staffId, staffRole, staffPhone, isPaid, isPaid, id]
       )
       return result.affectedRows > 0
     } else {
@@ -1831,7 +1914,9 @@ export const db = {
           assignedStaffId: staffId !== null && staffId !== undefined ? staffId : oldBooking.assignedStaffId,
           assignedStaffRole: staffRole || oldBooking.assignedStaffRole,
           assignedStaffPhone: staffPhone || oldBooking.assignedStaffPhone,
-          paymentStatus,
+          paymentStatus: isPaid ? 'Paid' : (paymentStatus || oldBooking.paymentStatus),
+          advancePaid: isPaid ? Number(oldBooking.amount) : oldBooking.advancePaid,
+          balanceAmount: isPaid ? 0 : oldBooking.balanceAmount,
           confirmedAt,
           assignedAt,
           completedAt,
@@ -2519,6 +2604,7 @@ export const db = {
 
   // User Bookings Operations
   addBookingForUser: async (bookingData) => {
+    const norm = normalizeBooking(bookingData)
     const { 
       name, phone, service, date, time, duration, address, amount = 1200, 
       baseAmount: providedBase, gstAmount: providedGst,
@@ -2527,7 +2613,7 @@ export const db = {
       paymentMethod = '', transactionId = '', paymentDate = '', 
       advancePaid = 0, balanceAmount = 0,
       isMtp = null
-    } = bookingData
+    } = norm
 
     const finalAmount = Number(amount) || 1200
     const finalBase = providedBase !== undefined && providedBase !== null ? Number(providedBase) : Math.round(finalAmount / 1.18)
@@ -2585,10 +2671,11 @@ export const db = {
   getBookingById: async (id) => {
     if (useMySQL) {
       const [rows] = await pool.query('SELECT * FROM bookings WHERE id = ?', [id])
-      return rows[0] || null
+      return rows[0] ? normalizeBooking(rows[0]) : null
     } else {
       const data = await readJSONDb()
-      return data.bookings.find(b => b.id === Number(id)) || null
+      const b = data.bookings.find(b => b.id === Number(id))
+      return b ? normalizeBooking(b) : null
     }
   },
 
@@ -2597,10 +2684,10 @@ export const db = {
     if (useMySQL) {
       if (cleanPhone) {
         const [rows] = await pool.query('SELECT * FROM bookings WHERE userId = ? OR phone = ? ORDER BY id DESC', [userId, cleanPhone])
-        return rows
+        return (rows || []).map(normalizeBooking)
       }
       const [rows] = await pool.query('SELECT * FROM bookings WHERE userId = ? ORDER BY id DESC', [userId])
-      return rows
+      return (rows || []).map(normalizeBooking)
     } else {
       const data = await readJSONDb()
       if (!data.bookings) return []
@@ -2608,7 +2695,7 @@ export const db = {
         if (userId && Number(b.userId) === Number(userId)) return true
         if (cleanPhone && b.phone && String(b.phone).replace(/\D/g, '').slice(-10) === cleanPhone) return true
         return false
-      }).reverse()
+      }).reverse().map(normalizeBooking)
     }
   },
 
@@ -2621,13 +2708,13 @@ export const db = {
           'SELECT * FROM bookings WHERE assignedStaffId = ? OR LOWER(TRIM(assignedStaff)) = ? ORDER BY id DESC',
           [numericId, trimmed]
         )
-        return rows
+        return (rows || []).map(normalizeBooking)
       } else if (numericId) {
         const [rows] = await pool.query('SELECT * FROM bookings WHERE assignedStaffId = ? ORDER BY id DESC', [numericId])
-        return rows
+        return (rows || []).map(normalizeBooking)
       } else if (trimmed) {
         const [rows] = await pool.query('SELECT * FROM bookings WHERE LOWER(TRIM(assignedStaff)) = ? ORDER BY id DESC', [trimmed])
-        return rows
+        return (rows || []).map(normalizeBooking)
       }
       return []
     } else {
@@ -2637,13 +2724,13 @@ export const db = {
         if (numericId && Number(b.assignedStaffId) === numericId) return true
         if (trimmed && b.assignedStaff && b.assignedStaff.trim().toLowerCase() === trimmed) return true
         return false
-      }).reverse()
+      }).reverse().map(normalizeBooking)
     }
   },
 
   rescheduleBooking: async (id, date, time) => {
     if (useMySQL) {
-      const [result] = await pool.query('UPDATE bookings SET date = ?, time = ? WHERE id = ?', [date, time, id])
+      const [result] = await pool.query('UPDATE bookings SET date = ?, time = ?, staffReminderSent = 0, staffReminderSentAt = NULL WHERE id = ?', [date, time, id])
       return result.affectedRows > 0
     } else {
       const data = await readJSONDb()
@@ -2651,6 +2738,26 @@ export const db = {
       if (idx > -1) {
         data.bookings[idx].date = date
         data.bookings[idx].time = time
+        data.bookings[idx].staffReminderSent = 0
+        data.bookings[idx].staffReminderSentAt = null
+        await writeJSONDb(data)
+        return true
+      }
+      return false
+    }
+  },
+
+  markStaffReminderSent: async (id) => {
+    const timestamp = new Date().toISOString()
+    if (useMySQL) {
+      const [result] = await pool.query('UPDATE bookings SET staffReminderSent = 1, staffReminderSentAt = ? WHERE id = ?', [timestamp, id])
+      return result.affectedRows > 0
+    } else {
+      const data = await readJSONDb()
+      const idx = data.bookings.findIndex(b => b.id === Number(id))
+      if (idx > -1) {
+        data.bookings[idx].staffReminderSent = 1
+        data.bookings[idx].staffReminderSentAt = timestamp
         await writeJSONDb(data)
         return true
       }
@@ -2760,19 +2867,28 @@ export const db = {
       advancePaid, balanceAmount, patientName, patientAge, patientNeeds, googleMapLocation,
       isMtp, mtpAcceptedAt, mtpAcceptedBy, mtpAcceptedById, mtpAcceptedPhone
     } = bookingData
+
+    const parsedAmount = Number(amount) || 0
+    const isPaid = String(paymentStatus || '').trim().toLowerCase() === 'paid' || 
+                   (balanceAmount !== undefined && Number(balanceAmount) <= 0 && parsedAmount > 0) ||
+                   (advancePaid !== undefined && Number(advancePaid) >= parsedAmount && parsedAmount > 0)
+
+    const finalPaymentStatus = isPaid ? 'Paid' : (paymentStatus || 'Unpaid')
+    const finalAdvancePaid = isPaid ? parsedAmount : (advancePaid !== undefined ? Number(advancePaid) : null)
+    const finalBalanceAmount = isPaid ? 0 : (balanceAmount !== undefined ? Number(balanceAmount) : null)
+
     if (useMySQL) {
       const [result] = await pool.query(
         'UPDATE bookings SET name = ?, phone = ?, service = ?, date = ?, time = ?, duration = ?, address = ?, status = ?, assignedStaff = ?, assignedStaffId = COALESCE(?, assignedStaffId), assignedStaffRole = COALESCE(?, assignedStaffRole), assignedStaffPhone = COALESCE(?, assignedStaffPhone), amount = ?, paymentStatus = ?, paymentMethod = ?, transactionId = ?, paymentDate = ?, advancePaid = COALESCE(?, advancePaid), balanceAmount = COALESCE(?, balanceAmount), patientName = COALESCE(?, patientName), patientAge = COALESCE(?, patientAge), patientNeeds = COALESCE(?, patientNeeds), googleMapLocation = COALESCE(?, googleMapLocation), caretakerPayout = COALESCE(?, caretakerPayout), caretakerPayoutStatus = COALESCE(?, caretakerPayoutStatus), caretakerPayoutMethod = COALESCE(?, caretakerPayoutMethod), caretakerPayoutRef = COALESCE(?, caretakerPayoutRef), isMtp = COALESCE(?, isMtp), mtpAcceptedAt = COALESCE(?, mtpAcceptedAt), mtpAcceptedBy = COALESCE(?, mtpAcceptedBy), mtpAcceptedById = COALESCE(?, mtpAcceptedById), mtpAcceptedPhone = COALESCE(?, mtpAcceptedPhone) WHERE id = ?',
-        [name, phone, service, date, time, duration, address, status, assignedStaff || null, assignedStaffId !== undefined ? assignedStaffId : null, assignedStaffRole || null, assignedStaffPhone || null, amount, paymentStatus, paymentMethod, transactionId, paymentDate, advancePaid !== undefined ? advancePaid : null, balanceAmount !== undefined ? balanceAmount : null, patientName !== undefined ? patientName : null, patientAge !== undefined ? patientAge : null, patientNeeds !== undefined ? patientNeeds : null, googleMapLocation !== undefined ? googleMapLocation : null, caretakerPayout !== undefined ? Number(caretakerPayout) : null, caretakerPayoutStatus || null, caretakerPayoutMethod || null, caretakerPayoutRef || null, isMtp !== undefined ? (isMtp ? 1 : 0) : null, mtpAcceptedAt !== undefined ? mtpAcceptedAt : null, mtpAcceptedBy !== undefined ? mtpAcceptedBy : null, mtpAcceptedById !== undefined ? mtpAcceptedById : null, mtpAcceptedPhone !== undefined ? mtpAcceptedPhone : null, id]
+        [name, phone, service, date, time, duration, address, status, assignedStaff || null, assignedStaffId !== undefined ? assignedStaffId : null, assignedStaffRole || null, assignedStaffPhone || null, parsedAmount, finalPaymentStatus, paymentMethod, transactionId, paymentDate || (isPaid ? new Date().toISOString() : ''), finalAdvancePaid, finalBalanceAmount, patientName !== undefined ? patientName : null, patientAge !== undefined ? patientAge : null, patientNeeds !== undefined ? patientNeeds : null, googleMapLocation !== undefined ? googleMapLocation : null, caretakerPayout !== undefined ? Number(caretakerPayout) : null, caretakerPayoutStatus || null, caretakerPayoutMethod || null, caretakerPayoutRef || null, isMtp !== undefined ? (isMtp ? 1 : 0) : null, mtpAcceptedAt !== undefined ? mtpAcceptedAt : null, mtpAcceptedBy !== undefined ? mtpAcceptedBy : null, mtpAcceptedById !== undefined ? mtpAcceptedById : null, mtpAcceptedPhone !== undefined ? mtpAcceptedPhone : null, id]
       )
       return result.affectedRows > 0
     } else {
       const data = await readJSONDb()
       const idx = data.bookings.findIndex(b => b.id === Number(id))
       if (idx > -1) {
-        const parsedAmount = Number(amount)
-        const currentAdv = advancePaid !== undefined ? Number(advancePaid) : (data.bookings[idx].advancePaid || 0)
-        const calculatedBal = balanceAmount !== undefined ? Number(balanceAmount) : Math.max(0, parsedAmount - currentAdv)
+        const currentAdv = isPaid ? parsedAmount : (advancePaid !== undefined ? Number(advancePaid) : (data.bookings[idx].advancePaid || 0))
+        const calculatedBal = isPaid ? 0 : (balanceAmount !== undefined ? Number(balanceAmount) : Math.max(0, parsedAmount - currentAdv))
 
         data.bookings[idx] = {
           ...data.bookings[idx],
@@ -2801,10 +2917,10 @@ export const db = {
           caretakerPayoutStatus: caretakerPayoutStatus !== undefined ? caretakerPayoutStatus : (data.bookings[idx].caretakerPayoutStatus || 'Unpaid'),
           caretakerPayoutMethod: caretakerPayoutMethod !== undefined ? caretakerPayoutMethod : (data.bookings[idx].caretakerPayoutMethod || ''),
           caretakerPayoutRef: caretakerPayoutRef !== undefined ? caretakerPayoutRef : (data.bookings[idx].caretakerPayoutRef || ''),
-          paymentStatus,
+          paymentStatus: finalPaymentStatus,
           paymentMethod,
           transactionId,
-          paymentDate,
+          paymentDate: paymentDate || (isPaid ? new Date().toISOString() : data.bookings[idx].paymentDate),
           isMtp: isMtp !== undefined ? (isMtp ? 1 : 0) : (data.bookings[idx].isMtp !== undefined ? data.bookings[idx].isMtp : (isMTPService(service) ? 1 : 0)),
           mtpAcceptedAt: mtpAcceptedAt !== undefined ? mtpAcceptedAt : data.bookings[idx].mtpAcceptedAt,
           mtpAcceptedBy: mtpAcceptedBy !== undefined ? mtpAcceptedBy : data.bookings[idx].mtpAcceptedBy,
