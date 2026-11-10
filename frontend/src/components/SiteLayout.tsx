@@ -8,6 +8,7 @@ import {
 import logoAsset from "@/assets/amma-seva-logo.png";
 import { fetchServices, type Service } from "@/lib/services";
 import { InaugurationSection } from "./InaugurationSection";
+import { FounderSection } from "./FounderSection";
 import { ScrollRevealObserver } from "./ScrollRevealObserver";
 
 const PHONE = "+91 94945 16543";
@@ -676,10 +677,12 @@ function FloatingActions() {
 
 export function SiteLayout({ 
   children, 
-  showInauguration = false 
+  showInauguration = false,
+  showFounder = true
 }: { 
   children: ReactNode; 
   showInauguration?: boolean;
+  showFounder?: boolean;
 }) {
   return (
     <div className="flex min-h-screen flex-col bg-background text-slate-850">
@@ -687,6 +690,7 @@ export function SiteLayout({
       <Header />
       <main className="flex-1">{children}</main>
       {showInauguration && <InaugurationSection />}
+      {showFounder && <FounderSection />}
       <Footer />
       <FloatingActions />
     </div>
