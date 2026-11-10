@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, Component, type ErrorInfo, type ReactNode } from "react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { DocumentViewerModal } from "@/components/DocumentViewerModal";
+import { MonthlyLedgerRegisters } from "@/components/MonthlyLedgerRegisters";
 import { validateName, validatePhone, validateEmail, validateAddress, validateAadhaar, validatePAN, sanitizeIndianPhone, sanitizeName } from "@/lib/validation";
 import { downloadIdCardImage, getCleanIdCardDesignation } from "@/lib/idCardDownload";
 import logoAsset from "@/assets/amma-seva-logo.png";
@@ -328,7 +329,7 @@ function AdminPage() {
   };
 
   const VALID_ADMIN_TABS = [
-    "overview", "bookings", "accounts", "invoices", "caregivers", "referrals", "mtps", "id-cards",
+    "overview", "bookings", "accounts", "ledger", "invoices", "caregivers", "referrals", "mtps", "id-cards",
     "users", "services", "payments", "salaries", "notifications", 
     "enquiries", "blogs", "faqs", "gallery"
   ] as const;
@@ -3362,6 +3363,12 @@ function AdminPage() {
                   return !isPaid && b.status !== "Cancelled";
                 }).length 
               },
+              {
+                id: "ledger",
+                label: "Financial Ledger",
+                icon: FileSpreadsheet,
+                badge: "3 Sheets"
+              },
               { id: "invoices", label: "Invoices & Billing", icon: Receipt },
               { id: "caregivers", label: "Employees & Staff", icon: UserCheck },
               { id: "id-cards", label: "Staff ID Cards", icon: CreditCard, badge: idCards.length },
@@ -4701,6 +4708,16 @@ function AdminPage() {
 
                     <button
                       type="button"
+                      onClick={() => setActiveTab("ledger")}
+                      className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#1e2a5a] to-[#2d3f82] hover:from-[#151e40] hover:to-[#223066] text-white text-xs font-extrabold flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md shadow-[#1e2a5a]/20 border border-[#c9a24c]/40 active:scale-[0.98]"
+                      title="Open Monthly Registers & Ledger (3 Sheets: Profit, GST, Day Book)"
+                    >
+                      <FileSpreadsheet className="h-4 w-4 text-[#c9a24c]" />
+                      <span>Monthly 3-Sheet Ledger</span>
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={() => handleDownloadAccountsExcel(filteredBookings)}
                       className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white text-xs font-extrabold flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md shadow-emerald-700/20 active:scale-[0.98]"
                       title="Download Filtered Ledger in Excel (.csv)"
@@ -5200,6 +5217,17 @@ function AdminPage() {
               </div>
             );
           })()}
+
+          {/* ======================================================== */}
+          {/* MONTHLY FINANCIAL REGISTERS (PROFIT, GST & TRANSACTIONS) */}
+          {/* ======================================================== */}
+          {activeTab === "ledger" && (
+            <MonthlyLedgerRegisters
+              bookings={bookings}
+              onRefresh={fetchDashboardData}
+              onNavigateToTab={setActiveTab}
+            />
+          )}
 
           {/* ======================================================== */}
           {/* INVOICES & BILLING GENERATOR (REAL-TIME TAX INVOICES)   */}
