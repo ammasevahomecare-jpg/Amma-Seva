@@ -1,5 +1,5 @@
 import React from "react";
-import { ShieldCheck, Award, Sparkles, Building2, CheckCircle2, HeartHandshake } from "lucide-react";
+import { ShieldCheck, Award, Sparkles, Building2, CheckCircle2 } from "lucide-react";
 import founderPhoto from "@/assets/founder-sai-kiran.jpg";
 
 interface FounderSectionProps {
@@ -10,18 +10,19 @@ export const FounderSection: React.FC<FounderSectionProps> = ({ className = "" }
   return (
     <section
       aria-label="Amma Seva Founder & Leadership"
-      className={`relative overflow-hidden bg-gradient-to-br from-[#070e1f] via-[#101c3d] to-[#0a1228] text-white py-12 sm:py-16 border-t border-[#c9a24c]/30 shadow-2xl ${className}`}
+      className={`bg-background py-8 sm:py-12 lg:py-14 transition-all ${className}`}
     >
-      {/* Background Decorative Ambient Glows */}
-      <div className="absolute -top-24 -left-24 w-72 sm:w-96 h-72 sm:h-96 bg-[#c9a24c]/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-24 -right-24 w-72 sm:w-96 h-72 sm:h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-4xl h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12 relative z-10">
+      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 xl:px-12">
         
-        {/* Main Prestige Card */}
-        <div className="bg-gradient-to-r from-white/[0.05] via-white/[0.03] to-white/[0.05] backdrop-blur-md border border-white/10 hover:border-[#c9a24c]/40 rounded-3xl p-6 sm:p-8 lg:p-10 shadow-2xl transition-all duration-300">
-          <div className="flex flex-col md:flex-row items-center gap-6 sm:gap-8 lg:gap-12">
+        {/* Main Prestige Card with Dark Gradient & Gold Accents */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#070e1f] via-[#101c3d] to-[#0a1228] text-white rounded-3xl p-6 sm:p-8 lg:p-10 shadow-2xl border border-[#c9a24c]/40">
+          
+          {/* Background Decorative Ambient Glows */}
+          <div className="absolute -top-24 -left-24 w-72 sm:w-96 h-72 sm:h-96 bg-[#c9a24c]/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-24 -right-24 w-72 sm:w-96 h-72 sm:h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-4xl h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative z-10 flex flex-col md:flex-row items-center gap-6 sm:gap-8 lg:gap-12">
             
             {/* Founder Portrait Frame */}
             <div className="relative shrink-0 group">
@@ -77,7 +78,7 @@ export const FounderSection: React.FC<FounderSectionProps> = ({ className = "" }
               </p>
 
               {/* Trust Badges */}
-              <div className="pt-2 flex flex-wrap items-center justify-center md:justify-start gap-2.5">
+              <div className="pt-3 flex flex-wrap items-center justify-center md:justify-start gap-2.5">
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.05] border border-white/10 text-[11px] sm:text-xs font-semibold text-slate-200">
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                   <span>24/7 Verified Care Network</span>
@@ -101,4 +102,3 @@ export const FounderSection: React.FC<FounderSectionProps> = ({ className = "" }
     </section>
   );
 };
-
