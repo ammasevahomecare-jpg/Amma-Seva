@@ -18,7 +18,8 @@ import {
   Percent,
   Layers,
   FileText,
-  AlertCircle
+  AlertCircle,
+  Trash2
 } from "lucide-react";
 
 export interface MonthlyLedgerBooking {
@@ -54,12 +55,14 @@ interface MonthlyLedgerRegistersProps {
   bookings: MonthlyLedgerBooking[];
   onRefresh?: () => Promise<void>;
   onNavigateToTab?: (tab: string) => void;
+  onDeleteBooking?: (id: number | string, clientName?: string) => Promise<boolean | void>;
 }
 
 export const MonthlyLedgerRegisters: React.FC<MonthlyLedgerRegistersProps> = ({
   bookings = [],
   onRefresh,
-  onNavigateToTab
+  onNavigateToTab,
+  onDeleteBooking
 }) => {
   // Current month default (YYYY-MM)
   const defaultMonthStr = useMemo(() => {
@@ -74,10 +77,52 @@ export const MonthlyLedgerRegisters: React.FC<MonthlyLedgerRegistersProps> = ({
   const [activeView, setActiveView] = useState<"all" | "profit" | "gst" | "transactions">("all");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isDeletingId, setIsDeletingId] = useState<number | string | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  const handleDeleteRecord = async (bookingId: number | string, clientName?: string) => {
+    if (onDeleteBooking) {
+      setIsDeletingId(bookingId);
+      try {
+        await onDeleteBooking(bookingId, clientName);
+      } finally {
+        setIsDeletingId(null);
+      }
+      return;
+    }
+
+    const nameDisplay = clientName ? ` (${clientName})` : "";
+    const confirmMsg = `Are you sure you want to permanently delete transaction #${bookingId}${nameDisplay}?\n\nThis will remove it from the database permanently and recalculate the ledger.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setIsDeletingId(bookingId);
+    try {
+      const token = localStorage.getItem("ammaseva_admin_token");
+      const res = await fetch(`/api/booking/${bookingId}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`✅ Transaction #${bookingId}${nameDisplay} permanently deleted from database.`);
+        if (onRefresh) {
+          await onRefresh();
+        }
+      } else {
+        alert(data.error || "Failed to delete transaction.");
+      }
+    } catch (err: any) {
+      console.error("Delete transaction error:", err);
+      alert("Error deleting transaction: " + err.message);
+    } finally {
+      setIsDeletingId(null);
+    }
   };
 
   // Helper to extract ISO date YYYY-MM-DD from booking
@@ -307,7 +352,8 @@ export const MonthlyLedgerRegisters: React.FC<MonthlyLedgerRegistersProps> = ({
         gst,
         cgst,
         sgst,
-        note
+        note,
+        rawBooking: b
       };
     });
   }, [filteredBookings]);
@@ -338,6 +384,8 @@ export const MonthlyLedgerRegisters: React.FC<MonthlyLedgerRegistersProps> = ({
       debit: number;
       dailyNet: number;
       notes: string;
+      bookingId?: number | string;
+      rawBooking?: MonthlyLedgerBooking;
     }> = [];
 
     // Initialize 31-day summary tracking
@@ -369,7 +417,9 @@ export const MonthlyLedgerRegisters: React.FC<MonthlyLedgerRegistersProps> = ({
           credit: collected,
           debit: 0,
           dailyNet: collected,
-          notes: `Txn: ${b.transactionId || "DIRECT/UPI"} | Method: ${b.paymentMethod || "Online/Cash"}`
+          notes: `Txn: ${b.transactionId || "DIRECT/UPI"} | Method: ${b.paymentMethod || "Online/Cash"}`,
+          bookingId: b.id,
+          rawBooking: b
         });
 
         if (dayNum >= 1 && dayNum <= 31) {
@@ -392,7 +442,9 @@ export const MonthlyLedgerRegisters: React.FC<MonthlyLedgerRegistersProps> = ({
           credit: 0,
           debit: payoutVal,
           dailyNet: -payoutVal,
-          notes: `Ref: ${b.caretakerPayoutRef || "PAYOUT-STAFF"} | Status: ${b.caretakerPayoutStatus || "Paid"}`
+          notes: `Ref: ${b.caretakerPayoutRef || "PAYOUT-STAFF"} | Status: ${b.caretakerPayoutStatus || "Paid"}`,
+          bookingId: b.id,
+          rawBooking: b
         });
 
         if (dayNum >= 1 && dayNum <= 31) {
@@ -1288,12 +1340,13 @@ export const MonthlyLedgerRegisters: React.FC<MonthlyLedgerRegistersProps> = ({
                     Profit 5% (₹)
                   </th>
                   <th className="py-3 px-3">Note</th>
+                  <th className="py-3 px-3 text-center">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {profitRegisterRows.length === 0 ? (
                   <tr>
-                    <td colSpan={14} className="py-12 text-center text-slate-400 font-semibold">
+                    <td colSpan={15} className="py-12 text-center text-slate-400 font-semibold">
                       No invoices or booking records found for {activePeriodTitle}.
                     </td>
                   </tr>
@@ -1332,6 +1385,17 @@ export const MonthlyLedgerRegisters: React.FC<MonthlyLedgerRegistersProps> = ({
                         ₹{r.profit.toFixed(2)}
                       </td>
                       <td className="py-2.5 px-3 text-slate-500 text-[11px]">{r.note}</td>
+                      <td className="py-2.5 px-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteRecord(r.rawBooking.id, r.rawBooking.name)}
+                          disabled={isDeletingId === r.rawBooking.id}
+                          className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-500 hover:text-white text-rose-600 border border-rose-200 transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                          title="Delete Transaction Permanently from Database"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -1366,6 +1430,7 @@ export const MonthlyLedgerRegisters: React.FC<MonthlyLedgerRegistersProps> = ({
                     <td className="py-3 px-3 text-right font-mono text-sm text-emerald-400 bg-emerald-950/80">
                       ₹{profitTotals.profit.toFixed(2)}
                     </td>
+                    <td className="py-3 px-3"></td>
                     <td className="py-3 px-3"></td>
                   </tr>
                 </tfoot>
@@ -1432,12 +1497,13 @@ export const MonthlyLedgerRegisters: React.FC<MonthlyLedgerRegistersProps> = ({
                     GST (₹)
                   </th>
                   <th className="py-3 px-4">Note / Tax Audit</th>
+                  <th className="py-3 px-3 text-center">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {gstRegisterRows.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-slate-400 font-semibold">
+                    <td colSpan={9} className="py-12 text-center text-slate-400 font-semibold">
                       No tax invoices found for {activePeriodTitle}.
                     </td>
                   </tr>
@@ -1456,6 +1522,17 @@ export const MonthlyLedgerRegisters: React.FC<MonthlyLedgerRegistersProps> = ({
                         ₹{r.gst.toLocaleString("en-IN")}
                       </td>
                       <td className="py-2.5 px-4 text-slate-500 text-[11px] font-mono">{r.note}</td>
+                      <td className="py-2.5 px-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteRecord(r.rawBooking.id, r.rawBooking.name)}
+                          disabled={isDeletingId === r.rawBooking.id}
+                          className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-500 hover:text-white text-rose-600 border border-rose-200 transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                          title="Delete Transaction Permanently from Database"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -1473,6 +1550,7 @@ export const MonthlyLedgerRegisters: React.FC<MonthlyLedgerRegistersProps> = ({
                       ₹{gstTotals.gst.toLocaleString("en-IN")}
                     </td>
                     <td className="py-3 px-4"></td>
+                    <td className="py-3 px-3"></td>
                   </tr>
                 </tfoot>
               )}
@@ -1543,12 +1621,13 @@ export const MonthlyLedgerRegisters: React.FC<MonthlyLedgerRegistersProps> = ({
                     <th className="py-2.5 px-3 text-right text-red-800">Debit (₹)</th>
                     <th className="py-2.5 px-3 text-right font-extrabold">Daily Net (₹)</th>
                     <th className="py-2.5 px-3">Notes / Ref</th>
+                    <th className="py-2.5 px-2 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {transactionsList.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-12 text-center text-slate-400 font-semibold">
+                      <td colSpan={8} className="py-12 text-center text-slate-400 font-semibold">
                         No transactions recorded for {activePeriodTitle}.
                       </td>
                     </tr>
@@ -1573,6 +1652,19 @@ export const MonthlyLedgerRegisters: React.FC<MonthlyLedgerRegistersProps> = ({
                           {t.dailyNet >= 0 ? `+₹${t.dailyNet.toLocaleString("en-IN")}` : `-₹${Math.abs(t.dailyNet).toLocaleString("en-IN")}`}
                         </td>
                         <td className="py-2 px-3 text-slate-500 text-[11px]">{t.notes}</td>
+                        <td className="py-2 px-2 text-center">
+                          {t.bookingId && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteRecord(t.bookingId!, t.rawBooking?.name)}
+                              disabled={isDeletingId === t.bookingId}
+                              className="p-1 rounded-md bg-rose-50 hover:bg-rose-500 hover:text-white text-rose-600 border border-rose-200 transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                              title="Delete Transaction Permanently from Database"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     ))
                   )}

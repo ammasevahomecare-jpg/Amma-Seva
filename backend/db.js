@@ -2947,7 +2947,7 @@ export const db = {
     } else {
       const data = await readJSONDb()
       const initialLength = data.bookings.length
-      data.bookings = data.bookings.filter(b => b.id !== Number(id))
+      data.bookings = data.bookings.filter(b => String(b.id) !== String(id) && b.id !== Number(id))
       await writeJSONDb(data)
       return data.bookings.length < initialLength
     }
