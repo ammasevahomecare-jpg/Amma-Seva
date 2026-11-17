@@ -1,0 +1,1 @@
+var e=`/assets/hero-care-8M3PkdaD.jpg`;export{e as t};

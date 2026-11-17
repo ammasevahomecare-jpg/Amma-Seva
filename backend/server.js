@@ -21,6 +21,37 @@ const __dirname = path.dirname(__filename)
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '.env') })
 
+const IS_PRODUCTION = process.env.NODE_ENV === 'production'
+
+// Required secrets: refuse to start without them (no hardcoded fallbacks)
+const REQUIRED_ENV = ['JWT_SECRET', 'SMTP_EMAIL', 'SMTP_PASSWORD', 'CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET', 'MSG91_AUTH_KEY']
+if (IS_PRODUCTION) REQUIRED_ENV.push('RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET')
+const missingEnv = REQUIRED_ENV.filter(k => !(process.env[k] || '').trim())
+if (missingEnv.length) {
+  console.error(`[Startup] Missing required environment variables: ${missingEnv.join(', ')}`)
+  process.exit(1)
+}
+if (process.env.JWT_SECRET.trim().length < 32) {
+  console.error('[Startup] JWT_SECRET must be at least 32 characters long.')
+  process.exit(1)
+}
+
+// Simulated (fake) payments are only allowed in local development when explicitly enabled
+const ALLOW_PAYMENT_SIMULATION = !IS_PRODUCTION && process.env.ALLOW_PAYMENT_SIMULATION === 'true'
+
+// Escape user-provided values before placing them inside HTML emails
+const esc = (value) => String(value ?? '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;')
+
+// Returns a shallow copy with every string field HTML-escaped (for email templates)
+const escObj = (obj) => obj && typeof obj === 'object'
+  ? Object.fromEntries(Object.entries(obj).map(([k, v]) => [k, typeof v === 'string' ? esc(v) : v]))
+  : obj
+
 // Configure Razorpay strictly using environment variables (no hardcoded fallback keys)
 const getRazorpayConfig = () => {
   const key_id = (process.env.RAZORPAY_KEY_ID || '').trim().replace(/["']/g, '')
@@ -32,11 +63,78 @@ const getRazorpayConfig = () => {
   return { key_id, key_secret, client }
 }
 
+const isSimulatedPaymentRef = (orderId, paymentId) =>
+  String(orderId || '').startsWith('order_sim_') || String(paymentId || '').startsWith('pay_sim_')
+
+// Verifies a Razorpay checkout result end-to-end:
+// signature (HMAC) -> payment fetched from Razorpay -> belongs to this order -> captured/authorized.
+// Returns { ok, amountPaid (in rupees), simulated } or { ok: false, error }.
+const verifyRazorpayPayment = async ({ razorpay_order_id, razorpay_payment_id, razorpay_signature }) => {
+  if (!razorpay_order_id || !razorpay_payment_id) {
+    return { ok: false, error: 'Missing Razorpay payment details.' }
+  }
+  if (isSimulatedPaymentRef(razorpay_order_id, razorpay_payment_id)) {
+    if (!ALLOW_PAYMENT_SIMULATION) {
+      return { ok: false, error: 'Payment could not be verified. Please complete the payment through Razorpay.' }
+    }
+    return { ok: true, simulated: true, amountPaid: null }
+  }
+
+  const { key_secret, client } = getRazorpayConfig()
+  if (!key_secret || !client) {
+    return { ok: false, error: 'Online payments are not configured on the server.' }
+  }
+  if (!razorpay_signature) {
+    return { ok: false, error: 'Missing Razorpay payment signature.' }
+  }
+
+  const expected = crypto
+    .createHmac('sha256', key_secret)
+    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+    .digest('hex')
+  const a = Buffer.from(expected)
+  const b = Buffer.from(String(razorpay_signature))
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    console.warn(`[Razorpay] Signature verification FAILED for payment ${razorpay_payment_id}`)
+    return { ok: false, error: 'Payment signature verification failed.' }
+  }
+
+  let payment
+  try {
+    payment = await client.payments.fetch(razorpay_payment_id)
+  } catch (err) {
+    console.error('[Razorpay] Could not fetch payment:', err?.error?.description || err?.message || err)
+    return { ok: false, error: 'Unable to confirm the payment with Razorpay. If money was debited, please contact support.' }
+  }
+  if (!payment || payment.order_id !== razorpay_order_id) {
+    return { ok: false, error: 'Payment does not belong to this order.' }
+  }
+  if (payment.status !== 'captured' && payment.status !== 'authorized') {
+    return { ok: false, error: `Payment is not completed (status: ${payment.status}).` }
+  }
+  if (payment.currency && payment.currency !== 'INR') {
+    return { ok: false, error: 'Unsupported payment currency.' }
+  }
+
+  // Replay protection: the same Razorpay payment can settle only one booking
+  try {
+    const all = await db.getBookings()
+    if ((all || []).some(bk => String(bk.transactionId || '') === String(razorpay_payment_id))) {
+      return { ok: false, error: 'This payment has already been used for another booking.' }
+    }
+  } catch (e) {
+    console.error('[Razorpay] Replay check failed:', e.message)
+    return { ok: false, error: 'Unable to verify payment right now. Please try again.' }
+  }
+
+  return { ok: true, simulated: false, amountPaid: Number(payment.amount) / 100 }
+}
+
 // Configure Cloudinary
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'kpqbe9f0',
-  api_key: process.env.CLOUDINARY_API_KEY || '155635232837293',
-  api_secret: process.env.CLOUDINARY_API_SECRET || 'K3tj1620CF13M8bUZA09zzmc890'
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME.trim(),
+  api_key: process.env.CLOUDINARY_API_KEY.trim(),
+  api_secret: process.env.CLOUDINARY_API_SECRET.trim()
 })
 
 // Cloudinary upload helper
@@ -67,8 +165,8 @@ const uploadToCloudinary = async (base64Str) => {
 }
 
 // Nodemailer config with robust SSL/TLS support and whitespace stripping
-const cleanSmtpPass = (process.env.SMTP_PASSWORD || 'fden ytee hbvl driu').replace(/\s+/g, '')
-const cleanSmtpEmail = (process.env.SMTP_EMAIL || 'ammasevahomecare@gmail.com').trim()
+const cleanSmtpPass = process.env.SMTP_PASSWORD.replace(/\s+/g, '')
+const cleanSmtpEmail = process.env.SMTP_EMAIL.trim()
 
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
@@ -80,9 +178,6 @@ const transporter = nodemailer.createTransport({
   auth: {
     user: cleanSmtpEmail,
     pass: cleanSmtpPass
-  },
-  tls: {
-    rejectUnauthorized: false
   }
 })
 
@@ -276,8 +371,9 @@ const isValidAddress = (address) => {
 
 const handleBookingEmailNotification = async (bookingId, oldBooking, newStatus, newAssignedStaff) => {
   try {
-    const booking = await db.getBookingById(bookingId)
-    if (!booking) return
+    const rawBooking = await db.getBookingById(bookingId)
+    if (!rawBooking) return
+    const booking = escObj(rawBooking)
 
     // Find user email
     let email = ''
@@ -311,8 +407,9 @@ const handleBookingEmailNotification = async (bookingId, oldBooking, newStatus, 
       } else if (booking.assignedStaffRole === 'mtp') {
         isMtp = true
       }
-      const phoneStr = staffPerson ? staffPerson.phone : (booking.assignedStaffPhone || 'N/A')
-      const specialtyStr = staffPerson ? (staffPerson.specialty || staffPerson.roles || (isMtp ? 'MTP Companion' : 'Caregiver')) : 'Caregiver / Companion'
+      const phoneStr = esc(staffPerson ? staffPerson.phone : (booking.assignedStaffPhone || 'N/A'))
+      const specialtyStr = esc(staffPerson ? (staffPerson.specialty || staffPerson.roles || (isMtp ? 'MTP Companion' : 'Caregiver')) : 'Caregiver / Companion')
+      const staffNameHtml = esc(newAssignedStaff)
       const staffTypeTitle = isMtp ? 'MTP Companion' : 'Caregiver'
 
       // Email to Customer
@@ -330,7 +427,7 @@ const handleBookingEmailNotification = async (bookingId, oldBooking, newStatus, 
               <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 16px; border-radius: 12px; margin: 16px 0;">
                 <h3 style="color: #0f172a; margin-top: 0; margin-bottom: 8px;">Assigned Staff Details</h3>
                 <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #334155;">
-                  <tr><td style="padding: 4px 0; font-weight: bold;">Name:</td><td style="padding: 4px 0; text-align: right;">${newAssignedStaff}</td></tr>
+                  <tr><td style="padding: 4px 0; font-weight: bold;">Name:</td><td style="padding: 4px 0; text-align: right;">${staffNameHtml}</td></tr>
                   <tr><td style="padding: 4px 0; font-weight: bold;">Role / Specialty:</td><td style="padding: 4px 0; text-align: right;">${specialtyStr}</td></tr>
                   <tr><td style="padding: 4px 0; font-weight: bold;">Phone:</td><td style="padding: 4px 0; text-align: right;"><a href="tel:${phoneStr}">${phoneStr}</a></td></tr>
                 </table>
@@ -354,7 +451,7 @@ const handleBookingEmailNotification = async (bookingId, oldBooking, newStatus, 
           html: `
             <div style="font-family: sans-serif; max-width: 550px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 16px;">
               <h2 style="color: #0f172a; margin-bottom: 8px;">New Shift Assignment!</h2>
-              <p style="color: #475569; font-size: 14px;">Hi ${staffPerson.name},</p>
+              <p style="color: #475569; font-size: 14px;">Hi ${esc(staffPerson.name)},</p>
               <p style="color: #475569; font-size: 14px;">You have been assigned to a new patient homecare shift by the administrator:</p>
               
               <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 16px; border-radius: 12px; margin: 16px 0;">
@@ -420,6 +517,7 @@ const handleBookingEmailNotification = async (bookingId, oldBooking, newStatus, 
 
 // 2. Caregiver / Caretaker Registration Welcome Email
 const sendCaregiverRegistrationEmail = async (caregiver) => {
+  caregiver = escObj(caregiver)
   if (!caregiver || !caregiver.email || !caregiver.email.includes('@') || caregiver.email.includes('@applicant.ammaseva.in')) {
     return
   }
@@ -522,6 +620,7 @@ const sendCaregiverRegistrationEmail = async (caregiver) => {
 
 // 3. Caregiver / Caretaker Admin Status Update (Approved / Rejected) Email
 const sendCaregiverApprovalEmail = async (caregiver, status) => {
+  caregiver = escObj(caregiver)
   if (!caregiver || !caregiver.email || !caregiver.email.includes('@') || caregiver.email.includes('@applicant.ammaseva.in')) {
     return
   }
@@ -645,6 +744,7 @@ const sendCaregiverApprovalEmail = async (caregiver, status) => {
 
 // 4. MTP (Multi Tasking Professional) Registration Welcome Email
 const sendMTPRegistrationEmail = async (mtp) => {
+  mtp = escObj(mtp)
   if (!mtp || !mtp.email || !mtp.email.includes('@') || mtp.email.includes('@applicant.ammaseva.in')) {
     return
   }
@@ -759,6 +859,7 @@ const sendMTPRegistrationEmail = async (mtp) => {
 
 // 4b. Send Instant MTP Task Broadcast Alert to all Approved MTPs (Rapido-Style Dispatch)
 const sendMTPBroadcastNotification = async (booking) => {
+  booking = escObj(booking)
   try {
     const allMtps = await db.getMTPs()
     const approvedMtps = allMtps.filter(m => m.status === 'Verified' || m.status === 'Approved' || m.status === 'Active')
@@ -851,6 +952,7 @@ const sendMTPBroadcastNotification = async (booking) => {
 
 // 4c. Send Notification to Customer when an MTP accepts their task
 const sendMTPClaimedNotificationToCustomer = async (booking, mtp) => {
+  booking = escObj(booking); mtp = escObj(mtp)
   try {
     const customerEmail = (booking.email || '').trim().toLowerCase()
     const customerPhone = booking.phone || ''
@@ -930,6 +1032,7 @@ const sendMTPClaimedNotificationToCustomer = async (booking, mtp) => {
 
 // 4d. Send Alert to Admin when an MTP accepts a gig
 const sendAdminMTPClaimedAlert = async (booking, mtp) => {
+  booking = escObj(booking); mtp = escObj(mtp)
   try {
     const adminEmail = (process.env.ADMIN_EMAIL || cleanSmtpEmail).trim()
     const emailHtml = `
@@ -959,6 +1062,7 @@ const sendAdminMTPClaimedAlert = async (booking, mtp) => {
 
 // 5. Booking Confirmation & GST Tax Invoice Email with Direct Balance Payment Action
 const sendBookingConfirmationAndTaxInvoiceEmail = async (booking, userEmail) => {
+  booking = escObj(booking)
   if (!userEmail || !userEmail.includes('@')) return
 
   const cleanEmail = userEmail.trim()
@@ -1135,6 +1239,7 @@ const sendBookingConfirmationAndTaxInvoiceEmail = async (booking, userEmail) => 
 
 // 6. Admin Notification Alert for New Booking
 const sendAdminNewBookingNotificationEmail = async (booking) => {
+  booking = escObj(booking)
   const adminEmail = (process.env.ADMIN_EMAIL || cleanSmtpEmail).trim()
   const totalAmount = Number(booking.amount) || 0
   const isPaid = String(booking.paymentStatus || '').trim().toLowerCase() === 'paid' || 
@@ -1187,6 +1292,7 @@ const sendAdminNewBookingNotificationEmail = async (booking) => {
 
 // 7. Balance Payment Receipt & Final Settlement Confirmation Email
 const sendBalancePaymentSettlementEmail = async (booking, userEmail, transactionId) => {
+  booking = escObj(booking); transactionId = esc(transactionId)
   if (!userEmail || !userEmail.includes('@')) return
 
   const cleanEmail = userEmail.trim()
@@ -1282,13 +1388,112 @@ const app = express()
 app.use(compression())
 const PORT = process.env.PORT || 5000
 
+// Behind a hosting proxy / load balancer: use the real client IP for rate limiting
+app.set('trust proxy', 1)
+
 // Middleware Configuration
+// The frontend is served from this same server (and via the Vite proxy in dev), so cross-origin
+// access is only granted to explicitly configured origins.
+const ALLOWED_ORIGINS = new Set(
+  [process.env.APP_URL || 'https://ammaseva.in', 'https://www.ammaseva.in', ...(process.env.ALLOWED_ORIGINS || '').split(',')]
+    .map(o => o.trim().replace(/\/$/, ''))
+    .filter(Boolean)
+)
 app.use(cors({
-  origin: true, // Allow frontend Vite client during dev on any local port
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true) // same-origin / server-to-server
+    if (ALLOWED_ORIGINS.has(origin)) return cb(null, true)
+    if (!IS_PRODUCTION && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return cb(null, true)
+    return cb(null, false)
+  },
   credentials: true
 }))
-app.use(express.json({ limit: '50mb' }))
-app.use(express.urlencoded({ limit: '50mb', extended: true }))
+app.use(express.json({ limit: '20mb' }))
+app.use(express.urlencoded({ limit: '20mb', extended: true }))
+
+// Simple in-memory rate limiter (per IP + key) to stop OTP / SMS abuse and brute force
+const rateBuckets = new Map()
+let rateLimiterSeq = 0
+const rateLimit = ({ windowMs, max, keyFn = () => '', message = 'Too many requests. Please try again later.' }) => {
+  const limiterId = ++rateLimiterSeq
+  return (req, res, next) => {
+  const key = `${limiterId}|${req.path}|${req.ip}|${keyFn(req)}`
+  const now = Date.now()
+  let bucket = rateBuckets.get(key)
+  if (!bucket || now > bucket.resetAt) {
+    bucket = { count: 0, resetAt: now + windowMs }
+    rateBuckets.set(key, bucket)
+  }
+  bucket.count++
+  if (bucket.count > max) {
+    res.setHeader('Retry-After', Math.ceil((bucket.resetAt - now) / 1000))
+    return res.status(429).json({ success: false, error: message })
+  }
+  next()
+  }
+}
+setInterval(() => {
+  const now = Date.now()
+  for (const [k, b] of rateBuckets) if (now > b.resetAt) rateBuckets.delete(k)
+}, 10 * 60 * 1000).unref()
+
+const identifierKey = (req) => String(req.body?.identifier || req.body?.email || req.body?.phone || '').trim().toLowerCase()
+// OTP sending: max 5 per 15 min per IP+identifier, and 20 per hour per IP overall
+const otpSendLimiter = [
+  rateLimit({ windowMs: 15 * 60 * 1000, max: 5, keyFn: identifierKey, message: 'Too many OTP requests. Please wait 15 minutes and try again.' }),
+  // Generous per-IP cap: many mobile users share one IP (carrier NAT / proxies)
+  rateLimit({ windowMs: 60 * 60 * 1000, max: 120, message: 'Too many OTP requests from this network. Please try again later.' })
+]
+// OTP / password verification: max 10 attempts per 15 min per IP+identifier
+const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, keyFn: identifierKey, message: 'Too many login attempts. Please wait 15 minutes and try again.' })
+// Public form submissions (registrations, enquiries, applications)
+// Per-IP limits stay generous because many real users can share one IP; the strict limits are per phone/email.
+const publicFormLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 100, message: 'Too many submissions. Please try again later.' })
+const bookingLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  keyFn: (req) => String(req.body?.phone || req.body?.email || req.headers.authorization || '').replace(/\s+/g, '').toLowerCase(),
+  message: 'Too many booking attempts. Please wait a few minutes and try again.'
+})
+
+// Wrong-OTP attempt tracking: an OTP is invalidated after 5 wrong tries
+const otpFailures = new Map()
+const MAX_OTP_FAILURES = 5
+const recordOtpFailure = async (keys) => {
+  let exceeded = false
+  for (const k of keys.filter(Boolean)) {
+    const n = (otpFailures.get(k) || 0) + 1
+    otpFailures.set(k, n)
+    if (n >= MAX_OTP_FAILURES) exceeded = true
+  }
+  if (exceeded) {
+    for (const k of keys.filter(Boolean)) {
+      otpFailures.delete(k)
+      await db.deleteOTP(k).catch(() => {})
+    }
+  }
+  return exceeded
+}
+const clearOtpFailures = (keys) => keys.filter(Boolean).forEach(k => otpFailures.delete(k))
+const otpEquals = (a, b) => {
+  const x = Buffer.from(String(a ?? ''))
+  const y = Buffer.from(String(b ?? '').trim())
+  return x.length === y.length && crypto.timingSafeEqual(x, y)
+}
+const generateOtp = () => crypto.randomInt(100000, 1000000).toString()
+
+// Only documents hosted on our own Cloudinary account may be proxied
+const isAllowedDocumentUrl = (rawUrl) => {
+  try {
+    const u = new URL(rawUrl)
+    const cloud = (process.env.CLOUDINARY_CLOUD_NAME || '').trim()
+    return u.protocol === 'https:' &&
+      u.hostname === 'res.cloudinary.com' &&
+      u.pathname.startsWith(`/${cloud}/`)
+  } catch {
+    return false
+  }
+}
 
 // HTTP Security Headers (Checklist 20)
 app.use((req, res, next) => {
@@ -1300,9 +1505,13 @@ app.use((req, res, next) => {
   next()
 })
 
-// HTTP request logger
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`)
+// HTTP request logger (API calls only: logging every image / JS file slowed the server down)
+app.use('/api', (req, res, next) => {
+  const started = Date.now()
+  res.on('finish', () => {
+    const ms = Date.now() - started
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl.split('?')[0]} ${res.statusCode} ${ms}ms${ms > 3000 ? ' SLOW' : ''}`)
+  })
   next()
 })
 
@@ -1316,12 +1525,11 @@ app.get('/api/proxy-document', async (req, res) => {
   }
 
   try {
-    const parsedUrl = new URL(docUrl)
-    if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
-      return res.status(400).send('Invalid URL protocol.')
+    if (!isAllowedDocumentUrl(docUrl)) {
+      return res.status(400).send('Only Amma Seva document storage URLs can be viewed.')
     }
 
-    const client = parsedUrl.protocol === 'https:' ? https : http
+    const client = https
 
     const request = client.get(docUrl, (proxyRes) => {
       // Follow 301/302 redirects if any
@@ -1344,14 +1552,15 @@ app.get('/api/proxy-document', async (req, res) => {
         contentType = 'image/jpeg'
       } else if (cleanLower.endsWith('.webp')) {
         contentType = 'image/webp'
-      } else if (cleanLower.endsWith('.svg')) {
-        contentType = 'image/svg+xml'
+      }
+      // Never render active content (HTML/SVG/JS) from our origin
+      const SAFE_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp', 'image/gif']
+      if (!SAFE_TYPES.some(t => String(contentType).toLowerCase().startsWith(t))) {
+        contentType = 'application/octet-stream'
       }
 
       res.setHeader('Content-Type', contentType)
       res.setHeader('Content-Disposition', 'inline')
-      res.setHeader('Access-Control-Allow-Origin', '*')
-      res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
       res.removeHeader('X-Frame-Options')
 
       proxyRes.pipe(res)
@@ -1381,7 +1590,7 @@ const sendMsg91SmsOtp = async (rawMobile, otp) => {
     return false
   }
   const formattedMobile = `91${last10}`
-  const authKey = (process.env.MSG91_AUTH_KEY || '567130AQrTo6Hb6aba5f7cP1').trim()
+  const authKey = process.env.MSG91_AUTH_KEY.trim()
   const templateId = (process.env.MSG91_TEMPLATE_ID || '6ab2184345370dac070a9500').trim()
   const senderId = (process.env.MSG91_SENDER_ID || 'AMMASV').trim()
 
@@ -1450,7 +1659,7 @@ const sendMsg91SmsOtp = async (rawMobile, otp) => {
 // MSG91 WhatsApp Automated Booking Confirmation Dispatcher
 const sendWhatsAppBookingConfirmation = async (booking) => {
   if (!booking) return false
-  const authKey = (process.env.MSG91_AUTH_KEY || '567130AQrTo6Hb6aba5f7cP1').trim()
+  const authKey = process.env.MSG91_AUTH_KEY.trim()
   const integratedNumber = (process.env.MSG91_WHATSAPP_NUMBER || '919494516543').trim()
   const templateName = (process.env.MSG91_WHATSAPP_TEMPLATE_NAME || 'ammaseva_booking_confirmation').trim()
   const namespace = (process.env.MSG91_WHATSAPP_NAMESPACE || '63c454df_9e23_4f4c_81d2_58201bb7012e').trim()
@@ -1588,7 +1797,7 @@ const getApprovedWhatsAppTemplates = async () => {
   if (now - templateApprovalCache.lastChecked < 45000 && Object.keys(templateApprovalCache.templates).length > 0) {
     return templateApprovalCache.templates
   }
-  const authKey = (process.env.MSG91_AUTH_KEY || '567130AQrTo6Hb6aba5f7cP1').trim()
+  const authKey = process.env.MSG91_AUTH_KEY.trim()
   const integratedNumber = (process.env.MSG91_WHATSAPP_NUMBER || '919494516543').trim()
   try {
     const res = await fetch(`https://control.msg91.com/api/v5/whatsapp/get-template-client/${integratedNumber}`, {
@@ -1616,7 +1825,7 @@ const getApprovedWhatsAppTemplates = async () => {
 // MSG91 WhatsApp Automated Staff Shift Reminder Dispatcher (10m, 30m, 1h, 2h, 24h supported)
 const sendStaffShiftReminderWhatsApp = async (booking, interval = '1 hour') => {
   if (!booking) return false
-  const authKey = (process.env.MSG91_AUTH_KEY || '567130AQrTo6Hb6aba5f7cP1').trim()
+  const authKey = process.env.MSG91_AUTH_KEY.trim()
   const integratedNumber = (process.env.MSG91_WHATSAPP_NUMBER || '919494516543').trim()
   const fallbackTemplate = (process.env.MSG91_WHATSAPP_TEMPLATE_NAME || 'ammaseva_booking_confirmation').trim()
   const fallbackNamespace = (process.env.MSG91_WHATSAPP_NAMESPACE || '63c454df_9e23_4f4c_81d2_58201bb7012e').trim()
@@ -1629,7 +1838,7 @@ const sendStaffShiftReminderWhatsApp = async (booking, interval = '1 hour') => {
     } catch (e) {}
   } else if (!staffPhone && booking.assignedStaffId && booking.assignedStaffRole === 'mtp') {
     try {
-      const mtp = await db.getMtpById(booking.assignedStaffId)
+      const mtp = await db.getMTPById(booking.assignedStaffId)
       if (mtp && mtp.phone) staffPhone = String(mtp.phone).replace(/\D/g, '').slice(-10)
     } catch (e) {}
   }
@@ -1769,7 +1978,7 @@ const sendDirectWhatsAppAlert = async (targetPhone, alertMessage, recipientLabel
   const cleanPhone = String(targetPhone || '').replace(/\D/g, '').slice(-10)
   if (cleanPhone.length !== 10) return false
 
-  const authKey = (process.env.MSG91_AUTH_KEY || '567130AQrTo6Hb6aba5f7cP1').trim()
+  const authKey = process.env.MSG91_AUTH_KEY.trim()
   const integratedNumber = (process.env.MSG91_WHATSAPP_NUMBER || '919494516543').trim()
   const fallbackNamespace = (process.env.MSG91_WHATSAPP_NAMESPACE || '63c454df_9e23_4f4c_81d2_58201bb7012e').trim()
   const formattedMobile = `91${cleanPhone}`
@@ -1858,7 +2067,7 @@ const sendDirectSmsAlert = async (targetPhone, alertMessage) => {
   const cleanPhone = String(targetPhone || '').replace(/\D/g, '').slice(-10)
   if (cleanPhone.length !== 10) return false
 
-  const authKey = (process.env.MSG91_AUTH_KEY || '567130AQrTo6Hb6aba5f7cP1').trim()
+  const authKey = process.env.MSG91_AUTH_KEY.trim()
   const templateId = (process.env.MSG91_TEMPLATE_ID || '6ab2184345370dac070a9500').trim()
   const senderId = (process.env.MSG91_SENDER_ID || 'AMMASV').trim()
   const formattedMobile = `91${cleanPhone}`
@@ -1946,6 +2155,12 @@ const runShiftReminderScheduler = async () => {
 }
 
 // Helper: Check if identifier matches Admin (email or mobile)
+const maskEmail = (e) => {
+  const [local, domain] = String(e || '').split('@')
+  if (!domain) return ''
+  return `${local.slice(0, 2)}${'*'.repeat(Math.max(1, local.length - 2))}@${domain}`
+}
+
 const isAdminIdentifier = (val) => {
   if (!val) return false
   const clean = String(val).toLowerCase().trim()
@@ -1956,7 +2171,7 @@ const isAdminIdentifier = (val) => {
 }
 
 // POST request admin OTP (supports email or mobile 94905 87575)
-app.post('/api/admin/send-otp', async (req, res) => {
+app.post('/api/admin/send-otp', otpSendLimiter, async (req, res) => {
   const identifier = (req.body.identifier || req.body.email || req.body.phone || '').trim()
 
   if (!identifier) {
@@ -1968,7 +2183,7 @@ app.post('/api/admin/send-otp', async (req, res) => {
   }
 
   // Generate 6-digit OTP
-  const otp = Math.floor(100000 + Math.random() * 900000).toString()
+  const otp = generateOtp()
   // Expire in 10 minutes
   const expiresAt = Date.now() + 10 * 60 * 1000
 
@@ -2001,7 +2216,7 @@ app.post('/api/admin/send-otp', async (req, res) => {
 
   try {
     await transporter.sendMail(mailOptions)
-    console.log(`[OTP] Sent Admin OTP ${otp} to ammasevahomecare@gmail.com and +91 94905 87575`)
+    console.log('[OTP] Admin OTP dispatched')
   } catch (err) {
     console.error('Failed to send Admin OTP email via SMTP:', err.message || err)
   }
@@ -2013,7 +2228,7 @@ app.post('/api/admin/send-otp', async (req, res) => {
 })
 
 // POST admin login (verifies OTP for email or mobile)
-app.post('/api/admin/login', async (req, res) => {
+app.post('/api/admin/login', loginLimiter, async (req, res) => {
   const identifier = (req.body.identifier || req.body.email || req.body.phone || '').trim()
   const { otp } = req.body
 
@@ -2039,10 +2254,12 @@ app.post('/api/admin/login', async (req, res) => {
     return res.status(401).json({ success: false, error: 'OTP verification code has expired.' })
   }
 
-  const isMatched = storedData.otp === otp.trim()
-  if (!isMatched) {
-    return res.status(401).json({ success: false, error: 'Invalid verification OTP code.' })
+  const adminOtpKeys = ['ammasevahomecare@gmail.com', '9490587575', identifier.toLowerCase()]
+  if (storedData.role !== 'admin' || !otpEquals(storedData.otp, otp)) {
+    const locked = await recordOtpFailure(adminOtpKeys)
+    return res.status(401).json({ success: false, error: locked ? 'Too many wrong attempts. Please request a new OTP.' : 'Invalid verification OTP code.' })
   }
+  clearOtpFailures(adminOtpKeys)
 
   // Clear OTP on success
   await db.deleteOTP('ammasevahomecare@gmail.com')
@@ -2058,7 +2275,7 @@ app.post('/api/admin/login', async (req, res) => {
 })
 
 // POST send OTP for Registration (MTP, Caregiver, Customer/User)
-app.post('/api/auth/send-registration-otp', async (req, res) => {
+app.post('/api/auth/send-registration-otp', otpSendLimiter, async (req, res) => {
   const { phone, email, name, role = 'customer' } = req.body
   const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10)
   const cleanEmail = (email || '').trim().toLowerCase()
@@ -2069,6 +2286,12 @@ app.post('/api/auth/send-registration-otp', async (req, res) => {
   }
   if (!cleanEmail || !isValidEmail(cleanEmail)) {
     return res.status(400).json({ success: false, error: 'Valid email address is required.' })
+  }
+  if (!['customer', 'user', 'caretaker', 'caregiver', 'mtp'].includes(role)) {
+    return res.status(400).json({ success: false, error: 'Invalid registration type.' })
+  }
+  if (isAdminIdentifier(cleanEmail) || isAdminIdentifier(cleanPhone)) {
+    return res.status(409).json({ success: false, error: 'This mobile number or email cannot be used for registration.' })
   }
 
   // Check if account already exists
@@ -2106,12 +2329,12 @@ app.post('/api/auth/send-registration-otp', async (req, res) => {
   }
 
   // Generate 6-digit OTP
-  const otp = Math.floor(100000 + Math.random() * 900000).toString()
+  const otp = generateOtp()
   const expiresAt = Date.now() + 10 * 60 * 1000
 
   // Save in DB
-  await db.saveOTP(cleanEmail, otp, role, expiresAt)
-  await db.saveOTP(cleanPhone, otp, role, expiresAt)
+  await db.saveOTP(cleanEmail, otp, `register:${role}`, expiresAt)
+  await db.saveOTP(cleanPhone, otp, `register:${role}`, expiresAt)
 
   const roleTitle = role === 'caretaker' || role === 'caregiver'
     ? 'Certified Caregiver'
@@ -2130,7 +2353,7 @@ app.post('/api/auth/send-registration-otp', async (req, res) => {
           <p style="color: #c9a24c; margin: 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Account Verification</p>
         </div>
         <h3 style="color: #0b183b; margin-bottom: 8px; font-size: 16px;">Registration Verification Code</h3>
-        <p style="color: #64748b; font-size: 14px; margin-top: 0; line-height: 1.5;">Hi <strong>${cleanName}</strong>, use the following One-Time Password (OTP) to verify your contact details and complete your ${roleTitle} registration:</p>
+        <p style="color: #64748b; font-size: 14px; margin-top: 0; line-height: 1.5;">Hi <strong>${esc(cleanName)}</strong>, use the following One-Time Password (OTP) to verify your contact details and complete your ${roleTitle} registration:</p>
         <div style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #1e2a5a; text-align: center; padding: 18px; margin: 20px 0; background-color: #f8fafc; border-radius: 12px; border: 1px dashed #cbd5e1;">
           ${otp}
         </div>
@@ -2163,7 +2386,7 @@ app.post('/api/auth/send-registration-otp', async (req, res) => {
 })
 
 // POST unified send OTP (Supports Email OR Mobile Number)
-app.post('/api/auth/send-otp', async (req, res) => {
+app.post('/api/auth/send-otp', otpSendLimiter, async (req, res) => {
   const rawInput = (req.body.identifier || req.body.email || req.body.phone || '').trim()
 
   if (!rawInput) {
@@ -2231,7 +2454,7 @@ app.post('/api/auth/send-otp', async (req, res) => {
   }
 
   // Generate 6-digit OTP
-  const otp = Math.floor(100000 + Math.random() * 900000).toString()
+  const otp = generateOtp()
   // Expire in 10 minutes
   const expiresAt = Date.now() + 10 * 60 * 1000
 
@@ -2260,7 +2483,7 @@ app.post('/api/auth/send-otp', async (req, res) => {
       html: `
         <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 16px;">
           <h2 style="color: #0f172a; margin-bottom: 8px;">Login Verification Code</h2>
-          <p style="color: #64748b; font-size: 14px; margin-top: 0;">Hi ${targetName}, use the following One-Time Password to verify your identity and log in to your Amma Seva account:</p>
+          <p style="color: #64748b; font-size: 14px; margin-top: 0;">Hi ${esc(targetName)}, use the following One-Time Password to verify your identity and log in to your Amma Seva account:</p>
           <div style="font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #4f46e5; text-align: center; padding: 16px; margin: 24px 0; background-color: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
             ${otp}
           </div>
@@ -2271,7 +2494,7 @@ app.post('/api/auth/send-otp', async (req, res) => {
     try {
       await transporter.sendMail(mailOptions)
       emailSent = true
-      console.log(`[OTP] Sent Email OTP ${otp} to ${targetEmail}`)
+      console.log('[OTP] Login OTP email dispatched')
     } catch (err) {
       console.error('Failed to send OTP email via SMTP:', err.message || err)
     }
@@ -2281,11 +2504,11 @@ app.post('/api/auth/send-otp', async (req, res) => {
   let displayDestination = ''
   if (targetPhone && targetEmail) {
     const maskedPhone = `+91 ${targetPhone.slice(0, 2)}*****${targetPhone.slice(-3)}`
-    displayDestination = `SMS (${maskedPhone}) & Email (${targetEmail})`
+    displayDestination = `SMS (${maskedPhone}) & Email (${maskEmail(targetEmail)})`
   } else if (targetPhone) {
     displayDestination = `SMS (+91 ${targetPhone})`
   } else {
-    displayDestination = `Email (${targetEmail})`
+    displayDestination = `Email (${maskEmail(targetEmail)})`
   }
 
   res.json({ 
@@ -2298,7 +2521,7 @@ app.post('/api/auth/send-otp', async (req, res) => {
 })
 
 // POST unified login verification (supports Mobile Number or Email)
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', loginLimiter, async (req, res) => {
   const rawInput = (req.body.identifier || req.body.email || req.body.phone || '').trim()
   const { otp } = req.body
 
@@ -2328,10 +2551,14 @@ app.post('/api/auth/login', async (req, res) => {
     return res.status(401).json({ success: false, error: 'OTP verification code has expired. Please request a new code.' })
   }
 
-  const isMatched = storedData.otp === otp.trim()
-  if (!isMatched) {
-    return res.status(401).json({ success: false, error: 'Invalid verification OTP code.' })
+  const loginOtpKeys = [normalizedEmail, cleanDigits]
+  const storedRole = String(storedData.role || '')
+  const otpUsable = !storedRole.startsWith('register:') && (!isAdminIdentifier(rawInput) || storedRole === 'admin')
+  if (!otpUsable || !otpEquals(storedData.otp, otp)) {
+    const locked = await recordOtpFailure(loginOtpKeys)
+    return res.status(401).json({ success: false, error: locked ? 'Too many wrong attempts. Please request a new OTP.' : 'Invalid verification OTP code.' })
   }
+  clearOtpFailures(loginOtpKeys)
 
   // Determine user / caregiver / admin record
   let role = storedData ? storedData.role : null
@@ -2488,7 +2715,7 @@ app.post('/api/auth/login', async (req, res) => {
 
 
 // Load JWT Secret
-const JWT_SECRET = process.env.JWT_SECRET || 'amma_seva_super_secure_jwt_token_secret_key_2026'
+const JWT_SECRET = process.env.JWT_SECRET.trim()
 
 // Authentication Middleware for Customer/Caretaker Roles
 const authenticateUser = (req, res, next) => {
@@ -2722,6 +2949,38 @@ app.put('/api/caretaker/photo', authenticateUser, async (req, res) => {
 })
 
 // GET all bookings assigned to current caretaker or MTP
+// ---- Booking access helpers ----
+const sameId = (a, b) => a !== undefined && a !== null && a !== '' && String(a) === String(b)
+
+// Resolve the caretaker / MTP profile behind the current token
+const getStaffPersonForRequest = async (req) => {
+  if (req.role !== 'caretaker' && req.role !== 'mtp') return null
+  if (req.role === 'mtp' || req.isMtp) {
+    return { person: await db.getMTPById(req.userId), isMtp: true }
+  }
+  const cg = await db.getCaregiverById(req.userId)
+  if (cg) return { person: cg, isMtp: false }
+  const mtp = await db.getMTPById(req.userId)
+  return mtp ? { person: mtp, isMtp: true } : null
+}
+
+// True when the logged-in caretaker / MTP is the one assigned to this booking
+const isStaffAssignedToBooking = async (req, booking) => {
+  const staff = await getStaffPersonForRequest(req)
+  if (!staff || !staff.person) return false
+  const { person, isMtp } = staff
+  if (isMtp && sameId(booking.mtpAcceptedById, person.id)) return true
+  if (booking.assignedStaffId !== undefined && booking.assignedStaffId !== null && booking.assignedStaffId !== '') {
+    const roleMatches = !booking.assignedStaffRole || (booking.assignedStaffRole === 'mtp') === isMtp
+    return roleMatches && sameId(booking.assignedStaffId, person.id)
+  }
+  // Legacy bookings without a staff id: fall back to name match
+  const assigned = String(booking.assignedStaff || '').trim().toLowerCase()
+  return !!assigned && assigned === String(person.name || '').trim().toLowerCase()
+}
+
+const isBookingOwner = (req, booking) => req.role === 'user' && sameId(booking.userId, req.userId)
+
 app.get('/api/caretaker/bookings', authenticateUser, async (req, res) => {
   if (req.role !== 'caretaker' && req.role !== 'mtp') {
     return res.status(403).json({ error: 'Access forbidden. Caretaker or MTP only.' })
@@ -3018,14 +3277,24 @@ app.get('/api/admin/referrals', authenticateAdmin, async (req, res) => {
 // PUT update booking status (for caregiver check-in / check-out shift tracking)
 app.put('/api/booking/:id/status', authenticateUser, async (req, res) => {
   const { status } = req.body
-  if (!status) {
-    return res.status(400).json({ error: 'Status is required.' })
+  const STAFF_ALLOWED_STATUSES = ['Active', 'Completed']
+  if (!status || !STAFF_ALLOWED_STATUSES.includes(status)) {
+    return res.status(400).json({ error: `Status must be one of: ${STAFF_ALLOWED_STATUSES.join(', ')}.` })
   }
   try {
     const oldBooking = await db.getBookingById(req.params.id)
+    if (!oldBooking) {
+      return res.status(404).json({ error: 'Booking not found.' })
+    }
+    if (!(await isStaffAssignedToBooking(req, oldBooking))) {
+      return res.status(403).json({ error: 'Access forbidden. You are not assigned to this care shift.' })
+    }
+    if (oldBooking.status === 'Cancelled' || oldBooking.status === 'Completed') {
+      return res.status(400).json({ error: `This booking is already ${String(oldBooking.status).toLowerCase()}.` })
+    }
     const updated = await db.updateBookingStatus(req.params.id, status)
     if (updated) {
-      handleBookingEmailNotification(req.params.id, oldBooking, status, oldBooking ? oldBooking.assignedStaff : null)
+      handleBookingEmailNotification(req.params.id, oldBooking, status, oldBooking.assignedStaff)
       res.json({ success: true, message: `Booking status updated to ${status}.` })
     } else {
       res.status(404).json({ error: 'Booking not found.' })
@@ -3048,23 +3317,7 @@ app.put('/api/booking/:id/vitals-log', authenticateUser, async (req, res) => {
       return res.status(404).json({ error: 'Booking shift record not found.' })
     }
     
-    let staffPerson = null
-    if (req.role === 'mtp' || req.isMtp) {
-      staffPerson = await db.getMTPById(req.userId)
-      if (!staffPerson && req.userEmail) {
-        staffPerson = await db.getMTPByEmail(req.userEmail)
-      }
-    } else {
-      staffPerson = await db.getCaregiverById(req.userId)
-      if (!staffPerson) {
-        staffPerson = await db.getMTPById(req.userId)
-      }
-    }
-    
-    const assignedStaffName = (booking.assignedStaff || '').trim().toLowerCase()
-    const currentStaffName = (staffPerson ? staffPerson.name : '').trim().toLowerCase()
-    
-    if (!staffPerson || !assignedStaffName || assignedStaffName !== currentStaffName) {
+    if (!(await isStaffAssignedToBooking(req, booking))) {
       return res.status(403).json({ error: 'Access forbidden. You are not assigned to this care shift.' })
     }
     const updated = await db.updateBookingVitalsAndLogs(req.params.id, vitals, careLogs)
@@ -3084,12 +3337,30 @@ app.post('/api/reviews', authenticateUser, async (req, res) => {
   if (req.role !== 'user') {
     return res.status(403).json({ error: 'Access forbidden. Customers only.' })
   }
-  const { bookingId, caregiverName, rating, comment } = req.body
-  if (!bookingId || !caregiverName || !rating) {
-    return res.status(400).json({ error: 'Booking ID, Caregiver Name, and Rating are required.' })
+  const { bookingId, rating, comment } = req.body
+  const numericRating = Number(rating)
+  if (!bookingId || !Number.isInteger(numericRating) || numericRating < 1 || numericRating > 5) {
+    return res.status(400).json({ error: 'Booking ID and a rating between 1 and 5 are required.' })
   }
   try {
-    const review = await db.addReview({ bookingId, caregiverName, rating, comment })
+    const booking = await db.getBookingById(bookingId)
+    if (!booking || !isBookingOwner(req, booking)) {
+      return res.status(403).json({ error: 'You can only review your own bookings.' })
+    }
+    if (booking.status !== 'Completed' || !booking.assignedStaff) {
+      return res.status(400).json({ error: 'Reviews can be submitted only after a completed service.' })
+    }
+    const caregiverName = booking.assignedStaff
+    const existing = await db.getReviewsForCaregiver(caregiverName)
+    if ((existing || []).some(r => sameId(r.bookingId, booking.id))) {
+      return res.status(400).json({ error: 'You have already reviewed this booking.' })
+    }
+    const review = await db.addReview({
+      bookingId: booking.id,
+      caregiverName,
+      rating: numericRating,
+      comment: String(comment || '').slice(0, 1000)
+    })
     res.json({ success: true, review })
   } catch (err) {
     console.error('Failed to save review:', err)
@@ -3136,7 +3407,7 @@ app.post('/api/announcements', authenticateAdmin, async (req, res) => {
 })
 
 // POST register user
-app.post('/api/user/register', async (req, res) => {
+app.post('/api/user/register', publicFormLimiter, loginLimiter, async (req, res) => {
   const { name, email, phone, password, otp } = req.body
   if (!name || !email || !phone) {
     return res.status(400).json({ error: 'Name, email, and phone are required.' })
@@ -3170,7 +3441,8 @@ app.post('/api/user/register', async (req, res) => {
     await db.deleteOTP(cleanPhone)
     return res.status(401).json({ error: 'Verification code has expired. Please request a new code.' })
   }
-  if (storedData.otp !== inputOtp) {
+  if (!String(storedData.role || '').startsWith('register:') || !otpEquals(storedData.otp, inputOtp)) {
+    await recordOtpFailure([cleanEmail, cleanPhone])
     return res.status(401).json({ error: 'Invalid verification OTP code. Please enter the 6-digit code received.' })
   }
 
@@ -3194,8 +3466,8 @@ app.post('/api/user/register', async (req, res) => {
       html: `
         <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 16px;">
           <h2 style="color: #0f172a; margin-bottom: 8px;">Account Created!</h2>
-          <p style="color: #64748b; font-size: 14px;">Hi ${name},</p>
-          <p style="color: #64748b; font-size: 14px;">Welcome to Amma Seva! Your user account has been registered with email: <strong>${cleanEmail}</strong>.</p>
+          <p style="color: #64748b; font-size: 14px;">Hi ${esc(name)},</p>
+          <p style="color: #64748b; font-size: 14px;">Welcome to Amma Seva! Your user account has been registered with email: <strong>${esc(cleanEmail)}</strong>.</p>
           <p style="color: #64748b; font-size: 14px;">You can now book homecare services, track status, and view invoices in your dashboard.</p>
         </div>
       `
@@ -3220,6 +3492,8 @@ app.post('/api/user/register', async (req, res) => {
 
 // POST user login
 app.post('/api/user/login', async (req, res) => {
+  return res.status(410).json({ error: 'Password login is disabled. Please sign in with OTP.' })
+  // eslint-disable-next-line no-unreachable
   const { email, password } = req.body
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required.' })
@@ -3262,7 +3536,7 @@ app.post('/api/user/login', async (req, res) => {
 })
 
 // POST register caretaker
-app.post('/api/caretaker/register', async (req, res) => {
+app.post('/api/caretaker/register', publicFormLimiter, loginLimiter, async (req, res) => {
   const { 
     name, phone, email, specialty, experience,
     staffCategory, designation,
@@ -3307,7 +3581,8 @@ app.post('/api/caretaker/register', async (req, res) => {
     await db.deleteOTP(cleanPhone)
     return res.status(401).json({ error: 'Verification code has expired. Please request a new code.' })
   }
-  if (storedData.otp !== inputOtp) {
+  if (!String(storedData.role || '').startsWith('register:') || !otpEquals(storedData.otp, inputOtp)) {
+    await recordOtpFailure([cleanEmail, cleanPhone])
     return res.status(401).json({ error: 'Invalid verification OTP code. Please enter the 6-digit code received.' })
   }
 
@@ -3380,6 +3655,8 @@ app.post('/api/caretaker/register', async (req, res) => {
 
 // POST caretaker login
 app.post('/api/caretaker/login', async (req, res) => {
+  return res.status(410).json({ error: 'Password login is disabled. Please sign in with OTP.' })
+  // eslint-disable-next-line no-unreachable
   const { email, password } = req.body
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required.' })
@@ -3520,8 +3797,22 @@ app.put('/api/booking/:id/reschedule', authenticateUser, async (req, res) => {
   if (!date || !time) {
     return res.status(400).json({ error: 'Date and time are required.' })
   }
+  const dateStr = String(date).trim().split('T')[0]
+  if (dateStr < new Date().toISOString().split('T')[0]) {
+    return res.status(400).json({ error: 'Reschedule date cannot be in the past. Please select today or a future date.' })
+  }
   try {
-    const updated = await db.rescheduleBooking(req.params.id, date, time)
+    const booking = await db.getBookingById(req.params.id)
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found.' })
+    }
+    if (!isBookingOwner(req, booking)) {
+      return res.status(403).json({ error: 'You can only reschedule your own bookings.' })
+    }
+    if (booking.status === 'Completed' || booking.status === 'Cancelled') {
+      return res.status(400).json({ error: 'Completed or cancelled bookings cannot be rescheduled.' })
+    }
+    const updated = await db.rescheduleBooking(req.params.id, dateStr, String(time).trim())
     if (updated) {
       res.json({ success: true, message: 'Booking successfully rescheduled.' })
     } else {
@@ -3535,6 +3826,16 @@ app.put('/api/booking/:id/reschedule', authenticateUser, async (req, res) => {
 // PUT cancel a booking
 app.put('/api/booking/:id/cancel', authenticateUser, async (req, res) => {
   try {
+    const booking = await db.getBookingById(req.params.id)
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found.' })
+    }
+    if (!isBookingOwner(req, booking)) {
+      return res.status(403).json({ error: 'You can only cancel your own bookings.' })
+    }
+    if (booking.status === 'Completed' || booking.status === 'Cancelled') {
+      return res.status(400).json({ error: `This booking is already ${String(booking.status).toLowerCase()}.` })
+    }
     const updated = await db.cancelBooking(req.params.id)
     if (updated) {
       res.json({ success: true, message: 'Booking successfully cancelled.' })
@@ -3558,7 +3859,7 @@ app.get('/api/enquiries', authenticateAdmin, async (req, res) => {
 })
 
 // POST register enquiry (contact / service details / lead)
-app.post('/api/enquiry', async (req, res) => {
+app.post('/api/enquiry', publicFormLimiter, async (req, res) => {
   try {
     const { name, phone, email, date, service, city, message } = req.body
 
@@ -3654,7 +3955,7 @@ app.put('/api/enquiry/:id/status', authenticateAdmin, async (req, res) => {
 })
 
 // POST careers / caregiver onboarding application
-app.post('/api/careers/apply', async (req, res) => {
+app.post('/api/careers/apply', publicFormLimiter, async (req, res) => {
   const { name, phone, email, city, role, experience, about, referredBy } = req.body
 
   if (!name || !phone) {
@@ -3741,7 +4042,7 @@ app.delete('/api/enquiry/:id', authenticateAdmin, async (req, res) => {
 // MTP (Multi Tasking Professionals) Endpoints
 
 // POST register MTP (Public)
-app.post('/api/mtp/register', async (req, res) => {
+app.post('/api/mtp/register', publicFormLimiter, loginLimiter, async (req, res) => {
   const {
     name,
     phone,
@@ -3798,7 +4099,8 @@ app.post('/api/mtp/register', async (req, res) => {
     await db.deleteOTP(cleanEmail)
     return res.status(401).json({ success: false, error: 'Verification code has expired. Please request a new code.' })
   }
-  if (storedData.otp !== inputOtp) {
+  if (!String(storedData.role || '').startsWith('register:') || !otpEquals(storedData.otp, inputOtp)) {
+    await recordOtpFailure([cleanEmail, cleanPhone])
     return res.status(401).json({ success: false, error: 'Invalid verification OTP code. Please enter the 6-digit code received on your mobile.' })
   }
 
@@ -4408,64 +4710,6 @@ app.post('/api/admin/rebroadcast-mtp-gig/:id', authenticateAdmin, async (req, re
   }
 })
 
-// GET Proxy Document Stream (renders PDF and image documents directly without 3rd party viewer failures)
-app.get('/api/proxy-document', async (req, res) => {
-  const { url } = req.query
-  if (!url || typeof url !== 'string') {
-    return res.status(400).send('Missing document URL parameter.')
-  }
-  
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    return res.status(400).send('Invalid document URL scheme.')
-  }
-
-  try {
-    const upstreamRes = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': '*/*'
-      }
-    })
-    if (!upstreamRes.ok) {
-      return res.status(upstreamRes.status).send(`Failed to retrieve document: ${upstreamRes.statusText}`)
-    }
-
-    const arrayBuffer = await upstreamRes.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
-
-    // Sniff content type from magic bytes if header is generic or missing
-    let contentType = upstreamRes.headers.get('content-type') || ''
-    
-    // Check magic bytes for PDF, JPEG, PNG, WEBP, GIF
-    if (buffer.length >= 4) {
-      if (buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46) {
-        contentType = 'application/pdf'
-      } else if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) {
-        contentType = 'image/jpeg'
-      } else if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
-        contentType = 'image/png'
-      } else if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46) {
-        contentType = 'image/webp'
-      } else if (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46) {
-        contentType = 'image/gif'
-      }
-    }
-
-    if (!contentType || contentType === 'application/octet-stream') {
-      contentType = url.toLowerCase().includes('.pdf') ? 'application/pdf' : 'image/jpeg'
-    }
-
-    res.setHeader('Content-Type', contentType)
-    res.setHeader('Content-Disposition', 'inline')
-    res.setHeader('Cache-Control', 'public, max-age=86400')
-    res.setHeader('Access-Control-Allow-Origin', '*')
-    res.send(buffer)
-  } catch (err) {
-    console.error('Document stream proxy error:', err)
-    res.status(500).send('Failed to stream document.')
-  }
-})
-
 // GET all bookings (Admin Panel)
 app.get('/api/bookings', authenticateAdmin, async (req, res) => {
   try {
@@ -4488,41 +4732,47 @@ app.get('/api/payment/config', (req, res) => {
 })
 
 // POST create Razorpay order
-app.post('/api/payment/order', async (req, res) => {
-  const { amount, bookingId } = req.body
-  if (!amount) {
-    return res.status(400).json({ error: 'Amount is required.' })
-  }
+app.post('/api/payment/order', rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }), async (req, res) => {
+  const { bookingId } = req.body
+  let amount = Number(req.body.amount)
 
-  // Dual Payment Prevention Check
+  // Balance payments: the amount always comes from the booking itself, never from the client
   if (bookingId) {
     try {
       const existing = await db.getBookingById(bookingId)
-      if (existing) {
-        const bal = Number(existing.balanceAmount) !== undefined && existing.balanceAmount !== null
-          ? Number(existing.balanceAmount)
-          : Math.max(0, Number(existing.amount) - Number(existing.advancePaid || 0))
-        const isPaid = String(existing.paymentStatus || '').trim().toLowerCase() === 'paid' || bal <= 0
-        if (isPaid) {
-          return res.status(400).json({ 
-            error: `Dual payment prevented: Booking #${bookingId} has already been settled in full. No payment is required.`,
-            alreadyPaid: true 
-          })
-        }
+      if (!existing) {
+        return res.status(404).json({ error: 'Booking not found.' })
       }
+      const bal = existing.balanceAmount !== undefined && existing.balanceAmount !== null
+        ? Number(existing.balanceAmount)
+        : Math.max(0, Number(existing.amount) - Number(existing.advancePaid || 0))
+      const isPaid = String(existing.paymentStatus || '').trim().toLowerCase() === 'paid' || bal <= 0
+      if (isPaid) {
+        return res.status(400).json({
+          error: `Dual payment prevented: Booking #${bookingId} has already been settled in full. No payment is required.`,
+          alreadyPaid: true
+        })
+      }
+      amount = bal
     } catch (e) {
-      console.warn('[Check Booking Dual Payment Error]:', e.message)
+      console.error('[Check Booking Dual Payment Error]:', e.message)
+      return res.status(500).json({ error: 'Unable to prepare payment. Please try again.' })
     }
   }
 
-  const { key_id, key_secret, client } = getRazorpayConfig()
-  
+  if (!Number.isFinite(amount) || amount < 1 || amount > 1000000) {
+    return res.status(400).json({ error: 'A valid payment amount is required.' })
+  }
+
+  const { key_id, client } = getRazorpayConfig()
+
   if (client) {
     try {
       const options = {
-        amount: Math.round(Number(amount) * 100), // convert to paise
+        amount: Math.round(amount * 100), // convert to paise
         currency: 'INR',
-        receipt: `receipt_${Date.now()}`
+        receipt: bookingId ? `bal_${bookingId}_${Date.now()}` : `receipt_${Date.now()}`,
+        notes: bookingId ? { bookingId: String(bookingId), type: 'balance' } : { type: 'advance' }
       }
       const order = await client.orders.create(options)
       return res.json({
@@ -4534,17 +4784,24 @@ app.post('/api/payment/order', async (req, res) => {
         isSimulation: false
       })
     } catch (err) {
-      console.warn('[Razorpay API Notice] Live order creation encountered an error:', err?.error?.description || err?.message || err)
+      console.error('[Razorpay API Error] Order creation failed:', err?.error?.description || err?.message || err)
+      if (!ALLOW_PAYMENT_SIMULATION) {
+        return res.status(502).json({ error: 'Payment gateway is temporarily unavailable. Please try again in a few minutes.' })
+      }
     }
   }
 
-  // Graceful simulation fallback for local development or when gateway credentials need refresh
+  if (!ALLOW_PAYMENT_SIMULATION) {
+    return res.status(503).json({ error: 'Online payments are not configured. Please choose another payment option or contact support.' })
+  }
+
+  // Simulation fallback: local development only (ALLOW_PAYMENT_SIMULATION=true and NODE_ENV != production)
   console.log('[Payment Simulation] Creating simulated payment order token for client checkout.')
   const simulatedOrderId = `order_sim_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
   return res.json({
     success: true,
     orderId: simulatedOrderId,
-    amount: Math.round(Number(amount) * 100),
+    amount: Math.round(amount * 100),
     currency: 'INR',
     keyId: key_id || 'rzp_test_sim',
     isSimulation: true
@@ -4552,24 +4809,27 @@ app.post('/api/payment/order', async (req, res) => {
 })
 
 // POST create booking
-app.post('/api/booking', async (req, res) => {
+app.post('/api/booking', bookingLimiter, async (req, res) => {
   const { 
-    name, phone, service, date, time, duration, address, amount, userId, 
+    name, phone, service, date, time, duration, address, amount,
     baseAmount, gstAmount,
-    patientName, patientAge, patientNeeds, paymentMethod, email, prescription, 
-    googleMapLocation, razorpay_order_id, razorpay_payment_id, razorpay_signature,
-    advancePaid = 0, balanceAmount = 0
+    patientName, patientAge, patientNeeds, paymentMethod, email, prescription,
+    googleMapLocation, razorpay_order_id, razorpay_payment_id, razorpay_signature
   } = req.body
 
-  // Parse authorization header if present
-  let authUserId = userId
+  // Identify the customer ONLY from a valid customer token (never from a userId in the body)
+  let authUserId = null
   let authUser = null
+  let isTokenAuthenticated = false
   const authHeader = req.headers.authorization
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.split(' ')[1]
     try {
       const decoded = jwt.verify(token, JWT_SECRET)
-      authUserId = decoded.id
+      if (decoded.role === 'user') {
+        authUserId = decoded.id
+        isTokenAuthenticated = true
+      }
     } catch (err) {
       // Ignore invalid token
     }
@@ -4616,34 +4876,30 @@ app.post('/api/booking', async (req, res) => {
   const effectiveDuration = String(duration || '1 Day').trim()
   const effectiveAddress = String(address || (authUser && authUser.address) || 'Hyderabad, Telangana').trim()
 
-  if (paymentMethod === 'razorpay') {
-    if (!razorpay_order_id || !razorpay_payment_id) {
-      return res.status(400).json({ error: 'Missing Razorpay payment parameters.' })
-    }
-    const isSimulated = String(razorpay_order_id).startsWith('order_sim_') || String(razorpay_payment_id).startsWith('pay_sim_')
-    if (!isSimulated) {
-      const { key_secret } = getRazorpayConfig()
-      if (key_secret && razorpay_signature) {
-        try {
-          const generated_signature = crypto
-            .createHmac('sha256', key_secret)
-            .update(razorpay_order_id + '|' + razorpay_payment_id)
-            .digest('hex')
-          if (generated_signature !== razorpay_signature) {
-            console.warn('[Razorpay Signature Warning]', { generated_signature, razorpay_signature })
-          }
-        } catch (e) {
-          console.error('[Signature Verification Error]', e)
-        }
-      }
-    }
+  const parsedAmount = typeof amount === 'number' ? amount : (amount !== undefined && amount !== '' ? Number(amount) : (paymentMethod === 'pay_on_service' ? 0 : 1200))
+  if (!Number.isFinite(parsedAmount) || parsedAmount < 0 || parsedAmount > 10000000) {
+    return res.status(400).json({ error: 'Invalid booking amount.' })
   }
+
+  // Payment amounts are taken from Razorpay itself, never from the client
+  let verifiedPaid = 0
+  if (paymentMethod === 'razorpay') {
+    const verification = await verifyRazorpayPayment({ razorpay_order_id, razorpay_payment_id, razorpay_signature })
+    if (!verification.ok) {
+      return res.status(400).json({ error: verification.error })
+    }
+    verifiedPaid = verification.simulated
+      ? Math.min(parsedAmount, Math.max(0, Number(req.body.advancePaid) || 0))
+      : verification.amountPaid
+  }
+  const advancePaid = verifiedPaid
+  const balanceAmount = Math.max(0, parsedAmount - advancePaid)
+  const statusOfPayment = paymentMethod === 'razorpay'
+    ? (balanceAmount <= 0 ? 'Paid' : 'Advance Paid')
+    : (paymentMethod === 'pay_on_service' ? 'Pay on Service' : 'Unpaid')
 
   try {
     const uploadedPrescription = prescription ? await uploadToCloudinary(prescription) : ''
-
-    const parsedAmount = typeof amount === 'number' ? amount : (amount !== undefined && amount !== '' ? Number(amount) : (paymentMethod === 'pay_on_service' ? 0 : 1200))
-    const statusOfPayment = req.body.paymentStatus || (paymentMethod === 'razorpay' ? 'Advance Paid' : (paymentMethod === 'pay_on_service' ? 'Pay on Service' : 'Unpaid'))
 
     // Dynamic 18% GST Calculations
     const calculatedBase = baseAmount !== undefined && baseAmount !== null 
@@ -4697,17 +4953,14 @@ app.post('/api/booking', async (req, res) => {
       sendMTPBroadcastNotification(newBooking).catch(err => console.error('[MTP Broadcast Async Error]:', err.message))
     }
 
-    let userToken = null
-    if (authUser) {
-      userToken = jwt.sign({ id: authUser.id, role: 'user', email: authUser.email }, JWT_SECRET, { expiresIn: '7d' })
-    }
-
+    // A login token is NEVER issued here: guests matched by phone/email must sign in with OTP
     res.status(201).json({
       success: true,
-      message: 'Booking successfully created!',
+      message: isTokenAuthenticated
+        ? 'Booking successfully created!'
+        : 'Booking successfully created! Please sign in with OTP to track it in your dashboard.',
       data: newBooking,
-      token: userToken,
-      user: authUser ? { id: authUser.id, name: authUser.name, email: authUser.email, phone: authUser.phone } : undefined
+      requiresLogin: !isTokenAuthenticated
     })
   } catch (err) {
     res.status(500).json({ error: 'Failed to create booking.' })
@@ -4737,15 +4990,15 @@ app.get('/api/booking/:id/pay-info', async (req, res) => {
 
     res.json({
       id: booking.id,
-      name: booking.name || booking.patientName || 'Valued Customer',
-      phone: booking.phone || '',
+      // Public endpoint (anyone with the booking id): expose only minimal, masked details
+      name: String(booking.name || booking.patientName || 'Valued Customer').trim().split(/\s+/)[0],
+      phone: '',
       phoneMasked: maskedPhone,
-      email: booking.email || '',
       service: booking.service || 'Home Healthcare Service',
       duration: booking.duration || '1 Shift',
       date: booking.date || '',
       time: booking.time || '',
-      address: booking.address || '',
+      address: String(booking.address || '').split(',').map(x => x.trim()).filter(Boolean).slice(-2).join(', '),
       baseAmount: booking.baseAmount !== undefined ? Number(booking.baseAmount) : Math.round(totalAmount / 1.18),
       gstAmount: booking.gstAmount !== undefined ? Number(booking.gstAmount) : (totalAmount - Math.round(totalAmount / 1.18)),
       amount: totalAmount,
@@ -4766,25 +5019,9 @@ app.post('/api/booking/:id/pay-balance', async (req, res) => {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body
   const { id } = req.params
 
-  if (!razorpay_order_id || !razorpay_payment_id) {
-    return res.status(400).json({ error: 'Missing Razorpay signature details.' })
-  }
-
-  const isSimulated = String(razorpay_order_id).startsWith('order_sim_') || String(razorpay_payment_id).startsWith('pay_sim_')
-  if (!isSimulated) {
-    const { key_secret } = getRazorpayConfig()
-    if (key_secret && razorpay_signature) {
-      try {
-        const generated_signature = crypto
-          .createHmac('sha256', key_secret)
-          .update(razorpay_order_id + '|' + razorpay_payment_id)
-          .digest('hex')
-
-        if (generated_signature !== razorpay_signature) {
-          console.warn('[Razorpay Balance Signature Mismatch Warning]', { generated_signature, razorpay_signature })
-        }
-      } catch (e) {}
-    }
+  const verification = await verifyRazorpayPayment({ razorpay_order_id, razorpay_payment_id, razorpay_signature })
+  if (!verification.ok) {
+    return res.status(400).json({ error: verification.error })
   }
 
   try {
@@ -4800,8 +5037,14 @@ app.post('/api/booking/:id/pay-balance', async (req, res) => {
     if (isPaid) {
       return res.status(400).json({ 
         error: `Dual payment prevented: Booking #${id} is already paid in full. No duplicate charge will be processed.`,
-        alreadyPaid: true 
+        alreadyPaid: true
       })
+    }
+
+    // The amount actually paid on Razorpay must cover the outstanding balance (₹1 rounding tolerance)
+    if (!verification.simulated && verification.amountPaid + 1 < currentBal) {
+      console.warn(`[Balance Payment] Booking #${id}: paid ₹${verification.amountPaid} but balance is ₹${currentBal}. Not marking as paid.`)
+      return res.status(400).json({ error: `Paid amount (₹${verification.amountPaid}) is less than the outstanding balance (₹${currentBal}). Please contact support.` })
     }
 
     const updated = await db.payBookingBalance(id, 'razorpay', razorpay_payment_id)
@@ -4933,7 +5176,7 @@ app.put('/api/booking/:id', authenticateAdmin, async (req, res) => {
 })
 
 // POST test WhatsApp message dispatch
-app.post('/api/admin/test-whatsapp', async (req, res) => {
+app.post('/api/admin/test-whatsapp', authenticateAdmin, async (req, res) => {
   const testPhone = req.body.phone || '9490587575'
   const mockBooking = {
     id: 'TEST-' + Math.floor(1000 + Math.random() * 9000),
@@ -4968,7 +5211,7 @@ app.put('/api/booking/:id/details', authenticateUser, async (req, res) => {
     }
 
     // Verify booking belongs to logged-in user
-    if (booking.userId !== req.userId && req.role !== 'admin') {
+    if (!isBookingOwner(req, booking)) {
       return res.status(403).json({ error: 'Access forbidden. You can only edit your own bookings.' })
     }
 
@@ -5017,7 +5260,7 @@ app.get('/api/caregivers', authenticateAdmin, async (req, res) => {
 })
 
 // POST register caregiver
-app.post('/api/caregiver', async (req, res) => {
+app.post('/api/caregiver', authenticateAdmin, async (req, res) => {
   const { name, phone, email, specialty, experience, referredBy } = req.body
   if (!name || !phone || !specialty) {
     return res.status(400).json({ error: 'Name, phone, and specialty are required.' })
@@ -5684,99 +5927,6 @@ app.post('/api/notifications', authenticateAdmin, async (req, res) => {
   }
 })
 
-// GET Referral Network Analytics & Candidate List (Admin Panel)
-app.get('/api/admin/referrals', authenticateAdmin, async (req, res) => {
-  try {
-    const referrals = await db.getReferrals() || []
-    
-    // Aggregate by referrer
-    const referrerMap = {}
-    
-    referrals.forEach(r => {
-      const code = (r.referrerCode || 'DIRECT').toUpperCase()
-      if (!referrerMap[code]) {
-        referrerMap[code] = {
-          code,
-          referrerName: r.referrerName || 'Staff Partner',
-          referrerPhone: r.referrerPhone || 'N/A',
-          totalReferrals: 0,
-          verifiedReferrals: 0,
-          pendingReferrals: 0,
-          rejectedReferrals: 0,
-          candidates: []
-        }
-      }
-      referrerMap[code].totalReferrals++
-      if (r.status === 'Verified') referrerMap[code].verifiedReferrals++
-      else if (r.status === 'Rejected') referrerMap[code].rejectedReferrals++
-      else referrerMap[code].pendingReferrals++
-
-      referrerMap[code].candidates.push(r)
-    })
-
-    const referrers = Object.values(referrerMap)
-    const totalReferrals = referrals.length
-    const verifiedReferrals = referrals.filter(r => r.status === 'Verified').length
-    const pendingReferrals = referrals.filter(r => r.status === 'Pending').length
-
-    res.json({
-      success: true,
-      totalReferrals,
-      verifiedReferrals,
-      pendingReferrals,
-      referrers,
-      allReferredCandidates: referrals
-    })
-  } catch (err) {
-    console.error('Failed to retrieve referrals:', err)
-    res.status(500).json({ error: 'Failed to retrieve referrals network data.' })
-  }
-})
-// PUT /api/booking/:id/reschedule - Reschedule shift date & time
-app.put('/api/booking/:id/reschedule', authenticateUser, async (req, res) => {
-  const { id } = req.params
-  const { date, time } = req.body
-
-  if (!date || !time) {
-    return res.status(400).json({ success: false, error: 'New date and time are required for rescheduling.' })
-  }
-
-  const dateStr = String(date).trim().split('T')[0]
-  const todayStr = getTodayDateString()
-  if (dateStr < todayStr) {
-    return res.status(400).json({
-      success: false,
-      error: 'Reschedule date cannot be in the past. Please select today or a future date.'
-    })
-  }
-
-  try {
-    const booking = await db.getBookingById(id)
-    if (!booking) {
-      return res.status(404).json({ success: false, error: 'Booking not found.' })
-    }
-
-    if (booking.userId !== req.userId && req.role !== 'admin') {
-      return res.status(403).json({ success: false, error: 'Unauthorized to reschedule this booking.' })
-    }
-
-    const updated = await db.updateBookingDetails(id, {
-      date: dateStr,
-      time: String(time).trim(),
-      status: 'Rescheduled'
-    })
-
-    if (updated) {
-      res.json({ success: true, message: 'Shift rescheduled successfully!' })
-    } else {
-      res.status(500).json({ success: false, error: 'Failed to reschedule shift.' })
-    }
-  } catch (err) {
-    console.error('[Reschedule Error]', err)
-    res.status(500).json({ success: false, error: 'Failed to reschedule shift.' })
-  }
-})
-
 // Google Search Console Site Verification Endpoint
 app.get('/googlec5f847b60d2aa4ef.html', (req, res) => {
   res.type('text/html').send('google-site-verification: googlec5f847b60d2aa4ef.html')
@@ -5919,9 +6069,27 @@ app.use('/api', (req, res) => {
   res.status(404).json({ error: 'API endpoint not found.' })
 })
 
+// Keep the site up: an unexpected async error in one request must not crash the whole server
+process.on('unhandledRejection', (reason) => {
+  console.error('[UnhandledRejection]', reason instanceof Error ? reason.stack : reason)
+})
+
 // Initialize DB and start server
 const startServer = async () => {
-  await db.init()
+  // MySQL can be briefly unavailable during a redeploy: retry before giving up
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await db.init()
+      break
+    } catch (err) {
+      if (attempt >= 6) {
+        console.error('[Startup] Database unavailable after 6 attempts. Exiting so the host restarts the app.')
+        process.exit(1)
+      }
+      console.error(`[Startup] Database connection attempt ${attempt} failed (${err.message}). Retrying in 5s...`)
+      await new Promise(r => setTimeout(r, 5000))
+    }
+  }
   app.listen(PORT, () => {
     console.log(`🚀 Amma Seva Backend running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`)
 

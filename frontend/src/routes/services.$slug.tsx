@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Check, Phone, Clock, IndianRupee, Star, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { SiteLayout, contact } from "@/components/SiteLayout";
 import { validateName, validatePhone, sanitizeIndianPhone, sanitizeName } from "@/lib/validation";
-import { fetchServices } from "@/lib/services";
+import { fetchServices, findServiceBySlug } from "@/lib/services";
 import motherBaby from "@/assets/service-mother-baby.jpg";
 import nursing from "@/assets/service-nursing.jpg";
 import elderly from "@/assets/service-elderly.jpg";
@@ -143,8 +143,10 @@ function getSecondaryTag(category: string): [string, string] {
 
 export const Route = createFileRoute("/services/$slug")({
   loader: async ({ params }) => {
+    // If the services API is unreachable this throws, and the page shows "Try again"
+    // (instead of a misleading "Page Not Found").
     const list = await fetchServices();
-    const service = list.find((s) => s.slug === params.slug);
+    const service = findServiceBySlug(list, params.slug);
     if (!service) throw notFound();
     return { service, allServices: list };
   },

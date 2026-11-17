@@ -4,6 +4,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import bcrypt from 'bcryptjs'
 import os from 'os'
+import { AsyncLocalStorage } from 'async_hooks'
  
  // Resolve dirname
  const __filename = fileURLToPath(import.meta.url)
@@ -653,7 +654,10 @@ const DEFAULT_MOCK_DATA = {
 }
 
 // Initialize JSON database with default template
+let jsonDbInitialized = false
 const initJSONDb = () => {
+  // Run the schema check once per process (it used to run before EVERY read)
+  if (jsonDbInitialized) return
   if (!fs.existsSync(JSON_DB_PATH)) {
     fs.writeFileSync(JSON_DB_PATH, JSON.stringify(DEFAULT_MOCK_DATA, null, 2))
   } else {
@@ -688,11 +692,11 @@ const initJSONDb = () => {
       if (!data.announcements) { data.announcements = []; modified = true }
       if (!data.mtps) { data.mtps = []; modified = true }
       if (!data.mtpTasks || data.mtpTasks.length === 0) { data.mtpTasks = DEFAULT_MOCK_DATA.mtpTasks; modified = true }
-      if (!data.blogs || data.blogs.length <= 1 || (data.blogs.length === 1 && data.blogs[0].title === 'Testing')) {
+      if (!data.blogs || data.blogs.length === 0) {
         data.blogs = DEFAULT_MOCK_DATA.blogs;
         modified = true;
       }
-      if (!data.gallery || data.gallery.length <= 1 || (data.gallery.length === 1 && (data.gallery[0].title.includes('Honey') || data.gallery[0].title === 'Testing'))) {
+      if (!data.gallery || data.gallery.length === 0) {
         data.gallery = DEFAULT_MOCK_DATA.gallery;
         modified = true;
       }
@@ -706,12 +710,43 @@ const initJSONDb = () => {
         modified = true;
       }
       if (modified) {
-        fs.writeFileSync(JSON_DB_PATH, JSON.stringify(data, null, 2))
+        writeJSONDbSync(data)
       }
     } catch (e) {
-      fs.writeFileSync(JSON_DB_PATH, JSON.stringify(DEFAULT_MOCK_DATA, null, 2))
+      // NEVER overwrite real data with defaults: a read/parse error must not wipe the database
+      console.error(`[Database] CRITICAL: Could not read ${JSON_DB_PATH}: ${e.message}. The file was NOT modified. Restore from ${JSON_DB_PATH}.bak if needed.`)
+      throw e
     }
   }
+  jsonDbInitialized = true
+}
+
+// Atomic write: write to a temp file, then rename over the original.
+// Readers never see a half-written file, and a crash mid-write cannot corrupt the database.
+const JSON_DB_TMP_PATH = `${JSON_DB_PATH}.tmp`
+let lastJsonBackupAt = 0
+const backupJSONDbIfDue = () => {
+  const now = Date.now()
+  if (now - lastJsonBackupAt < 60 * 60 * 1000 || !fs.existsSync(JSON_DB_PATH)) return
+  try {
+    fs.copyFileSync(JSON_DB_PATH, `${JSON_DB_PATH}.bak`) // hourly rolling backup
+    const day = new Date().toISOString().slice(0, 10)
+    const daily = `${JSON_DB_PATH}.${day}.bak`
+    if (!fs.existsSync(daily)) fs.copyFileSync(JSON_DB_PATH, daily) // one backup per day
+    // keep only the last 14 daily backups
+    const dir = path.dirname(JSON_DB_PATH)
+    const base = path.basename(JSON_DB_PATH)
+    const dailies = fs.readdirSync(dir).filter(f => f.startsWith(`${base}.`) && /\d{4}-\d{2}-\d{2}\.bak$/.test(f)).sort()
+    dailies.slice(0, Math.max(0, dailies.length - 14)).forEach(f => fs.unlinkSync(path.join(dir, f)))
+    lastJsonBackupAt = now
+  } catch (err) {
+    console.error('[Database] Backup failed:', err.message)
+  }
+}
+const writeJSONDbSync = (data) => {
+  backupJSONDbIfDue()
+  fs.writeFileSync(JSON_DB_TMP_PATH, JSON.stringify(data, null, 2), 'utf-8')
+  fs.renameSync(JSON_DB_TMP_PATH, JSON_DB_PATH)
 }
 
 // Centralized booking payment normalization function to prevent dual/contradictory payment states
@@ -955,7 +990,18 @@ const readJSONDb = async () => {
 // Write JSON database file
 const writeJSONDb = async (data) => {
   if (!data.referrals) data.referrals = []
-  await fs.promises.writeFile(JSON_DB_PATH, JSON.stringify(data, null, 2), 'utf-8')
+  backupJSONDbIfDue()
+  await fs.promises.writeFile(JSON_DB_TMP_PATH, JSON.stringify(data, null, 2), 'utf-8')
+  // Windows can briefly lock the target (antivirus / indexer): retry the rename a few times
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await fs.promises.rename(JSON_DB_TMP_PATH, JSON_DB_PATH)
+      return
+    } catch (err) {
+      if (attempt >= 5 || !['EPERM', 'EBUSY', 'EACCES'].includes(err.code)) throw err
+      await new Promise(r => setTimeout(r, 50 * (attempt + 1)))
+    }
+  }
 }
 
 // Helper to identify MTP / On-Demand Companion tasks
@@ -1096,21 +1142,7 @@ export const db = {
           // Column probably already exists, ignore
         }
 
-        // Auto-heal contradictory booking payment records in MySQL
-        try {
-          await connection.query(`
-            UPDATE bookings 
-            SET balanceAmount = 0, advancePaid = amount 
-            WHERE LOWER(TRIM(paymentStatus)) = 'paid' AND balanceAmount > 0
-          `)
-          await connection.query(`
-            UPDATE bookings 
-            SET paymentStatus = 'Paid', balanceAmount = 0, advancePaid = amount 
-            WHERE balanceAmount <= 0 AND amount > 0 AND LOWER(TRIM(paymentStatus)) != 'paid'
-          `)
-        } catch (healErr) {
-          // Table or column might differ, ignore
-        }
+        // (Removed: a startup 'auto-heal' rewrote booking payment status on every restart.)
 
         await connection.query(`
           CREATE TABLE IF NOT EXISTS caregivers (
@@ -1547,17 +1579,7 @@ export const db = {
           }
         }
 
-        // Clean up old default sample/mock services from the live database
-        try {
-          await connection.query(`
-            DELETE FROM services 
-            WHERE slug IN ('baby-care', 'injection-services', 'elderly-care-at-home', 'elderly-care') 
-               OR description IN ('wklbcbkfhip', 'IV, IM, and subcutaneous drug administrations', 'Assisting seniors with daily tasks and medication routine')
-          `)
-          console.log('🧹 Cleaned up old default mock/sample services from MySQL database.')
-        } catch (e) {
-          console.error('Failed to cleanup old mock services:', e)
-        }
+        // (Removed: a startup cleanup here deleted live services such as 'elderly-care' on every restart.)
 
         const [servicesRows] = await connection.query('SELECT count(*) as count FROM services')
         if (servicesRows[0].count === 0) {
@@ -1643,9 +1665,8 @@ export const db = {
 
         // Seed gallery if empty or single dummy
         const [galleryRows] = await connection.query('SELECT count(*) as count FROM gallery')
-        if (galleryRows[0].count === 0 || galleryRows[0].count <= 1) {
+        if (galleryRows[0].count === 0) {
           console.log('Inserting initial full gallery items into MySQL...')
-          await connection.query('DELETE FROM gallery WHERE id > 0')
           for (const g of DEFAULT_MOCK_DATA.gallery) {
             await connection.query(
               'INSERT INTO gallery (id, imageUrl, title, category, location, description, badge, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
@@ -1656,9 +1677,8 @@ export const db = {
 
         // Seed blogs if empty or single dummy
         const [blogsRows] = await connection.query('SELECT count(*) as count FROM blogs')
-        if (blogsRows[0].count === 0 || blogsRows[0].count <= 1) {
+        if (blogsRows[0].count === 0) {
           console.log('Inserting initial full clinical blogs into MySQL...')
-          await connection.query('DELETE FROM blogs WHERE id > 0')
           for (const b of DEFAULT_MOCK_DATA.blogs) {
             await connection.query(
               'INSERT INTO blogs (id, title, slug, description, content, image, category, author, date, readTime, badge, keyTakeaways, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -1704,9 +1724,11 @@ export const db = {
         useMySQL = true
         console.log(`✅ MySQL Tables verified and seeded successfully!`)
       } catch (err) {
+        // MySQL is configured (live site): do NOT fall back to the local JSON file, that would show
+        // old/demo data and save new bookings in the wrong place. Fail so the host restarts the app.
         console.error(`❌ Failed to connect to MySQL database:`, err.message)
-        console.warn(`⚠️ Warning: MySQL database offline. Falling back to JSON database.`)
         useMySQL = false
+        throw err
       }
     } else {
       console.warn(`⚠️ Warning: MySQL environment variables (DB_HOST, DB_USER, DB_NAME) are not defined. Falling back to JSON database.`)
@@ -5180,3 +5202,22 @@ export const db = {
   }
 }
 
+// ---- JSON database concurrency guard ----
+// In JSON-file mode every db operation does read -> modify -> write on the whole file.
+// Two overlapping requests used to read a half-written file (500 errors) or overwrite each
+// other's changes (lost bookings / registrations). All async db operations now run one at a
+// time in JSON mode. The lock is re-entrant, so db methods that call other db methods still work.
+// MySQL mode is unaffected.
+const jsonLockContext = new AsyncLocalStorage()
+let jsonLockTail = Promise.resolve()
+const withJsonLock = (fn) => {
+  if (jsonLockContext.getStore()) return fn()
+  const run = jsonLockTail.then(() => jsonLockContext.run(true, fn))
+  jsonLockTail = run.catch(() => {})
+  return run
+}
+for (const [name, fn] of Object.entries(db)) {
+  if (typeof fn === 'function' && fn.constructor.name === 'AsyncFunction' && name !== 'init') {
+    db[name] = (...args) => (useMySQL ? fn.apply(db, args) : withJsonLock(() => fn.apply(db, args)))
+  }
+}

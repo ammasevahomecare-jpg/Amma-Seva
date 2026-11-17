@@ -14,6 +14,8 @@ export default defineConfig({
     TanStackRouterVite({
       routesDirectory: "./src/routes",
       generatedRouteTree: "./src/routeTree.gen.ts",
+      // Each page gets its own JS chunk: visitors no longer download the admin panel / dashboard code
+      autoCodeSplitting: true,
     }),
     react(),
     tailwindcss(),

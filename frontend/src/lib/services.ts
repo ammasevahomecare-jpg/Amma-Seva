@@ -119,13 +119,91 @@ function fillServiceFallbackFields(s: Service): Service {
   };
 }
 
+// Fetch with timeout + retries (a slow or briefly restarting server used to make
+// service pages show "Page Not Found" and booking pick the wrong service).
+async function fetchWithRetry(url: string, attempts = 3): Promise<Response> {
+  let lastError: unknown = null;
+  for (let i = 0; i < attempts; i++) {
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), 15000) : null;
+    try {
+      const res = await fetch(url, controller ? { signal: controller.signal } : undefined);
+      if (res.ok) return res;
+      // Do not retry client errors (except 429), they will not change
+      if (res.status < 500 && res.status !== 429) return res;
+      lastError = new Error(`${url} responded ${res.status}`);
+    } catch (err) {
+      lastError = err;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+    await new Promise((r) => setTimeout(r, 500 * (i + 1)));
+  }
+  throw lastError instanceof Error ? lastError : new Error(`Failed to load ${url}`);
+}
+
+const SERVICES_CACHE_KEY = "ammaseva_services_cache_v1";
+const SERVICES_TTL_MS = 60 * 1000;
+let servicesCache: { at: number; list: Service[] } | null = null;
+let servicesInFlight: Promise<Service[]> | null = null;
+
+const readStoredServices = (): Service[] | null => {
+  try {
+    if (typeof window === "undefined") return null;
+    const raw = window.localStorage.getItem(SERVICES_CACHE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+const storeServices = (list: Service[]) => {
+  try {
+    if (typeof window !== "undefined") window.localStorage.setItem(SERVICES_CACHE_KEY, JSON.stringify(list));
+  } catch {
+    /* storage full or blocked: ignore */
+  }
+};
+
+/**
+ * Loads all bookable services (standard care + MTP tasks).
+ * - Concurrent callers (header, footer, page loader, dashboard) share ONE request.
+ * - Results are cached for 60s, so navigating between pages is instant.
+ * - If the API is unreachable, the last successfully loaded list is used.
+ * - Throws only when nothing is available at all (pages then show "Try again", not "Not Found").
+ */
 export async function fetchServices(): Promise<Service[]> {
+  if (servicesCache && Date.now() - servicesCache.at < SERVICES_TTL_MS) return servicesCache.list;
+  if (servicesInFlight) return servicesInFlight;
+  servicesInFlight = loadServicesFromApi()
+    .then((list) => {
+      servicesCache = { at: Date.now(), list };
+      storeServices(list);
+      return list;
+    })
+    .catch((err) => {
+      const stored = servicesCache?.list || readStoredServices();
+      if (stored) {
+        console.warn("Services API unavailable, using last loaded list", err);
+        return stored;
+      }
+      throw err;
+    })
+    .finally(() => {
+      servicesInFlight = null;
+    });
+  return servicesInFlight;
+}
+
+async function loadServicesFromApi(): Promise<Service[]> {
   let standardServices: Service[] = [];
 
-  // 1. Fetch standard care services from /api/services
-  try {
-    const res = await fetch("/api/services");
-    if (res.ok) {
+  // 1. Fetch standard care services from /api/services (required)
+  {
+    const res = await fetchWithRetry("/api/services");
+    if (!res.ok) throw new Error(`Services API responded ${res.status}`);
+    {
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
         standardServices = data.map((item: any) => {
@@ -152,14 +230,12 @@ export async function fetchServices(): Promise<Service[]> {
         });
       }
     }
-  } catch (err) {
-    console.error("Failed to load services from API", err);
   }
 
-  // 2. Fetch dynamic MTP Tasks configured by Admin from /api/mtp/tasks
+  // 2. Fetch dynamic MTP Tasks configured by Admin from /api/mtp/tasks (optional)
   let mtpServices: Service[] = [];
   try {
-    const mtpRes = await fetch("/api/mtp/tasks");
+    const mtpRes = await fetchWithRetry("/api/mtp/tasks", 2);
     if (mtpRes.ok) {
       const mtpData = await mtpRes.json();
       if (Array.isArray(mtpData) && mtpData.length > 0) {
@@ -213,6 +289,22 @@ export async function fetchServices(): Promise<Service[]> {
   }
 
   return [...standardServices, ...mtpServices];
+}
+
+/**
+ * Finds a service by URL slug. Exact match first; for MTP tasks the slug is
+ * "mtp-<taskId>-<title>", so an old link keeps working after the admin renames the task.
+ */
+export function findServiceBySlug(list: Service[], rawSlug: string): Service | undefined {
+  const slug = decodeURIComponent(String(rawSlug || "")).toLowerCase().trim().replace(/\/+$/, "");
+  if (!slug) return undefined;
+  const exact = list.find((s) => s.slug.toLowerCase() === slug);
+  if (exact) return exact;
+  const mtpMatch = slug.match(/^mtp-(\d+)(?:-|$)/);
+  if (mtpMatch) {
+    return list.find((s) => s.isMtp && s.slug.startsWith(`mtp-${mtpMatch[1]}-`));
+  }
+  return undefined;
 }
 
 export async function fetchServiceBySlug(slug: string): Promise<Service | null> {

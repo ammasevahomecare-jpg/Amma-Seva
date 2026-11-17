@@ -342,9 +342,11 @@ function Footer() {
   const [services, setServices] = useState<Service[]>([]);
 
   useEffect(() => {
-    fetchServices().then((list) => {
-      setServices(list.slice(0, 6));
-    });
+    fetchServices()
+      .then((list) => {
+        setServices(list.slice(0, 6));
+      })
+      .catch(() => {});
   }, []);
 
   return (

@@ -20,6 +20,14 @@ const INDIAN_STATES = [
   "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
 ];
 
+// Only allow redirects back into this site (blocks "//evil.com", "https://evil.com", "javascript:")
+function safeRedirect(target: string | null): string {
+  const t = String(target || "").trim();
+  if (!t.startsWith("/") || t.startsWith("//") || t.startsWith("/\\")) return "/dashboard";
+  if (t.startsWith("/login")) return "/dashboard";
+  return t;
+}
+
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
@@ -147,7 +155,7 @@ function LoginPage() {
       if (list.length > 0) {
         setSpecialty(list[0].title);
       }
-    });
+    }).catch(() => {});
   }, []);
 
   // Clear states on mode changes
@@ -203,7 +211,7 @@ function LoginPage() {
         localStorage.removeItem("token");
       } catch (e) {}
     } else if (localStorage.getItem("ammaseva_user_token") || localStorage.getItem("ammaseva_caretaker_token")) {
-      const redirect = urlParams.get("redirect") || "/dashboard";
+      const redirect = safeRedirect(urlParams.get("redirect"));
       window.location.href = redirect;
     }
   }, [navigate]);
@@ -336,7 +344,7 @@ function LoginPage() {
                 localStorage.setItem("ammaseva_user_details", JSON.stringify(data.user));
                 setSuccessMsg("Account successfully verified and created! Loading your dashboard...");
                 const urlParams = new URLSearchParams(window.location.search);
-                const redirect = urlParams.get("redirect") || "/dashboard";
+                const redirect = safeRedirect(urlParams.get("redirect"));
                 setTimeout(() => {
                   window.location.href = redirect;
                 }, 400);
@@ -513,13 +521,13 @@ function LoginPage() {
                 localStorage.setItem("ammaseva_caretaker_details", JSON.stringify(data.caretaker));
                 setSuccessMsg(`Welcome, ${data.caretaker?.isMtp ? "MTP Partner" : "Caregiver"} ${data.caretaker?.name || ""}!`);
                 const urlParams = new URLSearchParams(window.location.search);
-                const redirect = urlParams.get("redirect") || "/dashboard";
+                const redirect = safeRedirect(urlParams.get("redirect"));
                 window.location.href = redirect;
               } else if (data.role === "customer") {
                 localStorage.setItem("ammaseva_user_token", data.token);
                 localStorage.setItem("ammaseva_user_details", JSON.stringify(data.user));
                 const urlParams = new URLSearchParams(window.location.search);
-                const redirect = urlParams.get("redirect") || "/dashboard";
+                const redirect = safeRedirect(urlParams.get("redirect"));
                 window.location.href = redirect;
               }
             }

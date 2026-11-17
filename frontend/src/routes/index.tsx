@@ -26,8 +26,11 @@ const HERO_IMAGES = [hero, motherBaby, physiotherapy, elderly, icuRecovery, beds
 
 export const Route = createFileRoute("/")({
   loader: async () => {
-    const services = await fetchServices();
-    const faqs = await fetchFaqs();
+    // The home page must always render, even if the services API is briefly unavailable
+    const [services, faqs] = await Promise.all([
+      fetchServices().catch(() => []),
+      fetchFaqs(),
+    ]);
     return { services, faqs };
   },
   staleTime: 30000,

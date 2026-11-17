@@ -262,6 +262,7 @@ function CustomerDashboard() {
     }
   };
 
+  const [isUpdatingPhoto, setIsUpdatingPhoto] = useState(false);
   const [photoUpdateMessage, setPhotoUpdateMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Helper to resolve official clean staff designation (MTP, Nurse, Caregiver, Employee)
@@ -1075,7 +1076,7 @@ function CustomerDashboard() {
           if (careItem) setSelectedServiceId(careItem.id);
           setActiveView("new-booking");
         } else if (preSelected) {
-          const matchingService = formatted.find(s => 
+          const matchingService = formatted.find(s => s.id === preSelected) || formatted.find(s => 
             s.id === preSelected || 
             s.id.startsWith(preSelected) || 
             preSelected.startsWith(s.id) ||
@@ -1096,7 +1097,7 @@ function CustomerDashboard() {
           }
         }
       }
-    });
+    }).catch((err) => console.error("Unable to load services for booking:", err));
 
     // Fetch active MTP hourly packages from database
     fetch("/api/mtp/prices")
@@ -1128,7 +1129,7 @@ function CustomerDashboard() {
       if (careItem) setSelectedServiceId(careItem.id);
       setActiveView("new-booking");
     } else if (preSelected) {
-      const matchingService = servicesList.find(s => 
+      const matchingService = servicesList.find(s => s.id === preSelected) || servicesList.find(s => 
         s.id === preSelected || 
         s.id.startsWith(preSelected) || 
         preSelected.startsWith(s.id) ||
@@ -1541,7 +1542,7 @@ function CustomerDashboard() {
         }
 
         // If guest user, persist login user details so they can access their booking dashboard
-        if (!user && (bookerPhone || bookerEmail)) {
+        if (!user && data.token && (bookerPhone || bookerEmail)) {
           const activeUser = data.user || {
             id: data.data?.userId,
             name: bookerName,
@@ -1603,7 +1604,11 @@ function CustomerDashboard() {
         }
 
         // If server provided simulation fallback order or SDK is not present, complete directly
-        if (orderData.isSimulation || !(window as any).Razorpay) {
+        if (!orderData.isSimulation && !(window as any).Razorpay) {
+          throw new Error("Payment gateway failed to load. Please refresh the page and try again.");
+        }
+        // Simulated orders are only issued by the server in local development
+        if (orderData.isSimulation) {
           await submitBooking("Advance Paid", {
             razorpay_order_id: orderData.orderId,
             razorpay_payment_id: `pay_sim_${Date.now()}`,
@@ -1646,12 +1651,10 @@ function CustomerDashboard() {
           const rzp = new (window as any).Razorpay(options);
           rzp.open();
         } catch (rzpErr) {
-          console.warn("[Razorpay SDK warning] Falling back to direct confirmation:", rzpErr);
-          await submitBooking("Advance Paid", {
-            razorpay_order_id: orderData.orderId,
-            razorpay_payment_id: `pay_sim_${Date.now()}`,
-            razorpay_signature: `sig_sim_${Date.now()}`
-          });
+          console.error("[Razorpay SDK error]", rzpErr);
+          alert("Unable to open the payment window. Please refresh the page and try again.");
+          setIsSubmitting(false);
+          setIsPaymentProcessing(false);
         }
       } catch (err: any) {
         alert("Payment initialization error: " + err.message);
@@ -1813,7 +1816,11 @@ function CustomerDashboard() {
       };
 
       // If simulation mode or Razorpay SDK not available
-      if (orderData.isSimulation || !(window as any).Razorpay) {
+      if (!orderData.isSimulation && !(window as any).Razorpay) {
+        throw new Error("Payment gateway failed to load. Please refresh the page and try again.");
+      }
+      // Simulated orders are only issued by the server in local development
+      if (orderData.isSimulation) {
         await verifyBalancePayment({
           razorpay_order_id: orderData.orderId,
           razorpay_payment_id: `pay_sim_${Date.now()}`,
@@ -1845,11 +1852,8 @@ function CustomerDashboard() {
         const rzp = new (window as any).Razorpay(options);
         rzp.open();
       } catch (rzpErr) {
-        await verifyBalancePayment({
-          razorpay_order_id: orderData.orderId,
-          razorpay_payment_id: `pay_sim_${Date.now()}`,
-          razorpay_signature: `sig_sim_${Date.now()}`
-        });
+        console.error("[Razorpay SDK error]", rzpErr);
+        alert("Unable to open the payment window. Please refresh the page and try again.");
       }
     } catch (err: any) {
       alert("Payment notice: " + err.message);

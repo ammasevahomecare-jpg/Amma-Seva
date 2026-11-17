@@ -131,7 +131,7 @@ export default function PayBalancePage() {
             body: JSON.stringify({
               razorpay_order_id: payResponse.razorpay_order_id,
               razorpay_payment_id: payResponse.razorpay_payment_id,
-              razorpay_signature: payResponse.razorpay_signature || "simulated_sig"
+              razorpay_signature: payResponse.razorpay_signature
             })
           });
 
@@ -158,7 +158,11 @@ export default function PayBalancePage() {
       };
 
       // If simulated / dev environment or Razorpay SDK not loaded
-      if (orderData.isSimulation || !(window as any).Razorpay) {
+      if (!orderData.isSimulation && !(window as any).Razorpay) {
+        throw new Error("Payment gateway failed to load. Please refresh the page and try again.");
+      }
+      // Simulated orders are only issued by the server in local development
+      if (orderData.isSimulation) {
         const simTxn = `pay_sim_${Date.now()}`;
         await finalizePayment({
           razorpay_order_id: orderData.orderId,
