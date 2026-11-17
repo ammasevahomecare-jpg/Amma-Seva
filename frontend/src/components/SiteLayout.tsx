@@ -622,7 +622,7 @@ function FloatingActions() {
       {!isOnBookingOrAuth && (
         <div className="fixed bottom-4 left-3 sm:bottom-5 sm:left-5 z-40 flex flex-col gap-2 sm:gap-2.5">
           <a
-            href="/dashboard?service=elderly-care"
+            href="/dashboard?service=care"
             className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl bg-[#0b183b] text-white text-[11px] sm:text-xs font-bold shadow-xl border border-white/20 hover:scale-105 hover:bg-[#14234f] transition-all cursor-pointer backdrop-blur-md"
           >
             <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gold shrink-0" />
