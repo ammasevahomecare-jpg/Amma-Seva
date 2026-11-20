@@ -43,8 +43,8 @@ export interface MonthlyLedgerBooking {
   caretakerPayoutStatus?: string;
   caretakerPayoutMethod?: string;
   caretakerPayoutRef?: string;
-  assignedStaff?: string;
-  assignedStaffId?: number | string;
+  assignedStaff?: string | null;
+  assignedStaffId?: number | string | null;
   caretakerName?: string;
   status?: string;
   invoiceNumber?: string;

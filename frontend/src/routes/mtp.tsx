@@ -584,6 +584,8 @@ function MTPPage() {
         const finalData = data.data || pendingPayload;
         // Save session tokens for instant dashboard access
         if (data.token) {
+          localStorage.removeItem("ammaseva_user_token");
+          localStorage.removeItem("ammaseva_user_details");
           localStorage.setItem("ammaseva_caretaker_token", data.token);
           localStorage.setItem("ammaseva_caretaker_details", JSON.stringify(data.caretaker || finalData));
         }

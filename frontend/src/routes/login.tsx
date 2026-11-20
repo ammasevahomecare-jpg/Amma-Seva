@@ -340,6 +340,8 @@ function LoginPage() {
             })
             .then((data) => {
               if (data.success && data.token && data.user) {
+                localStorage.removeItem("ammaseva_caretaker_token");
+                localStorage.removeItem("ammaseva_caretaker_details");
                 localStorage.setItem("ammaseva_user_token", data.token);
                 localStorage.setItem("ammaseva_user_details", JSON.stringify(data.user));
                 setSuccessMsg("Account successfully verified and created! Loading your dashboard...");
@@ -517,6 +519,9 @@ function LoginPage() {
                 localStorage.setItem("ammaseva_admin_token", data.token);
                 window.location.href = "/admin";
               } else if (data.role === "caretaker") {
+                // Drop any other account's session so the dashboard opens the account that just signed in
+                localStorage.removeItem("ammaseva_user_token");
+                localStorage.removeItem("ammaseva_user_details");
                 localStorage.setItem("ammaseva_caretaker_token", data.token);
                 localStorage.setItem("ammaseva_caretaker_details", JSON.stringify(data.caretaker));
                 setSuccessMsg(`Welcome, ${data.caretaker?.isMtp ? "MTP Partner" : "Caregiver"} ${data.caretaker?.name || ""}!`);
@@ -524,6 +529,9 @@ function LoginPage() {
                 const redirect = safeRedirect(urlParams.get("redirect"));
                 window.location.href = redirect;
               } else if (data.role === "customer") {
+                // Drop any other account's session so the dashboard opens the account that just signed in
+                localStorage.removeItem("ammaseva_caretaker_token");
+                localStorage.removeItem("ammaseva_caretaker_details");
                 localStorage.setItem("ammaseva_user_token", data.token);
                 localStorage.setItem("ammaseva_user_details", JSON.stringify(data.user));
                 const urlParams = new URLSearchParams(window.location.search);

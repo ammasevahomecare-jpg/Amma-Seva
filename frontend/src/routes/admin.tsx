@@ -185,6 +185,10 @@ interface Booking {
   mtpAcceptedBy?: string | null;
   mtpAcceptedById?: number | null;
   mtpAcceptedPhone?: string | null;
+  staffReminderSent?: boolean | number;
+  staffReminderSentAt?: string | null;
+  staffReminderInterval?: string | null;
+  notes?: string;
 }
 
 interface Caregiver {
@@ -215,6 +219,9 @@ interface Caregiver {
   referCode?: string;
   referralCode?: string;
   referredBy?: string;
+  staffCategory?: string;
+  employeeId?: string;
+  designation?: string;
 }
 
 interface Enquiry {
@@ -247,7 +254,12 @@ interface ServiceRecord {
   unit?: string;
   rate?: number;
   isMtp?: boolean;
+  pricing?: string;
+  defaultRate?: number;
 }
+
+// Shape shared by the API services and the built-in fallback list (used for rate lookups)
+type ServiceRecordLike = { id: number; title: string; price: string; pricing?: string; defaultRate?: number; unit?: string };
 
 interface NotificationRecord {
   id: number;
@@ -976,7 +988,7 @@ function AdminPage() {
   const todayStr = getTodayISO();
 
   // Full Service Catalog & Pricing Defaults
-  const ADMIN_STANDARD_SERVICES = [
+  const ADMIN_STANDARD_SERVICES: ServiceRecordLike[] = [
     { id: 1, title: "Elderly Care at Home", price: "Starting ₹500 / visit", defaultRate: 500, unit: "visit" },
     { id: 2, title: "Mother & Baby Care", price: "Starting ₹18,000 / month", defaultRate: 18000, unit: "month" },
     { id: 3, title: "Pregnancy Care", price: "Starting ₹700 / visit", defaultRate: 700, unit: "visit" },
@@ -5231,7 +5243,7 @@ function AdminPage() {
                   <MonthlyLedgerRegisters
                     bookings={bookings}
                     onRefresh={fetchDashboardData}
-                    onNavigateToTab={setActiveTab}
+                    onNavigateToTab={(tab: string) => setActiveTab(tab as AdminTab)}
                     onDeleteBooking={handleDeleteBooking}
                   />
                 )}
@@ -6362,7 +6374,7 @@ function AdminPage() {
                                           originalId: c.id,
                                           type: "caregiver" as const,
                                           source: "caregivers" as const,
-                                          staffCategory: cat as const,
+                                          staffCategory: cat as "NUR" | "CGV",
                                           categoryLabel: catLabel,
                                           employeeId: c.employeeId || `AS - ${cat} - 26-${String(c.id).padStart(3, "0")}`,
                                           name: c.name,

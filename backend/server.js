@@ -69,7 +69,10 @@ const isSimulatedPaymentRef = (orderId, paymentId) =>
 // Verifies a Razorpay checkout result end-to-end:
 // signature (HMAC) -> payment fetched from Razorpay -> belongs to this order -> captured/authorized.
 // Returns { ok, amountPaid (in rupees), simulated } or { ok: false, error }.
-const verifyRazorpayPayment = async ({ razorpay_order_id, razorpay_payment_id, razorpay_signature }) => {
+// A checkout result is submitted right after paying; anything older is treated as a re-used payment
+const MAX_PAYMENT_AGE_SECONDS = 24 * 60 * 60
+
+const verifyRazorpayPayment = async ({ razorpay_order_id, razorpay_payment_id, razorpay_signature }, expectedContext = {}) => {
   if (!razorpay_order_id || !razorpay_payment_id) {
     return { ok: false, error: 'Missing Razorpay payment details.' }
   }
@@ -114,6 +117,30 @@ const verifyRazorpayPayment = async ({ razorpay_order_id, razorpay_payment_id, r
   }
   if (payment.currency && payment.currency !== 'INR') {
     return { ok: false, error: 'Unsupported payment currency.' }
+  }
+  const createdAtSec = Number(payment.created_at) || 0
+  if (createdAtSec && (Date.now() / 1000 - createdAtSec) > MAX_PAYMENT_AGE_SECONDS) {
+    console.warn(`[Razorpay] Rejected old payment ${razorpay_payment_id} (created ${new Date(createdAtSec * 1000).toISOString()})`)
+    return { ok: false, error: 'This payment is too old to be used for a new transaction. Please contact support if money was debited.' }
+  }
+
+  // Orders created by our server carry notes: balance orders are tied to one booking id
+  if (expectedContext.purpose) {
+    let order = null
+    try {
+      order = await client.orders.fetch(razorpay_order_id)
+    } catch (err) {
+      console.warn('[Razorpay] Could not fetch order notes (check skipped):', err?.error?.description || err?.message || err)
+    }
+    const notes = (order && order.notes) || {}
+    if (order) {
+      if (expectedContext.purpose === 'balance' && notes.type === 'balance' && notes.bookingId && String(notes.bookingId) !== String(expectedContext.bookingId)) {
+        return { ok: false, error: 'This payment was made for a different booking.' }
+      }
+      if (expectedContext.purpose === 'advance' && notes.type === 'balance') {
+        return { ok: false, error: 'This payment was made for a balance settlement, not a new booking.' }
+      }
+    }
   }
 
   // Replay protection: the same Razorpay payment can settle only one booking
@@ -1075,8 +1102,9 @@ const sendBookingConfirmationAndTaxInvoiceEmail = async (booking, userEmail) => 
   const address = booking.address || 'Hyderabad, Telangana'
   const patientName = booking.patientName || name
   const patientAge = booking.patientAge ? `(${booking.patientAge} yrs)` : ''
+  const patientNeeds = booking.patientNeeds || ''
   const totalAmount = Number(booking.amount) || 0
-  const isPaid = String(booking.paymentStatus || '').trim().toLowerCase() === 'paid' || 
+  const isPaid = String(booking.paymentStatus || '').trim().toLowerCase() === 'paid' ||
                  (booking.balanceAmount !== undefined && Number(booking.balanceAmount) <= 0 && totalAmount > 0) ||
                  (booking.advancePaid !== undefined && Number(booking.advancePaid) >= totalAmount && totalAmount > 0)
   const advancePaid = isPaid ? totalAmount : (Number(booking.advancePaid) || 0)
@@ -2324,6 +2352,22 @@ app.post('/api/auth/send-registration-otp', otpSendLimiter, async (req, res) => 
         })
       }
     }
+    // Login looks up Caregiver -> MTP -> Customer, so one mobile / email can only belong to ONE account type.
+    // Registering it in a second role would silently lock the person out of their first account.
+    const otherRoleAccount = (role === 'customer' || role === 'user')
+      ? ((await db.getCaregiverByPhone(cleanPhone)) || (await db.getCaregiverByEmail(cleanEmail)) ||
+         (await db.getMTPByPhone(cleanPhone)) || (await db.getMTPByEmail(cleanEmail)))
+      : (role === 'mtp')
+      ? ((await db.getUserByPhone(cleanPhone)) || (await db.getUserByEmail(cleanEmail)) ||
+         (await db.getCaregiverByPhone(cleanPhone)) || (await db.getCaregiverByEmail(cleanEmail)))
+      : ((await db.getUserByPhone(cleanPhone)) || (await db.getUserByEmail(cleanEmail)) ||
+         (await db.getMTPByPhone(cleanPhone)) || (await db.getMTPByEmail(cleanEmail)))
+    if (otherRoleAccount) {
+      return res.status(409).json({
+        success: false,
+        error: 'This mobile number or email is already registered with another Amma Seva account type. Please Sign In with OTP, or contact Amma Seva support.'
+      })
+    }
   } catch (err) {
     console.error('Error checking existing user in send-registration-otp:', err)
   }
@@ -2730,6 +2774,8 @@ const authenticateUser = (req, res, next) => {
     req.userId = decoded.id
     req.role = decoded.role
     req.isMtp = !!decoded.isMtp
+    req.userEmail = decoded.email ? String(decoded.email).trim().toLowerCase() : ''
+    req.userPhone = decoded.phone ? String(decoded.phone).replace(/\D/g, '').slice(-10) : ''
     next()
   } catch (err) {
     return res.status(401).json({ error: 'Access denied. Invalid or expired token.' })
@@ -2952,16 +2998,47 @@ app.put('/api/caretaker/photo', authenticateUser, async (req, res) => {
 // ---- Booking access helpers ----
 const sameId = (a, b) => a !== undefined && a !== null && a !== '' && String(a) === String(b)
 
+// Caregivers and MTPs live in separate tables, so the same numeric id can belong to two different people.
+// A record found in the "other" table is only accepted when it matches the email / phone inside the token.
+const tokenMatchesPerson = (req, person) => {
+  if (!person) return false
+  const pEmail = String(person.email || '').trim().toLowerCase()
+  const pPhone = String(person.phone || '').replace(/\D/g, '').slice(-10)
+  return (!!req.userEmail && !!pEmail && req.userEmail === pEmail) ||
+         (!!req.userPhone && pPhone.length === 10 && req.userPhone === pPhone)
+}
+
+// Resolve the MTP profile behind the current token (MTP tokens carry isMtp: true)
+const getMtpForRequest = async (req) => {
+  if (req.role === 'mtp' || req.isMtp) {
+    let mtp = await db.getMTPById(req.userId)
+    if (!mtp && req.userEmail) mtp = await db.getMTPByEmail(req.userEmail)
+    return mtp
+  }
+  // Older / non-MTP caretaker token: only accept the MTP record if it is really the same person
+  const mtp = await db.getMTPById(req.userId)
+  return tokenMatchesPerson(req, mtp) ? mtp : null
+}
+
 // Resolve the caretaker / MTP profile behind the current token
 const getStaffPersonForRequest = async (req) => {
   if (req.role !== 'caretaker' && req.role !== 'mtp') return null
+  let staff = null
   if (req.role === 'mtp' || req.isMtp) {
-    return { person: await db.getMTPById(req.userId), isMtp: true }
+    const mtp = await getMtpForRequest(req)
+    staff = mtp ? { person: mtp, isMtp: true } : null
+  } else {
+    const cg = await db.getCaregiverById(req.userId)
+    if (cg) {
+      staff = { person: cg, isMtp: false }
+    } else {
+      const mtp = await getMtpForRequest(req)
+      staff = mtp ? { person: mtp, isMtp: true } : null
+    }
   }
-  const cg = await db.getCaregiverById(req.userId)
-  if (cg) return { person: cg, isMtp: false }
-  const mtp = await db.getMTPById(req.userId)
-  return mtp ? { person: mtp, isMtp: true } : null
+  // Rejected staff cannot log in; an older still-valid token must not keep working either
+  if (staff && String(staff.person.status || '').trim() === 'Rejected') return null
+  return staff
 }
 
 // True when the logged-in caretaker / MTP is the one assigned to this booking
@@ -2988,14 +3065,11 @@ app.get('/api/caretaker/bookings', authenticateUser, async (req, res) => {
   try {
     let person = null
     if (req.role === 'mtp' || req.isMtp) {
-      person = await db.getMTPById(req.userId)
-      if (!person && req.userEmail) {
-        person = await db.getMTPByEmail(req.userEmail)
-      }
+      person = await getMtpForRequest(req)
     } else {
       person = await db.getCaregiverById(req.userId)
       if (!person) {
-        person = await db.getMTPById(req.userId)
+        person = await getMtpForRequest(req)
       }
     }
     if (!person) {
@@ -3732,6 +3806,10 @@ app.get('/api/user/profile', authenticateUser, async (req, res) => {
 
 // GET all bookings for current user
 app.get('/api/user/bookings', authenticateUser, async (req, res) => {
+  // Customer accounts only: a caregiver / MTP token carries an id from a different table
+  if (req.role !== 'user' && req.role !== 'customer') {
+    return res.status(403).json({ error: 'Access forbidden. Customer bookings only.' })
+  }
   try {
     const user = await db.getUserById(req.userId)
     const list = await db.getBookingsByUserId(req.userId, user ? user.phone : null)
@@ -3975,6 +4053,24 @@ app.post('/api/careers/apply', publicFormLimiter, async (req, res) => {
   }
 
   const cleanPhone = String(phone).replace(/\D/g, '')
+
+  // This form has no OTP step, so it must never create a second profile for a number / email
+  // that already has an account (that would hijack the existing person's OTP login).
+  try {
+    const phone10 = cleanPhone.slice(-10)
+    const realEmail = email && String(email).trim() ? String(email).trim().toLowerCase() : ''
+    const existingAccount =
+      (await db.getCaregiverByPhone(phone10)) || (realEmail ? await db.getCaregiverByEmail(realEmail) : null) ||
+      (await db.getMTPByPhone(phone10)) || (realEmail ? await db.getMTPByEmail(realEmail) : null) ||
+      (await db.getUserByPhone(phone10)) || (realEmail ? await db.getUserByEmail(realEmail) : null)
+    if (existingAccount) {
+      return res.status(409).json({
+        error: 'This mobile number or email is already registered with Amma Seva. Please Sign In with OTP, or contact our support team to update your application.'
+      })
+    }
+  } catch (err) {
+    console.error('[Careers] Existing account check failed:', err.message)
+  }
 
   try {
     const specialtyMap = {
@@ -4598,16 +4694,12 @@ app.get('/api/mtp/available-gigs', authenticateUser, async (req, res) => {
     return res.status(403).json({ error: 'Access forbidden. MTP profile only.' })
   }
   try {
-    let mtp = null
-    if (req.role === 'mtp' || req.isMtp) {
-      mtp = await db.getMTPById(req.userId)
-      if (!mtp && req.userEmail) mtp = await db.getMTPByEmail(req.userEmail)
-    } else {
-      mtp = await db.getMTPById(req.userId)
-    }
-    if (!mtp && !req.isMtp) {
+    const mtp = await getMtpForRequest(req)
+    const mtpStatus = mtp ? String(mtp.status || 'Pending').trim() : ''
+    if (!mtp || mtpStatus === 'Rejected') {
       return res.status(403).json({ error: 'Only verified MTP companions can access the on-demand gig pool.' })
     }
+    const isVerifiedMtp = mtpStatus === 'Verified' || mtpStatus === 'Approved' || mtpStatus === 'Active'
     const gigs = await db.getAvailableMTPGigs()
     const todayStr = new Date().toISOString().split('T')[0]
     const activeGigs = (Array.isArray(gigs) ? gigs : []).filter(g => {
@@ -4615,7 +4707,27 @@ app.get('/api/mtp/available-gigs', authenticateUser, async (req, res) => {
       const d = String(g.date).trim().slice(0, 10)
       return d >= todayStr
     })
-    res.json(activeGigs)
+    if (isVerifiedMtp) {
+      return res.json(activeGigs)
+    }
+    // Not yet verified by admin: show the task preview only, without the customer's personal / medical details
+    const preview = activeGigs.map(g => ({
+      ...g,
+      name: String(g.name || g.patientName || 'Customer').trim().split(/\s+/)[0],
+      patientName: String(g.patientName || g.name || 'Customer').trim().split(/\s+/)[0],
+      phone: '',
+      email: '',
+      address: String(g.address || '').split(',').map(x => x.trim()).filter(Boolean).slice(-2).join(', '),
+      googleMapLocation: '',
+      prescription: '',
+      patientNeeds: '',
+      patientAge: '',
+      vitals: undefined,
+      careLogs: undefined,
+      transactionId: '',
+      userId: undefined
+    }))
+    res.json(preview)
   } catch (err) {
     console.error('Failed to get available MTP gigs:', err)
     res.status(500).json({ error: 'Failed to retrieve available gigs.' })
@@ -4628,13 +4740,7 @@ app.post('/api/mtp/claim-gig/:id', authenticateUser, async (req, res) => {
     return res.status(403).json({ error: 'Access forbidden. MTP profile only.' })
   }
   try {
-    let mtp = null
-    if (req.role === 'mtp' || req.isMtp) {
-      mtp = await db.getMTPById(req.userId)
-      if (!mtp && req.userEmail) mtp = await db.getMTPByEmail(req.userEmail)
-    } else {
-      mtp = await db.getMTPById(req.userId)
-    }
+    const mtp = await getMtpForRequest(req)
     if (!mtp) {
       return res.status(404).json({ error: 'MTP profile not found.' })
     }
@@ -4808,6 +4914,80 @@ app.post('/api/payment/order', rateLimit({ windowMs: 15 * 60 * 1000, max: 100 })
   })
 })
 
+// Recomputes the booking price on the server with exactly the same rules as the dashboard
+// (frontend/src/routes/dashboard.tsx: getServiceRates / calculateBaseAmount / calculateGST).
+// Returns { total, base, gst } or null when the price cannot be determined reliably.
+const computeExpectedBookingPrice = async ({ service, duration, isMtp }) => {
+  const durStr = String(duration || '').trim()
+
+  // MTP packages: "<hours> Hours (MTP Package)"
+  const mtpMatch = durStr.match(/^(\d+(?:\.\d+)?)\s*Hours?\s*\(MTP Package\)$/i)
+  if (mtpMatch || isMtp === 1 || isMtp === true || isMtp === '1') {
+    if (!mtpMatch) return null
+    const hours = Number(mtpMatch[1])
+    const tiers = (await db.getMTPPrices()) || []
+    const totals = tiers
+      .filter(t => Number(t.hours) === hours)
+      .map(t => {
+        const base = Number(t.price) || 0
+        const gst = Math.round(base * ((Number(t.gstRate) || 18) / 100))
+        return { base, gst, total: base + gst }
+      })
+    if (totals.length === 0) return null
+    return totals.reduce((min, t) => (t.total < min.total ? t : min))
+  }
+
+  // Care services: "<count> Hour(s) | Day(s) | Week(s) | Month(s)"
+  const careMatch = durStr.match(/^(\d+)\s*(Hours?|Days?|Weeks?|Months?)$/i)
+  if (!careMatch) return null
+  const count = Number(careMatch[1]) || 1
+  const unitWord = careMatch[2].toLowerCase()
+
+  const title = String(service || '').trim().toLowerCase()
+  if (!title) return null
+  const services = (await db.getServices()) || []
+  const svc = services.find(s => String(s.title || '').trim().toLowerCase() === title)
+  if (!svc) return null
+
+  const pricing = String(svc.price || svc.pricing || 'Starting ₹799 / shift')
+  const num = pricing.replace(/,/g, '').match(/\d+/)
+  const rate = (num ? Number(num[0]) : 1200) || 1200
+
+  const priceStr = pricing.toLowerCase()
+  let unit = 'day'
+  if (priceStr.includes('month')) unit = 'month'
+  else if (priceStr.includes('hour')) unit = 'hour'
+  else if (priceStr.includes('week')) unit = 'week'
+  else if (priceStr.includes('day') || priceStr.includes('visit') || priceStr.includes('session') || priceStr.includes('consultation')) unit = 'day'
+  else {
+    const svcDur = String(svc.duration || 'Hourly').toLowerCase()
+    if (svcDur.includes('month')) unit = 'month'
+    else if (svcDur.includes('hour')) unit = 'hour'
+    else if (svcDur.includes('week')) unit = 'week'
+    else if (svcDur.includes('task')) unit = 'task'
+    else unit = 'day'
+  }
+
+  let hourly, daily, weekly, monthly
+  if (unit.includes('month')) {
+    monthly = rate; daily = Math.round(monthly / 30); weekly = Math.round(daily * 7); hourly = Math.round(daily / 24)
+  } else if (unit.includes('hour')) {
+    hourly = rate; daily = Math.round(hourly * 24); weekly = Math.round(daily * 7); monthly = Math.round(daily * 30)
+  } else if (unit.includes('visit') || unit.includes('session') || unit.includes('consultation')) {
+    daily = rate; hourly = rate; weekly = rate * 7; monthly = rate * 30
+  } else {
+    daily = rate; hourly = Math.round(daily / 24); weekly = Math.round(daily * 7); monthly = Math.round(daily * 30)
+  }
+
+  const perUnit = unitWord.startsWith('hour') ? hourly
+    : unitWord.startsWith('day') ? daily
+    : unitWord.startsWith('week') ? weekly
+    : monthly
+  const base = perUnit * count
+  const gst = Math.round(base * 0.18)
+  return { base, gst, total: base + gst }
+}
+
 // POST create booking
 app.post('/api/booking', bookingLimiter, async (req, res) => {
   const { 
@@ -4881,12 +5061,39 @@ app.post('/api/booking', bookingLimiter, async (req, res) => {
     return res.status(400).json({ error: 'Invalid booking amount.' })
   }
 
+  // The total must not be lower than the real price of the selected service / package.
+  // (Only under-pricing is rejected; when the price cannot be determined the booking continues as before.)
+  let serverPrice = null
+  try {
+    serverPrice = await computeExpectedBookingPrice({ service: effectiveService, duration: effectiveDuration, isMtp: req.body.isMtp })
+  } catch (e) {
+    console.error('[Booking Price] Price check failed:', e.message)
+  }
+  if (serverPrice && serverPrice.total > 0) {
+    const tolerance = Math.max(2, Math.round(serverPrice.total * 0.01))
+    if (parsedAmount + tolerance < serverPrice.total) {
+      console.warn(`[Booking Price] Rejected booking for "${effectiveService}" (${effectiveDuration}): sent ₹${parsedAmount}, price is ₹${serverPrice.total}`)
+      return res.status(400).json({ error: 'The booking amount does not match the current price of this service. Please refresh the page and try again.' })
+    }
+  } else {
+    console.log(`[Booking Price] Price not verifiable for "${effectiveService}" (${effectiveDuration}); amount ₹${parsedAmount} accepted.`)
+  }
+
   // Payment amounts are taken from Razorpay itself, never from the client
   let verifiedPaid = 0
+  let claimedPaymentId = null
   if (paymentMethod === 'razorpay') {
-    const verification = await verifyRazorpayPayment({ razorpay_order_id, razorpay_payment_id, razorpay_signature })
+    const verification = await verifyRazorpayPayment({ razorpay_order_id, razorpay_payment_id, razorpay_signature }, { purpose: 'advance' })
     if (!verification.ok) {
       return res.status(400).json({ error: verification.error })
+    }
+    if (!verification.simulated) {
+      // Reserve the payment id atomically so it can never settle two bookings
+      const claimed = await db.claimPaymentId(razorpay_payment_id, 'booking')
+      if (!claimed) {
+        return res.status(400).json({ error: 'This payment has already been used for another booking.' })
+      }
+      claimedPaymentId = razorpay_payment_id
     }
     verifiedPaid = verification.simulated
       ? Math.min(parsedAmount, Math.max(0, Number(req.body.advancePaid) || 0))
@@ -4902,12 +5109,17 @@ app.post('/api/booking', bookingLimiter, async (req, res) => {
     const uploadedPrescription = prescription ? await uploadToCloudinary(prescription) : ''
 
     // Dynamic 18% GST Calculations
-    const calculatedBase = baseAmount !== undefined && baseAmount !== null 
-      ? Number(baseAmount) 
+    let calculatedBase = baseAmount !== undefined && baseAmount !== null
+      ? Number(baseAmount)
       : Math.round(parsedAmount / 1.18)
-    const calculatedGst = gstAmount !== undefined && gstAmount !== null 
-      ? Number(gstAmount) 
+    let calculatedGst = gstAmount !== undefined && gstAmount !== null
+      ? Number(gstAmount)
       : (parsedAmount - calculatedBase)
+    // Invoice split must add up to the booking total
+    if (!Number.isFinite(calculatedBase) || !Number.isFinite(calculatedGst) || Math.abs((calculatedBase + calculatedGst) - parsedAmount) > 2) {
+      calculatedBase = Math.round(parsedAmount / 1.18)
+      calculatedGst = parsedAmount - calculatedBase
+    }
     const cgstAmount = Math.round(calculatedGst / 2)
     const sgstAmount = calculatedGst - cgstAmount
 
@@ -4963,6 +5175,9 @@ app.post('/api/booking', bookingLimiter, async (req, res) => {
       requiresLogin: !isTokenAuthenticated
     })
   } catch (err) {
+    console.error('Failed to create booking:', err)
+    // Booking was not saved: free the payment id so the customer can retry with the same payment
+    if (claimedPaymentId) await db.releasePaymentId(claimedPaymentId).catch(() => {})
     res.status(500).json({ error: 'Failed to create booking.' })
   }
 })
@@ -5019,11 +5234,12 @@ app.post('/api/booking/:id/pay-balance', async (req, res) => {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body
   const { id } = req.params
 
-  const verification = await verifyRazorpayPayment({ razorpay_order_id, razorpay_payment_id, razorpay_signature })
+  const verification = await verifyRazorpayPayment({ razorpay_order_id, razorpay_payment_id, razorpay_signature }, { purpose: 'balance', bookingId: id })
   if (!verification.ok) {
     return res.status(400).json({ error: verification.error })
   }
 
+  let claimedPaymentId = null
   try {
     // Dual payment prevention check
     const existing = await db.getBookingById(id)
@@ -5047,7 +5263,19 @@ app.post('/api/booking/:id/pay-balance', async (req, res) => {
       return res.status(400).json({ error: `Paid amount (₹${verification.amountPaid}) is less than the outstanding balance (₹${currentBal}). Please contact support.` })
     }
 
+    if (!verification.simulated) {
+      // Reserve the payment id atomically: one Razorpay payment can settle only one balance
+      const claimed = await db.claimPaymentId(razorpay_payment_id, `balance:${id}`)
+      if (!claimed) {
+        return res.status(400).json({ error: 'This payment has already been used for another booking.' })
+      }
+      claimedPaymentId = razorpay_payment_id
+    }
+
     const updated = await db.payBookingBalance(id, 'razorpay', razorpay_payment_id)
+    if (!(updated === true || updated?.success) && claimedPaymentId) {
+      await db.releasePaymentId(claimedPaymentId).catch(() => {})
+    }
     if (updated === true || updated?.success) {
       const settledBooking = await db.getBookingById(id)
       let userEmail = ''
@@ -5073,6 +5301,7 @@ app.post('/api/booking/:id/pay-balance', async (req, res) => {
     }
   } catch (err) {
     console.error('Balance payment error:', err)
+    if (claimedPaymentId) await db.releasePaymentId(claimedPaymentId).catch(() => {})
     res.status(500).json({ error: 'Failed to process balance payment.' })
   }
 })
@@ -5883,7 +6112,7 @@ app.post('/api/notifications', authenticateAdmin, async (req, res) => {
         html: `
           <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 24px; border-radius: 16px;">
             <h3 style="color: #4f46e5; margin-top: 0;">Care Notification Alert</h3>
-            <p style="color: #334155; font-size: 14px; line-height: 1.5;">${message}</p>
+            <p style="color: #334155; font-size: 14px; line-height: 1.5;">${esc(message).replace(/\r?\n/g, '<br>')}</p>
             <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
             <p style="color: #94a3b8; font-size: 11px; text-align: center;">This is a system alert message from Amma Seva. Please do not reply directly to this mail.</p>
           </div>

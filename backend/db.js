@@ -1220,6 +1220,19 @@ export const db = {
           )
         `)
 
+        // New, separate table (additive only): every Razorpay payment id may be used exactly once
+        try {
+          await connection.query(`
+            CREATE TABLE IF NOT EXISTS used_payments (
+              paymentId VARCHAR(255) PRIMARY KEY,
+              purpose VARCHAR(100),
+              usedAt VARCHAR(100)
+            )
+          `)
+        } catch (e) {
+          console.warn('[MySQL] Could not create used_payments table:', e.message)
+        }
+
         await connection.query(`
           CREATE TABLE IF NOT EXISTS reviews (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -2705,7 +2718,8 @@ export const db = {
     const cleanPhone = userPhone ? String(userPhone).replace(/\D/g, '').slice(-10) : null
     if (useMySQL) {
       if (cleanPhone) {
-        const [rows] = await pool.query('SELECT * FROM bookings WHERE userId = ? OR phone = ? ORDER BY id DESC', [userId, cleanPhone])
+        // Phone matching only picks up bookings that are not owned by another account (e.g. admin-created walk-in bookings)
+        const [rows] = await pool.query('SELECT * FROM bookings WHERE userId = ? OR (phone = ? AND (userId IS NULL OR userId = 0)) ORDER BY id DESC', [userId, cleanPhone])
         return (rows || []).map(normalizeBooking)
       }
       const [rows] = await pool.query('SELECT * FROM bookings WHERE userId = ? ORDER BY id DESC', [userId])
@@ -2715,7 +2729,8 @@ export const db = {
       if (!data.bookings) return []
       return data.bookings.filter(b => {
         if (userId && Number(b.userId) === Number(userId)) return true
-        if (cleanPhone && b.phone && String(b.phone).replace(/\D/g, '').slice(-10) === cleanPhone) return true
+        const hasOwner = b.userId !== undefined && b.userId !== null && b.userId !== '' && Number(b.userId) !== 0
+        if (!hasOwner && cleanPhone && b.phone && String(b.phone).replace(/\D/g, '').slice(-10) === cleanPhone) return true
         return false
       }).reverse().map(normalizeBooking)
     }
@@ -3092,6 +3107,49 @@ export const db = {
   },
 
   // Persistent OTP methods
+  // Atomically reserve a Razorpay payment id. Returns false if it was already used.
+  claimPaymentId: async (paymentId, purpose = '') => {
+    const id = String(paymentId || '').trim()
+    if (!id) return false
+    const usedAt = new Date().toISOString()
+    if (useMySQL) {
+      try {
+        const [result] = await pool.query('INSERT IGNORE INTO used_payments (paymentId, purpose, usedAt) VALUES (?, ?, ?)', [id, purpose, usedAt])
+        return result.affectedRows === 1
+      } catch (err) {
+        // Table unavailable: do not block live payments (the bookings.transactionId check still applies)
+        console.error('[Payments] used_payments claim failed:', err.message)
+        return true
+      }
+    } else {
+      const data = await readJSONDb()
+      if (!Array.isArray(data.usedPayments)) data.usedPayments = []
+      if (data.usedPayments.some(p => p.paymentId === id)) return false
+      data.usedPayments.push({ paymentId: id, purpose, usedAt })
+      await writeJSONDb(data)
+      return true
+    }
+  },
+
+  // Undo a reservation when the booking / balance update could not be saved
+  releasePaymentId: async (paymentId) => {
+    const id = String(paymentId || '').trim()
+    if (!id) return
+    if (useMySQL) {
+      try {
+        await pool.query('DELETE FROM used_payments WHERE paymentId = ?', [id])
+      } catch (err) {
+        console.error('[Payments] used_payments release failed:', err.message)
+      }
+    } else {
+      const data = await readJSONDb()
+      if (Array.isArray(data.usedPayments)) {
+        data.usedPayments = data.usedPayments.filter(p => p.paymentId !== id)
+        await writeJSONDb(data)
+      }
+    }
+  },
+
   saveOTP: async (email, otp, role, expiresAt) => {
     if (useMySQL) {
       await pool.query(
